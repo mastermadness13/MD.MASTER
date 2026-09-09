@@ -76,4 +76,22 @@ PRG-001 fixed (suite had no failing teacher-edit tests). Overview: no correctnes
 | TIM-003 | Timetable department page template assertions (`current table editable badge/hint`) | tests/test_timetable_department_page.py | Medium | template rendering assertions → Phase 5 | — | deferred → Phase 5 |
 
 ### Phase 3 result
-Full suite: **`127 passed / 2 failed`** (was 114/15). Remaining 2 failures are template-assertion items on the Phase 5 schedule (course-content admin status filters; timetable department-page editable badge/hint).
+Full suite: **127 passed / 2 failed** (was 114/15). The 2 template-assertion failures were closed by external-editor commit b43f693 (templates/JS harmonization). Full suite now **129 passed / 0 failed**.
+
+## Phase 4 - Frontend Dependency Audit
+
+Audit run against tree AFTER b43f693 (the external frontend pass already removed significant dead-weight; numbers below are the current state).
+
+| ID | Finding | Evidence | Severity | Status |
+|----|---------|----------|----------|--------|
+| FE-001 | `static/js/public.js` - zero references in any template | grep across `templates/` | Low | Phase 5: remove |
+| FE-002 | 5 orphaned page JS (`pages/public_index_block1.js`, `pages/public_index_block2.js`, `pages/public_pages_department.js`, `pages/public_pages_department-info_block1.js`, `..._block2.js`) referenced only by dead `templates/public/*` build tree (served site is pre-built `static/public/`, wired via `routes/public_site.py`) | template-to-JS reference map | Medium | Phase 5: archive + remove with dead templates |
+| FE-003 | Broken script reference: `templates/spa.html:69` loads `js/spa/users.js` which does not exist - 404 every `/app` load | file listing vs reference | Medium | Phase 5: drop dangling tag |
+| FE-004 | base.html loads 12 external scripts (11 unconditional) + Tailwind CDN + tom-select CDN; every base-layout page performs 12-13 external requests | `templates/shared/layouts/base.html:198-222`, `components/head_preamble.html` | Low | Phase 5: conditionalize/consolidate |
+| FE-005 | 3 coexisting frontend systems: (a) server-rendered Jinja admin, (b) JS SPA shell `/app`, (c) pre-built static public site `/index.html`. No merge planned - documented intent. | routes + template entry points | Info | document |
+| FE-006 | 63 distinct duplicate function names across 2+ referenced JS files (count inflated by SPA sibling bundles + dead `public_*` files) | duplicate-function scan | Low | Phase 5: consolidate course-content helper cluster into `shared/course_helpers.js` |
+| FE-007 | CSS: 0 unreferenced files - 34 module files `@import`ed by `app.css`, `features/super_admin_dashboard.css` linked directly | CSS reference scan | Info | none |
+| FE-008 | Dead templates: `templates/public/*` (abandoned build source) and `templates/dashboard/print.html` (only referenced by `scripts/convert/convert_remaining.py` as skip) | route/builder scan | Low | Phase 5: archive + remove |
+
+### Phase 4 result
+Full suite **129 passed / 0 failed** after b43f693. Phase 5 carries the FE-00x removals/consolidations with archive + regression tests per deletion policy (git is the primary archive; non-template artifacts go to `_archive/2026-09/`).
