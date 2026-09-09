@@ -578,7 +578,15 @@ def _migrate_to_named_semesters(conn: sqlite3.Connection) -> None:
     1. Rebuild the semesters table with the new global structure.
     2. Add semester_code to timetable_versions and convert existing data.
     3. Seed the initial named semesters.
+
+    Guarded by the migration log: it DROPs and rebuilds the ``semesters``
+    table, so it must run exactly once, not on every startup (running it
+    repeatedly wiped admin-added semesters and orphaned references).
     """
+    _NAMED_SEMESTERS_MIGRATION = 'migrate_to_named_semesters_v1'
+    if _migration_done(conn, _NAMED_SEMESTERS_MIGRATION):
+        return
+
     from werkzeug.security import generate_password_hash
 
     # ── 1. Rebuild the semesters table ──────────────────────────────────
@@ -725,6 +733,7 @@ def _migrate_to_named_semesters(conn: sqlite3.Connection) -> None:
             'ON timetable_versions(department_id, semester, semester_code)'
         )
 
+    _mark_migration_done(conn, _NAMED_SEMESTERS_MIGRATION)
     conn.commit()
 
 

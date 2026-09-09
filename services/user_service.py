@@ -527,7 +527,8 @@ def update_user(db, id, role, department_id, email, label, password=None):
 
 def delete_user(db, id):
     from database.repositories.user_repository import UserRepository
-    UserRepository(db).delete_user(id)
+    svc = UserService(db, UserRepository(db))
+    svc.delete_user(id)
 
 
 def username_exists(db, username):

@@ -280,9 +280,20 @@ def build_department_search(
 
 
 def highlight_text(text: str, search: str) -> str:
-    """HTML-highlight search terms in text (for template use)."""
-    if not search or not text:
-        return text or ''
+    """HTML-highlight search terms in text (for template use).
+
+    Output is intended to be rendered with the ``| safe`` filter, so the
+    input is HTML-escaped first: only the ``<mark>`` wrapper tag is emitted,
+    never raw text content. Escaping both sides keeps the match working on
+    escaped characters (e.g. ``<`` → ``&lt;``).
+    """
+    import html as html_module
     import re
-    pattern = re.compile(re.escape(search), re.IGNORECASE)
-    return pattern.sub(lambda m: f'<mark class="search-highlight">{m.group()}</mark>', text)
+    if not search or not text:
+        return html_module.escape(text or '')
+    escaped_text = html_module.escape(text)
+    pattern = re.compile(re.escape(html_module.escape(search)), re.IGNORECASE)
+    return pattern.sub(
+        lambda m: f'<mark class="search-highlight">{m.group()}</mark>',
+        escaped_text,
+    )

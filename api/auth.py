@@ -7,10 +7,11 @@ or form-encoded data.
 
 from __future__ import annotations
 
-from flask import Blueprint, session, url_for
+from flask import Blueprint, request, session, url_for
 
 from api.helpers import body, err, ok, public_user
 from core.constants import ROLE_NAMES
+from core.rate_limiter import RateLimiter
 from flask_db import get_db
 from security import (
     get_header_messages_url,
@@ -22,6 +23,10 @@ from security.csrf import csrf_required
 from services import user_service
 
 bp = Blueprint('api_auth', __name__, url_prefix='/api/auth')
+
+# Same throttle as the HTML login form (routes/auth.py) so the API endpoint
+# cannot be used to brute-force credentials.
+_api_login_limiter = RateLimiter(max_requests=5, window_seconds=60)
 
 
 def _session_payload():
@@ -55,10 +60,16 @@ def api_login():
     if not username or not password:
         return err('اسم المستخدم وكلمة المرور مطلوبان', 422)
 
+    client_ip = request.remote_addr or 'unknown'
+    if _api_login_limiter.is_limited(client_ip):
+        return err('تم تجاوز الحد المسموح لمحاولات الدخول، يرجى المحاولة لاحقاً', 429)
+    _api_login_limiter.record(client_ip)
+
     db = get_db()
     success, user = user_service.authenticate(db, username, password, remember, session)
     if not success:
         return err('اسم المستخدم أو كلمة المرور غير صحيحة', 401)
+    _api_login_limiter.reset(client_ip)
     return ok(_session_payload())
 
 

@@ -1,14 +1,16 @@
 from flask import Blueprint, session, request, render_template, redirect, url_for, flash
 
 from flask_db import get_db
-from security import current_user, get_granted_roles
+from security import current_user, csrf_required, get_granted_roles
 from services.dashboard_service import get_dashboard_stats
 from services import dashboard_service
+from utils.redirects import redirect_back
 
 bp = Blueprint('dashboard', __name__)
 
 
 @bp.route('/switch-role', methods=['POST'])
+@csrf_required
 def switch_role():
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
@@ -19,7 +21,7 @@ def switch_role():
         flash('تم تغيير الواجهة', 'success')
     else:
         flash('ليس لديك هذا الدور', 'error')
-    return redirect(request.referrer or url_for('dashboard.dashboard'))
+    return redirect_back(fallback_endpoint='dashboard.dashboard')
 
 
 @bp.route('/')

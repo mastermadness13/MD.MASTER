@@ -2,7 +2,7 @@
 
 A thin, Flask-free wrapper around the ``sqlite3`` stdlib that applies the
 connection defaults the application relies on (row factory, UTF-8 text,
-foreign keys, MEMORY journal mode).
+foreign keys, WAL journal mode).
 """
 
 from __future__ import annotations
@@ -18,7 +18,10 @@ def configure_connection(conn: sqlite3.Connection) -> sqlite3.Connection:
     conn.text_factory = str
     conn.row_factory = sqlite3.Row
     conn.execute('PRAGMA foreign_keys = ON')
-    conn.execute('PRAGMA journal_mode = MEMORY')
+    # WAL journal mode: crash-safe (no corruption on unexpected exit) while
+    # allowing concurrent readers. A no-op for in-memory test databases.
+    conn.execute('PRAGMA journal_mode = WAL')
+    conn.execute('PRAGMA busy_timeout = 5000')
     conn.create_function('normalize_arabic', 1, lambda s: normalize_arabic_name(s))
     return conn
 

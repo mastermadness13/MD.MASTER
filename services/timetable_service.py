@@ -6,6 +6,7 @@ for backward compatibility with existing routes.
 
 from __future__ import annotations
 
+import contextvars
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -674,14 +675,18 @@ def get_create_form_data(db, dept_id, day, semester, period_code, user_dept):
     return svc.get_create_form_data(dept_id, day, semester, period_code, user_dept)
 
 
-_last_warnings: List[str] = []
+# Conflict-warning storage is context-local so concurrent requests (threaded
+# dev server / multiple workers) never read another request's warnings.
+_warnings_context: contextvars.ContextVar = contextvars.ContextVar(
+    'timetable_conflict_warnings', default=[]
+)
 
 
 def get_last_conflict_warnings(db=None) -> List[str]:
     """Return (and clear) the advisory conflict warnings from the most recent
-    create/update entry call."""
-    warnings = list(_last_warnings)
-    _last_warnings.clear()
+    create/update entry call (scoped to the current request/context)."""
+    warnings = list(_warnings_context.get())
+    _warnings_context.set([])
     return warnings
 
 
@@ -689,7 +694,7 @@ def create_entry(db, day, semester, period_code, course_id, teacher_id, room_id,
     from database.repositories.timetable_repository import TimetableRepository
     svc = TimetableService(db, TimetableRepository(db))
     entry_id = svc.create_entry(day, semester, period_code, course_id, teacher_id, room_id, department_id, start_time, end_time, version_id, lecture_type, hours)
-    _last_warnings[:] = svc.get_last_conflict_warnings()
+    _warnings_context.set(list(svc.get_last_conflict_warnings()))
     return entry_id
 
 
@@ -707,7 +712,7 @@ def update_entry(db, entry_id, day, semester, period_code, course_id, teacher_id
     from database.repositories.timetable_repository import TimetableRepository
     svc = TimetableService(db, TimetableRepository(db))
     ok = svc.update_entry(entry_id, day, semester, period_code, course_id, teacher_id, room_id, start_time, end_time, lecture_type, hours)
-    _last_warnings[:] = svc.get_last_conflict_warnings()
+    _warnings_context.set(list(svc.get_last_conflict_warnings()))
     return ok
 
 
