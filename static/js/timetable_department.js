@@ -16,7 +16,6 @@
   var periods = P.periods || [];
   var days = P.days || [];
   var availableSemesters = P.available_semesters || [];
-  var versions = P.versions || [];
   var entries = P.entries || [];
   var vocabMap = P.vocab || {};
   var syllabiMap = P.syllabus || {};
@@ -26,9 +25,7 @@
   var selDept = P.dept ? P.dept.id : null;
   var selSem = P.selected_semester;
   var activeVersionId = P.current_version_id;
-  var viewingVersionId = P.viewing_version_id;
   var currentYear = P.active_academic_label || P.semester_code;
-  var viewingYear = P.viewing_semester_name || P.viewing_semester_code;
   var locked = !!(P.locked || !P.can_manage);
   var canSwitchDept = !!P.can_switch_department;
 
@@ -164,33 +161,15 @@
       html += '</tr>';
     });
     tbody.innerHTML = html;
-
-    var banner = document.getElementById('viewingBanner');
-    var bannerText = document.getElementById('viewingBannerText');
-    if (viewingVersionId && viewingVersionId !== activeVersionId) {
-      banner.classList.remove('hidden');
-      bannerText.textContent = 'أنت تتصفح جدولًا أرشيفيًا (' + (viewingYear || '') + ') — الجدول الحالي قابل للتعديل';
-    } else {
-      banner.classList.add('hidden');
-    }
     renderBadge();
-    renderArchive();
   }
 
 
   function renderBadge() {
     var b = document.getElementById('currentBadge');
-    var active = !(viewingVersionId && viewingVersionId !== activeVersionId);
-    var chipCls, dotCls, label;
-    if (!active) {
-      chipCls = 'border-amber-200 bg-amber-50 text-amber-700';
-      dotCls = 'bg-amber-500';
-      label = 'جدول أرشيفي · ' + (viewingYear || '') + ' · الفصل ' + semesterNumLabel(selSem) + ' — للعرض فقط';
-    } else {
-      chipCls = 'border-green-200 bg-green-50 text-green-700';
-      dotCls = 'bg-green-500';
-      label = 'الجدول الحالي · ' + (currentYear || '') + ' · الفصل ' + semesterNumLabel(selSem) + ' — ' + (locked ? 'للعرض فقط' : 'قابل للتعديل');
-    }
+    var chipCls = 'border-green-200 bg-green-50 text-green-700';
+    var dotCls = 'bg-green-500';
+    var label = 'الجدول الحالي · ' + (currentYear || '') + ' · الفصل ' + semesterNumLabel(selSem) + ' — ' + (locked ? 'للعرض فقط' : 'قابل للتعديل');
     b.className = 'mr-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border ' + chipCls;
     b.innerHTML =
       '<span class="flex flex-col items-end leading-tight">' +
@@ -203,89 +182,12 @@
     var nyBtn = document.getElementById('nextYearBtn');
     if (nyBtn) {
       nyBtn.title = locked ? 'متاح على الجدول الحالي فقط' : 'إنشاء نسخة العام القادم';
-      if (!active) {
-        nyBtn.disabled = true;
-        nyBtn.classList.add('opacity-40', 'cursor-not-allowed', 'pointer-events-none');
-      }
     }
   }
-
-  // ── Archive ──────────────────────────────────────────────
-  function toggleArchive() {
-    var d = document.getElementById('archiveDropdown');
-    if (d.classList.contains('hidden')) { renderArchive(); d.classList.remove('hidden'); }
-    else d.classList.add('hidden');
-  }
-  function closeArchive() { document.getElementById('archiveDropdown').classList.add('hidden'); }
-  function isArchiveTarget(node) {
-    var n = node;
-    while (n) {
-      if (n.id === 'archiveDropdown' || n.id === 'archiveBtn') return true;
-      n = n.parentNode;
-    }
-    return false;
-  }
-  function renderArchive() {
-    var body = document.getElementById('archiveBody');
-    body.innerHTML = '';
-    document.getElementById('archiveCount').textContent = versions.length;
-    var title = document.getElementById('archiveTitle');
-    title.textContent = 'أرشيف ' + (P.dept ? P.dept.name : '') + ' — الفصل ' + semesterNumLabel(selSem);
-
-    if (!versions.length) {
-      body.innerHTML = '<div class="px-4 py-10 text-center">' +
-        '<span class="material-symbols-outlined text-[32px] text-outline block mb-2">archive</span>' +
-        '<div class="text-sm text-on-surface-variant">لا يوجد أرشيف لهذا القسم والفصل بعد</div>' +
-        '</div>';
-      return;
-    }
-    var lastYear = null;
-    versions.forEach(function (v) {
-      var html = '';
-      var displayName = v.semester_name_ar || v.semester_code || '—';
-      if (displayName !== lastYear) {
-        lastYear = displayName;
-        html += '<div class="px-4 pt-2.5 pb-1.5 flex items-center gap-2 text-xs font-bold text-on-surface-variant">' +
-          '<span class="material-symbols-outlined text-[14px] text-primary">calendar_month</span>' +
-          'الفصل: ' + esc(displayName) +
-          '</div>';
-      }
-      var active = v.id === viewingVersionId;
-      html += '<div class="flex items-center gap-1 px-3 py-2 hover:bg-surface-container transition' + (active ? ' bg-primary-fixed' : '') + '">' +
-        '<button type="button" onclick="window.__ttOpenVersion(' + v.id + ')" class="flex-1 flex items-center justify-between gap-2 text-right">' +
-          '<span>' +
-            '<span class="block text-sm font-bold text-on-surface">' + v.cnt + ' محاضرة</span>' +
-            '<span class="block text-[11px] text-on-surface-variant mt-0.5">آخر تعديل: ' + fmtDate(v.updated_at) + '</span>' +
-          '</span>' +
-          '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-surface-container-highest text-on-surface-variant">أرشيف</span>' +
-        '</button>' +
-        '<button type="button" title="فتح" onclick="window.__ttOpenVersion(' + v.id + ')" class="p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary-container transition">' +
-          '<span class="material-symbols-outlined text-[18px]">visibility</span>' +
-        '</button>' +
-        (!locked ?
-          '<button type="button" title="استخدام كقالب" onclick="window.__ttUseTemplate(' + v.id + ')" class="p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary-container transition">' +
-            '<span class="material-symbols-outlined text-[18px]">content_copy</span>' +
-          '</button>' : '') +
-        '</div>';
-      body.insertAdjacentHTML('beforeend', html);
-    });
-  }
-  function openVersion(id) {
-    var url = BASE + qs({ department_id: selDept, semester: selSem, version_id: id });
-    location.href = url;
-  }
-  function returnToCurrent() {
-    location.href = BASE + qs({ department_id: selDept, semester: selSem });
-  }
-  function useTemplate(id) {
-    if (locked) return;
-    fetchPost(API + '/api/version/create-next', { version_id: id, copy_entries: true });
-  }
-
-  // ── Next year ────────────────────────────────────────────
+// ── Next year ────────────────────────────────────────────
   function openNextYear() {
-    if (locked) { toast('لا يمكن إنشاء نسخة من جدول أرشيفي.', 'error'); return; }
-    document.getElementById('nyInfo').textContent = 'سيُفتح جدول جديد فارغ للقسم «' + (P.dept ? P.dept.name : '') + '» الفصل ' + semesterNumLabel(selSem) + '. يُنقل الجدول الحالي تلقائيًا إلى الأرشيف.';
+    if (locked) { toast('لا يمكن إنشاء نسخة من جدول للعرض فقط.', 'error'); return; }
+    document.getElementById('nyInfo').textContent = 'سيُفتح جدول جديد فارغ للقسم «' + (P.dept ? P.dept.name : '') + '» الفصل ' + semesterNumLabel(selSem) + '. يُحفظ الجدول الحالي ويُنشأ الجدول الجديد.';
     document.getElementById('nyWarn').classList.add('hidden');
     document.getElementById('nyOverlay').classList.remove('hidden');
     document.getElementById('nyModal').classList.remove('hidden');
@@ -338,7 +240,7 @@
         '</div>' +
         '<div class="bg-surface border border-outline-variant rounded-xl p-3">' +
           '<div class="flex items-center gap-2 mb-1"><span class="material-symbols-outlined text-primary text-base">verified</span><span class="text-xs text-on-surface-variant">الإصدار</span></div>' +
-          '<div class="text-sm font-semibold text-on-surface">' + esc(currentYear) + ' — ' + (locked ? 'أرشيف' : 'محفوظ') + '</div>' +
+          '<div class="text-sm font-semibold text-on-surface">' + esc(currentYear) + ' — ' + (locked ? 'للعرض فقط' : 'محفوظ') + '</div>' +
         '</div>' +
       '</div>';
     document.getElementById('popupOverlay').classList.remove('hidden');
@@ -824,8 +726,6 @@ function buildTeacherPool() {
   // ── Global hooks for inline handlers ─────────────────────
   window.__ttSetDept = function (id) { nav({ department_id: id, semester: selSem }); };
   window.__ttSetSem = function (s) { nav({ department_id: selDept, semester: s }); };
-  window.__ttOpenVersion = function (id) { openVersion(id); };
-  window.__ttUseTemplate = function (id) { useTemplate(id); };
   window.__ttOpenAdd = function (d, p) { openAdd(d, p); };
   window.openTeacherList = openTeacherList;
   window.filterTeacherList = filterTeacherList;
@@ -846,12 +746,9 @@ function buildTeacherPool() {
   window.saveLecture = saveLecture;
   window.deleteEntry = deleteEntry;
   window.duplicateEntry = duplicateEntry;
-  window.toggleArchive = toggleArchive;
-  window.closeArchive = closeArchive;
   window.openNextYear = openNextYear;
   window.closeNextYear = closeNextYear;
   window.createNextYear = createNextYear;
-  window.returnToCurrent = returnToCurrent;
 
   // ── Init ─────────────────────────────────────────────────
   document.addEventListener('keydown', function (e) {
@@ -859,13 +756,7 @@ function buildTeacherPool() {
       if (!document.getElementById('lecModal').classList.contains('hidden')) closeModal();
       else if (!document.getElementById('popupMenu').classList.contains('hidden')) closePopup();
       else if (!document.getElementById('nyModal').classList.contains('hidden')) closeNextYear();
-      else closeArchive();
     }
-  });
-  document.addEventListener('click', function (e) {
-    var dd = document.getElementById('archiveDropdown');
-    if (dd.classList.contains('hidden')) return;
-    if (!isArchiveTarget(e.target)) closeArchive();
   });
   document.addEventListener('click', function (e) {
     if (!document.getElementById('lecTeacherCtl').contains(e.target)) {

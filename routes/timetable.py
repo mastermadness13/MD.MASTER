@@ -480,7 +480,7 @@ def timetable_delete_entry():
 @csrf_required
 def timetable_version_create_next():
     """Open a fresh version for the next academic year for a department+semester,
-    optionally copying entries from a source (current or archived) version.
+    optionally copying entries from an existing source version.
 
     An explicit ``season`` (fall/spring) + ``year`` may be sent to choose the
     target term freely; otherwise the next season is derived automatically.

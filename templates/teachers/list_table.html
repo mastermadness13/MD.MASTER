@@ -16,7 +16,7 @@
           </label>
           <button type="button" id="headerDeleteBtn"
                   class="material-symbols-outlined text-red-600 hover:text-red-700 transition-colors bg-transparent border-0 cursor-pointer"
-                  style="display:none" title="حذف المحدد">archive</button>
+                  style="display:none" title="حذف المحدد">delete</button>
         </div>
       </th>
       <th class="px-4 py-3 border-b border-outline-variant font-bold w-14">#</th>
@@ -85,9 +85,9 @@
           </form>
           {% endif %}
           <form method="post" action="{{ url_for('teachers.teachers_delete', id=t.id) }}" style="display:inline"
-                onsubmit="return confirm('نقل عضو هيئة التدريس إلى الأرشيف؟')">
+                onsubmit="return confirm('حذف عضو هيئة التدريس؟')">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="material-symbols-outlined text-red-600 hover:text-red-700 transition-colors bg-transparent border-0 cursor-pointer" title="أرشفة">archive</button>
+            <button type="submit" class="material-symbols-outlined text-red-600 hover:text-red-700 transition-colors bg-transparent border-0 cursor-pointer" title="حذف">delete</button>
           </form>
         </div>
       </td>
@@ -133,8 +133,8 @@
       </button>
       <button type="submit" id="bulkDeleteBtn"
               class="flex items-center gap-2 px-4 py-2 rounded-lg bg-error hover:bg-error/90 text-on-primary text-sm font-bold transition shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
-              onclick="return confirm('نقل الأعضاء المحددين إلى الأرشيف؟')" disabled>
-        <span class="material-symbols-outlined text-lg">archive</span>
+              onclick="return confirm('حذف الأعضاء المحددين؟')" disabled>
+        <span class="material-symbols-outlined text-lg">delete</span>
         حذف المحدد
       </button>
     </form>

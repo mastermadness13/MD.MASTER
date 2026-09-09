@@ -1,4 +1,4 @@
-"""Public portal data access — read-only queries for the college public site.
+﻿"""Public portal data access — read-only queries for the college public site.
 
 All queries here are safe to run without an authenticated session.
 """
@@ -64,7 +64,7 @@ def get_active_entries(db, department_id: int | None = None,
 
 
 def get_active_timetable_course_ids(db) -> set:
-    """Set of course ids that appear in the active (non-archived) timetable."""
+    """Set of course ids that appear in the active timetable."""
     rows = db.execute(
         'SELECT DISTINCT course_id FROM timetable t '
         f'WHERE t.deleted_at IS NULL AND t.course_id IS NOT NULL AND {active_version_condition("t")}'

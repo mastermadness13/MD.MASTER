@@ -114,7 +114,7 @@ SearchComponent.init({
 
   if (headerDeleteBtn) {
     headerDeleteBtn.addEventListener('click', function () {
-      if (!confirm('نقل الأعضاء المحددين إلى الأرشيف؟')) return;
+      if (!confirm('حذف الأعضاء المحددين؟')) return;
       if (form) form.submit();
     });
   }

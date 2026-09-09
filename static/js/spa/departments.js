@@ -66,11 +66,7 @@
       var actions = '';
       if (can('departments.manage')) {
         actions += '<button type="button" class="spa-icon-btn" data-edit="' + d.id + '" title="تعديل"><span class="material-symbols-outlined text-lg">edit</span></button>';
-        if (!d.deleted_at) {
-          actions += '<button type="button" class="spa-icon-btn text-error" data-del="' + d.id + '" title="أرشفة"><span class="material-symbols-outlined text-lg">archive</span></button>';
-        } else {
-          actions += '<button type="button" class="spa-icon-btn text-emerald-600" data-restore="' + d.id + '" title="استعادة"><span class="material-symbols-outlined text-lg">unarchive</span></button>';
-        }
+        actions += '<button type="button" class="spa-icon-btn text-error" data-del="' + d.id + '" title="حذف"><span class="material-symbols-outlined text-lg">delete</span></button>';
       }
       var typeLabel = d.type === 'academic' ? '<span class="inline-block px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">كلية</span>' :
         '<span class="inline-block px-2 py-0.5 rounded-full text-xs font-bold bg-orange-100 text-orange-800">إداري</span>';
@@ -92,9 +88,7 @@
     table.querySelectorAll('[data-del]').forEach(function (b) {
       b.addEventListener('click', function () { openDelete(+b.dataset.del); });
     });
-    table.querySelectorAll('[data-restore]').forEach(function (b) {
-      b.addEventListener('click', function () { openRestore(+b.dataset.restore); });
-    });
+
   }
 
   function renderPager(data, page, q, type) {
@@ -173,26 +167,20 @@
 
   function openDelete(id) {
     var body = document.createElement('div');
-    body.innerHTML = '<p class="text-sm text-on-surface">هل أنت متأكد من أرشفة هذا القسم؟</p>' +
+    body.innerHTML = '<p class="text-sm text-on-surface">هل أنت متأكد من حذف هذا القسم؟</p>' +
       '<div class="mt-5 flex items-center justify-end gap-3">' +
       '<button type="button" class="px-4 py-2 rounded-lg border border-outline text-sm font-bold" data-spa-modal-close>إلغاء</button>' +
-      '<button type="button" class="px-5 py-2 rounded-lg bg-error text-on-primary text-sm font-bold" id="spa-dept-del">أرشفة</button></div>';
-    S.modal.open({ title: 'أرشفة قسم', body: body });
+      '<button type="button" class="px-5 py-2 rounded-lg bg-error text-on-primary text-sm font-bold" id="spa-dept-del">حذف</button></div>';
+    S.modal.open({ title: 'حذف قسم', body: body });
     document.getElementById('spa-dept-del').addEventListener('click', function () {
       S.api.del('/api/departments/' + id).then(function () {
         S.modal.close();
-        showToastSuccess('تم أرشفة القسم');
+        showToastSuccess('تم حذف القسم');
         loadCurrentView();
       }).catch(function (err) { S.modal.showError(err.message); });
     });
   }
 
-  function openRestore(id) {
-    S.api.post('/api/departments/' + id + '/restore').then(function () {
-      showToastSuccess('تم استعادة القسم');
-      loadCurrentView();
-    }).catch(function (err) { showToastError(err.message); });
-  }
 
   function loadCurrentView() {
     var el = document.getElementById('app-content');

@@ -547,7 +547,7 @@ def _migrate_single_active_timetable_version(conn: sqlite3.Connection) -> None:
 
     Only one version may be active per department + semester. If legacy data
     left several rows marked 'active', keep the newest one active and mark
-    the rest 'archived' so the timetable page stays predictable.
+    the rest 'superseded' so the timetable page stays predictable.
     """
     groups = conn.execute(
         'SELECT department_id, semester '
@@ -567,7 +567,7 @@ def _migrate_single_active_timetable_version(conn: sqlite3.Connection) -> None:
             continue
         keep_id = rows[0]['id']
         conn.execute(
-            'UPDATE timetable_versions SET status = \'archived\' '
+            'UPDATE timetable_versions SET status = \'superseded\' '
             'WHERE department_id = ? AND semester = ? AND status = \'active\' AND id != ?',
             (group['department_id'], group['semester'], keep_id),
         )
@@ -2196,7 +2196,7 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
             CREATE INDEX IF NOT EXISTS idx_ttc_entry
             ON teacher_taught_courses (timetable_entry_id)
         """)
-        # Backfill from every saved timetable entry (archived versions keep
+        # Backfill from every saved timetable entry (older versions keep
         # their own semester_code; legacy rows fall back to '').
         # Skipped on fresh databases where timetable_versions does not exist
         # yet (it is created further below) — there is no timetable data to

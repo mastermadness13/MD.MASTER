@@ -1,4 +1,4 @@
-/**
+﻿/**
  * mobile_actions.js — app-like mobile interactions for record-list tables.
  *
  *  A. Tap a table row (phones) → bottom action sheet built from the row's
@@ -6,7 +6,7 @@
  *  B. Edit/View open in an in-page bottom-sheet popup: the target page is
  *     fetched, the main content region extracted, and its form submitted
  *     via fetch. Validation errors re-render inside the popup.
- *  C. Delete/archive asks a small confirm sheet, then runs the row's
+ *  C. Delete asks a small confirm sheet, then runs the row's
  *     existing POST form via fetch.
  *  D. After success → toast + in-place refresh of #mainContent region.
  *  E. Wide tables get a "ملء الشاشة" chip: real fullscreen + landscape
@@ -30,7 +30,6 @@
   var ICON_AR = {
     person: 'الملف التفصيلي', visibility: 'عرض', visibility_off: 'إخفاء',
     edit: 'تعديل', edit_note: 'تعديل', pageview: 'عرض',
-    archive: 'أرشفة', unarchive: 'استعادة', restore_from_trash: 'استعادة',
     delete: 'حذف', delete_forever: 'حذف نهائي',
     print: 'طباعة', download: 'تنزيل', upload_file: 'المرفق',
     description: 'التفاصيل', science: 'البحث', work: 'التكليفات',
@@ -238,8 +237,8 @@
       seen[key] = 1;
       var icon = iconOf(btn) || iconOf(f);
       var lbl = labelFor(icon, btn.getAttribute('title') ? btn : f, 'تنفيذ');
-      var dangerous = /delete|archive|remove|trash|cancel/i.test(icon) ||
-        /حذف|أرشفة|إزالة|رفض/.test(lbl) ||
+      var dangerous = /delete|remove|trash|cancel/i.test(icon) ||
+        /حذف|إزالة|رفض/.test(lbl) ||
         /confirm/i.test(f.getAttribute('onsubmit') || '');
       var msg = 'هل أنت متأكد من تنفيذ هذا الإجراء؟';
       var m = (f.getAttribute('onsubmit') || '').match(/confirm\(\s*['"]([\s\S]*?)['"]\s*\)/);
@@ -263,7 +262,7 @@
       });
     });
 
-    tr.querySelectorAll('button[data-view], button[data-edit], button[data-del], button[data-restore], button[data-user-id], button[onclick]')
+    tr.querySelectorAll('button[data-view], button[data-edit], button[data-del], button[data-user-id], button[onclick]')
       .forEach(function (b) {
         var icon = iconOf(b);
         var titled = !!(b.getAttribute('title') || b.getAttribute('aria-label'));

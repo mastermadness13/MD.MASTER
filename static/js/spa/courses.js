@@ -56,11 +56,7 @@
       var actions = '';
       if (can('courses.manage')) {
         actions += '<button type="button" class="spa-icon-btn" data-edit="' + c.id + '" title="تعديل"><span class="material-symbols-outlined text-lg">edit</span></button>';
-        if (!c.deleted_at) {
-          actions += '<button type="button" class="spa-icon-btn text-error" data-del="' + c.id + '" title="أرشفة"><span class="material-symbols-outlined text-lg">archive</span></button>';
-        } else {
-          actions += '<button type="button" class="spa-icon-btn text-emerald-600" data-restore="' + c.id + '" title="استعادة"><span class="material-symbols-outlined text-lg">unarchive</span></button>';
-        }
+        actions += '<button type="button" class="spa-icon-btn text-error" data-del="' + c.id + '" title="حذف"><span class="material-symbols-outlined text-lg">delete</span></button>';
       }
       return '<tr class="border-b border-outline-variant hover:bg-surface-hover">' +
         '<td class="p-3"><div class="font-bold text-on-surface">' + E(c.name || '') + '</div>' +
@@ -76,7 +72,6 @@
 
     table.querySelectorAll('[data-edit]').forEach(function (b) { b.addEventListener('click', function () { openForm(+b.dataset.edit); }); });
     table.querySelectorAll('[data-del]').forEach(function (b) { b.addEventListener('click', function () { openDelete(+b.dataset.del); }); });
-    table.querySelectorAll('[data-restore]').forEach(function (b) { b.addEventListener('click', function () { S.api.post('/api/courses/' + b.dataset.restore + '/restore').then(function () { showToastSuccess('تمت الاستعادة'); loadPage(1); }).catch(function (err) { showToastError(err.message); }); }); });
   }
 
   function renderPager(data, page) {
@@ -138,13 +133,13 @@
 
   function openDelete(id) {
     var body = document.createElement('div');
-    body.innerHTML = '<p class="text-sm">هل أنت متأكد من أرشفة هذا المقرر؟</p>' +
+    body.innerHTML = '<p class="text-sm">هل أنت متأكد من حذف هذا المقرر؟</p>' +
       '<div class="mt-5 flex items-center justify-end gap-3">' +
       '<button type="button" class="px-4 py-2 rounded-lg border border-outline text-sm font-bold" data-spa-modal-close>إلغاء</button>' +
-      '<button type="button" class="px-5 py-2 rounded-lg bg-error text-on-primary text-sm font-bold" id="spa-course-del">أرشفة</button></div>';
-    S.modal.open({ title: 'أرشفة مقرر', body: body });
+      '<button type="button" class="px-5 py-2 rounded-lg bg-error text-on-primary text-sm font-bold" id="spa-course-del">حذف</button></div>';
+    S.modal.open({ title: 'حذف مقرر', body: body });
     document.getElementById('spa-course-del').addEventListener('click', function () {
-      S.api.del('/api/courses/' + id).then(function () { S.modal.close(); showToastSuccess('تم الأرشفة'); loadPage(1); })
+      S.api.del('/api/courses/' + id).then(function () { S.modal.close(); showToastSuccess('تم الحذف'); loadPage(1); })
         .catch(function (err) { S.modal.showError(err.message); });
     });
   }

@@ -77,7 +77,7 @@
               {% elif s.status == 'past' %}text-on-surface-variant
               {% else %}text-primary{% endif %}">
               {% if s.status == 'active' %}check_circle
-              {% elif s.status == 'past' %}archive
+              {% elif s.status == 'past' %}history
               {% else %}schedule{% endif %}
             </span>
             <div>
@@ -191,7 +191,7 @@
       {% for s in past_semesters %}
       <div class="bg-white rounded-xl shadow-sm border border-outline-variant p-4 flex flex-wrap items-center justify-between gap-4 opacity-75">
         <div class="flex items-center gap-3">
-          <span class="material-symbols-outlined text-2xl text-on-surface-variant">archive</span>
+          <span class="material-symbols-outlined text-2xl text-on-surface-variant">history</span>
           <div>
             <h4 class="font-bold text-on-surface">{{ s.name_ar }}</h4>
             <p class="text-sm text-on-surface-variant">

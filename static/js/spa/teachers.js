@@ -60,11 +60,7 @@
       actions += '<button type="button" class="spa-icon-btn" data-view="' + t.id + '" title="عرض"><span class="material-symbols-outlined text-lg">visibility</span></button>';
       if (can('teachers.manage')) {
         actions += '<button type="button" class="spa-icon-btn" data-edit="' + t.id + '" title="تعديل"><span class="material-symbols-outlined text-lg">edit</span></button>';
-        if (!t.deleted_at) {
-          actions += '<button type="button" class="spa-icon-btn text-error" data-del="' + t.id + '" title="أرشفة"><span class="material-symbols-outlined text-lg">archive</span></button>';
-        } else {
-          actions += '<button type="button" class="spa-icon-btn text-emerald-600" data-restore="' + t.id + '" title="استعادة"><span class="material-symbols-outlined text-lg">unarchive</span></button>';
-        }
+        actions += '<button type="button" class="spa-icon-btn text-error" data-del="' + t.id + '" title="حذف"><span class="material-symbols-outlined text-lg">delete</span></button>';
       }
       return '<tr class="border-b border-outline-variant hover:bg-surface-hover">' +
         '<td class="p-3"><div class="font-bold text-on-surface">' + E(t.name || '') + '</div>' +
@@ -82,7 +78,6 @@
     table.querySelectorAll('[data-view]').forEach(function (b) { b.addEventListener('click', function () { openView(+b.dataset.view); }); });
     table.querySelectorAll('[data-edit]').forEach(function (b) { b.addEventListener('click', function () { openForm(+b.dataset.edit); }); });
     table.querySelectorAll('[data-del]').forEach(function (b) { b.addEventListener('click', function () { openDelete(+b.dataset.del); }); });
-    table.querySelectorAll('[data-restore]').forEach(function (b) { b.addEventListener('click', function () { restoreTeacher(+b.dataset.restore); }); });
   }
 
   function renderPager(data, page, q) {
@@ -170,20 +165,15 @@
 
   function openDelete(id) {
     var body = document.createElement('div');
-    body.innerHTML = '<p class="text-sm">هل أنت متأكد من أرشفة هذا العضو؟</p>' +
+    body.innerHTML = '<p class="text-sm">هل أنت متأكد من حذف هذا العضو؟</p>' +
       '<div class="mt-5 flex items-center justify-end gap-3">' +
       '<button type="button" class="px-4 py-2 rounded-lg border border-outline text-sm font-bold" data-spa-modal-close>إلغاء</button>' +
-      '<button type="button" class="px-5 py-2 rounded-lg bg-error text-on-primary text-sm font-bold" id="spa-teacher-del">أرشفة</button></div>';
-    S.modal.open({ title: 'أرشفة', body: body });
+      '<button type="button" class="px-5 py-2 rounded-lg bg-error text-on-primary text-sm font-bold" id="spa-teacher-del">حذف</button></div>';
+    S.modal.open({ title: 'حذف', body: body });
     document.getElementById('spa-teacher-del').addEventListener('click', function () {
-      S.api.del('/api/teachers/' + id).then(function () { S.modal.close(); showToastSuccess('تم الأرشفة'); loadPage(1); })
+      S.api.del('/api/teachers/' + id).then(function () { S.modal.close(); showToastSuccess('تم الحذف'); loadPage(1); })
         .catch(function (err) { S.modal.showError(err.message); });
     });
-  }
-
-  function restoreTeacher(id) {
-    S.api.post('/api/teachers/' + id + '/restore').then(function () { showToastSuccess('تمت الاستعادة'); loadPage(1); })
-      .catch(function (err) { showToastError(err.message); });
   }
 
   function formField(name, label, type, value, extra) {

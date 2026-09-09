@@ -1,4 +1,4 @@
-"""Teacher service — CRUD, credentials, archive management.
+﻿"""Teacher service — CRUD, credentials.
 
 Uses ``TeacherRepository`` for data access.  Module-level functions are kept
 for backward compatibility with existing routes.
@@ -394,22 +394,6 @@ class TeacherService:
         )
         self.db.commit()
 
-    def teacher_archive_list(self, search: str = '', page: int = 1) -> tuple:
-        from utils.text import normalize_arabic_name
-
-        base = 'SELECT t.*, d.name as dept_name, q.name_ar as qual_name, r.name_ar as rank_name FROM teachers t LEFT JOIN departments d ON t.department_id = d.id LEFT JOIN qualifications q ON t.qualification_id = q.id LEFT JOIN academic_ranks r ON t.rank_id = r.id'
-        where = ['t.deleted_at IS NOT NULL']
-        params = []
-        if search:
-            norm = normalize_arabic_name(search)
-            where.append("(normalize_arabic(t.name) LIKE ? OR t.email LIKE ? OR normalize_arabic(COALESCE(t.academic_number, '')) LIKE ?)")
-            params.extend([f'%{norm}%', f'%{search}%', f'%{norm}%'])
-        where_clause = ' AND '.join(where)
-        return self._repo.paginate(
-            f'{base} WHERE {where_clause} ORDER BY t.deleted_at DESC',
-            params,
-            page,
-        )
 
     def _build_where(self, role, user_data, search, dept_filter):
         where = ['t.deleted_at IS NULL']
@@ -573,18 +557,3 @@ def teacher_hard_delete(db, id):
     hard_delete(db, 'teachers', id)
 
 
-def teacher_archive_list(db, search='', page=1):
-    from utils.format import paginate
-    from utils.text import normalize_arabic_name
-    from database.repositories.teacher_repository import TeacherRepository
-
-    base = 'SELECT t.*, d.name as dept_name FROM teachers t LEFT JOIN departments d ON t.department_id = d.id'
-    where = ['t.deleted_at IS NOT NULL']
-    params = []
-    if search:
-        norm = normalize_arabic_name(search)
-        where.append("(normalize_arabic(t.name) LIKE ? OR t.email LIKE ? OR normalize_arabic(COALESCE(t.academic_number, '')) LIKE ?)")
-        params.extend([f'%{norm}%', f'%{search}%', f'%{norm}%'])
-    where_clause = ' AND '.join(where)
-    query = f'{base} WHERE {where_clause} ORDER BY t.deleted_at DESC'
-    return paginate(query, params, page)

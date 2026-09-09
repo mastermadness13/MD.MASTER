@@ -1,4 +1,4 @@
-"""Tests for the R&D course-content flow (create-publish forms; view syllabi only)."""
+﻿"""Tests for the R&D course-content flow (create-publish forms; view syllabi only)."""
 
 import io
 import json
@@ -173,16 +173,16 @@ def test_action_cells_reflect_status(client):
     assert "'+ c.id + '/syllabus/upload" not in js
     assert "'+ c.id + '/form/upload" not in js
     assert 'رفع المقرر' in body
-    # رابط الأرشيف القديم غير موجود في مُصيّر الإجراءات
+    # docs \u062a\u062d\u062a \u0627\u0644\u062a\u062f\u0642\u064a\u0642 في مُصيّر الإجراءات
     assert "'+ c.id + '\" class=\"w-7 h-7 flex items-center justify-center rounded-lg hover:bg-blue-50" not in js
 
 
 def test_statuses_shown_in_filters_and_badges(client):
     body = client.get('/teacher/super-admin/course-content').get_data(as_text=True)
-    js = _read_js('static/js/teachers_super_admin_course_content.js')
+    js = _read_js('static/js/shared/course_helpers.js')
     assert 'value="published"' in body, 'published option present in filter'
     assert 'منشور' in body
-    assert "'published': 'منشور'" in js, 'status label map lives in the JS bundle'
+    assert "'published': 'منشور'" in js, 'status label map lives in the shared helpers bundle'
     assert 'قيد مراجعة البحث والتطوير' not in js, 'legacy pending statuses removed'
 
 

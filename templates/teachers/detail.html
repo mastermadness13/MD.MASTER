@@ -283,25 +283,5 @@
         </div>
         {% endif %}
       </div>
-
-      <!-- Teaching Archive -->
-      <div class="bg-surface-container rounded-2xl p-lg shadow-sm">
-        <div class="flex items-center justify-between mb-lg">
-          <h3 class="font-title-md text-on-surface flex items-center gap-sm">
-            <span class="material-symbols-outlined text-primary">folder_open</span>
-            أرشيف محاضر
-          </h3>
-          {% if can_print and perf_year %}
-          <a href="{{ url_for('faculty_performance.print_form', teacher_id=teacher.id, year=perf_year, semester=perf_semester) }}"
-             class="px-lg py-sm rounded-xl font-label-lg bg-primary text-on-primary hover:bg-primary/90 transition-colors flex items-center gap-xs shadow-md no-underline">
-            <span class="material-symbols-outlined text-[20px]">description</span>
-            نموذج معدل الأداء
-          </a>
-          {% endif %}
-        </div>
-      </div>  
-
-    </div>
-  </div>
 </div>
 {% endblock %}

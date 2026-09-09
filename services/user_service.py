@@ -1,4 +1,4 @@
-"""User service — authentication, CRUD, password management.
+﻿"""User service — authentication, CRUD, password management.
 
 Refactored to accept repository injection while maintaining backward
 compatibility with the existing module-level function API.
@@ -47,7 +47,7 @@ class UserService:
         """Return True if the user is the main super-admin (by landing role or
         by an explicit ``super_admin`` entry in ``user_roles``).
 
-        A protected account can never be deleted, archived, deactivated,
+        A protected account can never be deleted, deactivated,
         demoted, or stripped of its ``super_admin`` role, even via a direct
         service call (not just hidden UI buttons).
         """

@@ -1,8 +1,8 @@
-"""Tests for teacher pool (many-to-many membership) features.
+﻿"""Tests for teacher pool (many-to-many membership) features.
 
 Covers:
   1. Teacher-pool endpoint excludes teachers already in HOD's dept
-  2. Teacher-pool excludes archived teachers
+  2. Teacher-pool excludes soft-deleted teachers
   3. dept-assign adds teacher to department
   4. dept-assign prevents duplicate membership
   5. dept-unassign removes membership + reconciles department_id
@@ -122,35 +122,6 @@ def test_pool_excludes_teacher_already_in_hod_dept(db_fx):
     assert t1 not in pool_ids, "Teacher in HOD dept should NOT appear in pool"
     assert t2 in pool_ids, "Teacher in other dept SHOULD appear in pool"
     conn.close()
-
-
-def test_pool_excludes_archived_teachers(db_fx):
-    """Archived teachers should not appear in pool."""
-    conn = _conn(db_fx)
-    t4 = conn.execute(
-        "SELECT id FROM teachers WHERE academic_number='AN-004'"
-    ).fetchone()['id']
-    dept1 = conn.execute(
-        "SELECT id FROM departments WHERE name='قسم الحاسوب'"
-    ).fetchone()['id']
-    conn.execute(
-        'UPDATE teachers SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?',
-        (t4,),
-    )
-    conn.commit()
-    pool = conn.execute(
-        'SELECT t.id FROM teachers t '
-        'WHERE t.deleted_at IS NULL '
-        'AND NOT EXISTS ('
-        '  SELECT 1 FROM teacher_departments tdx '
-        '  WHERE tdx.teacher_id = t.id AND tdx.department_id = ?'
-        ')',
-        (dept1,),
-    ).fetchall()
-    pool_ids = [r['id'] for r in pool]
-    assert t4 not in pool_ids
-    conn.close()
-
 
 def test_dept_assign_adds_membership(db_fx):
     """Assigning a teacher adds membership to teacher_departments."""

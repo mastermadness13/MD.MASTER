@@ -1,4 +1,4 @@
-# newRopey
+﻿# newRopey
 
 A Flask-based college management system with Arabic RTL support, role-based dashboards, timetable management, exam scheduling, course content and course plans, teacher messaging, classroom change requests, faculty attendance, notifications, and basic audit/history features.
 
@@ -51,7 +51,6 @@ newRopey is a web application for managing core academic and administrative oper
 - Password reset flow
 - Role-based dashboards and access control
 - User, department, teacher, room, and course management
-- Soft-delete/archive support for major entities
 - Weekly timetable display and scheduling workflows
 - Exam scheduling, planning, hall distribution, and merging
 - Course content submissions and review
@@ -208,12 +207,8 @@ This project was previously documented across many Markdown files. Those documen
 - **القائمة**: جدول يعرض جميع الأقسام مع إمكانية البحث
 - **إنشاء قسم**: إدخال اسم القسم، عدد الفصول الدراسية، عدد الشعب، دعم الشعب
 - **تعديل قسم**: تغيير بيانات القسم
-- **حذف (ناعم)**: نقل إلى الأرشفة (soft delete)
-- **استرجاع**: إعادة القسم من الأرشيف
 - **حذف نهائي**: إزالة القسم نهائياً
 - **إدارة الشعب (المياجر)**: إضافة وحذف الشعب لكل قسم
-- **الأرشيف**: يعرض الأقسام المحذوفة (ناعم) مع إمكانية الاسترجاع أو الحذف النهائي
-
 الأقسام الافتراضية: القسم العام، قسم الاتصالات، قسم الحاسوب، قسم المدني، قسم المعماري، قسم النفط
 
 ### 6. إدارة المحاضرين (Teachers)
@@ -224,8 +219,7 @@ This project was previously documented across many Markdown files. Those documen
 - **إنشاء محاضر**: الاسم، البريد الإلكتروني، الهاتف، القسم، الرقم الكلية، الرقم الوطني، المؤهل العلمي، الرتبة الكلية، التصنيف، تاريخ التعاقد، المهام الموكلة
 - **عرض التفاصيل**: صفحة تعرض معلومات المحاضر والمواد التي يدرسها
 - **تعديل محاضر**: تغيير أي من المعلومات
-- **حذف (ناعم)** - **استرجاع** - **حذف نهائي**
-- **الأرشيف**: قائمة المحاضرين المحذوفين
+- **حذف نهائي**: إزالة السجل نهائياً
 - **إعادة تعيين كلمة السر** لحساب المحاضر
 
 ### 7. إدارة المواد الدراسية (Courses)
@@ -236,9 +230,7 @@ This project was previously documented across many Markdown files. Those documen
 - **إنشاء مادة**: الكود، الاسم، القسم، السنة، الفصل الدراسي، الساعات، الاعتماد الكلية، المفردات، رفع ملف المنهج (syllabus)، المتطلبات السابقة (prerequisites)، الأيقونة
 - **عرض التفاصيل**: معلومات المادة مع المتطلبات السابقة والمواد التابعة
 - **تعديل مادة**: تغيير البيانات
-- **حذف (ناعم)** - **استرجاع** - **حذف نهائي**
-- **الأرشيف**: قائمة المواد المحذوفة
-
+- **حذف نهائي**: إزالة السجل نهائياً
 ### 8. إدارة القاعات الدراسية (Rooms / Classrooms)
 
 - المسار: `/rooms`
@@ -247,9 +239,7 @@ This project was previously documented across many Markdown files. Those documen
 - **إنشاء قاعة**: الاسم، الكود، السعة، النوع (قاعة محاضرات، مختبر، معمل حاسوب، استوديو، مسرح)، الحالة، الموقع، المبنى، الطابق، التجهيزات (أجهزة كمبيوتر، أجهزة إلكترونية، أرفف كتب، سبورات، بروجيكتور، مسرح، مقاعد، محطات عمل)، قابلية الحجز
 - **عرض التفاصيل**: معلومات القاعة مع التجهيزات
 - **تعديل قاعة**: تغيير البيانات
-- **حذف (ناعم)** - **استرجاع** - **حذف نهائي**
-- **الأرشيف**: قائمة القاعات المحذوفة
-
+- **حذف نهائي**: إزالة السجل نهائياً
 ### 9. إدارة المستخدمين (Users)
 
 - المسار: `/users`

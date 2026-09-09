@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Sequence
 
@@ -261,7 +261,6 @@ class TeacherRepository(BaseRepository):
             '            FROM teacher_taught_courses ttc\n'
             '            WHERE '
             f'{where}'
-            ' AND ttc.archived = 0\n'
             '            GROUP BY semester_code, semester, department_id, course_id\n'
             '            ORDER BY semester_code DESC, semester ASC, department_name, course_name\n'
             '            ',
@@ -342,7 +341,6 @@ class TeacherRepository(BaseRepository):
             '              AND ttc.semester = ?\n'
             '              AND '
             f'{code_clause}'
-            '\n              AND ttc.archived = 0\n'
             '              '
             f'{extra}'
             '\n            ORDER BY department_name, course_name\n'

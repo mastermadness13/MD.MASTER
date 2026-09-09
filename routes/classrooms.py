@@ -221,7 +221,7 @@ def rooms_delete(id):
     db = get_db()
     classroom_service.room_delete(db, id, lambda db: add_history(
         db, 'soft_delete', 'room', id, session['user_id'], session['username'], f'حذف قاعة'))
-    flash('تم نقل القاعة إلى الأرشيف', 'success')
+    flash('تم الحذف بنجاح', 'success')
     return redirect_back('classrooms.rooms_list')
 
 
@@ -239,7 +239,7 @@ def rooms_bulk_delete():
     for rid in ids:
         classroom_service.room_delete(db, int(rid), lambda db, rid=rid: add_history(
             db, 'soft_delete', 'room', int(rid), session['user_id'], session['username'], 'حذف قاعة'))
-    flash(f'تم نقل {len(ids)} قاعة إلى الأرشيف', 'success')
+    flash(f'تم الحذف بنجاح', 'success')
     return redirect_back('classrooms.rooms_list')
 
 

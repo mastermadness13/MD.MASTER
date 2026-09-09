@@ -45,11 +45,6 @@
         <span class="material-symbols-outlined text-lg">add</span>
         + مادة
       </button>
-      <a href="{{ url_for('courses.courses_archive') }}"
-         class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm no-underline">
-        <span class="material-symbols-outlined text-lg">archive</span>
-        الأرشيف
-      </a>
       {% endif %}
       <button type="button" onclick="window.print()"
               class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-outline-variant px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm">
@@ -101,7 +96,7 @@
                   <input type="checkbox" id="courseSelectAll" class="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" title="تحديد الكل">
                   <button type="button" id="courseHeaderDeleteBtn"
                           class="material-symbols-outlined text-red-600 hover:text-red-700 transition-colors bg-transparent border-0 cursor-pointer"
-                          style="display:none" title="حذف المحدد">archive</button>
+                          style="display:none" title="حذف المحدد">delete</button>
                 </div>
               </th>
               {% endif %}

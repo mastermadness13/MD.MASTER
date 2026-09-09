@@ -231,7 +231,7 @@ def courses_delete(id):
     db = get_db()
     course_service.course_delete(db, id, lambda db: add_history(
         db, 'soft_delete', 'course', id, session['user_id'], session['username'], f'حذف مقرر'))
-    flash('تم نقل المقرر إلى الأرشيف', 'success')
+    flash('تم الحذف بنجاح', 'success')
     return redirect_back('courses.courses_list')
 
 
@@ -249,7 +249,7 @@ def courses_bulk_delete():
     for cid in ids:
         course_service.course_delete(db, int(cid), lambda db, cid=cid: add_history(
             db, 'soft_delete', 'course', int(cid), session['user_id'], session['username'], 'حذف مقرر'))
-    flash(f'تم نقل {len(ids)} من المقررات إلى الأرشيف', 'success')
+    flash(f'تم الحذف بنجاح', 'success')
     return redirect_back('courses.courses_list')
 
 

@@ -7,7 +7,6 @@
   var periods = P.periods || [];
   var days = P.days || [];
   var availableSemesters = P.available_semesters || [];
-  var versions = P.versions || [];
   var entries = P.entries || [];
   var vocabMap = P.vocab || {};
   var syllabiMap = P.syllabus || {};
@@ -18,10 +17,7 @@
   var selDept = P.dept ? P.dept.id : null;
   var selSem = P.selected_semester;
   var activeVersionId = P.current_version_id;
-  var viewingVersionId = P.viewing_version_id;
   var currentYear = P.active_academic_label || P.semester_code;
-  var viewingYear = P.viewing_semester_name || P.viewing_semester_code;
-  var viewingArchived = !!(viewingVersionId && viewingVersionId !== activeVersionId);
 
   var H = window.TimetableHelpers.create({ periods: periods, base: BASE });
   var esc = H.esc, semesterNumLabel = H.semesterNumLabel, fmtTime12 = H.fmtTime12,
@@ -123,31 +119,14 @@
       html += '</tr>';
     });
     tbody.innerHTML = html;
-
-    var banner = document.getElementById('viewingBanner');
-    var bannerText = document.getElementById('viewingBannerText');
-    if (viewingArchived) {
-      banner.classList.remove('hidden');
-      bannerText.textContent = 'أنت تتصفح جدولًا أرشيفيًا (' + (viewingYear || '') + ')';
-    } else {
-      banner.classList.add('hidden');
-    }
     renderBadge();
-    renderArchive();
   }
 
   function renderBadge() {
     var b = document.getElementById('currentBadge');
-    var chipCls, dotCls, label;
-    if (viewingArchived) {
-      chipCls = 'border-amber-200 bg-amber-50 text-amber-700';
-      dotCls = 'bg-amber-500';
-      label = 'جدول أرشيفي · ' + (viewingYear || '') + ' · الفصل ' + semesterNumLabel(selSem) + ' — للعرض فقط';
-    } else {
-      chipCls = 'border-gray-200 bg-gray-100 text-gray-600';
-      dotCls = 'bg-gray-400';
-      label = 'الجدول الحالي · ' + (currentYear || '') + ' · الفصل ' + semesterNumLabel(selSem) + ' — للعرض فقط';
-    }
+    var chipCls = 'border-gray-200 bg-gray-100 text-gray-600';
+    var dotCls = 'bg-gray-400';
+    var label = 'الجدول الحالي · ' + (currentYear || '') + ' · الفصل ' + semesterNumLabel(selSem) + ' — للعرض فقط';
     b.className = 'mr-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border ' + chipCls;
     b.innerHTML =
       '<span class="flex flex-col items-end leading-tight">' +
@@ -158,82 +137,12 @@
       '</span>';
   }
 
-  // ── Archive ──────────────────────────────────────────────
-  function toggleArchive() {
-    var d = document.getElementById('archiveDropdown');
-    if (d.classList.contains('hidden')) { renderArchive(); d.classList.remove('hidden'); }
-    else d.classList.add('hidden');
-  }
-  function closeArchive() { document.getElementById('archiveDropdown').classList.add('hidden'); }
-  function isArchiveTarget(node) {
-    var n = node;
-    while (n) {
-      if (n.id === 'archiveDropdown' || n.id === 'archiveBtn') return true;
-      n = n.parentNode;
-    }
-    return false;
-  }
-  function renderArchive() {
-    var body = document.getElementById('archiveBody');
-    body.innerHTML = '';
-    document.getElementById('archiveCount').textContent = versions.length;
-    document.getElementById('archiveTitle').textContent = 'أرشيف ' + (P.dept ? P.dept.name : '') + ' — الفصل ' + selSem;
-
-    if (!versions.length) {
-      body.innerHTML = '<div class="px-4 py-10 text-center">' +
-        '<span class="material-symbols-outlined text-[32px] text-outline block mb-2">archive</span>' +
-        '<div class="text-sm text-on-surface-variant">لا يوجد أرشيف لهذا القسم والفصل بعد</div>' +
-        '</div>';
-      return;
-    }
-    var lastYear = null;
-    versions.forEach(function (v) {
-      var html = '';
-      var displayName = v.semester_name_ar || v.semester_code || '—';
-      if (displayName !== lastYear) {
-        lastYear = displayName;
-        html += '<div class="px-4 pt-2.5 pb-1.5 flex items-center gap-2 text-xs font-bold text-on-surface-variant">' +
-          '<span class="material-symbols-outlined text-[14px] text-primary">calendar_month</span>' +
-          'الفصل: ' + esc(displayName) +
-          '</div>';
-      }
-      var active = v.id === viewingVersionId;
-      html += '<div class="flex items-center gap-1 px-3 py-2 hover:bg-surface-container transition' + (active ? ' bg-primary-container' : '') + '">' +
-        '<button type="button" onclick="window.__ttOpenVersion(' + v.id + ')" class="flex-1 flex items-center justify-between gap-2 text-right">' +
-          '<span>' +
-            '<span class="block text-sm font-bold text-on-surface">' + v.cnt + ' محاضرة</span>' +
-            '<span class="block text-[11px] text-on-surface-variant mt-0.5">آخر تعديل: ' + fmtDate(v.updated_at) + '</span>' +
-          '</span>' +
-          '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-surface-container-highest text-on-surface-variant">أرشيف</span>' +
-        '</button>' +
-        '<button type="button" title="فتح" onclick="window.__ttOpenVersion(' + v.id + ')" class="p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary-container transition">' +
-          '<span class="material-symbols-outlined text-[18px]">visibility</span>' +
-        '</button>' +
-        '</div>';
-      body.insertAdjacentHTML('beforeend', html);
-    });
-  }
-  function openVersion(id) {
-    nav({ department_id: selDept, semester: selSem, version_id: id });
-  }
-  function returnToCurrent() {
-    nav({ department_id: selDept, semester: selSem });
-  }
 
   // ── Global hooks for inline handlers ─────────────────────
   window.__ttSetDept = function (id) { nav({ department_id: id }); };
   window.__ttSetSem = function (s) { nav({ department_id: selDept, semester: s }); };
-  window.__ttOpenVersion = function (id) { openVersion(id); };
-  window.toggleArchive = toggleArchive;
-  window.closeArchive = closeArchive;
-  window.returnToCurrent = returnToCurrent;
 
   // ── Init ─────────────────────────────────────────────────
-  document.addEventListener('click', function (e) {
-    var dd = document.getElementById('archiveDropdown');
-    if (dd.classList.contains('hidden')) return;
-    if (!isArchiveTarget(e.target)) closeArchive();
-  });
 
   var printBtn = document.getElementById('printBtn');
   if (printBtn) printBtn.addEventListener('click', function () {

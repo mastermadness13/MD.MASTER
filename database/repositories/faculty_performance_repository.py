@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
@@ -390,7 +390,7 @@ class FacultyPerformanceRepository(BaseRepository):
     def list_academic_years(self) -> List[str]:
         rows = self.db.execute(
             '''SELECT DISTINCT semester_code FROM timetable_versions
-               WHERE status = 'active' OR status = 'archived'
+               WHERE status = 'active'
                ORDER BY semester_code DESC'''
         ).fetchall()
         years = []

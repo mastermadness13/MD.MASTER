@@ -1,7 +1,7 @@
 """Smoke tests for the department weekly-timetable page toolbar UX.
 
 Covers: single status badge wording, per-button tooltips, the helper hint,
-the disabled next-year button while viewing an archived table, and the
+and the
 create-next-year API activating a fresh version.
 """
 
@@ -34,11 +34,6 @@ def db_fx(tmp_path, monkeypatch):
     # Active version for the first available semester (2) — current, editable
     conn.execute(
         "INSERT INTO timetable_versions (department_id, semester, semester_code, status) VALUES (?, 2, 'fall_2026', 'active')",
-        (dept_id,),
-    )
-    # An archived version of the same semester for the archive dropdown
-    conn.execute(
-        "INSERT INTO timetable_versions (department_id, semester, semester_code, status) VALUES (?, 2, 'spring_2025', 'archived')",
         (dept_id,),
     )
     conn.commit()
@@ -102,23 +97,8 @@ def test_current_table_shows_editable_badge_and_hint(client):
     assert 'محفوظ (نشط)' not in js
     # أدوار الأزرار عبر title
     assert 'title="طباعة الجدول الحالي"' in body
-    assert 'title="عرض النسخ السابقة من هذا الجدول"' in body
     assert 'title="إنشاء نسخة العام القادم"' in body
     assert 'id="nextYearBtn"' in body
-
-
-def test_archived_table_shows_read_only_and_disabled_next_year(client):
-    """عرض جدول أرشيفي: شارة «للعرض فقط»، إخفاء سطر المساعدة، تعطيل زر النسخة الجديدة."""
-    dead = _version('archived')
-    r = client.get(f'/timetable/department?version_id={dead}')
-    body = r.get_data(as_text=True)
-    js = _read_js()
-    assert r.status_code == 200
-    assert 'جدول أرشيفي' in js
-    assert 'للعرض فقط' in js
-    assert 'أضِف/عدّل الحصص في الجدول' not in body, 'helper hint hidden when viewing archived'
-    assert 'title="متاح على الجدول الحالي فقط"' in body, 'next-year tooltip reflects archive state'
-
 
 def test_create_next_year_activates_new_version(client):
     """واجهة برمجة التطبيقات تنشئ نسخة الفصل القادم وتجعلها نشطة بدل القديمة."""
@@ -137,7 +117,7 @@ def test_create_next_year_activates_new_version(client):
     rows = _q('SELECT id, semester_code, status FROM timetable_versions WHERE department_id=?',
               (_dept_id(),))
     statuses = {row['status'] for row in rows}
-    assert 'archived' in statuses, 'the old current version moves to the archive'
+    assert 'superseded' in statuses, 'the old current version is superseded'
     new_row = [row for row in rows if row['id'] == new_id][0]
     assert new_row['status'] == 'active', 'the freshly created version becomes active'
     assert new_row['semester_code'] != 'fall_2026', 'name advances to the next semester'

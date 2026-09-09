@@ -48,14 +48,12 @@
       update: 'edit',
       delete: 'delete',
       login: 'login',
-      restore: 'unarchive'
     };
     var actionColors = {
       create: 'text-emerald-600',
       update: 'text-blue-600',
       delete: 'text-error',
       login: 'text-purple-600',
-      restore: 'text-amber-600'
     };
     var rows = items.map(function (h) {
       var icon = actionIcons[h.action] || 'info';

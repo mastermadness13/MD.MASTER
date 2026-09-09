@@ -87,32 +87,3 @@
 
   restoreMore();
 })();
-
-/* ── Sidebar "Archives" collapsible group ── */
-(function () {
-  var archKey = 'ropely-sidebar-archives';
-  var archGroup = document.getElementById('sidebarArchivesGroup');
-  var archIcon = document.getElementById('sidebarArchivesIcon');
-  var archDivider = document.getElementById('sidebarArchivesDivider');
-
-  function restoreArchives() {
-    if (!archGroup) return;
-    var saved;
-    try { saved = localStorage.getItem(archKey); } catch (e) { saved = null; }
-    if (saved === '1') {
-      archGroup.classList.remove('collapsed');
-      if (archIcon) archIcon.textContent = 'expand_less';
-      if (archDivider) archDivider.setAttribute('aria-expanded', 'true');
-    }
-  }
-
-  window.toggleSidebarArchives = function () {
-    if (!archGroup) return;
-    var collapsed = archGroup.classList.toggle('collapsed');
-    if (archIcon) archIcon.textContent = collapsed ? 'expand_more' : 'expand_less';
-    if (archDivider) archDivider.setAttribute('aria-expanded', String(!collapsed));
-    try { localStorage.setItem(archKey, collapsed ? '0' : '1'); } catch (e) {}
-  };
-
-  restoreArchives();
-})();

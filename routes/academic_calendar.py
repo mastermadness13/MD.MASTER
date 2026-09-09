@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+﻿from datetime import date, timedelta
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 
@@ -51,7 +51,6 @@ def _load_semesters(db):
         'COUNT(DISTINCT ttc.course_id) AS courses_count, '
         'COUNT(DISTINCT ttc.teacher_id) AS teachers_count '
         'FROM teacher_taught_courses ttc '
-        'WHERE ttc.archived = 0 '
         'GROUP BY ttc.semester_code'
     ).fetchall()
     counts = {r['code']: r for r in count_rows}
@@ -173,7 +172,7 @@ def view(semester_id):
         'SELECT DISTINCT c.id, c.code, c.name, c.department '
         'FROM courses c '
         'JOIN teacher_taught_courses ttc ON ttc.course_id = c.id '
-        'WHERE ttc.semester_code = ? AND ttc.archived = 0 '
+        'WHERE ttc.semester_code = ? '
         'ORDER BY c.name',
         (semester['code'],),
     ).fetchall()
@@ -182,7 +181,7 @@ def view(semester_id):
         'SELECT DISTINCT t.id, t.name '
         'FROM teachers t '
         'JOIN teacher_taught_courses ttc ON ttc.teacher_id = t.id '
-        'WHERE ttc.semester_code = ? AND ttc.archived = 0 '
+        'WHERE ttc.semester_code = ? '
         'ORDER BY t.name',
         (semester['code'],),
     ).fetchall()
@@ -191,7 +190,7 @@ def view(semester_id):
         'SELECT DISTINCT d.id, d.name '
         'FROM departments d '
         'JOIN teacher_taught_courses ttc ON ttc.department_id = d.id '
-        'WHERE ttc.semester_code = ? AND ttc.archived = 0 '
+        'WHERE ttc.semester_code = ? '
         'ORDER BY d.name',
         (semester['code'],),
     ).fetchall()

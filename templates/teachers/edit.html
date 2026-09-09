@@ -339,15 +339,6 @@
             إعادة تعيين كلمة المرور
           </button>
         </form>
-        <form method="post" action="{{ url_for('teachers.teachers_delete', id=teacher_id) }}" style="display:inline"
-              onsubmit="return confirm('نقل العضو إلى الأرشيف؟')">
-          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-          <button type="submit"
-                  class="px-4 py-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-label-md text-label-md transition-colors flex items-center gap-2">
-            <span class="material-symbols-outlined text-lg">archive</span>
-            أرشفة
-          </button>
-        </form>
         <a href="{{ url_for('teachers.teacher_detail', id=teacher_id) }}"
            class="px-4 py-2 rounded-lg border border-outline text-on-surface font-label-md text-label-md hover:bg-surface-variant transition-colors no-underline flex items-center gap-2">
           <span class="material-symbols-outlined text-lg">person</span>

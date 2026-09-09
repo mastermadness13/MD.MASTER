@@ -1,4 +1,4 @@
-"""Course service — CRUD, department mappings, prerequisites.
+﻿"""Course service — CRUD, department mappings, prerequisites.
 
 Uses ``CourseRepository`` for data access.  Module-level functions are kept
 for backward compatibility with existing routes.
@@ -564,10 +564,6 @@ def course_hard_delete(db, id):
     from services.base_service import hard_delete
     hard_delete(db, 'courses', id)
 
-
-def course_archive_list(db, search, page):
-    from database.repositories.course_repository import CourseRepository
-    return CourseRepository(db).archive_list(search, page)
 
 
 # ── Management list page payload (moved from routes/courses.py) ─────────────

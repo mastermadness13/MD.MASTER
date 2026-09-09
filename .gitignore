@@ -44,8 +44,6 @@ import_dryrun.txt
 
 # User uploads (large, user-specific, not source-controlled)
 uploads/
-
-# Archives
 *.rar
 
 # Stray/legacy artifacts outside the codebase

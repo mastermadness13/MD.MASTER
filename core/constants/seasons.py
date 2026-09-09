@@ -1,12 +1,12 @@
-"""Academic season helpers used by the unified archives section.
+﻿"""Academic season helpers for grouping content by academic term.
 
 The Libyan academic year is split into:
   * خريفي  (fall)   – September .. January
   * ربيعي  (spring) – February .. June/July
 
-Archived entities carry the UTC timestamp of their archiving (``deleted_at``),
+Soft-deleted entities carry the UTC timestamp of their removal (``deleted_at``),
 while timetables/exams belong to an academic term. Both are grouped with the
-same ``year → season`` presentation required by the unified archives section.
+same ``year → season`` presentation.
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ LEGACY_PERIOD_CODE = "__legacy__"
 _LEGACY_MIGRATED_PREFIX = "migrated"
 LEGACY_PERIOD_LABEL = (
     "\u0627\u0644\u0623\u0631\u0634\u064a\u0641 \u0627\u0644\u0633\u0627\u0628\u0642 "
-    "(\u0645\u0633\u062a\u0648\u0631\u062f)"          # الأرشيف السابق (مستورد)
+    "(\u0645\u0633\u062a\u0648\u0631\u062f)"          # \u0627\u0644\u0641\u0635\u0644 \u0627\u0644\u0633\u0627\u0628\u0642 (\u0645\u0633\u062a\u0648\u0631\u062f)
 )
 
 
@@ -119,7 +119,7 @@ def group_by_season(rows: List[Dict[str, Any]],
                     date_key: str = "deleted_at") -> List[Tuple[str, List[Dict[str, Any]]]]:
     """Group page rows into consecutive ``(label, rows)`` chunks.
 
-    Rows must already be sorted newest-first by their archiving date so that
+    Rows must already be sorted newest-first by their deletion date so that
     each chunk renders as one contiguous year/season block.
     """
     groups: List[Tuple[str, List[Dict[str, Any]]]] = []

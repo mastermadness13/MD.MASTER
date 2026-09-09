@@ -1,4 +1,4 @@
-"""Department service — CRUD, majors management.
+﻿"""Department service — CRUD, majors management.
 
 Uses ``DepartmentRepository`` for data access.  Module-level functions are kept
 for backward compatibility with existing routes.
@@ -117,18 +117,6 @@ def department_hard_delete(db, id):
     from services.base_service import hard_delete
     hard_delete(db, 'departments', id)
 
-
-def department_archive_list(db, search, page):
-    from utils.format import paginate
-    from utils.text import normalize_arabic_name
-    where = ['deleted_at IS NOT NULL']
-    params = []
-    if search:
-        where.append('normalize_arabic(name) LIKE ?')
-        params.append(f'%{normalize_arabic_name(search)}%')
-    where_clause = ' AND '.join(where)
-    query = f'SELECT * FROM departments WHERE {where_clause} ORDER BY deleted_at DESC'
-    return paginate(query, params, page)
 
 
 def list_academic_departments(db):

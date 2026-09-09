@@ -39,11 +39,6 @@
         <span class="material-symbols-outlined text-lg">print</span>
         طباعة
       </button>
-      <a href="{{ url_for('classrooms.rooms_archive') }}"
-         class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm no-underline">
-        <span class="material-symbols-outlined text-lg">archive</span>
-        الأرشيف
-      </a>
     </div>
   </div>
 
@@ -172,7 +167,7 @@
                 <input type="checkbox" id="roomSelectAll" class="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" title="تحديد الكل">
                 <button type="button" id="roomHeaderDeleteBtn"
                         class="material-symbols-outlined text-red-600 hover:text-red-700 transition-colors bg-transparent border-0 cursor-pointer"
-                        style="display:none" title="حذف المحدد">archive</button>
+                        style="display:none" title="حذف المحدد">delete</button>
               </div>
             </th>
             {% endif %}
@@ -239,7 +234,7 @@
                 <a href="{{ url_for('classrooms.rooms_edit', id=r.id) }}"
                    class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors no-underline" title="تعديل">edit</a>
                 <form method="post" action="{{ url_for('classrooms.rooms_delete', id=r.id) }}" style="display:inline"
-                      onsubmit="return confirm('تأكيد نقل القاعة إلى الأرشيف؟')">
+                      onsubmit="return confirm('تأكيد حذف القاعة؟')">
                   <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                   <button type="submit" class="material-symbols-outlined text-red-600 hover:text-red-700 transition-colors bg-transparent border-0 cursor-pointer" title="حذف">delete</button>
                 </form>

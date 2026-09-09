@@ -124,12 +124,6 @@
             <td class="px-4 py-3">
               <div class="flex items-center justify-center gap-2">
                 <span class="text-xs font-bold text-on-surface-variant">{{ (m.download_count or 0) }} تحميل</span>
-                <form method="POST" action="{{ url_for('teacher_pages.teacher_upload_delete', material_id=m.id) }}" style="display:inline"
-                      onsubmit="return confirm('نقل هذا الملف إلى الأرشيف؟')">
-                  <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                  <button type="submit"
-                          class="material-symbols-outlined text-on-surface-variant hover:text-red-600 hover:bg-red-50 transition-colors p-2 rounded-lg bg-transparent border-0 cursor-pointer" title="أرشفة">archive</button>
-                </form>
               </div>
             </td>
           </tr>

@@ -1,4 +1,4 @@
-"""Read-only diagnostic script for teacher identity duplication.
+﻿"""Read-only diagnostic script for teacher identity duplication.
 
 Opens the database in read-only mode and produces a report of potential
 duplicate teacher records.  This script NEVER writes, updates, deletes,
@@ -41,7 +41,6 @@ FK_TABLES = [
     ("teacher_taught_courses", "teacher_id"),
     ("teacher_departments", "teacher_id"),
     ("teacher_course_files", "teacher_id"),
-    ("syllabus_archive", "teacher_id"),
     ("course_files", "teacher_id"),
     ("course_content_submissions", "teacher_id"),
     ("teacher_messages", "teacher_id"),

@@ -1,4 +1,4 @@
-"""Classroom (room) service — CRUD, lookups, archive.
+﻿"""Classroom (room) service — CRUD and lookups.
 
 Uses ``RoomRepository`` for data access.  Module-level functions are kept
 for backward compatibility with existing routes.
@@ -212,7 +212,3 @@ def room_hard_delete(db, id):
     from services.base_service import hard_delete
     hard_delete(db, 'rooms', id)
 
-
-def room_archive_list(db, search, page):
-    from database.repositories.room_repository import RoomRepository
-    return RoomRepository(db).archive_list(search, page)

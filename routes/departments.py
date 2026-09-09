@@ -84,7 +84,7 @@ def departments_delete(id):
     db = get_db()
     department_service.department_delete(db, id, lambda db: add_history(
         db, 'soft_delete', 'department', id, session['user_id'], session['username'], f'حذف قسم'))
-    flash('تم نقل القسم إلى الأرشيف', 'success')
+    flash('تم الحذف بنجاح', 'success')
     return redirect_back('departments.departments_list')
 
 

@@ -400,7 +400,7 @@
       '<table class="w-full min-w-[760px]">' +
         '<thead class="bg-surface-zebra">' +
           '<tr>' +
-            (CAN_MANAGE ? '<th class="px-3 py-2 text-center font-semibold text-text-secondary text-xs w-10"><div class="flex items-center justify-center gap-1"><input type="checkbox" class="ws-select-all rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" data-dept-id="' + dept.id + '" data-semester="' + t.semester + '" onchange="toggleSelectAll(this)" /><button type="button" class="ws-header-delete material-symbols-outlined text-red-600 hover:text-red-700 transition-colors bg-transparent border-0 cursor-pointer" data-dept-id="' + dept.id + '" data-semester="' + t.semester + '" style="display:none" title="حذف المحدد">archive</button></div></th>' : '') +
+            (CAN_MANAGE ? '<th class="px-3 py-2 text-center font-semibold text-text-secondary text-xs w-10"><div class="flex items-center justify-center gap-1"><input type="checkbox" class="ws-select-all rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" data-dept-id="' + dept.id + '" data-semester="' + t.semester + '" onchange="toggleSelectAll(this)" /><button type="button" class="ws-header-delete material-symbols-outlined text-red-600 hover:text-red-700 transition-colors bg-transparent border-0 cursor-pointer" data-dept-id="' + dept.id + '" data-semester="' + t.semester + '" style="display:none" title="حذف المحدد">delete</button></div></th>' : '') +
             '<th class="px-3 py-2 text-center font-semibold text-text-secondary text-xs w-10">ت</th>' +
             '<th class="px-3 py-2 text-right font-semibold text-text-secondary text-xs">رقم المادة</th>' +
             '<th class="px-3 py-2 text-right font-semibold text-text-secondary text-xs">اسم المادة</th>' +
@@ -1073,7 +1073,7 @@
   function executePlanBulkDelete() {
     var cbs = Array.prototype.slice.call(document.querySelectorAll('.ws-course-cb:checked'));
     if (!cbs.length) return;
-    if (!confirm('نقل المقررات المحددة إلى الأرشيف؟')) return;
+    if (!confirm('حذف المقررات المحددة؟')) return;
     var ids = [];
     var seen = {};
     cbs.forEach(function (cb) {
@@ -1215,7 +1215,7 @@
   function executeCourseBulkDelete() {
     var cbs = Array.prototype.slice.call(document.querySelectorAll('.course-delete-cb:checked'));
     if (!cbs.length) return;
-    if (!confirm('نقل المقررات المحددة إلى الأرشيف؟')) return;
+    if (!confirm('حذف المقررات المحددة؟')) return;
     var ids = cbs.map(function (cb) { return cb.value; });
     var csrf = document.querySelector('meta[name="csrf-token"]');
     var form = document.createElement('form');

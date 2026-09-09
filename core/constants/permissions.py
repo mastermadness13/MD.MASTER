@@ -1,4 +1,4 @@
-"""Permission model — role → set of permission strings.
+﻿"""Permission model — role → set of permission strings.
 
 Architecture:  Role → Permissions → Navigation
 The authenticated user's role is the single source of truth.
@@ -8,7 +8,7 @@ The authenticated user's role is the single source of truth.
 # teacher_only routes are role-gated (security.role_required), not permission-
 # gated — do not attempt to grant/revoke them via the role_permissions map.
 # This mirrors decision 2.1: /teacher/profile, /teacher/my-schedule and
-# /teacher/archive belong to the `teachers` data shape and are meaningless for
+# other teacher-scoped routes belong to the `teachers` data shape and are meaningless for
 # roles without a linked teachers row.
 # ─────────────────────────────────────────────────────────────────────────────
 ROLE_PERMISSIONS = {

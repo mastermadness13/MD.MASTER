@@ -46,7 +46,7 @@
       <span class="material-symbols-outlined text-primary text-3xl">calendar_view_week</span>
       <div>
         <h1 class="text-2xl font-bold text-on-surface">الجدول الأسبوعي للقسم</h1>
-        <p class="page-subtitle">عرض جداول الأقسام والفصول مع الطباعة والأرشيف</p>
+        <p class="page-subtitle">عرض جداول الأقسام والفصول مع الطباعة</p>
       </div>
     </div>
     <button type="button" id="addLecBtn" onclick="openAdd()" class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm">
@@ -62,12 +62,6 @@
         <span class="material-symbols-outlined text-lg">print</span>
         طباعة
       </button>
-      <button type="button" id="archiveBtn" title="عرض النسخ السابقة من هذا الجدول" onclick="toggleArchive()" class="flex items-center gap-2 bg-surface-container text-primary border border-outline-variant hover:bg-surface-container-high rounded-lg px-4 py-2 text-sm font-bold transition">
-        <span class="material-symbols-outlined">archive</span>
-        أرشيف الجداول
-        <span id="archiveCount" class="text-xs bg-primary-container text-primary px-2 py-0.5 rounded-full font-bold">0</span>
-        <span class="material-symbols-outlined text-base">expand_more</span>
-      </button>
       <button type="button" id="nextYearBtn" title="{{ 'متاح على الجدول الحالي فقط' if payload.locked else 'إنشاء نسخة العام القادم' }}" onclick="openNextYear()" class="flex items-center gap-2 bg-surface-card border border-outline-variant text-on-surface-variant hover:bg-surface-container rounded-lg px-4 py-2 text-sm font-bold transition"
         {% if payload.locked %}disabled{% endif %}>
         <span class="material-symbols-outlined text-lg">calendar_add_on</span>
@@ -80,19 +74,7 @@
     <p id="helperHint" class="mt-2 px-1 text-xs text-on-surface-variant no-print">أضِف/عدّل الحصص في الجدول، ثم أنشئ نسخة العام القادم عند الانتهاء لتجهيز الفصل الجديد.</p>
     {% endif %}
 
-    <!-- Archive Dropdown -->
-    <div id="archiveDropdown" class="hidden absolute top-full right-4 z-30 mt-2 w-[22rem] max-w-full bg-surface-card rounded-xl shadow-2xl border border-outline-variant overflow-hidden">
-      <div class="px-4 py-2.5 border-b border-outline-variant bg-surface-dim flex items-center justify-between">
-        <span class="flex items-center gap-2 text-sm font-bold text-on-surface-variant">
-          <span class="material-symbols-outlined text-primary text-lg">archive</span>
-          <span id="archiveTitle">أرشيف الجداول</span>
-        </span>
-        <button type="button" onclick="closeArchive()" class="p-1 rounded-lg hover:bg-surface-container transition">
-          <span class="material-symbols-outlined text-on-surface-variant text-lg">close</span>
-        </button>
-      </div>
-      <div id="archiveBody" class="max-h-96 overflow-y-auto"></div>
-    </div>
+
   </div>
 
   <!-- Department & Semester Filters -->
@@ -129,19 +111,7 @@
     </div>
     {% endif %}
   </div>
-
-  <!-- Viewing archived banner -->
-  <div id="viewingBanner" class="hidden bg-warning-faint border border-warning-border rounded-xl px-4 py-3 mb-6 flex items-center justify-between gap-3">
-    <span class="flex items-center gap-2 text-sm text-warning-text font-bold">
-      <span class="material-symbols-outlined text-[18px]">lock</span>
-      <span id="viewingBannerText">أنت تتصفح جدولًا أرشيفيًا</span>
-    </span>
-    <button type="button" onclick="returnToCurrent()" class="bg-amber-600 hover:bg-amber-700 text-white rounded-lg px-4 py-2 text-sm font-bold transition">
-      العودة إلى الجدول الحالي
-    </button>
-  </div>
-
-  <!-- Weekly Card -->
+<!-- Weekly Card -->
   <div class="bg-surface-card rounded-2xl shadow-sm border border-outline-variant overflow-hidden flex flex-col print-area">
     <div class="p-4 border-b border-outline-variant flex justify-between items-center bg-surface-dim">
       <h3 class="font-bold text-primary flex items-center gap-2">

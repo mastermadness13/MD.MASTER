@@ -59,7 +59,7 @@ if (roomHeaderDeleteBtn) {
   roomHeaderDeleteBtn.addEventListener('click', function () {
     var selected = document.querySelectorAll('.room-select:checked').length;
     if (!selected) return;
-    if (!confirm('تأكيد نقل القاعات المحددة إلى الأرشيف؟')) return;
+    if (!confirm('تأكيد حذف القاعات المحددة؟')) return;
     if (roomDeleteForm) roomDeleteForm.submit();
   });
 }

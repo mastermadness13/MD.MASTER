@@ -91,7 +91,7 @@ def main() -> None:
             unmatched.append(name)
             continue
         if hit["deleted_at"] is not None:
-            unmatched.append(f"{name} (archived)")
+            unmatched.append(f"{name} ")
             continue
         _assign(hit["id"], name, tgt, hit["department_id"])
 
@@ -102,7 +102,7 @@ def main() -> None:
             unmatched.append(f"override teacher id {tid} not found")
             continue
         if r["deleted_at"] is not None:
-            unmatched.append(f"{r['name']} (archived)")
+            unmatched.append(f"{r['name']} ")
             continue
         _assign(tid, r["name"], tgt, r["department_id"])
 

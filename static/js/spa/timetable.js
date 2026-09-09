@@ -266,5 +266,4 @@
   window.SPA.VIEWS.timetable = renderTimetable;
   window.SPA.VIEWS.timetable_rnd = renderTimetable;
   window.SPA.VIEWS.timetable_teacher = renderTimetable;
-  window.SPA.VIEWS.timetable_archive_hod = renderTimetable;
 })();

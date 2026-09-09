@@ -372,7 +372,7 @@ def _sync_form_course_file(db, submission_id, uploaded_by):
     The course owns the file; the submission is the metadata record.  The
     ``course_files`` row's status always tracks the submission status so a
     form only becomes public once approved/published.  Superseded public
-    forms are archived to ``course_form_archive``.
+    forms are replaced directly in place.
     """
     row = db.execute(
         'SELECT id, course_id, teacher_id, user_id, filename, original_filename, '
@@ -420,12 +420,6 @@ def _sync_form_course_file(db, submission_id, uploaded_by):
             (row['course_id'], submission_id)
         ).fetchall()
         for old in others:
-            db.execute('''INSERT INTO course_form_archive
-                          (course_id, submission_id, filename, original_filename,
-                           file_size, archived_by)
-                          VALUES (?, ?, ?, ?, ?, ?)''',
-                       (row['course_id'], old['submission_id'], old['filename'],
-                        old['original_filename'], old['file_size'], uploaded_by))
             db.execute('DELETE FROM course_files WHERE id = ?', (old['id'],))
 
 
@@ -734,9 +728,10 @@ def _render_course_content_page(db, teacher=None, **extra):
         'user': user,
         'teacher': dict(teacher) if teacher else None,
         'course_rows': course_rows,
+        'page_mode': 'teacher_list',
     }
     ctx.update(extra)
-    return render_template('teachers/course_content.html', **ctx)
+    return render_template('teachers/course_content_page.html', **ctx)
 
 
 def _build_teacher_upload_row(course, submission, syllabus_file):
@@ -1261,8 +1256,8 @@ def super_admin_course_content_list():
 
     academic_periods = _get_academic_periods(db)
 
-    return render_template('teachers/super_admin_course_content.html',
-                           user=current_user(),
+    return render_template('teachers/course_content_page.html',
+                           user=current_user(), page_mode='admin_list',
                            courses=courses, departments=departments,
                            vocab_by_course=vocab_by_course,
                            syllabus_by_course=syllabus_by_course,
@@ -1282,7 +1277,7 @@ def super_admin_course_content_list():
 @login_required
 @permission_required('course_content.view')
 def super_admin_course_content_history(course_id):
-    """Redundant archive page — replaced by the course list view."""
+    """Redundant page — replaced by the course list view."""
     return redirect(url_for('teacher_pages.super_admin_course_content_list'))
 
 
@@ -1803,14 +1798,6 @@ def super_admin_course_content_update_form():
         flash('الفصل الدراسي غير صحيح', 'error')
         return redirect(detail_url)
 
-    if submission['filename']:
-        db.execute('''INSERT INTO course_form_archive
-                      (course_id, submission_id, filename, original_filename,
-                       file_size, archived_by)
-                      VALUES (?, ?, ?, ?, ?, ?)''',
-                   (submission['course_id'], submission['id'], submission['filename'],
-                    submission['original_filename'], submission['file_size'],
-                    session['user_id']))
     db.execute('''UPDATE course_content_submissions
                   SET filename = ?, original_filename = ?, file_size = ?,
                       academic_period_id = COALESCE(?, academic_period_id),
@@ -1820,7 +1807,7 @@ def super_admin_course_content_update_form():
     _sync_form_course_file(db, submission_id, session['user_id'])
     db.commit()
     flash(f'تم تحديث ملف النموذج لمقرر "{submission["course_name"]}" '
-          'ونُقلت النسخة السابقة إلى الأرشيف', 'success')
+          'تم تحديث الملف بنجاح', 'success')
     return redirect(detail_url)
 
 
@@ -1878,7 +1865,7 @@ def super_admin_course_syllabus_file(course_id):
 @login_required
 @permission_required('course_content.view')
 def super_admin_course_file_serve(file_id):
-    """Serve one specific course_files row (period-aware archive links)."""
+    """Serve one specific course_files row."""
     row = get_db().execute(
         'SELECT * FROM course_files WHERE id = ?', (file_id,)
     ).fetchone()
@@ -1902,7 +1889,7 @@ def super_admin_course_syllabus_upload(course_id):
     """Upload (or replace) المقرر PDF scoped to course + academic period.
 
     Replaces only the copy of the same period; other periods keep their own
-    archived copies.  The replaced file always goes to syllabus_archive.
+    copies.
     """
     db = get_db()
     course = db.execute(
@@ -1929,13 +1916,6 @@ def super_admin_course_syllabus_upload(course_id):
                WHERE course_id = ? AND file_type = 'syllabus'
                  AND academic_period_id IS ?''',
             (course_id, period_id)).fetchall():
-        db.execute('''INSERT INTO syllabus_archive
-                      (teacher_id, course_id, filename, original_filename,
-                       file_size, archived_by, academic_period_id)
-                      VALUES (?, ?, ?, ?, ?, ?, ?)''',
-                   (old['teacher_id'], course_id, old['filename'],
-                    old['original_filename'], old['file_size'], session['user_id'],
-                    old['academic_period_id']))
         db.execute('DELETE FROM course_files WHERE id = ?', (old['id'],))
     db.execute('''INSERT INTO course_files
                   (course_id, file_type, filename, original_filename, file_size,
@@ -1959,7 +1939,7 @@ def super_admin_course_content_form_upload(course_id):
     """Attach/replace the course's form PDF, scoped to the course itself.
 
     Targets the latest existing submission; creates a minimal approved one
-    when the course has no submission yet.  Old copies are archived.
+    when the course has no submission yet.
     """
     db = get_db()
     course = db.execute(
@@ -2001,14 +1981,6 @@ def super_admin_course_content_form_upload(course_id):
 
     if submission:
         submission_id = submission['id']
-        if submission['filename']:
-            db.execute('''INSERT INTO course_form_archive
-                          (course_id, submission_id, filename, original_filename,
-                           file_size, archived_by)
-                          VALUES (?, ?, ?, ?, ?, ?)''',
-                       (submission['course_id'], submission_id, submission['filename'],
-                        submission['original_filename'], submission['file_size'],
-                        session['user_id']))
         db.execute('''UPDATE course_content_submissions
                       SET filename = ?, original_filename = ?, file_size = ?,
                           academic_period_id = COALESCE(?, academic_period_id),
@@ -2069,7 +2041,7 @@ def super_admin_course_content_form_upload(course_id):
 @permission_required('course_content.view')
 @csrf_required
 def super_admin_course_syllabus_delete(course_id):
-    """Archive the current syllabus copy then remove it from active files."""
+    """Remove the current syllabus copy from active files."""
     db = get_db()
     course = db.execute(
         'SELECT id, name FROM courses WHERE id = ?', (course_id,)
@@ -2082,19 +2054,12 @@ def super_admin_course_syllabus_delete(course_id):
         flash('لا يوجد ملف منهاج لهذا المقرر', 'error')
         return redirect_back()
     for old in rows:
-        db.execute('''INSERT INTO syllabus_archive
-                      (teacher_id, course_id, filename, original_filename,
-                       file_size, archived_by, academic_period_id)
-                      VALUES (?, ?, ?, ?, ?, ?, ?)''',
-                   (old['teacher_id'], course_id, old['filename'],
-                    old['original_filename'], old['file_size'], session['user_id'],
-                    old['academic_period_id']))
         db.execute('DELETE FROM course_files WHERE id = ?', (old['id'],))
     add_history(db, 'delete', 'course_syllabus', course_id, session['user_id'],
                 session['username'],
-                f"حذف ملف منهاج المقرر وأرشفته بواسطة المشرف: {course['name']}")
+                f"حذف ملف منهاج المقرر بواسطة المشرف: {course['name']}")
     db.commit()
-    flash(f'تم حذف ملف المنهاج ونقل النسخة إلى الأرشيف لمقرر "{course["name"]}"', 'success')
+    flash(f'تم حذف ملف المنهاج لمقرر "{course["name"]}"', 'success')
     return redirect_back()
 
 
@@ -2103,7 +2068,7 @@ def super_admin_course_syllabus_delete(course_id):
 @permission_required('course_content.view')
 @csrf_required
 def super_admin_course_file_delete(file_id):
-    """حذف نسخة مقرر محددة (مادة + فصل دراسي) مع أرشفتها — المادة تبقى."""
+    """حذف نسخة مقرر محددة (مادة + فصل دراسي) — المادة تبقى."""
     db = get_db()
     row = db.execute(
         '''SELECT * FROM course_files WHERE id = ? AND file_type = 'syllabus' ''',
@@ -2113,19 +2078,12 @@ def super_admin_course_file_delete(file_id):
         flash('ملف المقرر غير موجود', 'error')
         return redirect(url_for('teacher_pages.super_admin_course_content_list'))
     course = db.execute('SELECT name FROM courses WHERE id = ?', (row['course_id'],)).fetchone()
-    db.execute('''INSERT INTO syllabus_archive
-                  (teacher_id, course_id, filename, original_filename,
-                   file_size, archived_by, academic_period_id)
-                  VALUES (?, ?, ?, ?, ?, ?, ?)''',
-               (row['teacher_id'], row['course_id'], row['filename'],
-                row['original_filename'], row['file_size'], session['user_id'],
-                row['academic_period_id']))
     db.execute('DELETE FROM course_files WHERE id = ?', (file_id,))
     add_history(db, 'delete', 'course_syllabus', row['course_id'],
                 session['user_id'], session['username'],
-                f"حذف ملف مقرر فصل دراسي وأرشفته بواسطة المشرف: {course['name'] if course else row['course_id']}")
+                f"حذف ملف مقرر فصل دراسي بواسطة المشرف: {course['name'] if course else row['course_id']}")
     db.commit()
-    flash('تم حذف ملف المقرر ونقل النسخة إلى الأرشيف', 'success')
+    flash('تم حذف ملف المقرر ', 'success')
     return redirect(url_for('teacher_pages.super_admin_course_content_list'))
 
 
@@ -2137,8 +2095,7 @@ def super_admin_course_file_delete(file_id):
 def super_admin_course_period_purge(course_id, period_id):
     """حذف محتوى فصل دراسي كامل (المقرر + النماذج) — المادة نفسها تبقى.
 
-    كل الملفات تُؤرشف أولاً (syllabus_archive / course_form_archive) ثم
-    تُحذف سجلات ذلك الفصل الدراسي فقط.
+    تُحذف كل ملفات وسجلات ذلك الفصل الدراسي فقط — المادة نفسها تبقى.
     """
     db = get_db()
     course = db.execute(
@@ -2157,13 +2114,6 @@ def super_admin_course_period_purge(course_id, period_id):
                WHERE course_id = ? AND file_type = 'syllabus'
                  AND academic_period_id = ?''',
             (course_id, period_id)).fetchall():
-        db.execute('''INSERT INTO syllabus_archive
-                      (teacher_id, course_id, filename, original_filename,
-                       file_size, archived_by, academic_period_id)
-                      VALUES (?, ?, ?, ?, ?, ?, ?)''',
-                   (old['teacher_id'], course_id, old['filename'],
-                    old['original_filename'], old['file_size'], session['user_id'],
-                    old['academic_period_id']))
         db.execute('DELETE FROM course_files WHERE id = ?', (old['id'],))
         removed_files += 1
 
@@ -2177,13 +2127,6 @@ def super_admin_course_period_purge(course_id, period_id):
             'SELECT * FROM course_content_submissions WHERE id = ?', (sid,)
         ).fetchone()
         if sub and sub['filename']:
-            db.execute('''INSERT INTO course_form_archive
-                          (course_id, submission_id, filename, original_filename,
-                           file_size, archived_by)
-                          VALUES (?, ?, ?, ?, ?, ?)''',
-                       (course_id, sid, sub['filename'], sub['original_filename'],
-                        sub['file_size'], session['user_id']))
-            # keep bytes: the archive references them — only detach the mirror
             db.execute(
                 "DELETE FROM course_files WHERE submission_id = ? AND file_type = 'form'",
                 (sid,)
@@ -2204,7 +2147,7 @@ def super_admin_course_period_purge(course_id, period_id):
         parts.append(f'{removed_forms} نموذج')
     summary = ' و'.join(parts) if parts else 'لا يوجد محتوى'
     flash(f'تم حذف محتوى "{period["label"]}" لمادة "{course["name"]}" '
-          f'({summary}) ونقل النسخ إلى الأرشيف', 'success')
+          f'({summary}) بنجاح', 'success')
     return redirect(url_for('teacher_pages.super_admin_course_content_list'))
 
 
@@ -2213,10 +2156,9 @@ def super_admin_course_period_purge(course_id, period_id):
 @permission_required('course_content.view')
 @csrf_required
 def super_admin_course_content_bulk_delete(course_id):
-    """حذف العناصر المحددة من لوحة «إدارة» فصل دراسي (أرشفة ثم إزالة).
+    """حذف العناصر المحددة من لوحة «إدارة» فصل دراسي (إزالة نهائية).
 
     file_ids: نسخ مقرر محددة.  submission_ids: تُفرَد من ملف PDF المرفق
-    (تؤرشف النسخة وتبقى بيانات النموذج نفسها محفوظة).
     """
     db = get_db()
     course = db.execute(
@@ -2238,13 +2180,6 @@ def super_admin_course_content_bulk_delete(course_id):
             (fid, course_id)).fetchone()
         if not row:
             continue
-        db.execute('''INSERT INTO syllabus_archive
-                      (teacher_id, course_id, filename, original_filename,
-                       file_size, archived_by, academic_period_id)
-                      VALUES (?, ?, ?, ?, ?, ?, ?)''',
-                   (row['teacher_id'], course_id, row['filename'],
-                    row['original_filename'], row['file_size'], session['user_id'],
-                    row['academic_period_id']))
         db.execute('DELETE FROM course_files WHERE id = ?', (fid,))
         removed_files += 1
 
@@ -2259,16 +2194,9 @@ def super_admin_course_content_bulk_delete(course_id):
             (sid, course_id)).fetchone()
         if not sub or not sub['filename']:
             continue
-        db.execute('''INSERT INTO course_form_archive
-                      (course_id, submission_id, filename, original_filename,
-                       file_size, archived_by)
-                      VALUES (?, ?, ?, ?, ?, ?)''',
-                   (course_id, sid, sub['filename'], sub['original_filename'],
-                    sub['file_size'], session['user_id']))
         db.execute('''UPDATE course_content_submissions
                       SET filename = '', original_filename = '', file_size = 0,
                           updated_at = CURRENT_TIMESTAMP WHERE id = ?''', (sid,))
-        # keep bytes: the archive references them — only detach the mirror
         db.execute(
             "DELETE FROM course_files WHERE submission_id = ? AND file_type = 'form'",
             (sid,)
@@ -2288,7 +2216,7 @@ def super_admin_course_content_bulk_delete(course_id):
         parts.append(f'{removed_files} ملف مقرر')
     if removed_pdfs:
         parts.append(f'{removed_pdfs} نموذج')
-    flash(f"تم حذف {' و'.join(parts)} ونقل النسخ إلى الأرشيف", 'success')
+    flash(f"تم حذف {' و'.join(parts)} بنجاح", 'success')
     return redirect(url_for('teacher_pages.super_admin_course_content_list'))
 
 
@@ -2297,7 +2225,7 @@ def super_admin_course_content_bulk_delete(course_id):
 @permission_required('course_content.view')
 @csrf_required
 def super_admin_course_content_form_delete(submission_id):
-    """Archive a submission's attached form PDF then detach it from the submission."""
+    """Detach the submitted form PDF from a submission."""
     db = get_db()
     submission = db.execute(
         'SELECT * FROM course_content_submissions WHERE id = ?', (submission_id,)
@@ -2306,27 +2234,19 @@ def super_admin_course_content_form_delete(submission_id):
         flash('النموذج غير موجود', 'error')
         return redirect(url_for('teacher_pages.super_admin_course_content_list'))
     if submission['filename']:
-        db.execute('''INSERT INTO course_form_archive
-                      (course_id, submission_id, filename, original_filename,
-                       file_size, archived_by)
-                      VALUES (?, ?, ?, ?, ?, ?)''',
-                   (submission['course_id'], submission['id'], submission['filename'],
-                    submission['original_filename'], submission['file_size'],
-                    session['user_id']))
         db.execute('''UPDATE course_content_submissions
                       SET filename = '', original_filename = '', file_size = 0,
                           updated_at = CURRENT_TIMESTAMP
                       WHERE id = ?''', (submission_id,))
-        # detach the mirrored public row but keep the bytes (the archive references them)
         db.execute(
             "DELETE FROM course_files WHERE submission_id = ? AND file_type = 'form'",
             (submission_id,)
         )
         add_history(db, 'delete', 'course_content', submission_id,
                     session['user_id'], session['username'],
-                    f"حذف ملف النموذج وأرشفته بواسطة المشرف — النموذج رقم {submission_id}")
+                    f"حذف ملف النموذج بواسطة المشرف — النموذج رقم {submission_id}")
         db.commit()
-        flash('تم حذف ملف النموذج ونقل النسخة إلى الأرشيف', 'success')
+        flash('تم حذف ملف النموذج ', 'success')
     else:
         flash('لا يوجد ملف مرفق بهذا النموذج', 'error')
     return redirect(url_for('teacher_pages.super_admin_course_content_list'))
@@ -2435,14 +2355,6 @@ def teacher_syllabus_upload():
         (course_id,)
     ).fetchone()
     if existing:
-        if existing['filename']:
-            db.execute('''INSERT INTO syllabus_archive
-                          (teacher_id, course_id, filename, original_filename,
-                           file_size, archived_by)
-                          VALUES (?, ?, ?, ?, ?, ?)''',
-                       (teacher['id'], course_id, existing['filename'],
-                        existing['original_filename'], existing['file_size'],
-                        session['user_id']))
         db.execute('''UPDATE course_files
                       SET filename = ?, original_filename = ?, file_size = ?,
                           status = 'approved', uploaded_by = ?,
