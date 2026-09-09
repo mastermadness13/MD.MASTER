@@ -33,3 +33,18 @@ Audit carried 194 findings. Baseline verified against current code, fixed item b
 
 ### Phase 1 result
 `112 passed / 16 failed` (was 90/20). 12 of 16 are timetable conflict-detection (Phase 3; root cause: `TimetableService` has no `create_entry`), 2 are timetable department page template assertions (Phase 5), 1 HOD dept-resolution (Phase 3), 1 course-content admin status filters (Phase 5).
+
+## Phase 2 — Auth, DB & Architecture Stabilization
+
+| ID | Issue | File:Line | Severity | Fix | Test | Status |
+|----|-------|-----------|----------|-----|------|--------|
+| AUTH-004 | Default admin password `admin123` when env unset (fresh install) | scripts/seed.py:148 **and** database/schema.py:1256 | High | both paths use `ADMIN_PASSWORD` env else random (`secrets.token_urlsafe(12)`) printed once; existing accounts never overwritten | `tests/test_seed_admin_password.py` (3) | fixed |
+| AUTH-005 | CSRF coverage on all mutating routes | routes/*, api/* | High | audit: 104 mutating routes, 147 `@csrf_required`, 0 missing | script + grep | verified-resolved |
+| ARCH-001 | Security headers / CSP coverage | app.py:191-209 | Medium | already present: nosniff, SAMEORIGIN, XSS-Protection, Referrer-Policy, Permissions-Policy, full CSP | inspection | verified-resolved |
+| ARCH-002 | `ensure_schema` timing (schema mutation per request?) | wsgi.py:11, serve.py:19, flask_db.py | Medium | confirmed: runs once at startup via `init_db()`, not per-request | inspection | verified-resolved |
+| ARCH-003 | `serve.py` hardcodes `url_scheme='http'` → Secure cookies broken behind HTTPS | serve.py:37 | High | `WAITRESS_URL_SCHEME` env (default http) + optional `ProxyFix` behind `TRUST_PROXY_HEADERS=true` | inspection | fixed |
+| ARCH-004 | Legacy `teacher.*` accounts reset to `123456` when renamed | database/schema.py:1268 | Low | one-time normalization (only no-longer-matching rows); new accounts set explicit passwords | inspection | deferred → Phase 5/8 note |
+| AUTH-DEF | dashboard() lacks explicit `@login_required` | routes/dashboard.py:25 | Def | anonymous must keep landing on `public_site.index_page`; add header-aware guard in Phase 2b | — | open |
+
+### Phase 2 result
+`117 passed / 16 failed` (+3 seed tests, +2 existing seed tests re-verified, suite re-run pending).

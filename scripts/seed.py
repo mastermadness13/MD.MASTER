@@ -140,16 +140,24 @@ def _seed_default_teachers(conn: sqlite3.Connection, owner_user_id: int) -> int:
 
 def bootstrap_defaults(path: str) -> None:
     """Seed default users, departments, rooms, courses, and teachers."""
+    import secrets
     from werkzeug.security import generate_password_hash
 
     db = connect(path)
     ensure_schema(db)
 
-    admin_pw = os.environ.get('ADMIN_PASSWORD', 'admin123')
+    admin_pw = os.environ.get('ADMIN_PASSWORD')
+    if not admin_pw:
+        admin_pw = secrets.token_urlsafe(12)
+        generated_pw = admin_pw
+    else:
+        generated_pw = None
+
     users = [
         ('superadmin', generate_password_hash(admin_pw)),
         ('admin', generate_password_hash(admin_pw)),
     ]
+    created_any = False
     for username, password in users:
         exists = db.execute('SELECT 1 FROM users WHERE username = ?', (username,)).fetchone()
         if not exists:
@@ -159,6 +167,11 @@ def bootstrap_defaults(path: str) -> None:
                 'INSERT INTO users (username, password, role, label) VALUES (?, ?, ?, ?)',
                 (username, password, role, label),
             )
+            created_any = True
+
+    if created_any and generated_pw:
+        print(f'[seed] No ADMIN_PASSWORD env set - generated login superadmin/admin password: {generated_pw}')
+        print('[seed] Store it now; it will not be shown again.\n')
 
     for name, semesters, majors in DEFAULT_DEPARTMENTS:
         exists = db.execute('SELECT 1 FROM departments WHERE name = ?', (name,)).fetchone()

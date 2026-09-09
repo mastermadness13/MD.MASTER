@@ -1,4 +1,4 @@
-"""Schema management and migrations for SQLite.
+﻿"""Schema management and migrations for SQLite.
 
 Contains ``ensure_schema`` plus every migration helper.  Idempotent and safe
 to run on every startup.  Flask-independent: callers pass a configured
@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import datetime
 import os
+import secrets
 import sqlite3
 
 from database.domains import sync_domain_registry
@@ -545,8 +546,8 @@ def _migrate_single_active_timetable_version(conn: sqlite3.Connection) -> None:
     """Repair duplicated active timetable versions.
 
     Only one version may be active per department + semester. If legacy data
-    left several rows marked 'active', keep the newest one active and archive
-    the rest so the timetable page and the archive buttons behave predictably.
+    left several rows marked 'active', keep the newest one active and mark
+    the rest 'archived' so the timetable page stays predictable.
     """
     groups = conn.execute(
         'SELECT department_id, semester '
@@ -1089,7 +1090,7 @@ def _migrate_academic_periods(conn: sqlite3.Connection) -> None:
 
     Content belongs to ``course + period`` — never to a bare filename.
     Legacy rows keep ``academic_period_id = NULL`` and surface under
-    «بدون فصل دراسي محدد» in the archive.  Surrounding years are seeded
+    «بدون فصل دراسي محدد».  Surrounding years are seeded
     so the picker always has sensible options.
     """
     conn.execute("""
@@ -1123,11 +1124,6 @@ def _migrate_academic_periods(conn: sqlite3.Connection) -> None:
     if 'course_files' in tables:
         _safe_add_column(conn, 'course_files', 'academic_period_id',
                          'INTEGER REFERENCES academic_periods(id) ON DELETE SET NULL')
-    # الأرشيف يحفظ الفصل الدراسي الذي كانت تنتمي إليه النسخة
-    if 'syllabus_archive' in tables:
-        _safe_add_column(conn, 'syllabus_archive', 'academic_period_id', 'INTEGER')
-    if 'course_form_archive' in tables:
-        _safe_add_column(conn, 'course_form_archive', 'academic_period_id', 'INTEGER')
 
 
 def _drop_legacy_course_file_tables(conn: sqlite3.Connection) -> None:
@@ -1253,7 +1249,11 @@ def _cleanup_legacy_user_data(conn: sqlite3.Connection) -> None:
             (sa['id'],)
         )
     else:
-        admin_pw = os.environ.get('ADMIN_PASSWORD', 'admin123')
+        admin_pw = os.environ.get('ADMIN_PASSWORD')
+        if not admin_pw:
+            admin_pw = secrets.token_urlsafe(12)
+            print(f'[schema] No ADMIN_PASSWORD env set - generated super_admin password: {admin_pw}')
+            print('[schema] Store it now; it will not be shown again.\n')
         conn.execute(
             "INSERT INTO users (username, password, role, label) VALUES (?, ?, ?, ?)",
             ('superadmin', generate_password_hash(admin_pw), 'super_admin', 'مدير النظام')
@@ -1855,7 +1855,7 @@ def _migrate_academic_calendar(conn: sqlite3.Connection) -> None:
     """Enrich ``semesters`` with start/end and exam date boundaries.
 
     Makes the semesters table the single source of truth for:
-    - semester start/end dates (used by timetable, archive, printing)
+    - semester start/end dates (used by timetable, printing)
     - exam period boundaries per semester (used by exams)
 
     Idempotent: safe to run on every startup.
@@ -2015,7 +2015,6 @@ def _migrate_teacher_taught_courses(conn: sqlite3.Connection) -> None:
                 lecture_type TEXT NOT NULL DEFAULT 'theory',
                 hours INTEGER NOT NULL DEFAULT 0,
                 timetable_entry_id INTEGER,
-                archived INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT NOT NULL DEFAULT (datetime('now')),
                 UNIQUE(teacher_id, course_id, department_id, semester, semester_code, day, period, student_section)
             )
@@ -2027,8 +2026,8 @@ def _migrate_teacher_taught_courses(conn: sqlite3.Connection) -> None:
                 'INSERT INTO teacher_taught_courses '
                 '(id, teacher_id, course_id, department_id, semester, semester_code, version_id, '
                 ' day, start_time, end_time, period, room_id, student_section, lecture_type, '
-                ' hours, timetable_entry_id, archived, created_at) '
-                'VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                ' hours, timetable_entry_id, created_at) '
+                'VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                 (
                     row_dict['id'],
                     row_dict['teacher_id'],
@@ -2046,7 +2045,6 @@ def _migrate_teacher_taught_courses(conn: sqlite3.Connection) -> None:
                     row_dict.get('lecture_type', 'theory'),
                     row_dict.get('hours', 0),
                     row_dict.get('timetable_entry_id'),
-                    row_dict.get('archived', 0),
                     row_dict.get('created_at', ''),
                 ),
             )
@@ -2060,10 +2058,6 @@ def _migrate_teacher_taught_courses(conn: sqlite3.Connection) -> None:
     conn.execute(
         'CREATE INDEX IF NOT EXISTS idx_ttc_entry '
         'ON teacher_taught_courses (timetable_entry_id)'
-    )
-    conn.execute(
-        'CREATE INDEX IF NOT EXISTS idx_ttc_archived '
-        'ON teacher_taught_courses (archived)'
     )
 
     _mark_migration_done(conn, 'enrich_teacher_taught_courses')
@@ -2085,7 +2079,7 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
     existing_tables = {
         row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'").fetchall()
     }
-    # Soft-delete columns on the standard archiveable tables.
+    # Soft-delete columns on the standard soft-delete tables.
     from database.constants import SOFT_DELETE_TABLES
     for table in SOFT_DELETE_TABLES:
         if table in existing_tables:
@@ -2190,7 +2184,6 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
                 lecture_type TEXT NOT NULL DEFAULT 'theory',
                 hours INTEGER NOT NULL DEFAULT 0,
                 timetable_entry_id INTEGER,
-                archived INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT NOT NULL DEFAULT (datetime('now')),
                 UNIQUE(teacher_id, course_id, department_id, semester, semester_code, day, period, student_section)
             )
@@ -2202,10 +2195,6 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
         conn.execute("""
             CREATE INDEX IF NOT EXISTS idx_ttc_entry
             ON teacher_taught_courses (timetable_entry_id)
-        """)
-        conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_ttc_archived
-            ON teacher_taught_courses (archived)
         """)
         # Backfill from every saved timetable entry (archived versions keep
         # their own semester_code; legacy rows fall back to '').
@@ -2728,7 +2717,7 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
     # A department applies to a teacher when ANY of these holds:
     #   (a) it is the teacher's primary department (teachers.department_id),
     #   (b) the teacher was chosen in a lecture-assignment stage (active
-    #       timetable entries / non-archived teacher_taught_courses),
+    #       timetable entries / teacher_taught_courses),
     #   (c) the teacher heads the department (teachers.hod_department_id).
     # teacher_departments is the many-to-many source of truth used by the HOD
     # member lists, _can_hod_view_teacher and the teacher profile.  This block
@@ -2748,7 +2737,7 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
         conn.execute(
             'INSERT OR IGNORE INTO teacher_departments (teacher_id, department_id) '
             'SELECT DISTINCT teacher_id, department_id FROM teacher_taught_courses '
-            'WHERE department_id IS NOT NULL AND archived = 0 AND teacher_id IS NOT NULL'
+            'WHERE department_id IS NOT NULL AND teacher_id IS NOT NULL'
         )
         # (b) departments implied by active timetable entries (chosen during
         # lecture determination).  Needs timetable_versions — guaranteed to
@@ -2863,38 +2852,6 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
             )
         """)
 
-    # ── Syllabus archive (منهج) — old versions kept on replacement ───
-    if 'syllabus_archive' not in existing_tables:
-        conn.execute("""
-            CREATE TABLE syllabus_archive (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                teacher_id INTEGER REFERENCES teachers(id) ON DELETE SET NULL,
-                course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-                filename TEXT NOT NULL DEFAULT '',
-                original_filename TEXT NOT NULL DEFAULT '',
-                file_size INTEGER DEFAULT 0,
-                archived_by INTEGER REFERENCES users(id),
-                archived_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        conn.execute('CREATE INDEX IF NOT EXISTS idx_syllabus_archive_course ON syllabus_archive(course_id)')
-        conn.execute('CREATE INDEX IF NOT EXISTS idx_syllabus_archive_teacher ON syllabus_archive(teacher_id)')
-
-    # ── Course form archive (المقرر) — old versions kept on update ───
-    if 'course_form_archive' not in existing_tables:
-        conn.execute("""
-            CREATE TABLE course_form_archive (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-                submission_id INTEGER REFERENCES course_content_submissions(id) ON DELETE SET NULL,
-                filename TEXT NOT NULL DEFAULT '',
-                original_filename TEXT NOT NULL DEFAULT '',
-                file_size INTEGER DEFAULT 0,
-                archived_by INTEGER REFERENCES users(id),
-                archived_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        conn.execute('CREATE INDEX IF NOT EXISTS idx_course_form_archive_course ON course_form_archive(course_id)')
 
     # ── Course-owned file store (course_files) + backfill ─────────────
     _migrate_course_files(conn)
