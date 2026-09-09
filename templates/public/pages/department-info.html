@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>معلومات القسم — كلية التقنية الهندسية زوارة</title>
+  <link rel="stylesheet" href="../shared/responsive.css">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&family=Tajawal:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+  <script src="{{ url_for('static', filename='js/pages/public_pages_department-info_block2.js') }}"></script>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" defer></script>
+  <style>
+    body { font-family: 'Tajawal', sans-serif; background: #f8f5ff; }
+    .material-symbols-outlined { font-family: 'Material Symbols Outlined'; font-weight: normal; font-style: normal; font-size: 20px; line-height: 1; letter-spacing: normal; text-transform: none; display: inline-block; white-space: nowrap; word-wrap: normal; direction: ltr; -webkit-font-feature-settings: 'liga'; -webkit-font-smoothing: antialiased; }
+    .dept-pill {
+      padding: 10px 18px;
+      border: 2px solid #6b21a8;
+      background: transparent;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      color: #6b21a8;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+    }
+    .dept-pill .material-symbols-outlined { font-size: 18px; }
+    .dept-pill:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); }
+    .print-block { break-inside: avoid; page-break-inside: avoid; }
+    .prose-section ul { margin: 0; padding: 0; list-style: none; }
+    .prose-section li { display: flex; gap: 10px; align-items: flex-start; }
+    html { scroll-behavior: smooth; }
+    .section-anchor { scroll-margin-top: 96px; }
+    @media print {
+      .no-print { display: none !important; }
+      body { background: white !important; }
+      .print-sheet { box-shadow: none !important; border-color: #e2e8f0 !important; }
+    }
+  </style>
+</head>
+<body class="font-sans bg-[#f8f5ff] text-text-primary min-h-screen">
+
+  <div id="site-header"></div>
+
+  <div class="max-w-5xl mx-auto px-4 py-6 sm:px-6 lg:px-8 print-area">
+
+    <!-- Toolbar -->
+    <div class="flex items-center justify-between flex-wrap gap-3 mb-5 no-print">
+      <a href="department.html" class="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary-light transition">
+        <span class="material-symbols-outlined text-lg">arrow_forward</span>
+        العودة إلى الأقسام
+      </a>
+      <button onclick="window.print()" class="flex items-center gap-2 bg-white text-primary border border-primary/30 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary-faint transition-all shadow-sm">
+        <span class="material-symbols-outlined text-lg">print</span>
+        طباعة
+      </button>
+    </div>
+
+    <!-- Department Switcher -->
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mb-6 no-print">
+      <label class="block text-sm font-medium text-text-muted mb-2">التنقل بين الأقسام</label>
+      <div id="deptSwitcher" class="flex flex-wrap gap-2"></div>
+    </div>
+
+    <!-- Content -->
+    <div id="content">
+      <div class="text-center py-16 text-gray-500"><p>جاري تحميل بيانات القسم...</p></div>
+    </div>
+  </div>
+
+  <div id="site-footer"></div>
+
+  <script src="../shared/utils.js"></script>
+  <script src="../shared/data-inline.js"></script>
+  <script src="../shared/data-client.js"></script>
+  <script src="../shared/nav.js" data-current="departments"></script>
+  <script src="{{ url_for('static', filename='js/pages/public_pages_department-info_block1.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,118 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'rooms' %}
+{% set page_title = 'تعديل القاعة' %}
+{% set room = room | default({}) %}
+{% set room_types = room_types | default([]) %}
+{% set statuses = statuses | default([]) %}
+{% set floors = floors | default([]) %}
+{% set departments = departments | default([]) %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+  <div class="flex items-center gap-3 mb-6">
+    <span class="material-symbols-outlined text-primary text-3xl">meeting_room</span>
+    <div>
+      <h1 class="text-2xl font-bold text-on-surface">تعديل القاعة</h1>
+      <p class="page-subtitle">تحديث بيانات القاعة</p>
+    </div>
+  </div>
+
+  {% if room and not room.get('name') %}
+  <div class="mb-4 flex items-center gap-2 px-4 py-3 rounded-lg text-sm bg-error-container text-error">
+    <span class="material-symbols-outlined shrink-0 text-[18px]">error</span>
+    <span>اسم القاعة مطلوب</span>
+  </div>
+  {% endif %}
+
+  <div class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
+    <div class="p-5 sm:p-6">
+      <form method="post" action="{{ url_for('classrooms.rooms_edit', id=room.get('id') if room.get('id') is not none else 0) }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="sm:col-span-2">
+            <label for="name" class="text-xs font-bold text-on-surface-variant mb-1.5 block">اسم القاعة *</label>
+            <input type="text" id="name" name="name" value="{{ room.get('name', '') }}" required
+                   class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+          </div>
+
+          <div>
+            <label for="code" class="text-xs font-bold text-on-surface-variant mb-1.5 block">رمز القاعة</label>
+            <input type="text" id="code" name="code" value="{{ room.get('code', '') }}" dir="ltr"
+                   class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+          </div>
+
+          <div>
+            <label for="capacity" class="text-xs font-bold text-on-surface-variant mb-1.5 block">السعة</label>
+            <input type="number" id="capacity" name="capacity" min="0" value="{{ room.get('capacity') if room.get('capacity') is not none else '' }}"
+                   class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+          </div>
+
+          <div>
+            <label for="room_type_id" class="text-xs font-bold text-on-surface-variant mb-1.5 block">نوع القاعة</label>
+            <select id="room_type_id" name="room_type_id"
+                    class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+              <option value="">— اختر النوع —</option>
+              {% for t in room_types %}
+              <option value="{{ t.id }}" {{ 'selected' if room.get('room_type_id') | string == t.id | string }}>{{ t.name_ar }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div>
+            <label for="status_id" class="text-xs font-bold text-on-surface-variant mb-1.5 block">الحالة</label>
+            <select id="status_id" name="status_id"
+                    class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+              {% for s in statuses %}
+              <option value="{{ s.id }}" {{ 'selected' if (room.get('status_id') | int or 1) == s.id }}>{{ s.name_ar }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div>
+            <label for="floor_id" class="text-xs font-bold text-on-surface-variant mb-1.5 block">الطابق</label>
+            <select id="floor_id" name="floor_id"
+                    class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+              <option value="">— اختر الطابق —</option>
+              {% for f in floors %}
+              <option value="{{ f.id }}" {{ 'selected' if room.get('floor_id') | string == f.id | string }}>{{ f.name_ar }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div>
+            <label for="department_id" class="text-xs font-bold text-on-surface-variant mb-1.5 block">القسم</label>
+            <select id="department_id" name="department_id"
+                    class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+              <option value="">— بدون قسم —</option>
+              {% for d in departments %}
+              <option value="{{ d.id }}" {{ 'selected' if room.get('department_id') | string == d.id | string }}>{{ d.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="sm:col-span-2">
+            <label class="inline-flex items-center gap-2 text-sm font-bold text-on-surface-variant">
+              <input type="checkbox" id="computers" name="computers" value="1" {{ 'checked' if room.get('computers') == 1 }} class="accent-[#320058]">
+              يوجد حاسوب في القاعة
+            </label>
+          </div>
+        </div>
+
+        <div class="mt-6 flex flex-wrap items-center gap-3">
+          <button type="submit"
+                  class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-5 py-2.5 rounded-lg text-sm font-bold transition shadow-sm">
+            <span class="material-symbols-outlined text-lg">save</span>
+            حفظ التعديلات
+          </button>
+          <a href="{{ url_for('classrooms.rooms_list') }}"
+             class="flex items-center gap-2 bg-surface-container-highest hover:bg-surface-container text-on-surface px-5 py-2.5 rounded-lg text-sm font-bold transition no-underline">
+            <span class="material-symbols-outlined text-lg">arrow_right</span>
+            رجوع
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

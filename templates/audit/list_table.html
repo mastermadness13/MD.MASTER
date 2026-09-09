@@ -1,0 +1,90 @@
+{# AJAX fragment for the audit log search table — consumed by static/js/search.js #}
+{% set action_labels = {'create': 'إضافة', 'update': 'تعديل', 'delete': 'حذف', 'restore': 'استعادة', 'assign': 'تخصيص', 'login': 'تسجيل دخول', 'logout': 'تسجيل خروج'} %}
+{% set total_pages = (total // per_page) + (1 if total % per_page else 0) %}
+
+<table class="search-table w-full text-right border-collapse text-sm">
+  <thead>
+    <tr class="bg-surface-dim font-label-md text-label-md text-on-surface-variant">
+      <th class="px-4 py-3 border-b border-outline-variant font-bold w-14">#</th>
+      <th class="px-4 py-3 border-b border-outline-variant font-bold">التاريخ</th>
+      <th class="px-4 py-3 border-b border-outline-variant font-bold">المستخدم</th>
+      <th class="px-4 py-3 border-b border-outline-variant font-bold">العملية</th>
+      <th class="px-4 py-3 border-b border-outline-variant font-bold">الكيان</th>
+      <th class="px-4 py-3 border-b border-outline-variant font-bold">الرسالة</th>
+      <th class="px-4 py-3 border-b border-outline-variant font-bold text-center w-20">التفاصيل</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% if records %}
+    {% for r in records %}
+    <tr class="hover:bg-primary/5 transition-colors border-b border-outline-variant last:border-b-0">
+      <td class="px-4 py-3 text-on-surface-variant">{{ (page - 1) * per_page + loop.index }}</td>
+      <td class="px-4 py-3 text-on-surface-variant whitespace-nowrap" dir="ltr">{{ r.created_at }}</td>
+      <td class="px-4 py-3">
+        <span class="inline-flex items-center gap-1.5">
+          <span class="material-symbols-outlined text-primary text-lg">person</span>
+          <span class="font-bold text-on-surface">{{ highlight(r.actor_username or '—', search) | safe }}</span>
+        </span>
+      </td>
+      <td class="px-4 py-3">
+        <span class="inline-block px-2.5 py-1 rounded-full text-xs font-bold
+          {% if r.action == 'delete' %}bg-error/10 text-error
+          {% elif r.action == 'create' %}bg-success-teal/20 text-success-teal
+          {% elif r.action == 'restore' %}bg-primary/10 text-primary
+          {% else %}bg-surface-container text-on-surface-variant{% endif %}">
+          {{ action_labels.get(r.action, r.action) }}
+        </span>
+      </td>
+      <td class="px-4 py-3">
+        <span class="inline-block bg-primary/10 text-primary px-2 py-0.5 rounded-full text-xs font-bold">{{ r.entity_type }}</span>
+        {% if r.entity_id %}<span class="text-xs text-on-surface-variant">(#{{ r.entity_id }})</span>{% endif %}
+      </td>
+      <td class="px-4 py-3 text-on-surface-variant max-w-[360px] truncate">{{ highlight(r.message or '—', search) | safe }}</td>
+      <td class="px-4 py-3 text-center">
+        <a href="{{ url_for('history.history_detail', id=r.id) }}"
+           class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors no-underline" title="عرض التفاصيل">visibility</a>
+      </td>
+    </tr>
+    {% endfor %}
+    {% else %}
+    <tr>
+      <td colspan="7" class="px-4 py-14 text-center">
+        <span class="material-symbols-outlined text-6xl text-outline-variant block mb-3">history</span>
+        {% if search %}
+        <h3 class="text-on-surface font-bold mb-1">لا توجد نتائج</h3>
+        <p class="text-on-surface-variant text-sm">لا توجد سجلات تطابق معايير البحث</p>
+        {% else %}
+        <h3 class="text-on-surface font-bold mb-1">لا توجد سجلات</h3>
+        <p class="text-on-surface-variant text-sm">لم يتم تسجيل أي أحداث بعد</p>
+        {% endif %}
+      </td>
+    </tr>
+    {% endif %}
+  </tbody>
+</table>
+
+<span class="search-results-count text-xs font-bold text-on-surface-variant bg-surface-container px-3 py-1.5 rounded-full">{{ total }} نتيجة</span>
+
+{% if total_pages > 1 %}
+<div class="search-pagination flex flex-wrap items-center justify-between gap-4 mt-5">
+  <span class="text-xs font-bold text-on-surface-variant">عرض {{ ((page - 1) * per_page) + 1 }} إلى {{ [page * per_page, total] | min }} من {{ total }}</span>
+  <div class="flex flex-wrap gap-2">
+    {% if page > 1 %}
+    <a href="{{ url_for('history.history_list', page=page - 1, search=search) }}"
+       class="px-3 py-2 rounded-lg border border-outline-variant bg-white hover:bg-primary/10 text-on-surface text-sm font-bold transition no-underline">السابق</a>
+    {% endif %}
+    {% for p in range(1, total_pages + 1) %}
+    {% if p == page %}
+    <span class="px-3 py-2 rounded-lg bg-primary text-on-primary text-sm font-bold">{{ p }}</span>
+    {% elif p >= page - 2 and p <= page + 2 %}
+    <a href="{{ url_for('history.history_list', page=p, search=search) }}"
+       class="px-3 py-2 rounded-lg border border-outline-variant bg-white hover:bg-primary/10 text-on-surface text-sm font-bold transition no-underline">{{ p }}</a>
+    {% endif %}
+    {% endfor %}
+    {% if page * per_page < total %}
+    <a href="{{ url_for('history.history_list', page=page + 1, search=search) }}"
+       class="px-3 py-2 rounded-lg border border-outline-variant bg-white hover:bg-primary/10 text-on-surface text-sm font-bold transition no-underline">التالي</a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}

@@ -1,0 +1,51 @@
+{% set weekly_schedule = weekly_schedule | default({}) %}
+{% set days_order = days_order | default([]) %}
+<div class="timetable-print">
+  <div class="text-center" style="margin-bottom: 10px;">
+    <div style="font-size: 20px; font-weight: 800; color: #000;">كلية التقنية الهندسية زوارة</div>
+    <div style="font-size: 16px; font-weight: 700; color: #000; margin-top: 2px;">الجدول الأسبوعي — {{ teacher.name if teacher else '—' }}</div>
+    <div style="font-size: 11px; font-weight: 400; color: #333; margin-top: 2px;">تاريخ الطباعة: {{ now().strftime('%Y/%m/%d %H:%M') }}</div>
+  </div>
+
+  {% set any_entries = false %}
+  {% for day in days_order %}{% if weekly_schedule.get(day) %}{% set any_entries = true %}{% endif %}{% endfor %}
+
+  {% if any_entries %}
+  <div class="space-y-4">
+    {% for day in days_order %}
+    {% set day_entries = weekly_schedule.get(day, []) %}
+    {% if day_entries %}
+    <div class="print-sheet">
+      <div style="font-weight: 700; font-size: 14px; margin-bottom: 4px;">اليوم: {{ day }} <span style="font-weight:400;font-size:12px;color:#333;">({{ day_entries|length }} محاضرة)</span></div>
+      <table>
+        <thead>
+          <tr>
+            <th>الوقت</th>
+            <th>المقرر</th>
+            <th>الفصل</th>
+            <th>القسم</th>
+            <th>القاعة</th>
+            <th>السعة</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in day_entries %}
+          <tr>
+            <td dir="ltr">{{ format_time12(e.start_time) or '—' }}{% if e.end_time %} ← {{ format_time12(e.end_time) }}{% endif %}</td>
+            <td><span style="font-weight:700;">{{ e.course_name or '—' }}</span></td>
+            <td>الفصل {{ e.semester or '—' }}{% if e.year %} (س{{ e.year }}){% endif %}</td>
+            <td>{{ e.department_name or '—' }}</td>
+            <td>{{ e.room_name or '—' }}</td>
+            <td>{{ e.room_capacity or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+    {% endfor %}
+  </div>
+  {% else %}
+  <div style="text-align:center; padding: 40px; color: #333;">لا توجد حصص مجدولة</div>
+  {% endif %}
+</div>

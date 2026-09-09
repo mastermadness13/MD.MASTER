@@ -1,0 +1,64 @@
+{% extends 'shared/layouts/base.html' %}
+{% set hide_sidebar = true %}
+{% set page_title = print_title | default('طباعة') %}
+
+{% block head_extra %}
+<style>
+  @media print {
+    .app-header, .no-print, #backToTop, .sidebar { display: none !important; }
+    .sidebar-content { margin-right: 0 !important; width: 100% !important; max-width: none !important; }
+    .main-content { height: auto; overflow: visible; padding-top: 0; }
+    body { overflow: visible; background: white; }
+    html, body { margin: 0 !important; padding: 0 !important; }
+    .sidebar-content > .app-header, .sidebar-content > main > .main-content-inner > div > div { }
+  }
+  @page { size: A4 landscape; margin: 8mm 10mm 10mm 10mm; }
+  .print-sheet { page-break-inside: avoid; }
+
+  .timetable-print { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  .timetable-print table { width: 100% !important; table-layout: fixed; border-collapse: collapse; }
+  .timetable-print th, .timetable-print td {
+    border: 1px solid #000 !important;
+    text-align: center !important;
+    vertical-align: middle !important;
+    white-space: normal !important;
+    line-height: 1.25;
+  }
+  .timetable-print thead th {
+    background: #ececec !important;
+    font-weight: 700;
+    padding: 7px 8px !important;
+    font-size: 13px !important;
+  }
+  .timetable-print tbody td { padding: 7px 8px !important; font-size: 13px !important; height: 60px !important; overflow: hidden; }
+  .timetable-print tbody td.day-cell { font-weight: 700; background: #f5f5f5 !important; }
+
+  @media print {
+    .timetable-print .grid-wrap { overflow: visible !important; }
+    .timetable-print tbody tr { break-inside: avoid; page-break-inside: avoid; }
+  }
+  {% block print_styles %}{% endblock %}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="no-print bg-white border border-outline-variant rounded-xl px-4 py-3 mb-4 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+  <div class="flex items-center gap-2 text-sm font-bold text-on-surface">
+    <span class="material-symbols-outlined text-primary">picture_as_pdf</span>
+    {{ print_title | default('معاينة الطباعة') }}
+  </div>
+  <div class="flex items-center gap-2">
+    <button type="button" onclick="window.print()"
+            class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm">
+      <span class="material-symbols-outlined text-lg">print</span>
+      طباعة
+    </button>
+    <button type="button" onclick="history.back()"
+            class="flex items-center gap-2 bg-surface-container text-on-surface-variant hover:bg-surface-container-high border border-outline-variant px-4 py-2 rounded-lg text-sm font-bold transition">
+      <span class="material-symbols-outlined text-lg">arrow_back</span>
+      عودة
+    </button>
+  </div>
+</div>
+{% block print_content %}{% endblock %}
+{% endblock %}

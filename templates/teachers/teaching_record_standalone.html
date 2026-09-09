@@ -1,0 +1,137 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'teaching_record_standalone' %}
+{% set page_title = 'السجل التدريسي' %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+
+  <div class="page-header">
+    <div class="page-header-info">
+      <span class="material-symbols-outlined page-header-icon">history_edu</span>
+      <div>
+        <h1 class="page-title">السجل التدريسي</h1>
+        <p class="page-subtitle">اختر القسم وعضو هيئة التدريس لعرض سجله التدريسي</p>
+      </div>
+    </div>
+  </div>
+
+  <form method="GET" action="{{ url_for('teachers.teaching_record_standalone') }}"
+        class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden mb-6">
+    <div class="p-6 space-y-5">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div>
+          <label class="block text-sm font-bold text-on-surface mb-1.5">القسم</label>
+          <select id="tr-dept-select" required
+                  class="w-full border border-outline-variant rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition">
+            <option value="">— اختر القسم —</option>
+            {% for dept in departments %}
+            <option value="{{ dept.id }}" {{ 'selected' if request.args.get('department_id')|int == dept.id }}>{{ dept.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-bold text-on-surface mb-1.5">عضو هيئة التدريس</label>
+          <select name="teacher_id" id="tr-teacher-select" required disabled
+                  class="w-full border border-outline-variant rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition disabled:opacity-50">
+            <option value="">— اختر القسم أولاً —</option>
+          </select>
+          <div id="tr-teacher-loading" class="hidden mt-1 text-xs text-primary">جاري تحميل أعضاء هيئة التدريس...</div>
+        </div>
+      </div>
+    </div>
+    <div class="px-6 py-4 border-t border-primary/10 bg-surface-dim flex justify-end">
+      <button type="submit"
+              class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-6 py-2.5 rounded-lg text-sm font-bold transition shadow-sm">
+        <span class="material-symbols-outlined text-lg">history_edu</span>
+        عرض السجل التدريسي
+      </button>
+    </div>
+  </form>
+
+  {% if teacher %}
+  <div class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
+    <div class="p-4 border-b border-primary/10 bg-surface-dim">
+      <h2 class="font-bold text-primary flex items-center gap-2">
+        <span class="material-symbols-outlined">history_edu</span>
+        السجل التدريسي — {{ teacher.name }}
+      </h2>
+      {% if teacher.academic_number %}
+      <p class="text-xs text-on-surface-variant mt-1" dir="ltr">{{ teacher.academic_number }}</p>
+      {% endif %}
+    </div>
+
+    {% if teaching and teaching.periods %}
+    <div class="p-5">
+      <p class="text-xs font-bold text-on-surface-variant mb-3">الفترات التدريسية — اختر فترة لعرض التفاصيل:</p>
+
+      {% if teaching.periods | length >= 4 %}
+      <div class="relative mb-3">
+        <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg pointer-events-none">search</span>
+        <input id="period-search" type="text"
+               placeholder="ابحث بالسنة، الموسم، أو التاريخ…"
+               class="w-full bg-surface-container border border-outline-variant rounded-lg pr-10 pl-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+      </div>
+      <p id="period-no-match" class="hidden text-xs font-bold text-on-surface-variant py-4 text-center">لا توجد فترات مطابقة للبحث</p>
+      {% endif %}
+
+      <div id="periods-scroll" class="max-h-72 overflow-y-auto scroll-thin pr-1 -mr-1">
+        <div id="periods-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {% for p in teaching.periods %}
+          <a href="{{ url_for('teachers.teaching_record_standalone', teacher_id=teacher.id, period=p.code) }}"
+             data-search="{{ p.label }}{% if p.date_hint %} {{ p.date_hint }}{% endif %} {{ p.course_count }}"
+             class="group flex items-center justify-between gap-3 bg-surface-container hover:bg-primary/10 border border-outline-variant hover:border-primary/40 rounded-xl px-4 py-3 transition no-underline">
+            <div class="min-w-0">
+              <div class="text-sm font-bold text-on-surface truncate">{{ p.label }}</div>
+              <div class="text-xs text-on-surface-variant mt-0.5">{{ p.course_count }} مقرر · {% if p.total_hours %}{{ p.total_hours }} ساعة{% else %}—{% endif %}</div>
+              {% if p.date_hint %}
+              <div class="text-[11px] font-bold text-primary/70 mt-0.5 flex items-center gap-1">
+                <span class="material-symbols-outlined text-xs">event</span>
+                {{ p.date_hint }}
+              </div>
+              {% endif %}
+            </div>
+            <span class="flex items-center gap-1 text-xs font-bold text-primary shrink-0">
+              عرض
+              <span class="material-symbols-outlined text-base group-hover:-translate-x-0.5 transition-transform">arrow_back</span>
+            </span>
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+
+      {% if teaching.periods | length >= 4 %}
+      <style>
+        .scroll-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+        .scroll-thin::-webkit-scrollbar-track { background: transparent; }
+        .scroll-thin::-webkit-scrollbar-thumb { background: rgba(0,0,0,.15); border-radius: 9999px; }
+        .scroll-thin::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,.25); }
+      </style>
+      <script src="{{ url_for('static', filename='js/teachers_teaching_record_standalone.js') }}"></script>
+
+      {% endif %}
+    </div>
+
+    {% elif teaching and teaching.periods is defined and teaching.periods | length == 0 %}
+    <div class="p-8 text-center">
+      <span class="material-symbols-outlined text-on-surface-variant text-5xl mb-3">school</span>
+      <p class="text-sm font-bold text-on-surface-variant">لا توجد فترات تدريسية مسجلة لهذا العضو</p>
+    </div>
+    {% else %}
+    <div class="p-8 text-center">
+      <span class="material-symbols-outlined text-on-surface-variant text-5xl mb-3">school</span>
+      <p class="text-sm font-bold text-on-surface-variant">اختر قسماً وعضواً لعرض سجله التدريسي</p>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+
+<script>
+window.TEACHERS_TEACHING_RECORD_STANDALONE_BOOT = {
+  urls: { byDept: {{ url_for('teachers.api_teachers_by_dept') | tojson }} }
+};
+</script>
+<script src="{{ url_for('static', filename='js/teachers_teaching_record_standalone_dept.js') }}"></script>
+
+{% endblock %}

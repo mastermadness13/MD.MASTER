@@ -1,0 +1,43 @@
+{% set teachers = teachers | default([]) %}
+<div class="bg-white rounded-2xl shadow-sm border border-outline-variant overflow-hidden print-sheet">
+  <div class="px-6 py-4 border-b-2 border-primary bg-surface-dim flex items-center justify-between">
+    <div>
+      <h1 class="text-lg font-bold text-primary m-0">كلية التقنية الهندسية زوارة</h1>
+      <p class="text-sm text-on-surface-variant mt-0.5">قائمة أعضاء هيئة التدريس</p>
+    </div>
+    <div class="text-left text-xs text-on-surface-variant">تاريخ الطباعة: {{ now().strftime('%Y/%m/%d %H:%M') }}</div>
+  </div>
+  <div class="p-4 overflow-x-auto">
+    <table class="w-full text-right border-collapse text-xs">
+      <thead>
+        <tr class="bg-primary-container">
+          <th class="px-3 py-2 text-right font-bold text-primary border-b border-outline-variant w-10">#</th>
+          <th class="px-3 py-2 text-right font-bold text-primary border-b border-outline-variant">الاسم</th>
+          <th class="px-3 py-2 text-right font-bold text-primary border-b border-outline-variant">القسم</th>
+          <th class="px-3 py-2 text-right font-bold text-primary border-b border-outline-variant">الرقم الكلية</th>
+          <th class="px-3 py-2 text-right font-bold text-primary border-b border-outline-variant">البريد</th>
+          <th class="px-3 py-2 text-right font-bold text-primary border-b border-outline-variant">الهاتف</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in teachers %}
+        <tr class="border-b border-outline-variant last:border-b-0">
+          <td class="px-3 py-2 text-on-surface-variant">{{ loop.index }}</td>
+          <td class="px-3 py-2 font-bold text-on-surface">{{ t.name }}</td>
+          <td class="px-3 py-2 text-on-surface-variant">{{ t.dept_name or '—' }}</td>
+          <td class="px-3 py-2 text-on-surface-variant" dir="ltr">{{ t.academic_number or '—' }}</td>
+          <td class="px-3 py-2 text-on-surface-variant" dir="ltr">{{ t.email or '—' }}</td>
+          <td class="px-3 py-2 text-on-surface-variant" dir="ltr">{{ t.phone or '—' }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="px-3 py-12 text-center text-on-surface-variant">لا يوجد أعضاء هيئة تدريس</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="px-6 py-3 bg-surface-dim border-t border-outline-variant text-center text-xs text-on-surface-variant">
+    عدد أعضاء هيئة التدريس: {{ teachers|length }}
+  </div>
+</div>

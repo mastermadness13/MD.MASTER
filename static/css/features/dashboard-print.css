@@ -1,0 +1,38 @@
+/* ===== Dashboard Print ===== */
+@media print {
+  @page { size: A4 portrait; margin: 10mm 12mm; }
+  body { margin: 0; padding: 0; width: auto; }
+  .no-print { display: none !important; }
+}
+
+.header { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #320058; padding-bottom: 6mm; margin-bottom: 5mm; }
+.header-brand { display: flex; align-items: center; gap: 4mm }
+.header-crest { width: 22mm; height: 22mm; border: 2px solid #320058; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 8pt; color: #320058; text-align: center; line-height: 1.3; flex-shrink: 0; overflow: hidden; }
+.header-crest img { width: 100%; height: 100%; object-fit: cover }
+.header-titles { text-align: center; flex: 1 }
+.header-titles h1 { font-size: 16pt; font-weight: 800; color: #320058; letter-spacing: 0.5px; }
+.header-titles h2 { font-size: 10pt; font-weight: 500; color: #1a1a1a; margin-top: 1mm; }
+.header-date-info { font-size: 7.5pt; color: #555; text-align: left; line-height: 1.6; }
+.stats-row { display: flex; gap: 3mm; margin-bottom: 5mm; direction: rtl; }
+.stat-card { flex: 1; border: 1.5px solid #320058; border-radius: 8px; padding: 3mm 2mm; text-align: center; background: #fff; }
+.stat-card .stat-value { font-size: 18pt; font-weight: 800; color: #320058; }
+.stat-card .stat-label { font-size: 8pt; font-weight: 500; color: #1a1a1a; margin-top: 1mm; }
+.section-title { font-size: 11pt; font-weight: 700; color: #320058; margin-bottom: 2mm; padding-right: 1mm; border-right: 3px solid #320058; }
+.timetable-wrap { overflow-x: auto; margin-bottom: 4mm }
+table.timetable { width: 100%; border-collapse: collapse; font-size: 7.5pt; direction: rtl; }
+table.timetable thead th { background: #320058; color: #fff; font-weight: 700; padding: 2.5mm 1.5mm; border: 1px solid #2d0050; text-align: center; font-size: 8pt; }
+table.timetable thead th.sub-header { background: #f1dbff; color: #1a1a1a; font-weight: 600; font-size: 7pt; border: 1px solid #320058; }
+table.timetable tbody td { border: 1px solid #320058; padding: 1.8mm 1.2mm; vertical-align: middle; text-align: center; line-height: 1.4; }
+table.timetable tbody tr:nth-child(even) td { background: #f8f3fd }
+table.timetable tbody tr:nth-child(odd) td { background: #fff }
+table.timetable tbody td:first-child { background: #f0efff; font-weight: 600; font-size: 7.5pt; white-space: nowrap; width: 14%; }
+table.timetable .period-time { display: block; font-weight: 400; font-size: 6.5pt; color: #555; margin-top: 0.3mm; }
+table.timetable .cell-course { font-weight: 600; color: #1a1a1a; font-size: 7pt }
+table.timetable .cell-detail { font-weight: 300; color: #555; font-size: 6pt }
+table.timetable .cell-room { display: block; margin-top: 0.5mm }
+.legend-row { display: flex; gap: 6mm; margin-bottom: 5mm; padding: 2mm 0; border-top: 1px solid #ddd; font-size: 7pt; color: #555; }
+.legend-row span { display: flex; align-items: center; gap: 1mm }
+.legend-row .swatch { display: inline-block; width: 5mm; height: 3mm; border: 1px solid #320058; border-radius: 2px; }
+.legend-row .swatch.white { background: #fff }
+.legend-row .swatch.striped { background: #f8f3fd }
+.footer { border-top: 2px solid #320058; padding-top: 2mm; margin-top: 2mm; display: flex; justify-content: space-between; font-size: 7pt; color: #555; }

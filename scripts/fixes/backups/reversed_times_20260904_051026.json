@@ -1,0 +1,35 @@
+[
+  {
+    "table": "timetable",
+    "id": 2,
+    "before": {
+      "id": 2,
+      "period": "B",
+      "start_time": "21:13",
+      "end_time": "18:16",
+      "hours": 3
+    },
+    "after": {
+      "start_time": "12:01",
+      "end_time": "15:00",
+      "hours": 3
+    }
+  },
+  {
+    "table": "teacher_taught_courses",
+    "id": 6,
+    "before": {
+      "id": 6,
+      "timetable_entry_id": 2,
+      "period": "B",
+      "start_time": "21:13",
+      "end_time": "18:16",
+      "hours": 3
+    },
+    "after": {
+      "start_time": "12:01",
+      "end_time": "15:00",
+      "hours": 3
+    }
+  }
+]

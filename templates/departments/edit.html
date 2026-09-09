@@ -1,0 +1,70 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'departments' %}
+{% set page_title = 'تعديل القسم' %}
+{% set department = department | default({}) %}
+{% set dept_id = department.id %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+
+  <!-- Page Header -->
+  <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <div class="flex items-center gap-3">
+      <span class="material-symbols-outlined text-primary text-3xl">edit_square</span>
+      <div>
+        <h1 class="text-2xl font-bold text-on-surface">تعديل القسم</h1>
+        <p class="page-subtitle">تحديث بيانات القسم</p>
+      </div>
+    </div>
+    <a href="{{ url_for('departments.departments_list') }}"
+       class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm no-underline">
+      <span class="material-symbols-outlined text-lg">arrow_forward</span>
+      العودة
+    </a>
+  </div>
+
+  {% if form_error %}
+  <div class="mb-4 p-3.5 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm font-bold flex items-center gap-2">
+    <span class="material-symbols-outlined text-lg">error</span>
+    {{ form_error }}
+  </div>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('departments.departments_edit', id=dept_id) if dept_id else '' }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+    <div class="bg-white rounded-2xl shadow-sm border border-primary/10 p-5">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="md:col-span-1">
+          <label class="block text-xs font-bold text-on-surface-variant mb-1.5">اسم القسم</label>
+          <input type="text" name="name" value="{{ department.name | default('') }}" required
+                 class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-on-surface-variant mb-1.5">عدد الفصول</label>
+          <input type="number" name="semesters" value="{{ department.semesters | default(1) }}" min="1"
+                 class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-on-surface-variant mb-1.5">عدد الشعب</label>
+          <input type="number" name="majors" value="{{ department.majors | default(7) }}" min="1"
+                 class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+        </div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-3 mt-6">
+      <button type="submit"
+              class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-5 py-2.5 rounded-lg text-sm font-bold transition shadow-sm">
+        <span class="material-symbols-outlined text-lg">save</span>
+        حفظ التعديلات
+      </button>
+      <a href="{{ url_for('departments.departments_list') }}"
+         class="flex items-center gap-2 bg-white hover:bg-primary/10 text-on-surface border border-outline-variant px-4 py-2.5 rounded-lg text-sm font-bold transition no-underline">
+        إلغاء
+      </a>
+    </div>
+  </form>
+
+</div>
+{% endblock %}

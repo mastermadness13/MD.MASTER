@@ -1,0 +1,61 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+.eggs/
+venv/
+env/
+.venv/
+.venv-1/
+node_modules/
+*.db-journal
+*.sqlite
+*.sqlite3
+*.backup
+*.db
+instance/
+.webassets-cache
+.env
+*.log
+.DS_Store
+Thumbs.db
+.secret_key
+_tmp_*
+flask_err*
+startup_*
+wsgi_config*.py
+*.pyc
+
+# Backup files (prevent .bak tracking — was causing committed DB backups)
+*.bak
+*.bak-*
+database/backups/
+
+# Debug/dev artifacts
+scripts/logs/
+logs/
+.pytest_cache/
+server.err.log
+server.out.log
+import_dryrun.txt
+
+# User uploads (large, user-specific, not source-controlled)
+uploads/
+
+# Archives
+*.rar
+
+# Stray/legacy artifacts outside the codebase
+/3
+/مشروع تخرح للكلية/
+
+# Local AI tooling state
+.agents/
+.continue/
+.qodo/
+
+# Project-local archives (not runtime, but user data)
+_archive/

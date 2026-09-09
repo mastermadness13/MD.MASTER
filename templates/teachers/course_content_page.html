@@ -1,0 +1,277 @@
+{% extends 'shared/layouts/base.html' %}
+{% set page_mode = page_mode | default('view') %}
+{% set is_form = page_mode in ('create', 'edit') %}
+{% set is_view = page_mode == 'view' %}
+{% set is_readonly = page_mode == 'readonly' %}
+{% set sidebar_active = sidebar_active | default('course_content_admin') %}
+{% set page_title = page_title | default('نشر نموذج المقرر' if is_form else 'تفاصيل محتوى المقرر') %}
+{% set doc = doc | default({}) %}
+{% set submission = submission | default(doc | default({})) %}
+{% set curriculum = curriculum | default([]) %}
+{% set academic_periods = academic_periods | default([]) %}
+{% set default_period_id = default_period_id | default(none) %}
+{% set status_labels = {'draft': 'مسودة', 'published': 'منشور', 'approved': 'منشور'} %}
+{% set status_colors = {'draft': 'bg-surface-dim text-on-surface-variant', 'published': 'bg-green-100 text-green-700', 'approved': 'bg-green-100 text-green-700'} %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+
+  <!-- Page Header -->
+  <div class="flex flex-wrap items-center justify-between gap-4 mb-6 no-print">
+    <div class="flex items-center gap-3">
+      {% if is_form %}
+      <span class="material-symbols-outlined text-primary text-3xl">send</span>
+      <div>
+        <h1 class="text-2xl font-bold text-on-surface">{% if edit_submission_id %}تعديل نموذج المقرر{% else %}إنشاء نموذج المقرر{% endif %}</h1>
+        <p class="page-subtitle">{% if doc.course_name %}نموذج مقرر «{{ doc.course_name }}»{% else %}اختر المقرر ثم عبّئ بيانات النموذج{% endif %}</p>
+      </div>
+      {% else %}
+      <span class="material-symbols-outlined text-primary text-3xl">description</span>
+      <div>
+        <h1 class="text-2xl font-bold text-on-surface">{{ submission.course_name or page_title }}</h1>
+        <p class="page-subtitle">{{ submission.course_code or '' }}{% if submission.dept_name %} · {{ submission.dept_name }}{% endif %}</p>
+      </div>
+      {% endif %}
+    </div>
+    <div class="flex items-center gap-2">
+      <button type="button" onclick="window.print()"
+              class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm cursor-pointer">
+        <span class="material-symbols-outlined text-lg">print</span>
+        طباعة
+      </button>
+      {% if is_view and submission.status %}
+      <span class="inline-block px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap {{ status_colors.get(submission.status, 'bg-surface-dim text-on-surface-variant') }}">
+        {{ status_labels.get(submission.status, submission.status or '—') }}
+      </span>
+      {% endif %}
+      <a href="{{ url_for('teacher_pages.teacher_course_content' if is_readonly else 'teacher_pages.super_admin_course_content_list') }}"
+         class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm no-underline">
+        <span class="material-symbols-outlined text-lg">arrow_forward</span>
+        العودة
+      </a>
+    </div>
+  </div>
+
+  {% if is_view %}
+  <!-- Meta panel (view mode only) -->
+  <div class="bg-white rounded-2xl shadow-sm border border-primary/10 p-5 mb-6 no-print">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+      <div>
+        <p class="text-xs font-bold text-on-surface-variant">المرسل بواسطة</p>
+        <p class="font-bold text-on-surface mt-1">{{ submission.teacher_name or submission.submitter_name or submission.submitter_username or '—' }}</p>
+      </div>
+      <div>
+        <p class="text-xs font-bold text-on-surface-variant">القسم</p>
+        <p class="font-bold text-on-surface mt-1">{{ submission.dept_name or '—' }}</p>
+      </div>
+      <div>
+        <p class="text-xs font-bold text-on-surface-variant">تاريخ التقديم</p>
+        <p class="font-bold text-on-surface mt-1">{{ (submission.submitted_at or '—')[:16] }}</p>
+      </div>
+      <div>
+        <p class="text-xs font-bold text-on-surface-variant">مراجع بواسطة</p>
+        <p class="font-bold text-on-surface mt-1">{{ (submission.reviewed_at or '—')[:16] if submission.reviewed_at else '—' }}</p>
+      </div>
+    </div>
+
+    {% if submission.translated_at %}
+    <div class="mt-4 p-3 rounded-lg bg-primary/5 border border-primary/15 text-xs font-bold text-primary flex items-center gap-2">
+      <span class="material-symbols-outlined text-base">translate</span>
+      النسخة الإنجليزية أُنشئت تلقائياً عند الإرسال.
+    </div>
+    {% endif %}
+
+    {% if submission.status == 'rejected' and submission.review_notes %}
+    <div class="mt-4 p-3.5 rounded-lg bg-red-50 border border-red-200 text-sm">
+      <p class="font-bold text-red-700 flex items-center gap-2 mb-1">
+        <span class="material-symbols-outlined text-lg">block</span>
+        سبب الرفض
+      </p>
+      <p class="text-red-700 whitespace-pre-line">{{ submission.review_notes }}</p>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if is_form %}
+  <div class="mb-4 p-4 rounded-lg bg-primary/5 border border-primary/15 text-sm no-print">
+    <p class="font-bold text-primary flex items-center gap-2">
+      <span class="material-symbols-outlined text-lg">edit_note</span>
+      تعبئة نموذج المقرر
+    </p>
+    <p class="text-on-surface-variant mt-1">
+      تعبئة بيانات النموذج والمنهاج ثم حفظه كمسودة أو نشره مباشرة ليصبح متاحاً للمستخدمين. بيانات المقرر (الاسم، الرمز، القسم) مثبتة من قاعدة البيانات.
+    </p>
+  </div>
+
+  {% if courses %}
+  <div class="mb-5 bg-white rounded-2xl shadow-sm border-2 border-primary/20 p-5 no-print">
+    <div class="flex items-center gap-2 mb-2">
+      <span class="material-symbols-outlined text-primary text-xl">menu_book</span>
+      <h3 class="font-bold text-on-surface">اختر المقرر</h3>
+    </div>
+    <p class="text-sm text-on-surface-variant mb-3">اختر المقرر الذي تريد إعداد نموذجه — سيتم تعبئة بيانات المقرر تلقائياً.</p>
+    <select id="ccCourseSelect"
+            class="w-full bg-white border border-outline-variant rounded-lg px-3 py-3 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+      <option value="">— اختر المقرر —</option>
+      {% for c in courses %}
+      <option value="{{ c.id }}">{{ c.name }} — {{ c.code }}{% if c.department_name %} — {{ c.department_name }}{% endif %}</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+
+  <form method="POST" action="{{ url_for('teacher_pages.super_admin_course_content_send') }}" id="courseContentForm" enctype="multipart/form-data">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="action" value="send" id="formAction">
+    <input type="hidden" name="course_id" value="{{ doc.course_id }}">
+    {% if edit_submission_id %}
+    <input type="hidden" name="submission_id" value="{{ edit_submission_id }}">
+    {% endif %}
+
+    {% if academic_periods %}
+    <div class="mb-5 bg-white rounded-2xl shadow-sm border-2 border-primary/20 p-5 no-print">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="material-symbols-outlined text-primary text-xl">calendar_month</span>
+        <h3 class="font-bold text-on-surface">الفصل الدراسي</h3>
+      </div>
+      <p class="text-sm text-on-surface-variant mb-3">يُسجَّل هذا النموذج ضمن أرشيف الفصل الدراسي المحدد.</p>
+      <select name="academic_period_id"
+              class="w-full bg-white border border-outline-variant rounded-lg px-3 py-3 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer">
+        {% for p in academic_periods %}
+        <option value="{{ p.id }}"{% if p.id == default_period_id %} selected{% endif %}>{{ p.label or (p.term ~ ' ' ~ p.year) }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+
+    <div class="mb-5">
+      {% set doc_mode = 'edit' %}
+      {% set locked = true %}
+      {% set teacher_name = '' %}
+      {% include 'teachers/_course_content_doc.html' %}
+    </div>
+
+    <div class="mb-5 bg-white rounded-2xl shadow-sm border-2 border-primary/20 p-5 no-print">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="material-symbols-outlined text-primary text-xl">upload_file</span>
+        <h3 class="font-bold text-on-surface">ملف النموذج PDF</h3>
+      </div>
+      <p class="text-sm text-on-surface-variant mb-3">ارفق ملف PDF للنموذج ليصبح قابلاً للتحميل.</p>
+      <input type="file" name="form_file" id="formFileInput" accept=".pdf,application/pdf"
+             class="block w-full text-sm text-on-surface-variant file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer cursor-pointer">
+    </div>
+
+    <div class="flex flex-wrap items-center gap-3 no-print">
+      <button type="submit" data-action="save"
+              class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-5 py-2.5 rounded-lg text-sm font-bold transition shadow-sm cursor-pointer">
+        <span class="material-symbols-outlined text-lg">save</span>
+        حفظ كمسودة
+      </button>
+      <button type="submit" data-action="send"
+              class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-5 py-2.5 rounded-lg text-sm font-bold transition shadow-sm cursor-pointer">
+        <span class="material-symbols-outlined text-lg">publish</span>
+        نشر النموذج
+      </button>
+    </div>
+  </form>
+  {% else %}
+  <!-- Document sheet -->
+  <div class="mb-6">
+    {% set doc = submission %}
+    {% set doc_mode = 'readonly_form' if is_readonly else 'view' %}
+    {% set teacher_name = submission.teacher_name or teacher_name or submission.submitter_username or '' %}
+    {% include 'teachers/_course_content_doc.html' %}
+  </div>
+  {% endif %}
+
+  {% if is_view %}
+  <!-- File actions (view mode only) -->
+  {% if submission.filename %}
+  <div class="flex flex-wrap items-center gap-3 mb-6 no-print">
+    <a href="{{ url_for('teacher_pages.super_admin_course_content_file', submission_id=submission.id) }}" target="_blank"
+       class="flex items-center gap-2 bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2.5 rounded-lg text-sm font-bold transition shadow-sm no-underline">
+      <span class="material-symbols-outlined text-lg">open_in_new</span>
+      فتح ملف PDF
+    </a>
+    <a href="{{ url_for('teacher_pages.super_admin_course_content_file', submission_id=submission.id, download=1) }}"
+       class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-4 py-2.5 rounded-lg text-sm font-bold transition shadow-sm no-underline">
+      <span class="material-symbols-outlined text-lg">download</span>
+      تحميل ملف PDF
+    </a>
+  </div>
+  {% endif %}
+
+  <!-- Update form panel (published) -->
+  {% if rnd == 'show' and submission.status in ('approved', 'published') %}
+  <div class="bg-white rounded-2xl shadow-sm border-2 border-primary/30 p-5 mb-6 no-print">
+    <h2 class="font-bold text-primary flex items-center gap-2 mb-4">
+      <span class="material-symbols-outlined">update</span>
+      تحديث ملف النموذج
+    </h2>
+    <p class="text-sm text-on-surface-variant mb-4">
+      يُستبدل ملف PDF المرفق بهذا النموذج فقط{% if submission.period_label %} ({{ submission.period_label }}){% endif %} —
+      النسخة السابقة تُنقل إلى الأرشيف.
+    </p>
+    <form method="POST" action="{{ url_for('teacher_pages.super_admin_course_content_update_form') }}" enctype="multipart/form-data"
+          onsubmit="var f=this.elements['file']; if(!f || !f.files || !f.files.length){ alert('يرجى اختيار ملف PDF أولاً'); return false; }{% if submission.filename %} if(!confirm('يوجد ملف حالي لهذا النموذج وسيُنقل إلى الأرشيف. متابعة الاستبدال؟')){ return false; }{% endif %}">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="submission_id" value="{{ submission.id }}">
+      <div class="flex flex-wrap items-end gap-3">
+        <div>
+          <label class="block text-xs font-bold text-on-surface-variant mb-1.5">الفصل الدراسي</label>
+          <select name="academic_period_id"
+                  class="bg-white border border-outline-variant rounded-lg px-3 py-2.5 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer">
+            {% for p in academic_periods | default([]) %}
+            <option value="{{ p.id }}"{% if (submission.academic_period_id or default_period_id) == p.id %} selected{% endif %}>{{ p.label or (p.term ~ ' ' ~ p.year) }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-on-surface-variant mb-1.5">ملف النموذج (PDF)</label>
+          <input type="file" name="file" accept="application/pdf,.pdf" required
+                 class="block w-full max-w-sm text-sm text-on-surface-variant file:mr-4 file:ml-0 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-primary file:text-on-primary file:font-bold file:cursor-pointer cursor-pointer">
+        </div>
+        <button type="submit"
+                class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-5 py-2.5 rounded-lg text-sm font-bold transition shadow-sm cursor-pointer">
+          <span class="material-symbols-outlined text-lg">upload_file</span>
+          تحديث النموذج
+        </button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+
+  <!-- Edit content panel -->
+  {% if rnd == 'show' %}
+  <div class="bg-white rounded-2xl shadow-sm border-2 border-primary/30 p-5 mb-6 no-print">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h2 class="font-bold text-primary flex items-center gap-2 mb-1">
+          <span class="material-symbols-outlined">edit_note</span>
+          تعديل محتوى النموذج
+        </h2>
+        <p class="text-sm text-on-surface-variant">تعبئة أو تعديل بيانات النموذج والمنهاج ثم حفظه كمسودة أو نشره.</p>
+      </div>
+      <a href="{{ url_for('teacher_pages.super_admin_course_content_create', course_id=submission.course_id, submission_id=submission.id) }}"
+         class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-5 py-2.5 rounded-lg text-sm font-bold transition shadow-sm no-underline">
+        <span class="material-symbols-outlined text-lg">edit</span>
+        تعديل النموذج
+      </a>
+    </div>
+  </div>
+  {% endif %}
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+window.TEACHERS_COURSE_CONTENT_PAGE_BOOT = {
+    urls: { create: {{ url_for('teacher_pages.super_admin_course_content_create') | tojson }} },
+    auto_print: {{ auto_print | default(false) | tojson }}
+};
+</script>
+<script src="{{ url_for('static', filename='js/teachers_course_content_page.js') }}"></script>
+{% endblock %}

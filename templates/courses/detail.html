@@ -1,0 +1,138 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'courses' %}
+{% set page_title = 'تفاصيل المقرر' %}
+{% set course = course | default({}) %}
+{% set departments = departments | default([]) %}
+{% set prerequisites = prerequisites | default([]) %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+
+  <!-- Page Header -->
+  <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <div class="flex items-center gap-3">
+      <span class="material-symbols-outlined text-primary text-3xl">menu_book</span>
+      <div>
+        <h1 class="text-2xl font-bold text-on-surface flex items-center gap-2">
+          <span class="text-2xl">{{ course.icon or '📖' }}</span>
+          {{ course.name }}
+        </h1>
+        <p class="page-subtitle" dir="ltr">{{ course.code }}</p>
+      </div>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <a href="{{ url_for('courses.courses_list') }}"
+         class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm no-underline">
+        <span class="material-symbols-outlined text-lg">arrow_forward</span>
+        قائمة المقررات
+      </a>
+      {% if has_permission('courses.manage') %}
+      <a href="{{ url_for('courses.courses_edit', id=course.id) }}"
+         class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm no-underline">
+        <span class="material-symbols-outlined text-lg">edit</span>
+        تعديل
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Course Info -->
+  <div class="bg-white rounded-2xl shadow-sm border border-primary/10 p-5 mb-5">
+    <h2 class="font-bold text-primary flex items-center gap-2 mb-4">
+      <span class="material-symbols-outlined text-lg">info</span>
+      بيانات المقرر
+    </h2>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+      <div>
+        <p class="text-xs font-bold text-on-surface-variant">الوحدات</p>
+        <p class="font-bold text-on-surface mt-1">
+          {{ course.total_hours or ((course.theoretical_hours or 0) + (course.practical_hours or 0)) }}
+        </p>
+      </div>
+      <div>
+        <p class="text-xs font-bold text-on-surface-variant">الساعات النظرية</p>
+        <p class="font-bold text-on-surface mt-1">{{ course.theoretical_hours or 0 }}</p>
+      </div>
+      <div>
+        <p class="text-xs font-bold text-on-surface-variant">الساعات العملية</p>
+        <p class="font-bold text-on-surface mt-1">{{ course.practical_hours or 0 }}</p>
+      </div>
+      <div>
+        <p class="text-xs font-bold text-on-surface-variant">إجمالي الساعات</p>
+        <p class="font-bold text-on-surface mt-1">{{ course.total_hours or 0 }}</p>
+      </div>
+      <div>
+        <p class="text-xs font-bold text-on-surface-variant">المستوى</p>
+        <p class="font-bold text-on-surface mt-1">{{ course.year or '—' }}</p>
+      </div>
+      <div>
+        <p class="text-xs font-bold text-on-surface-variant">الفصل الدراسي</p>
+        <p class="font-bold text-on-surface mt-1">{{ course.semester or '—' }}</p>
+      </div>
+      <div>
+        <p class="text-xs font-bold text-on-surface-variant">تاريخ الإضافة</p>
+        <p class="font-bold text-on-surface mt-1">{{ (course.created_at or '—')[:10] }}</p>
+      </div>
+    </div>
+    {% if course.notes %}
+    <div class="mt-5 pt-4 border-t border-primary/10">
+      <p class="text-xs font-bold text-on-surface-variant mb-1.5">ملاحظات</p>
+      <p class="text-sm text-on-surface whitespace-pre-line">{{ course.notes }}</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Departments -->
+  <div class="bg-white rounded-2xl shadow-sm border border-primary/10 p-5 mb-5">
+    <h2 class="font-bold text-primary flex items-center gap-2 mb-4">
+      <span class="material-symbols-outlined text-lg">domain</span>
+      الأقسام المعنية
+    </h2>
+    {% if departments %}
+    <div class="flex flex-wrap gap-2">
+      {% for d in departments %}
+      <span class="inline-block bg-primary/10 text-primary px-3 py-1.5 rounded-full text-sm font-bold">{{ d.name }}</span>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-on-surface-variant text-sm">لا يوجد قسم مرتبط بهذا المقرر</p>
+    {% endif %}
+  </div>
+
+  <!-- Prerequisites -->
+  <div class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
+    <div class="p-4 border-b border-primary/10 bg-surface-dim">
+      <h2 class="font-bold text-primary flex items-center gap-2">
+        <span class="material-symbols-outlined">steps</span>
+        المتطلبات السابقة
+      </h2>
+    </div>
+    {% if prerequisites %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-right border-collapse text-sm">
+        <thead>
+          <tr class="bg-primary/5">
+            <th class="px-4 py-3 text-right text-xs font-bold text-primary border-b border-primary/10">الرمز</th>
+            <th class="px-4 py-3 text-right text-xs font-bold text-primary border-b border-primary/10">المقرر</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in prerequisites %}
+          <tr class="border-b border-gray-100 last:border-b-0">
+            <td class="px-4 py-3 text-on-surface-variant" dir="ltr">{{ p.code }}</td>
+            <td class="px-4 py-3 font-bold text-on-surface">{{ p.name }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="py-12 text-center text-on-surface-variant">
+      <span class="material-symbols-outlined text-5xl text-outline-variant block mb-2">steps</span>
+      <p class="text-sm">لا توجد متطلبات سابقة لهذا المقرر</p>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

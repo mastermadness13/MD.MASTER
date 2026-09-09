@@ -1,0 +1,148 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'materials' %}
+{% set page_title = 'المواد الدراسية - القسم' %}
+{% set materials = materials | default([]) %}
+{% set teachers = teachers | default([]) %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+
+  <!-- Page Header -->
+  <div class="flex items-center gap-3 mb-6">
+    <span class="material-symbols-outlined text-primary text-3xl">menu_book</span>
+    <div>
+      <h1 class="text-2xl font-bold text-on-surface">المواد الدراسية للقسم</h1>
+      <p class="page-subtitle">إدارة ملفات المواد الدراسية المرفوعة من أعضاء هيئة التدريس</p>
+    </div>
+  </div>
+
+  <!-- Search & Filter -->
+  <div class="bg-white rounded-xl border border-outline-variant p-4 mb-6">
+    <form method="get" action="{{ url_for('hod_pages.hod_materials') }}" class="flex flex-col md:flex-row gap-3">
+      <div class="flex-1 relative">
+        <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">search</span>
+        <input type="text" name="search" value="{{ search or '' }}" placeholder="ابحث عن مادة أو ملف أو عضو هيئة تدريس..."
+               class="w-full bg-surface-container border border-outline-variant rounded-lg pr-10 px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <select name="file_type"
+                class="bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40 min-w-[140px]">
+          <option value="">كل الأنواع</option>
+          <option value="syllabus" {{ 'selected' if file_type == 'syllabus' }}>المنهج الدراسي</option>
+          <option value="lecture" {{ 'selected' if file_type == 'lecture' }}>محاضرات</option>
+          <option value="exam" {{ 'selected' if file_type == 'exam' }}>امتحانات</option>
+          <option value="grades" {{ 'selected' if file_type == 'grades' }}>كشوف الدرجات</option>
+          <option value="other" {{ 'selected' if file_type == 'other' }}>أخرى</option>
+        </select>
+        <button type="submit"
+                class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm">
+          <span class="material-symbols-outlined text-lg">search</span>
+          بحث
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Stats -->
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+    <div class="bg-white rounded-xl border border-outline-variant p-4 flex items-center gap-4 shadow-sm">
+      <div class="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined">description</span>
+      </div>
+      <div>
+        <div class="text-2xl font-bold text-on-surface">{{ materials|length }}</div>
+        <div class="text-xs font-bold text-on-surface-variant mt-0.5">إجمالي الملفات</div>
+      </div>
+    </div>
+    <div class="bg-white rounded-xl border border-outline-variant p-4 flex items-center gap-4 shadow-sm">
+      <div class="w-12 h-12 rounded-xl bg-green-50 text-green-600 flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined">school</span>
+      </div>
+      <div>
+        <div class="text-2xl font-bold text-on-surface">{{ teachers|length }}</div>
+        <div class="text-xs font-bold text-on-surface-variant mt-0.5">عدد أعضاء هيئة التدريس</div>
+      </div>
+    </div>
+    <div class="bg-white rounded-xl border border-outline-variant p-4 flex items-center gap-4 shadow-sm">
+      <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined">download</span>
+      </div>
+      <div>
+        <div class="text-2xl font-bold text-on-surface">{{ materials|map(attribute='download_count')|sum }}</div>
+        <div class="text-xs font-bold text-on-surface-variant mt-0.5">إجمالي التحميلات</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Materials Table -->
+  <div class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
+    {% if materials %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-right border-collapse text-sm">
+        <thead>
+          <tr class="bg-surface-dim font-label-md text-label-md text-on-surface-variant">
+            <th class="px-4 py-3 border-b border-outline-variant font-bold w-12">#</th>
+            <th class="px-4 py-3 border-b border-outline-variant font-bold">المادة</th>
+            <th class="px-4 py-3 border-b border-outline-variant font-bold">الملف</th>
+            <th class="px-4 py-3 border-b border-outline-variant font-bold">النوع</th>
+            <th class="px-4 py-3 border-b border-outline-variant font-bold">عضو هيئة التدريس</th>
+            <th class="px-4 py-3 border-b border-outline-variant font-bold">الحجم</th>
+            <th class="px-4 py-3 border-b border-outline-variant font-bold text-center">التحميلات</th>
+            <th class="px-4 py-3 border-b border-outline-variant font-bold">التاريخ</th>
+            <th class="px-4 py-3 border-b border-outline-variant font-bold text-center w-32">الإجراءات</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in materials %}
+          <tr class="hover:bg-primary/5 transition-colors border-b border-outline-variant last:border-b-0">
+            <td class="px-4 py-3 text-on-surface-variant">{{ loop.index }}</td>
+            <td class="px-4 py-3 font-medium text-on-surface">{{ m.course_name or '—' }}</td>
+            <td class="px-4 py-3">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="material-symbols-outlined text-primary text-lg shrink-0">
+                  {% if m.file_type == 'syllabus' %}menu_book{% elif m.file_type == 'lecture' %}school{% elif m.file_type == 'exam' %}assignment{% elif m.file_type == 'grades' %}grading{% else %}description{% endif %}
+                </span>
+                <span class="text-on-surface truncate" title="{{ m.title }}">{{ m.title }}</span>
+              </div>
+            </td>
+            <td class="px-4 py-3">
+              <span class="inline-block px-2.5 py-1 rounded-full text-xs font-bold
+                {% if m.file_type == 'syllabus' %}bg-blue-100 text-blue-800
+                {% elif m.file_type == 'lecture' %}bg-purple-100 text-purple-800
+                {% elif m.file_type == 'exam' %}bg-red-100 text-red-800
+                {% elif m.file_type == 'grades' %}bg-green-100 text-green-800
+                {% else %}bg-surface-container text-on-surface-variant{% endif %}">
+                {% if m.file_type == 'syllabus' %}منهج{% elif m.file_type == 'lecture' %}محاضرات{% elif m.file_type == 'exam' %}امتحانات{% elif m.file_type == 'grades' %}درجات{% else %}أخرى{% endif %}
+              </span>
+            </td>
+            <td class="px-4 py-3 text-on-surface-variant">{{ m.teacher_name or '—' }}</td>
+            <td class="px-4 py-3 text-on-surface-variant">{% if m.file_size %}{{ '%.1f'|format(m.file_size / 1024) }} KB{% else %}—{% endif %}</td>
+            <td class="px-4 py-3 text-on-surface-variant text-center">{{ m.download_count }}</td>
+            <td class="px-4 py-3 text-on-surface-variant">{{ m.created_at[:10] if m.created_at else '—' }}</td>
+            <td class="px-4 py-3">
+              <div class="flex items-center justify-center gap-2">
+                <a href="{{ url_for('hod_pages.hod_material_download', material_id=m.id) }}"
+                   class="material-symbols-outlined text-primary hover:bg-primary/10 transition-colors no-underline rounded-md" title="تحميل">download</a>
+                <form method="post" action="{{ url_for('hod_pages.hod_material_delete', material_id=m.id) }}" style="display:inline"
+                      onsubmit="return confirm('هل أنت متأكد من حذف هذا الملف؟')">
+                  <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="material-symbols-outlined text-red-600 hover:text-red-700 transition-colors bg-transparent border-0 cursor-pointer rounded-md" title="حذف">delete</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="py-16 text-center text-on-surface-variant">
+      <span class="material-symbols-outlined text-6xl text-outline-variant block mb-3">folder_off</span>
+      <h3 class="text-on-surface font-bold mb-1">لا توجد ملفات مرفوعة</h3>
+      <p class="text-sm">لم يقم أعضاء هيئة التدريس برفع ملفات في هذا القسم بعد</p>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

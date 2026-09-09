@@ -1,0 +1,115 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'faculty_performance' %}
+{% set page_title = 'مكتب إدارة أعضاء هيئة التدريس' %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+
+  <div class="flex items-center gap-3 mb-6">
+    <span class="material-symbols-outlined text-primary text-3xl">account_balance</span>
+    <div>
+      <h1 class="text-2xl font-bold text-on-surface">مكتب إدارة أعضاء هيئة التدريس</h1>
+      <p class="text-sm text-on-surface-variant mt-0.5">المحاضر الرسمية — اختر نوع المحضر (لمقرر دراسي أو لعضو هيئة تدريس) ثم العام والفصل والقسم</p>
+    </div>
+  </div>
+
+  <form id="report-form"
+        class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
+
+    <div class="p-6 space-y-5">
+
+      <!-- Report Type -->
+      <div>
+        <label class="block text-sm font-bold text-on-surface mb-1.5">نوع المحضر</label>
+        <div class="grid grid-cols-2 gap-3">
+          <label class="flex items-center gap-2 border border-outline-variant rounded-xl px-4 py-3 cursor-pointer hover:bg-surface-container transition has-[:checked]:border-primary has-[:checked]:bg-primary/10">
+            <input type="radio" name="report_type" value="course" checked class="accent-primary">
+            <span class="text-sm font-bold">محضر لكل مقرر</span>
+          </label>
+          <label class="flex items-center gap-2 border border-outline-variant rounded-xl px-4 py-3 cursor-pointer hover:bg-surface-container transition has-[:checked]:border-primary has-[:checked]:bg-primary/10">
+            <input type="radio" name="report_type" value="teacher" class="accent-primary">
+            <span class="text-sm font-bold">محضر لكل عضو هيئة تدريس</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Academic Year -->
+      <div>
+        <label class="block text-sm font-bold text-on-surface mb-1.5">العام الجامعي</label>
+        <select id="year-select" required
+                class="w-full border border-outline-variant rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition">
+          <option value="">— اختر العام الجامعي —</option>
+          {% for y in select_data.academic_years %}
+          <option value="{{ y.code }}">{{ y.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Semester -->
+      <div>
+        <label class="block text-sm font-bold text-on-surface mb-1.5">الفصل الدراسي</label>
+        <select id="semester-select" required
+                class="w-full border border-outline-variant rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition">
+          <option value="1">الفصل الأول</option>
+          <option value="2">الفصل الثاني</option>
+        </select>
+      </div>
+
+      <!-- Department -->
+      <div>
+        <label class="block text-sm font-bold text-on-surface mb-1.5">القسم</label>
+        <select id="dept-select" required
+                class="w-full border border-outline-variant rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition">
+          <option value="">— اختر القسم —</option>
+          {% for d in select_data.departments %}
+          <option value="{{ d.id }}">{{ d.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Course -->
+      <div id="course-block">
+        <label class="block text-sm font-bold text-on-surface mb-1.5">المقرر</label>
+        <select id="course-select"
+                class="w-full border border-outline-variant rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition disabled:opacity-50">
+          <option value="">— اختر القسم أولاً —</option>
+        </select>
+        <div id="course-loading" class="hidden mt-1 text-xs text-primary">جاري تحميل المقررات...</div>
+      </div>
+
+      <!-- Teacher -->
+      <div id="teacher-block" class="hidden">
+        <label class="block text-sm font-bold text-on-surface mb-1.5">عضو هيئة التدريس</label>
+        <select id="teacher-select"
+                class="w-full border border-outline-variant rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none disabled:opacity-50">
+          <option value="">— اختر القسم أولاً —</option>
+        </select>
+        <div id="teacher-loading" class="hidden mt-1 text-xs text-primary">جاري تحميل أعضاء هيئة التدريس...</div>
+      </div>
+
+    </div>
+
+    <div class="px-6 py-4 border-t border-primary/10 bg-surface-dim flex justify-end">
+      <button type="submit"
+              class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-6 py-2.5 rounded-lg text-sm font-bold transition shadow-sm">
+        <span class="material-symbols-outlined text-lg">summarize</span>
+        توليد المحضر
+      </button>
+    </div>
+  </form>
+
+</div>
+
+<script>
+window.FACULTY_SELECT_REPORT_BOOT = {
+  urls: {
+    coursesApi: {{ url_for("teachers.api_courses") | tojson }},
+    teachersApi: {{ url_for("faculty_performance.api_teachers_by_dept") | tojson }},
+    courseReport: {{ url_for("faculty_performance.course_report", course_id=0) | tojson }},
+    preview: {{ url_for("faculty_performance.preview", teacher_id=0) | tojson }}
+  }
+};
+</script>
+<script src="{{ url_for('static', filename='js/faculty_performance_select_report.js') }}"></script>
+
+{% endblock %}

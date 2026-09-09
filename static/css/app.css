@@ -1,0 +1,48 @@
+/* newRopey - Main CSS Entry Point */
+
+@import url('./base/reset.css');
+@import url('./base/variables.css');
+@import url('./base/typography.css');
+
+@import url('./layout/sidebar.css');
+@import url('./layout/topbar.css');
+@import url('./layout/footer.css');
+@import url('./layout/shell.css');
+
+@import url('./components/buttons.css');
+@import url('./components/cards.css');
+@import url('./components/forms.css');
+@import url('./components/tables.css');
+@import url('./components/modals.css');
+@import url('./components/icon-picker.css');
+@import url('./components/badges.css');
+@import url('./components/ui.css');
+
+@import url('./features/auth.css');
+@import url('./features/timetable.css');
+@import url('./features/exams.css');
+@import url('./features/teachers.css');
+@import url('./features/students.css');
+@import url('./features/dashboard.css');
+@import url('./features/dashboard-print.css');
+
+@import url('./features/public.css');
+
+@import url('./features/tools.css');
+@import url('./print/common.css');
+@import url('./print/official.css');
+
+@import url('./search.css');
+
+@import url('./themes/light.css');
+
+@import url('./utilities/helpers.css');
+@import url('./utilities/theme-overrides.css');
+
+@import url('./preview/dashboard.css');
+@import url('./preview/styles.css');
+
+@import url('./themes/dark.css');
+
+/* Mobile adaptation layer — must stay LAST so overrides win */
+@import url('./layout/mobile.css');

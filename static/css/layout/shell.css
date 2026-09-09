@@ -1,0 +1,78 @@
+/* layout/shell.css — page-level layout utilities, auth backgrounds,
+   print styles. Component classes (stat-card, modal, form, table, etc.)
+   live in components/. Auth card styles live in features/auth.css. */
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'Tajawal', sans-serif;
+  background: var(--page-bg);
+  color: var(--text-primary);
+  direction: rtl;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.shell-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Auth background — used by auth.html layout.
+   Moved to features/auth.css */
+
+/* Print — screen: invisible; print: official paper header */
+.print-header {
+  display: none;
+  text-align: center;
+  margin-bottom: 24pt;
+  padding-bottom: 16pt;
+  border-bottom: 2.5pt double #000;
+}
+.print-institution {
+  font-size: 18pt;
+  font-weight: 800;
+  margin: 0 0 2pt;
+  color: #000;
+  letter-spacing: 0.5pt;
+}
+.print-institution-en {
+  font-size: 10pt;
+  color: #444;
+  margin: 0 0 6pt;
+  font-weight: 400;
+}
+.print-dept-semester {
+  font-size: 12pt;
+  color: #000;
+  margin: 0 0 4pt;
+  font-weight: 600;
+}
+.print-title {
+  font-size: 14pt;
+  font-weight: 700;
+  margin: 8pt 0 0;
+  color: #000;
+}
+
+/* Semester sections */
+.semester-section { margin-bottom: 32px; }
+.semester-header {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid var(--primary);
+}
+.semester-title { font-size: 18px; font-weight: 800; margin: 0; }
+.day-label-icon { font-size: 16px; }
+
+/* Footer and back-to-top styles are defined in footer.css */
+
+@media (max-width: 768px) {
+  .modal-sheet { width: 95%; margin: 16px; max-height: 85vh; }
+}

@@ -1,0 +1,82 @@
+/* features/public.css — Unified public portal (Academic Prestige System) */
+
+.public-body {
+  font-family: 'Tajawal', 'Hanken Grotesk', sans-serif;
+  margin: 0;
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--auth-deep) 0%, var(--primary-deep) 40%, var(--auth-deep) 100%);
+}
+
+#webgl-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+}
+
+.glass-container {
+  position: relative;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.55);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.public-surface {
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.2);
+}
+
+.public-nav-link {
+  color: var(--on-surface-variant);
+  transition: color 0.2s;
+}
+.public-nav-link:hover { color: var(--primary); }
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--outline);
+  color: var(--on-surface);
+  font-weight: 600;
+  transition: background 0.2s;
+}
+.btn-ghost:hover { background: var(--surface-container-high); }
+
+.nav-link-active {
+  border-bottom: 2px solid #fbbf24;
+  color: var(--primary, #500088) !important;
+  font-weight: 700;
+  padding-bottom: 4px;
+}
+
+.notification {
+  transition: all 0.5s ease-in-out;
+  transform: translateY(-100%);
+  opacity: 0;
+}
+.notification.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.public-cell-card {
+  background: var(--primary-container);
+  border-right: 2px solid var(--primary);
+  border-radius: 0.5rem;
+}
+
+.public-mobile-nav { display: none; }
+.public-mobile-nav.open { display: flex; }

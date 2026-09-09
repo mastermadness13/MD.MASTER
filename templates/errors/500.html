@@ -1,0 +1,27 @@
+{% extends "shared/layouts/auth.html" %}
+{% set sidebar_active = '' %}
+{% set page_title = '500 - خطأ داخلي' %}
+{% block content %}
+<div class="bg-white/80 backdrop-blur-lg border border-outline-variant/30 rounded-2xl p-xl shadow-lg">
+<div class="w-24 h-24 rounded-2xl bg-error-container flex items-center justify-center mx-auto mb-lg">
+<span class="material-symbols-outlined text-error text-5xl" style="font-variation-settings:'FILL'1;">error</span>
+</div>
+<h1 class="font-display-lg text-display-lg text-error font-bold mb-xs">500</h1>
+<p class="font-headline-sm text-headline-sm text-on-surface-variant mb-md">حدث خطأ داخلي في الخادم</p>
+<p class="font-body-md text-body-md text-on-surface-variant mb-xl leading-relaxed">نعتذر عن الإزعاج. فريق الدعم الفني تم إشعاره وسيعمل على حل المشكلة في أقرب وقت.</p>
+<div class="flex flex-col sm:flex-row items-center justify-center gap-md">
+<a href="/" class="px-5 py-2 bg-primary text-on-primary font-label-md text-label-md rounded-lg shadow-sm hover:shadow-md transition-all flex items-center gap-sm active:scale-95">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings:'FILL'1;">refresh</span>
+إعادة المحاولة
+</a>
+<button onclick="history.back()" class="px-5 py-2 border border-outline text-on-surface-variant font-label-md text-label-md rounded-lg hover:bg-surface-container-highest transition-all flex items-center gap-sm active:scale-95">
+<span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+الصفحة السابقة
+</button>
+</div>
+</div>
+<div class="mt-lg flex items-center justify-center gap-sm">
+<span class="material-symbols-outlined text-outline-variant text-[18px]">support_agent</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">الدعم الفني: support@itec.edu.ly</span>
+</div>
+{% endblock %}

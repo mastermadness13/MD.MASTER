@@ -1,0 +1,330 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'courses' %}
+{% set page_title = 'إدارة المقررات' %}
+{% set dept_plans = dept_plans | default([]) %}
+{% set can_manage = has_permission('courses.manage') %}
+
+{% block head_extra %}
+<style>
+  .dept-card { transition: all 0.2s ease; }
+  .dept-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(50,0,88,0.12); }
+  .dept-card.active { border-color: #320058; background: #f1dbff; box-shadow: 0 2px 10px rgba(50,0,88,0.18); }
+  .print-block { break-inside: avoid; page-break-inside: avoid; }
+  .plan-scroll { max-height: 480px; overflow-y: auto; }
+  .plan-scroll::-webkit-scrollbar { width: 6px; }
+  .plan-scroll::-webkit-scrollbar-track { background: #f1f4f9; border-radius: 3px; }
+  .plan-scroll::-webkit-scrollbar-thumb { background: #cfc2d3; border-radius: 3px; }
+  .drawer-overlay { transition: opacity 0.3s ease; }
+  .drawer-panel { transition: transform 0.3s ease; }
+  @media print {
+    .no-print { display: none !important; }
+    body { background: white !important; }
+    .print-sheet { box-shadow: none !important; border-color: #e0e3e8 !important; }
+  }
+</style>
+{% set print_orientation = 'A4 portrait' %}
+{% set print_margin = '12mm' %}
+{% include 'print/_embedded_styles.html' %}
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto print-hidden">
+
+  <!-- Page Header -->
+  <div class="page-header no-print">
+    <div class="page-header-info">
+      <span class="material-symbols-outlined page-header-icon">menu_book</span>
+      <div>
+        <h1 class="page-title">إدارة المقررات والخطة الدراسية</h1>
+        <p class="page-subtitle">عرض وإدارة المقررات حسب الأقسام والفصول الدراسية</p>
+      </div>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      {% if can_manage %}
+      <button onclick="openAddModalFromList()" class="flex items-center gap-2 bg-primary text-on-primary px-4 py-2 rounded-xl text-sm font-bold hover:bg-primary/90 transition-all shadow-sm">
+        <span class="material-symbols-outlined text-lg">add</span>
+        + مادة
+      </button>
+      <a href="{{ url_for('courses.courses_archive') }}"
+         class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm no-underline">
+        <span class="material-symbols-outlined text-lg">archive</span>
+        الأرشيف
+      </a>
+      {% endif %}
+      <button type="button" onclick="window.print()"
+              class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-outline-variant px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm">
+        <span class="material-symbols-outlined text-lg">print</span>
+        طباعة
+      </button>
+    </div>
+  </div>
+
+  <!-- View Tabs -->
+  <div class="bg-white rounded-2xl border border-border shadow-sm p-1.5 mb-5 inline-flex gap-1.5 no-print w-full sm:w-auto">
+    <button id="tabListBtn" onclick="switchView('list')" class="tab-btn flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all">
+      <span class="material-symbols-outlined text-lg">list_alt</span>
+      قائمة المقررات
+    </button>
+    <button id="tabPlanBtn" onclick="switchView('plan')" class="tab-btn flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all">
+      <span class="material-symbols-outlined text-lg">table_chart</span>
+      الخطة الدراسية
+    </button>
+  </div>
+
+  <!-- ============ LIST VIEW ============ -->
+  <div id="viewList">
+    <div class="bg-white rounded-2xl border border-border shadow-sm p-4 sm:p-5 mb-5 no-print">
+      <div class="flex flex-col md:flex-row gap-3">
+        <div class="relative flex-1">
+          <span class="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-text-faint">search</span>
+          <input id="listSearch" type="text" placeholder="ابحث بالرمز أو اسم المادة..." class="w-full pr-11 pl-4 py-2.5 rounded-xl border border-border bg-surface-hover text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition">
+        </div>
+        <select id="listDeptFilter" class="px-4 py-2.5 rounded-xl border border-border bg-surface-hover text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary md:w-56 transition"></select>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
+      <div class="px-4 py-3 border-b border-border-subtle flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary">menu_book</span>
+          <h2 class="text-base font-bold text-text-primary m-0">جميع المقررات</h2>
+          <span id="courseCount" class="bg-primary-faint text-primary text-xs font-bold px-2.5 py-0.5 rounded-full">0</span>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[900px] text-sm">
+          <thead class="bg-surface-zebra">
+            <tr>
+              {% if can_manage %}
+              <th class="px-3 py-2.5 text-center font-semibold text-text-secondary text-xs w-10">
+                <div class="flex items-center justify-center gap-1">
+                  <input type="checkbox" id="courseSelectAll" class="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" title="تحديد الكل">
+                  <button type="button" id="courseHeaderDeleteBtn"
+                          class="material-symbols-outlined text-red-600 hover:text-red-700 transition-colors bg-transparent border-0 cursor-pointer"
+                          style="display:none" title="حذف المحدد">archive</button>
+                </div>
+              </th>
+              {% endif %}
+              <th class="px-3 py-2.5 text-center font-semibold text-text-secondary text-xs w-10">ت</th>
+              <th class="px-3 py-2.5 text-right font-semibold text-text-secondary text-xs">رمز المادة</th>
+              <th class="px-3 py-2.5 text-right font-semibold text-text-secondary text-xs">اسم المادة</th>
+              <th class="px-3 py-2.5 text-right font-semibold text-text-secondary text-xs">القسم</th>
+              <th class="px-3 py-2.5 text-center font-semibold text-text-secondary text-xs">الفصل</th>
+              <th class="px-3 py-2.5 text-right font-semibold text-text-secondary text-xs">المدرّس</th>
+              <th class="px-3 py-2.5 text-center font-semibold text-text-secondary text-xs">حالة النموذج</th>
+              <th class="px-3 py-2.5 text-center font-semibold text-text-secondary text-xs">نظري</th>
+              <th class="px-3 py-2.5 text-center font-semibold text-text-secondary text-xs">عملي</th>
+              <th class="px-3 py-2.5 text-center font-semibold text-text-secondary text-xs">الساعات</th>
+              <th class="px-3 py-2.5 text-center font-semibold text-text-secondary text-xs">الوحدات</th>
+              <th class="px-3 py-2.5 text-center font-semibold text-text-secondary text-xs">الاعتمادية</th>
+              <th class="px-3 py-2.5 text-center font-semibold text-text-secondary text-xs">إجراءات</th>
+            </tr>
+          </thead>
+          <tbody id="courseTableBody" class="divide-y divide-border-subtle"></tbody>
+        </table>
+      </div>
+      <div class="px-4 py-3 border-t border-border-subtle flex flex-col sm:flex-row items-center justify-between gap-2">
+        <span id="paginationInfo" class="text-xs text-text-muted"></span>
+        <div id="pagination" class="flex items-center gap-1"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ PLAN VIEW ============ -->
+  <div id="viewPlan" class="hidden">
+    <div class="bg-white rounded-2xl border border-border shadow-sm p-4 sm:p-5 mb-5 no-print">
+      <div class="flex flex-col md:flex-row gap-3">
+        <div class="relative flex-1">
+          <span class="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-text-faint">search</span>
+          <input id="planSearch" type="text" placeholder="ابحث عن القسم بالاسم..." class="w-full pr-11 pl-4 py-2.5 rounded-xl border border-border bg-surface-hover text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition">
+        </div>
+        <select id="planDeptSelect" class="px-4 py-2.5 rounded-xl border border-border bg-surface-hover text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary md:w-64 transition"></select>
+      </div>
+    </div>
+
+    <div id="planDeptGrid" class="flex flex-wrap gap-2 mb-6 no-print"></div>
+
+    {% if can_manage %}
+    <div id="bulkMoveBar" class="hidden sticky top-0 z-20 mb-4 bg-primary text-on-primary rounded-xl px-5 py-3 flex flex-wrap items-center justify-between gap-3 shadow-lg no-print">
+      <div class="flex items-center gap-3">
+        <span class="material-symbols-outlined text-xl">checklist</span>
+        <span id="bulkCount" class="text-sm font-bold">0 مقرر محدد</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <select id="bulkTargetSem" class="px-3 py-1.5 rounded-lg text-sm font-bold text-on-surface border border-outline-variant bg-white focus:ring-2 focus:ring-primary/30">
+          <option value="">اختر الفصل الهدف…</option>
+        </select>
+        <button type="button" onclick="executeBulkMove()" class="bg-white text-primary hover:bg-white/90 px-4 py-1.5 rounded-lg text-sm font-bold transition-colors shadow-sm flex items-center gap-1">
+          <span class="material-symbols-outlined text-[16px]">drive_file_move</span>نقل
+        </button>
+        <button type="button" onclick="clearSelection()" class="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm font-bold transition-colors">إلغاء</button>
+      </div>
+    </div>
+    {% endif %}
+
+    <div id="planTablesContainer"></div>
+  </div>
+</div>
+
+<!-- Course Modal -->
+<div id="courseModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 no-print">
+  <div class="absolute inset-0 bg-black/40" onclick="closeModal()"></div>
+  <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+    <div class="px-5 py-4 border-b border-outline-variant flex items-center justify-between bg-gradient-to-l from-primary/5 to-transparent shrink-0">
+      <h3 id="modalTitle" class="font-headline-sm text-headline-sm font-bold text-on-surface m-0 flex items-center gap-2">
+        <span id="modalTitleIcon" class="material-symbols-outlined text-primary">add</span>
+        <span id="modalTitleText">إضافة مادة جديدة</span>
+      </h3>
+      <button onclick="closeModal()" class="w-8 h-8 rounded-lg hover:bg-surface-container flex items-center justify-center text-on-surface-variant transition-all" aria-label="إغلاق">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="p-5 space-y-4 overflow-y-auto overflow-x-hidden min-h-0 flex-1">
+
+      <!-- Section 1: المعلومات الأساسية -->
+      <div class="form-card-compact p-4">
+        <div class="flex items-center gap-sm mb-3 border-b border-outline-variant pb-sm">
+          <span class="material-symbols-outlined text-primary">info</span>
+          <h2 class="font-headline-sm text-headline-sm text-on-surface">المعلومات الأساسية</h2>
+        </div>
+        <div class="space-y-3">
+          <div>
+            <label class="block font-label-md text-label-md text-on-surface-variant mb-xs">اسم المادة *</label>
+            <input id="mName" type="text" placeholder="مثال: برمجة حاسوب" class="w-full bg-surface border border-outline-variant rounded-xl px-md py-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all font-body-md">
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-label-md text-label-md text-on-surface-variant mb-xs">رمز المادة *</label>
+              <input id="mCode" type="text" dir="ltr" placeholder="مثال: ت101" class="w-full bg-surface border border-outline-variant rounded-xl px-md py-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all font-body-md">
+            </div>
+            <div>
+              <label class="block font-label-md text-label-md text-on-surface-variant mb-xs">عدد الوحدات</label>
+              <input id="mUnits" type="number" min="0" value="3" class="w-full bg-surface border border-outline-variant rounded-xl px-md py-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all font-body-md">
+            </div>
+          </div>
+          <div class="form-card-compact p-4">
+            <div class="flex items-center gap-sm mb-3 border-b border-outline-variant pb-sm">
+              <span class="material-symbols-outlined text-primary">domain</span>
+              <h2 class="font-headline-sm text-headline-sm text-on-surface">الأقسام والفصول</h2>
+            </div>
+            <p class="font-label-sm text-label-sm text-on-surface-variant mb-3">حدد الأقسام التي تُدرَّس فيها المادة، ولكل قسم اختر الفصل الدراسي الذي تُقدَّم فيه في ذلك القسم (يمكن أن يختلف الفصل من قسم لآخر). اضغط على علامة الاختيار مجدداً لإزالة القسم.</p>
+            <div id="mDeptGrid" class="space-y-2"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: الساعات والأرصدة -->
+      <div class="form-card-compact p-4">
+        <div class="flex items-center gap-sm mb-3 border-b border-outline-variant pb-sm">
+          <span class="material-symbols-outlined text-primary">analytics</span>
+          <h2 class="font-headline-sm text-headline-sm text-on-surface">الساعات والأرصدة</h2>
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="block font-label-md text-label-md text-on-surface-variant mb-xs text-center">ساعات نظري</label>
+            <input id="mTheory" type="number" min="0" placeholder="تلقائي" class="w-full bg-surface border border-outline-variant rounded-xl px-md py-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all font-body-md text-center">
+          </div>
+          <div>
+            <label class="block font-label-md text-label-md text-on-surface-variant mb-xs text-center">ساعات عملي</label>
+            <input id="mPractical" type="number" min="0" placeholder="تلقائي" class="w-full bg-surface border border-outline-variant rounded-xl px-md py-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all font-body-md text-center">
+          </div>
+          <div>
+            <label class="block font-label-md text-label-md text-on-surface-variant mb-xs text-center">إجمالي الوحدات</label>
+            <input id="mTotal" type="number" min="0" readonly value="0" title="إجمالي الوحدات = ساعات نظري + ساعات عملي" class="w-full bg-surface-container border border-outline-variant rounded-xl px-md py-sm font-body-md text-center">
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3: المتطلبات -->
+      <div class="form-card-compact p-4">
+        <div class="flex items-center gap-sm mb-3 border-b border-outline-variant pb-sm">
+          <span class="material-symbols-outlined text-secondary">alt_route</span>
+          <h2 class="font-headline-sm text-headline-sm text-on-surface">المتطلبات</h2>
+        </div>
+        <div>
+          <label class="block font-label-md text-label-md text-on-surface-variant mb-xs">المتطلب السابق (إن وجد)</label>
+          <select id="mPrereq" class="searchable-select w-full" placeholder="ابحث عن المادة...">
+            <option value="">بدون متطلب سابق</option>
+          </select>
+          <div class="mt-md p-sm bg-secondary-fixed/10 border border-secondary/20 rounded-xl flex items-start gap-sm">
+            <span class="material-symbols-outlined text-secondary text-[20px]">warning</span>
+            <p class="font-label-sm text-label-sm text-on-secondary-container">سيتم منع الطلاب من التسجيل في هذا المقرر إذا لم يجتازوا المتطلب المختار.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 4: مظهر المقرر -->
+      <div class="form-card-compact p-4">
+        <div class="flex items-center gap-sm mb-3 border-b border-outline-variant pb-sm">
+          <span class="material-symbols-outlined text-primary">palette</span>
+          <h2 class="font-headline-sm text-headline-sm text-on-surface">مظهر المقرر</h2>
+        </div>
+        <p class="font-body-md text-body-sm text-on-surface-variant mb-3">اختر الأيقونة التي ستظهر بجانب اسم المادة، ثم اكتب وصف المادة.</p>
+        <div id="mIconPicker" class="mb-3"></div>
+        <div>
+          <label class="block font-label-md text-label-md text-on-surface-variant mb-xs">وصف المادة</label>
+          <textarea id="mNotes" rows="3" placeholder="أدخل تفاصيل الوحدات الدراسية وأهداف المادة..." class="w-full bg-surface border border-outline-variant rounded-xl px-md py-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all font-body-md resize-none"></textarea>
+        </div>
+      </div>
+
+    </div>
+    <div class="px-5 py-4 border-t border-outline-variant flex justify-end gap-2 shrink-0">
+      <button onclick="closeModal()" class="px-4 py-2 rounded-lg text-sm font-semibold text-on-surface-variant bg-surface-container hover:bg-surface-container-high transition-all">إلغاء</button>
+      <button onclick="saveCourse()" class="px-5 py-2 rounded-lg text-sm font-bold text-on-primary bg-primary hover:bg-primary/90 transition-all shadow-sm flex items-center gap-2">
+        <span class="material-symbols-outlined text-lg">check</span>
+        حفظ المادة
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Detail Drawer -->
+<div id="drawerOverlay" class="drawer-overlay fixed inset-0 bg-black/40 z-40 hidden print-hidden" onclick="closeDrawer()"></div>
+<div id="drawerPanel" class="drawer-panel fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl z-50 translate-x-full print-hidden">
+  <div class="flex items-center justify-between p-6 border-b border-gray-100">
+    <h2 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+      <span class="material-symbols-outlined text-primary">description</span>
+      تفاصيل المادة
+    </h2>
+    <button onclick="closeDrawer()" class="p-2 rounded-lg hover:bg-gray-100 transition">
+      <span class="material-symbols-outlined text-gray-500">close</span>
+    </button>
+  </div>
+  <div id="drawerContent" class="p-6 space-y-5"></div>
+</div>
+
+<div class="print-only">
+  {% set print_courses = payload.courses | default([]) %}
+  {% set print_course_depts = {} %}
+  {% for c in print_courses %}{% set _ = print_course_depts.__setitem__(c.id, c.dept_names) %}{% endfor %}
+  {% with courses = print_courses, course_depts = print_course_depts %}
+  {% include 'print/lists/_course_content.html' %}
+  {% endwith %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/icon_picker.js') }}"></script>
+<script>
+window.COURSES_LIST_BOOT = {
+  plans: {{ dept_plans | tojson }},
+  prereqOptions: {{ payload.prereqOptions | tojson }},
+  statusMeta: {{ payload.statusMeta | tojson }},
+  courses: {{ payload.courses | tojson }},
+  canManage: {{ 'true' if can_manage else 'false' }},
+  isRd: {{ 'true' if user and user.role in ('research_development', 'super_admin') else 'false' }},
+  isTeacher: {{ 'true' if user and user.role == 'teacher' else 'false' }},
+  view: {{ _view | tojson }},
+  page: {{ _page or 1 }},
+  urls: {
+    create: {{ url_for('courses.courses_create') | tojson }},
+    edit: {{ url_for('courses.courses_edit', id=0) | tojson }},
+    delete: {{ url_for('courses.courses_delete', id=0) | tojson }},
+    move: {{ url_for('courses.courses_api_move') | tojson }},
+    bulkDelete: {{ url_for('courses.courses_bulk_delete') | tojson }}
+  }
+};
+</script>
+<script src="{{ url_for('static', filename='js/shared/course_helpers.js') }}"></script>
+<script src="{{ url_for('static', filename='js/courses_list.js') }}"></script>
+{% endblock %}

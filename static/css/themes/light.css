@@ -1,0 +1,21 @@
+/* Light Theme — color-scheme and smooth transitions only.
+   All component styles live in layout/, components/, features/.
+   All CSS variables live in base/variables.css.
+   Theme is applied via the [data-theme] attribute (see base.html). */
+
+:root,
+[data-theme="light"] { color-scheme: light; }
+
+[data-theme="light"] .text-white {
+  --tw-text-opacity: 1;
+  color: rgb(0 0 0);
+}
+
+body, .sidebar, .app-header, .app-topbar, .card, .stat-card,
+.table-container, .modal, .modal-sheet, .form-card, .page-card,
+.timetable-card, .notif-menu, .user-form-card, .auth-card,
+.sidebar-settings, .sidebar-settings button,
+.table-search input, .form-input, .form-select, .form-textarea,
+.btn-secondary, .toast, .breadcrumb a, .pagination a, .pagination span {
+  transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}

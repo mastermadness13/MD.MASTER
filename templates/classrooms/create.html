@@ -1,0 +1,96 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'rooms' %}
+{% set page_title = 'قاعة جديدة' %}
+{% set form = form | default({}) %}
+{% set room_types = room_types | default([]) %}
+ 
+{% block content %}
+<div class="max-w-2xl mx-auto">
+  <div class="flex items-center gap-3 mb-6">
+    <span class="material-symbols-outlined text-primary text-3xl">meeting_room</span>
+    <div>
+      <h1 class="text-2xl font-bold text-on-surface">قاعة جديدة</h1>
+      <p class="page-subtitle">أدخل اسم القاعدة الأساسية واختر نوع القاعة وعدد القاعات. سيتم إنشاء كل قاعة كسجل مستقل.</p>
+    </div>
+  </div>
+
+  {% if create_error %}
+  <div class="mb-4 flex items-center gap-2 px-4 py-3 rounded-lg text-sm bg-error-container text-error">
+    <span class="material-symbols-outlined shrink-0 text-[18px]">error</span>
+    <span>{{ create_error }}</span>
+  </div>
+  {% endif %}
+
+  <div class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
+    <div class="p-5 sm:p-6">
+      <form method="post" action="{{ url_for('classrooms.rooms_create') }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="sm:col-span-2">
+            <label for="name" class="text-xs font-bold text-on-surface-variant mb-1.5 block">اسم القاعدة *</label>
+            <input type="text" id="name" name="name" value="{{ form.get('name', '') }}" required
+                   placeholder="مثال: Room أو مختبر الحاسوب"
+                   class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+            <p class="text-xs text-on-surface-variant mt-1.5 flex items-center gap-1">
+              <span class="material-symbols-outlined text-[14px]">info</span>
+              ستُنشأ قاعات مستقلة بأسماء متتالية مثل «{{ form.get('name', 'Room') }} 1»، «{{ form.get('name', 'Room') }} 2»، إلخ عند تحديد عدد أكبر من 1.
+            </p>
+          </div>
+
+          <div>
+            <label for="room_type_id" class="text-xs font-bold text-on-surface-variant mb-1.5 block">نوع القاعة</label>
+            <select id="room_type_id" name="room_type_id"
+                    class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+              <option value="">— اختر النوع —</option>
+              {% for t in room_types %}
+              <option value="{{ t.id }}" {{ 'selected' if form.get('room_type_id') | string == t.id | string }}>{{ t.name_ar }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div>
+            <label for="capacity" class="text-xs font-bold text-on-surface-variant mb-1.5 block">السعة</label>
+            <input type="number" id="capacity" name="capacity" min="0" value="{{ form.get('capacity') if form.get('capacity') is not none else '' }}"
+                   class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+            <p class="text-xs text-on-surface-variant mt-1.5 flex items-center gap-1">
+              <span class="material-symbols-outlined text-[14px]">info</span>
+              عدد الطلبة الذين تتسع لهم القاعة الواحدة.
+            </p>
+          </div>
+
+          <div>
+            <label for="quantity" class="text-xs font-bold text-on-surface-variant mb-1.5 block">عدد القاعات</label>
+            <input type="number" id="quantity" name="quantity" min="1" value="{{ form.get('quantity', 1) }}"
+                   class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+            <p class="text-xs text-on-surface-variant mt-1.5 flex items-center gap-1">
+              <span class="material-symbols-outlined text-[14px]">info</span>
+              عدد القاعات (أو المعامل) التي ستُنشأ بهذا الاسم.
+            </p>
+          </div>
+
+          <div class="sm:col-span-2">
+            <label class="inline-flex items-center gap-2 text-sm font-bold text-on-surface-variant">
+              <input type="checkbox" id="computers" name="computers" value="1" {{ 'checked' if form.get('computers') == 1 }} class="accent-[#320058]">
+              يوجد حاسوب في القاعة
+            </label>
+          </div>
+        </div>
+
+        <div class="mt-6 flex flex-wrap items-center gap-3">
+          <button type="submit"
+                  class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-5 py-2.5 rounded-lg text-sm font-bold transition shadow-sm">
+            <span class="material-symbols-outlined text-lg">save</span>
+            حفظ القاعة
+          </button>
+          <a href="{{ url_for('classrooms.rooms_list') }}"
+             class="flex items-center gap-2 bg-surface-container-highest hover:bg-surface-container text-on-surface px-5 py-2.5 rounded-lg text-sm font-bold transition no-underline">
+            <span class="material-symbols-outlined text-lg">arrow_right</span>
+            رجوع
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

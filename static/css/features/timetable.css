@@ -1,0 +1,227 @@
+.timetable-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px var(--shadow-sm);
+}
+
+.timetable-toolbar {
+  padding: 16px 24px;
+  background: var(--surface-alt);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.toolbar-group { display: flex; align-items: center; gap: 12px; }
+
+.timetable-wrap { overflow-x: auto; }
+
+.timetable { width: 100%; border-collapse: collapse; }
+.timetable th, .timetable td { border: 1px solid var(--border); padding: 12px; text-align: center; }
+.timetable th { background: var(--table-header); font-size: 12px; font-weight: 700; color: var(--text-muted); }
+.period-code { font-size: 18px; color: var(--primary); margin-bottom: 2px; }
+.day-label { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--primary); }
+.empty-cell { width: 100%; height: 80px; border: 1px dashed var(--border); background: var(--surface-alt); border-radius: 8px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
+.empty-cell:hover { background: var(--sidebar-hover-bg); border-color: var(--primary); }
+.plus-icon { font-size: 24px; color: var(--text-muted); opacity: 0.5; }
+
+.timetable td .entry { border-radius: 8px; padding: 8px; margin: 2px 0; font-size: 12px; }
+.entry-lecture { background: var(--primary-faint); color: var(--primary); }
+.entry-lab { background: var(--secondary-faint); color: var(--secondary); }
+.entry-exam { background: var(--tertiary-faint); color: var(--tertiary); }
+.entry-break { background: var(--sidebar-hover-bg); color: var(--text-faint); }
+
+.dept-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.dept-border-r { border-right: 4px solid; }
+
+@media (max-width: 640px) { .lecture-drawer { width: 100%; left: -100%; } }
+
+.conflict { background: var(--error-faint) !important; border-color: var(--danger) !important; }
+.conflict-badge { background: var(--danger); color: white; font-size: 10px; padding: 2px 8px; border-radius: 999px; font-weight: 700; }
+
+.day-section { margin-bottom: 32px; }
+.day-header { display: flex; align-items: center; justify-content: space-between; padding: 16px; background: var(--primary-container); border-bottom: 1px solid var(--border); }
+.day-title { font-weight: 700; color: var(--primary); }
+.lecture-row { padding: 16px; display: flex; align-items: flex-start; gap: 24px; border-bottom: 1px solid var(--border); transition: background 0.2s; cursor: pointer; }
+.lecture-row:hover { background: var(--surface-hover); }
+.lecture-row.conflict { background: var(--error-faint); }
+.lecture-time { text-align: center; min-width: 70px; flex-shrink: 0; }
+.lecture-time .hour { font-weight: 700; font-size: 15px; color: var(--primary); }
+.lecture-time .period { font-size: 10px; color: var(--text-muted); }
+.lecture-info { flex: 1; min-width: 0; }
+.lecture-course { font-weight: 700; font-size: 15px; margin-bottom: 8px; }
+.lecture-meta { display: flex; gap: 16px; font-size: 12px; color: var(--text-muted); flex-wrap: wrap; }
+.lecture-capacity { font-size: 12px; color: var(--text-muted); }
+.lecture-chevron { color: var(--primary); font-size: 13px; flex-shrink-0; }
+.empty-day { padding: 32px; text-align: center; color: var(--text-muted); }
+.empty-day .material-symbols-outlined { font-size: 40px; display: block; margin-bottom: 8px; color: var(--border); }
+
+/* ===== Timetable List ===== */
+.searchable-wrapper { position: relative; }
+.searchable-list { display: none; position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 100; max-height: 200px; overflow-y: auto; background: var(--surface-card); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 6px 16px var(--border-subtle); margin-top: 4px; }
+.searchable-item { padding: 8px 12px; cursor: pointer; font-size: 13px; border-bottom: 1px solid var(--surface-zebra); }
+.searchable-item:hover { background: var(--primary-faint); }
+.searchable-item:last-child { border-bottom: none; }
+
+.ts-dropdown,
+.ts-dropdown.form-control,
+.ts-dropdown.form-select {
+  background: var(--border-subtle);
+  border: 1px solid var(--bs-border-color-translucent);
+  border-radius: .375rem;
+  box-shadow: 0 6px 12px rgb(128 104 104);
+  height: auto;
+  padding: 0;
+  z-index: 1000;
+}
+
+[data-theme="light"] .text-white {
+  --tw-text-opacity: 1;
+  color: rgb(255 255 255) !important;
+  -webkit-text-stroke: 0.35px #000;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7);
+  paint-order: stroke fill;
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.schedule-item {
+  padding: 10px 12px;
+  border-radius: 10px;
+  transition: all 0.2s;
+  border-right: 4px solid var(--primary-deep);
+  background: var(--primary-glow);
+  min-height: 80px;
+}
+.schedule-item.clickable { cursor: pointer; }
+.schedule-item.clickable:hover { box-shadow: 0 4px 12px var(--primary-glow); transform: translateY(-1px); }
+.schedule-course { font-weight: 700; font-size: 13px; color: var(--text-primary); margin-bottom: 4px; }
+.schedule-teacher { font-size: 11px; color: var(--text-secondary); margin-bottom: 2px; }
+.schedule-room { font-size: 11px; color: var(--primary-deep); font-weight: 600; }
+.schedule-time { font-size: 10px; color: var(--text-muted); margin-top: 4px; direction: ltr; text-align: right; }
+.schedule-actions { margin-top: 6px; }
+.btn-outline-danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); padding: 2px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; transition: all 0.2s; }
+.btn-outline-danger:hover { background: var(--danger); color: var(--text-on-primary); }
+
+.add-slot { opacity: 0.3; transition: opacity 0.2s; }
+.add-slot:hover { opacity: 1; }
+
+/* ===== Timetable Print ===== */
+.official-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 0; border-bottom: 2px solid #000; margin-bottom: 16px; gap: 16px; }
+.header-left { flex: 1; text-align: right; }
+.header-left .college-name-ar { font-size: 22px; font-weight: 800; color: #000; margin: 0; line-height: 1.3; }
+.header-left .department-name-ar { font-size: 14px; color: #333; margin-top: 4px; }
+.header-center { flex: 0 0 90px; }
+.logo-placeholder { width: 90px; height: 90px; border-radius: 16px; overflow: hidden; border: 2px solid #000; }
+.header-right { flex: 1; text-align: left; direction: ltr; }
+.header-right .college-name-en { font-size: 16px; font-weight: 700; color: #000; margin: 0; }
+.header-right .semester-info-en, .header-right .date-en { font-size: 13px; color: #333; margin-top: 2px; }
+.info-bar { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #f5f5f5; border-radius: 0; margin-bottom: 16px; border-right: 3px solid #000; }
+.info-left { display: flex; gap: 20px; flex-wrap: wrap; }
+.info-label { font-size: 13px; font-weight: 600; color: #000; }
+.info-right .info-code { font-size: 12px; font-weight: 700; color: #000; background: #fff; padding: 4px 10px; border-radius: 0; border: 1px solid #000; }
+.timetable-grid { overflow-x: auto; margin-bottom: 20px; }
+.timetable-grid table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.timetable-grid th { background: #000 !important; color: #fff !important; padding: 10px 6px; border: 1.5px solid #000; text-align: center; font-weight: 700; }
+.timetable-grid th.day-col { min-width: 80px; }
+.timetable-grid th small { display: block; font-size: 11px; font-weight: 400; opacity: 0.85; margin-top: 2px; }
+.timetable-grid td { border: 1px solid var(--border); padding: 8px 6px; text-align: center; vertical-align: middle; min-height: 60px; height: 60px; }
+.timetable-grid td.day-cell { background: #f0f0f0 !important; font-weight: 700; color: #000; min-width: 80px; }
+.timetable-grid td.has-course { background: #fff !important; }
+.timetable-grid .course-name { font-weight: 700; font-size: 13px; color: #000; margin-bottom: 4px; }
+.timetable-grid .instructor-name, .timetable-grid .room-name { font-size: 11px; color: #333; display: flex; align-items: center; justify-content: center; gap: 4px; }
+.timetable-grid .icon { width: 14px; height: 14px; flex-shrink: 0; color: #333; }
+.legend { display: flex; flex-wrap: wrap; gap: 10px 24px; padding: 14px 16px; background: #f5f5f5; border-radius: 0; margin-bottom: 24px; border: 1px solid #000; }
+.legend-item { font-size: 12px; color: var(--text); position: relative; padding-right: 14px; }
+.legend-item::before { content: ''; position: absolute; right: 0; top: 6px; width: 7px; height: 7px; border-radius: 50%; background: #333; }
+.signatures { display: flex; justify-content: space-around; align-items: flex-end; padding: 24px 0; margin-bottom: 20px; }
+.signature-block { text-align: center; min-width: 200px; }
+.signature-block p { font-size: 15px; font-weight: 700; color: #000; margin-bottom: 8px; }
+.signature-line { border-bottom: 2px solid var(--text); padding: 6px 20px 4px; font-size: 13px; color: var(--text-muted); min-width: 180px; }
+.page-footer { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-top: 2px solid #000; font-size: 12px; color: #333; }
+.page-footer .footer-left { text-align: right; }
+.page-footer .footer-center { text-align: center; font-weight: 600; color: #000; }
+.page-footer .footer-right { text-align: left; }
+
+@media print {
+  @page { size: A4 landscape; margin: 12mm 15mm; }
+  body { background: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .page { max-width: none; padding: 0; background: none; box-shadow: none; }
+  .official-header { border-bottom-color: #000; }
+  .timetable-grid th { background: #000 !important; color: #fff !important; }
+  .timetable-grid td.has-course { background: #fff !important; }
+  .timetable-grid td.day-cell { background: #f0f0f0 !important; }
+  .info-bar { background: #f5f5f5 !important; }
+  .legend { background: #f5f5f5 !important; }
+  .signatures { page-break-inside: avoid; }
+  .timetable-grid { page-break-inside: avoid; }
+  .page-footer { position: fixed; bottom: 0; left: 0; right: 0; }
+  .logo-placeholder img { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+@media screen and (max-width: 768px) {
+  .official-header { flex-direction: column; text-align: center; }
+  .header-left { text-align: center; }
+  .header-right { text-align: center; }
+  .info-left { flex-direction: column; gap: 4px; }
+  .signatures { flex-direction: column; gap: 24px; align-items: center; }
+  .page-footer { flex-direction: column; gap: 4px; }
+}
+
+/* ===== Skeleton Loading ===== */
+.skeleton-row {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+}
+
+.skeleton-row .skeleton-block {
+  flex-shrink: 0;
+  width: 70px;
+  height: 70px;
+  border-radius: 12px;
+}
+
+.skeleton-row .flex-1 {
+  min-width: 0;
+}
+
+.skeleton-row .skeleton-line {
+  margin-bottom: 8px;
+  height: 20px;
+}
+
+.skeleton-row .skeleton-line:last-child {
+  height: 14px;
+  margin-bottom: 4px;
+}
+
+.skeleton-row .skeleton-line:nth-child(3) {
+  height: 12px;
+}
+
+/* ===== Empty State ===== */
+.day-empty-state {
+  padding: 32px 16px;
+}
+
+.day-empty-state .material-symbols-outlined {
+  margin-bottom: 8px;
+  display: block;
+}
+
+.day-empty-state p:first-of-type {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.day-empty-state p:last-of-type {
+  font-size: 12px;
+  color: var(--text-muted);
+}

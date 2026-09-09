@@ -1,0 +1,202 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'departments' %}
+{% set page_title = 'إدارة الأقسام' %}
+{% set form = form | default({}) %}
+{% set departments = departments | default([]) %}
+{% set total_pages = (total // per_page) + (1 if total % per_page else 0) %}
+
+{% block head_extra %}
+{% set print_orientation = 'A4 portrait' %}
+{% set print_margin = '12mm' %}
+{% include 'print/_embedded_styles.html' %}
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto print-hidden">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="page-header-info">
+      <span class="material-symbols-outlined page-header-icon">account_tree</span>
+      <div>
+        <h1 class="page-title">إدارة الأقسام الكلية</h1>
+        <p class="page-subtitle">إدارة الأقسام العلمية والإدارية</p>
+      </div>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <button type="button" onclick="window.print()"
+              class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-outline-variant px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm">
+        <span class="material-symbols-outlined text-lg">print</span>
+        طباعة
+      </button>
+      <a href="{{ url_for('departments.departments_archive') }}"
+         class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm no-underline">
+        <span class="material-symbols-outlined text-lg">archive</span>
+        الأرشيف
+      </a>
+    </div>
+  </div>
+
+  {% if form_error %}
+  <div class="mb-4 p-3.5 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm font-bold flex items-center gap-2">
+    <span class="material-symbols-outlined text-lg">error</span>
+    {{ form_error }}
+  </div>
+  {% endif %}
+
+  <!-- Create Department -->
+  <div class="page-card p-4 mb-6">
+    <form method="post" action="{{ url_for('departments.departments_create') }}" class="flex flex-wrap items-end gap-3">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+      <div class="flex-1 min-w-[220px]">
+        <label class="block text-xs font-bold text-on-surface-variant mb-1.5">اسم القسم الجديد</label>
+        <input type="text" name="name" value="{{ form.get('name', '') }}" required placeholder="مثال: قسم هندسة الحاسوب"
+               class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-on-surface-variant mb-1.5">عدد الفصول</label>
+        <input type="number" name="semesters" value="{{ form.get('semesters', 1) }}" min="1"
+               class="w-24 bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-on-surface-variant mb-1.5">عدد الشعب</label>
+        <input type="number" name="majors" value="{{ form.get('majors', 7) }}" min="1"
+               class="w-24 bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+      </div>
+      <button type="submit"
+              class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm">
+        <span class="material-symbols-outlined text-lg">add</span>
+        + قسم
+      </button>
+    </form>
+  </div>
+
+  <!-- Search Bar -->
+  <form id="departmentsSearchForm" method="GET" action="{{ url_for('departments.departments_list') }}"
+        class="flex flex-wrap items-center gap-3 mb-4">
+    <div class="relative flex-1 min-w-[240px]">
+      <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">search</span>
+      <input type="text" name="search" value="{{ search or '' }}" placeholder="البحث باسم القسم..."
+             class="search-input w-full bg-white border border-outline-variant rounded-lg pr-10 pl-10 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+      <button type="button" class="search-clear absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-error transition-colors bg-transparent border-0 cursor-pointer"
+              style="display: {{ 'flex' if search else 'none' }}" title="مسح البحث">
+        <span class="material-symbols-outlined text-lg">close</span>
+      </button>
+      <span class="material-symbols-outlined search-spinner absolute left-3 top-1/2 -translate-y-1/2 text-primary animate-spin" style="display:none">hourglass_empty</span>
+    </div>
+    <button type="submit"
+            class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm">
+      <span class="material-symbols-outlined text-lg">search</span>
+      بحث
+    </button>
+    <span class="search-results-count text-xs font-bold text-on-surface-variant bg-surface-container px-3 py-1.5 rounded-full">{{ total }} نتيجة</span>
+  </form>
+
+  <!-- Departments Table -->
+  <div class="page-card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="search-table w-full text-right border-collapse text-sm">
+        <thead>
+          <tr class="bg-surface-dim font-label-md text-label-md text-on-surface-variant">
+            <th class="px-4 py-3 border-b border-outline-variant font-bold w-14">#</th>
+            <th class="px-4 py-3 border-b border-outline-variant font-bold">اسم القسم</th>
+            <th class="px-4 py-3 border-b border-outline-variant font-bold w-28">عدد الفصول</th>
+            <th class="px-4 py-3 border-b border-outline-variant font-bold">الشعب</th>
+            <th class="px-4 py-3 border-b border-outline-variant font-bold text-center w-36">الإجراءات</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if departments %}
+          {% for d in departments %}
+          <tr class="hover:bg-primary/5 transition-colors border-b border-outline-variant last:border-b-0">
+            <td class="px-4 py-3 text-on-surface-variant">{{ loop.index }}</td>
+            <td class="px-4 py-3 font-bold text-primary">{{ d.name }}</td>
+            <td class="px-4 py-3 text-on-surface">{{ d.semesters }}</td>
+            <td class="px-4 py-3">
+              <div class="flex flex-wrap gap-1.5">
+                {% if d.major_list %}
+                {% for m in d.major_list %}
+                <span class="inline-flex items-center gap-1 bg-primary/10 text-primary px-2.5 py-1 rounded-full text-xs font-bold">
+                  {{ m.name }}
+                  <form method="post" action="{{ url_for('departments.department_delete_major', dept_id=d.id, major_id=m.id) }}" style="display:inline"
+                        onsubmit="return confirm('حذف الشعبة؟')">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="text-primary hover:text-red-600 transition-colors bg-transparent border-0 cursor-pointer p-0 inline-flex" title="حذف الشعبة">
+                      <span class="material-symbols-outlined text-[14px]">close</span>
+                    </button>
+                  </form>
+                </span>
+                {% endfor %}
+                {% else %}
+                <span class="text-on-surface-variant text-xs">—</span>
+                {% endif %}
+              </div>
+            </td>
+            <td class="px-4 py-3">
+              <div class="flex items-center justify-center gap-2">
+                <a href="{{ url_for('departments.departments_edit', id=d.id) }}"
+                   class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors no-underline" title="تعديل">edit</a>
+                <form method="post" action="{{ url_for('departments.departments_delete', id=d.id) }}" style="display:inline"
+                      onsubmit="return confirm('تأكيد حذف القسم؟')">
+                  <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="material-symbols-outlined text-red-600 hover:text-red-700 transition-colors bg-transparent border-0 cursor-pointer" title="حذف">delete</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+          {% else %}
+          <tr>
+            <td colspan="5" class="px-4 py-14 text-center">
+              <span class="material-symbols-outlined text-6xl text-outline-variant block mb-3">domain_off</span>
+              {% if search %}
+              <h3 class="text-on-surface font-bold mb-1">لا توجد نتائج</h3>
+              <p class="text-on-surface-variant text-sm">لا توجد نتائج تطابق "{{ search }}"</p>
+              {% else %}
+              <h3 class="text-on-surface font-bold mb-1">لا توجد أقسام</h3>
+              <p class="text-on-surface-variant text-sm">لم يتم إنشاء أي أقسام بعد</p>
+              {% endif %}
+            </td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  {% if total_pages > 1 %}
+  <div class="search-pagination flex flex-wrap items-center justify-between gap-4 mt-5">
+    <span class="text-xs font-bold text-on-surface-variant">عرض {{ ((page - 1) * per_page) + 1 }} إلى {{ [page * per_page, total] | min }} من {{ total }}</span>
+    <div class="flex flex-wrap gap-2">
+      {% if page > 1 %}
+      <a href="{{ url_for('departments.departments_list', page=page - 1, search=search) }}"
+         class="px-3 py-2 rounded-lg border border-outline-variant bg-white hover:bg-primary/10 text-on-surface text-sm font-bold transition no-underline">السابق</a>
+      {% endif %}
+      {% for p in range(1, total_pages + 1) %}
+      {% if p == page %}
+      <span class="px-3 py-2 rounded-lg bg-primary text-on-primary text-sm font-bold">{{ p }}</span>
+      {% elif p >= page - 2 and p <= page + 2 %}
+      <a href="{{ url_for('departments.departments_list', page=p, search=search) }}"
+         class="px-3 py-2 rounded-lg border border-outline-variant bg-white hover:bg-primary/10 text-on-surface text-sm font-bold transition no-underline">{{ p }}</a>
+      {% endif %}
+      {% endfor %}
+      {% if page * per_page < total %}
+      <a href="{{ url_for('departments.departments_list', page=page + 1, search=search) }}"
+         class="px-3 py-2 rounded-lg border border-outline-variant bg-white hover:bg-primary/10 text-on-surface text-sm font-bold transition no-underline">التالي</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+<div class="print-only">
+  {% include 'print/lists/_department_content.html' %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/search.js"></script>
+<script src="{{ url_for('static', filename='js/pages/departments_list.js') }}"></script>
+{% endblock %}

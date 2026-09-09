@@ -1,0 +1,301 @@
+/* Shared styles for preview pages */
+
+/* ── Design tokens (light theme) ───────────────────────────────
+   These CSS variables back the var(--...) utilities used across
+   the preview pages (e.g. bg-[var(--primary)]). They mirror the
+   design system defined in base/variables.css (single source of
+   truth for the app-wide theme).                    */
+
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-family: var(--font-family, 'Tajawal', sans-serif);
+  background-color: var(--page-bg);
+}
+
+/* ── Layout helpers ─────────────────────────────────────────── */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 14px;
+  list-style: none;
+  padding: 0;
+}
+
+.breadcrumb a {
+  color: var(--text-muted);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.breadcrumb a:hover {
+  color: var(--primary);
+}
+
+.breadcrumb .current {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.page-header h1 {
+  margin: 0;
+}
+
+/* ── Form layout ────────────────────────────────────────────── */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.required::after {
+  content: " *";
+  color: var(--error);
+}
+
+.form-error {
+  color: var(--error);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+/* Sticky action bar — stays visible while scrolling form pages */
+.sticky-action-bar {
+  position: sticky;
+  top: 80px;
+  z-index: 20;
+  background: var(--surface-card);
+  border: 1px solid var(--border-accent);
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 8px var(--shadow-sm);
+  padding: 10px 16px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  backdrop-filter: blur(8px);
+}
+
+.sticky-action-bar .action-bar-left,
+.sticky-action-bar .action-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Compact form card — reduces internal spacing */
+.form-card-compact {
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-accent);
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px 0 var(--shadow-sm);
+  padding: 16px;
+}
+
+.form-card-compact .form-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.form-card-compact .form-card-header .material-symbols-outlined {
+  font-size: 20px;
+}
+
+.form-card-compact .form-card-header h2,
+.form-card-compact .form-card-header h3 {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0;
+}
+
+/* Collapsible sections — rotate the arrow when opened */
+details > summary .collapsible-arrow {
+  transition: transform 0.2s ease;
+  margin-inline-start: auto;
+}
+
+details[open] > summary .collapsible-arrow {
+  transform: rotate(90deg);
+}
+
+/* Informational callout (used in form sidebars) */
+.info-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--info-faint);
+}
+
+.table-row-hover:hover {
+  background-color: #f9fafb;
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-dark);
+}
+
+.btn-outline {
+  border: 1px solid #d1d5db;
+  color: #374151;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  background-color: white;
+  transition: background-color 0.2s;
+}
+
+.btn-outline:hover {
+  background-color: #f9fafb;
+}
+
+.btn-search {
+  background-color: var(--primary);
+  color: white;
+  padding: 0.5rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.btn-search:hover {
+  background-color: var(--primary-dark);
+}
+
+.action-btn {
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  transition: background-color 0.2s;
+}
+
+.action-btn-edit:hover {
+  background-color: #dbeafe;
+  color: #2563eb;
+}
+
+.action-btn-view:hover {
+  background-color: #d1fae5;
+  color: #059669;
+}
+
+.action-btn-delete:hover {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+
+.pagination-btn {
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  border: 1px solid #d1d5db;
+  background-color: white;
+  color: #374151;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.pagination-btn:hover {
+  background-color: #f3f4f6;
+}
+
+.pagination-btn.active {
+  background-color: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.status-active {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.status-maintenance {
+  background-color: #ffedd5;
+  color: #9a3412;
+}
+
+.dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+}
+
+.dot-green {
+  background-color: #10b981;
+}
+
+.dot-orange {
+  background-color: #f97316;
+}
+
+input[type="text"]:focus,
+select:focus {
+  outline: none;
+  border-color: var(--border-input-focus);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}

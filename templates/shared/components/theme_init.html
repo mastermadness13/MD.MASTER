@@ -1,0 +1,8 @@
+<script>
+(function () {
+  var KEY = 'ropely-theme';
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch (e) { saved = null; }
+  document.documentElement.setAttribute('data-theme', saved === 'dark' ? 'dark' : 'light');
+})();
+</script>

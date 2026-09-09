@@ -1,0 +1,6 @@
+{% extends 'print/layouts/print.html' %}
+{% set print_title = 'طباعة الجدول الأسبوعي — ' ~ (teacher.name if teacher else '') %}
+
+{% block print_content %}
+{% include 'print/timetables/_teacher_content.html' %}
+{% endblock %}

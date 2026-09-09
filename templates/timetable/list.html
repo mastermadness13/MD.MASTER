@@ -1,0 +1,194 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'timetable.timetable' %}
+{% set page_title = 'الجدول الدراسي' %}
+
+{% set entries = entries | default([]) %}
+{% set departments = departments | default([]) %}
+{% set periods = periods | default([]) %}
+{% set available_semesters = available_semesters | default([1]) %}
+{% set selected_dept = selected_dept | default(None) %}
+{% set selected_dept_name = selected_dept_name | default(None) %}
+{% set selected_semester = selected_semester | default(1) %}
+{% set selected_section = selected_section | default(None) %}
+{% set available_sections = available_sections | default([]) %}
+{% set semester_fixed = semester_fixed | default(False) %}
+{% set section_fixed = section_fixed | default(False) %}
+{% set has_sections = has_sections | default(False) %}
+{% set can_edit = has_permission('timetable.edit') %}
+{% set is_hod = user.role == 'head_of_department' %}
+{% set is_teacher = user.role == 'teacher' %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="page-header-info">
+      <span class="material-symbols-outlined page-header-icon">calendar_today</span>
+      <div>
+        <h1 class="page-title">الجدول الدراسي</h1>
+        <p class="page-subtitle">{% if selected_dept_name %}{{ selected_dept_name }} — {% endif %}الفصل الدراسي {{ selected_semester }}</p>
+      </div>
+    </div>
+    {% if can_edit %}
+    <a href="{{ url_for('timetable.timetable_create', department_id=selected_dept) }}"
+       class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm">
+      <span class="material-symbols-outlined text-lg">add</span>
+      إضافة حصة
+    </a>
+    {% endif %}
+  </div>
+
+  <!-- Filters -->
+  <div class="page-card p-4 mb-6 flex flex-wrap items-end gap-4">
+    {% if not is_hod and not is_teacher and departments %}
+    <div class="min-w-[220px]">
+      <label class="text-xs font-bold text-on-surface-variant mb-1.5 block flex items-center gap-1.5">
+        <span class="material-symbols-outlined text-[15px] text-primary">domain</span>
+        القسم
+      </label>
+      <select id="deptFilter" data-base-url="{{ url_for('timetable.timetable') }}"
+              class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+        <option value="">— كل الأقسام —</option>
+        {% for d in departments %}
+          <option value="{{ d.id }}" {% if d.id == selected_dept %}selected{% endif %}>{{ d.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+
+    {% if not semester_fixed %}
+    <div class="min-w-[150px]">
+      <label class="text-xs font-bold text-on-surface-variant mb-1.5 block flex items-center gap-1.5">
+        <span class="material-symbols-outlined text-[15px] text-primary">school</span>
+        الفصل الدراسي
+      </label>
+      <select id="semesterFilter"
+              class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+        {% for s in available_semesters %}
+          <option value="{{ s }}" {% if s == selected_semester %}selected{% endif %}>الفصل {{ s }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+
+    {% if has_sections and not section_fixed %}
+    <div class="min-w-[150px]">
+      <label class="text-xs font-bold text-on-surface-variant mb-1.5 block flex items-center gap-1.5">
+        <span class="material-symbols-outlined text-[15px] text-primary">groups</span>
+        الشعبة
+      </label>
+      <select id="sectionFilter"
+              class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+        <option value="">— كل الشعب —</option>
+        {% for s in available_sections %}
+          <option value="{{ s }}" {% if s == selected_section %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Weekly Grid -->
+  <div class="bg-surface-card rounded-2xl shadow-sm border border-outline-variant overflow-hidden">
+    <div class="p-4 overflow-x-auto">
+      {% if periods and days_list %}
+      <table class="w-full text-right border-collapse min-w-[760px]">
+        <thead>
+          <tr class="bg-primary-container">
+            <th class="px-4 py-3 text-right text-sm font-bold text-primary border-b border-outline-variant w-[100px]">اليوم</th>
+            {% for p in periods %}
+            <th class="px-4 py-3 text-center text-sm font-bold text-primary border-b border-outline-variant border-l border-outline-variant min-w-[200px]">
+              {{ p.label if p.label else p.code }}
+              {% if p.start_time %}
+               <span class="block font-normal text-on-surface-variant text-xs mt-1" dir="ltr">{{ format_time12(p.start_time) }}{% if p.end_time %} إلى {{ format_time12(p.end_time) }}{% endif %}</span>
+              {% endif %}
+            </th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for day in days_list %}
+          <tr class="border-b border-outline align-top">
+            <td class="px-4 py-3 font-bold text-sm text-on-surface bg-surface-dim">{{ day }}</td>
+            {% for p in periods %}
+            <td class="px-1 py-2 align-top">
+              {% set cell = [] %}
+              {% for e in entries %}
+                {% if e.day == day and e.period == p.code %}{% set _ = cell.append(e) %}{% endif %}
+              {% endfor %}
+              {% if cell %}
+              <div class="flex flex-col gap-1.5">
+                {% for e in cell %}
+                <div class="p-2 bg-primary-container border-r-2 border-primary rounded-lg">
+                  {% if e.start_time %}
+                   <div class="text-[11px] font-bold text-primary mb-1" dir="ltr">{{ format_time12(e.start_time) }}{% if e.end_time %} ← {{ format_time12(e.end_time) }}{% endif %}</div>
+                  {% endif %}
+                  <div class="font-bold text-sm text-on-surface mb-0.5">
+                    {{ e.course_name }}
+                    {% if e.course_code %}<span class="text-[10px] text-on-surface-variant font-normal">({{ e.course_code }})</span>{% endif %}
+                  </div>
+                  <div class="flex items-center gap-1 text-xs text-on-surface-variant mb-0.5">
+                    <span class="material-symbols-outlined text-[14px]">person</span>{{ e.teacher_name or '—' }}
+                  </div>
+                  <div class="flex items-center gap-1 text-xs text-on-surface-variant mb-0.5">
+                    <span class="material-symbols-outlined text-[14px]">meeting_room</span>{{ e.room_name or '—' }}
+                    {% if e.semester %}<span class="text-on-surface-variant">· ف{{ e.semester }}</span>{% endif %}
+                    {% if e.student_section %}<span class="text-on-surface-variant">· ش{{ e.student_section }}</span>{% endif %}
+                  </div>
+                  {% if can_edit %}
+                  <div class="flex items-center gap-1.5 mt-1.5">
+                    <a href="{{ url_for('timetable.timetable_edit', entry_id=e.id) }}"
+                       class="inline-flex items-center gap-1 text-[11px] font-bold text-primary bg-primary-fixed hover:bg-primary-container px-2 py-1 rounded-md transition">
+                      <span class="material-symbols-outlined text-[13px]">edit</span>تعديل
+                    </a>
+                    <button type="button" onclick="deleteEntry({{ e.id }}, '{{ e.course_name }}')"
+                            class="inline-flex items-center gap-1 text-[11px] font-bold text-error bg-error-container px-2 py-1 rounded-md transition">
+                      <span class="material-symbols-outlined text-[13px]">delete</span>حذف
+                    </button>
+                  </div>
+                  {% endif %}
+                </div>
+                {% endfor %}
+              </div>
+              {% else %}
+              <div class="min-h-[92px] h-full flex items-center justify-center bg-surface-container-highest rounded-lg text-xs text-on-surface-variant">فارغ</div>
+              {% endif %}
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="py-16 text-center text-on-surface-variant">
+        <span class="material-symbols-outlined block text-[40px] mb-2">calendar_today</span>
+        لا توجد حصص مجدولة بعد
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div class="mt-4 flex flex-wrap items-center gap-5 text-xs text-on-surface-variant">
+    <div class="flex items-center gap-1.5">
+      <span class="w-3 h-3 rounded bg-primary-container border-r-2 border-primary"></span>
+      حصة مجدولة
+    </div>
+    <div class="flex items-center gap-1.5">
+      <span class="w-3 h-3 rounded bg-surface-container-highest"></span>
+      فارغ
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+window.TIMETABLE_LIST_BOOT = {
+  urls: { deleteEntry: {{ url_for('timetable.timetable_delete_entry') | tojson }} }
+};
+</script>
+<script src="{{ url_for('static', filename='js/timetable_list.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,163 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'faculty_performance' %}
+{% set page_title = 'تعديل التكليفات الإدارية' %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+
+  <div class="flex items-center gap-3 mb-6">
+    <span class="material-symbols-outlined text-primary text-3xl">work</span>
+    <div>
+      <h1 class="text-2xl font-bold text-on-surface">تعديل التكليفات الإدارية</h1>
+      <p class="text-sm text-on-surface-variant mt-0.5">{{ teacher.name }} — {{ academic_year }} / الفصل {{ semester }}</p>
+    </div>
+  </div>
+
+  <div class="mb-4 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 text-sm font-bold">
+    <span class="material-symbols-outlined text-lg">info</span>
+    التكليف ساري خلال الفترة: {{ sem_start }} إلى {{ sem_end }}
+  </div>
+
+  <form method="POST"
+        class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
+
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="academic_year" value="{{ academic_year }}">
+    <input type="hidden" name="semester" value="{{ semester }}">
+
+    <div class="p-5">
+      <div id="assignments-container" class="space-y-3">
+        {% for a in assignments %}
+        <div class="assignment-row flex flex-wrap items-end gap-2 p-3 rounded-xl border border-outline-variant bg-surface-dim">
+          <div class="flex-1 min-w-[200px]">
+            <label class="block text-xs font-bold text-on-surface-variant mb-1">المهمة الإدارية</label>
+            <select name="task_name[]" required onchange="autoFillHours(this)"
+                    class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none">
+              <option value="">— اختر —</option>
+              {% for t in admin_task_types %}
+              <option value="{{ t.name }}" {% if t.name == a.task_name %}selected{% endif %}>{{ t.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="w-20">
+            <label class="block text-xs font-bold text-on-surface-variant mb-1">الساعات (تلقائي)</label>
+            <input type="number" name="auto_hours[]" min="0" value="{{ a.auto_hours or '' }}" readonly
+                   class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-gray-50 text-on-surface-variant outline-none">
+          </div>
+          <div class="w-20">
+            <label class="block text-xs font-bold text-on-surface-variant mb-1">ساعات يدوية</label>
+            <input type="number" name="manual_hours[]" min="1" max="24" value="{{ a.manual_hours or 0 }}"
+                   class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none">
+          </div>
+          <div class="w-32">
+            <label class="block text-xs font-bold text-on-surface-variant mb-1">تاريخ التكليف</label>
+            <input type="date" name="assignment_date[]" value="{{ a.assignment_date or '' }}"
+                   class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none">
+          </div>
+          <div class="w-32">
+            <label class="block text-xs font-bold text-on-surface-variant mb-1">من تاريخ</label>
+            <input type="date" name="start_date[]" value="{{ a.start_date }}" required
+                   class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none">
+          </div>
+          <div class="w-32">
+            <label class="block text-xs font-bold text-on-surface-variant mb-1">إلى تاريخ</label>
+            <input type="date" name="end_date[]" value="{{ a.end_date or '' }}"
+                   class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none"
+                   placeholder="لا يزال ساريًا">
+          </div>
+          <div class="flex-1 min-w-[120px]">
+            <label class="block text-xs font-bold text-on-surface-variant mb-1">ملاحظات</label>
+            <input type="text" name="notes[]" value="{{ a.notes or '' }}"
+                   class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none"
+                   placeholder="اختياري">
+          </div>
+          <button type="button" onclick="this.closest('.assignment-row').remove()"
+                  class="p-2 rounded-lg hover:bg-red-50 text-red-500 transition">
+            <span class="material-symbols-outlined text-lg">delete</span>
+          </button>
+        </div>
+        {% endfor %}
+
+        {% if not assignments %}
+        <div class="assignment-row flex flex-wrap items-end gap-2 p-3 rounded-xl border border-outline-variant bg-surface-dim">
+          <div class="flex-1 min-w-[200px]">
+            <label class="block text-xs font-bold text-on-surface-variant mb-1">المهمة الإدارية</label>
+            <select name="task_name[]" required onchange="autoFillHours(this)"
+                    class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none">
+              <option value="">— اختر —</option>
+              {% for t in admin_task_types %}
+              <option value="{{ t.name }}">{{ t.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="w-20">
+            <label class="block text-xs font-bold text-on-surface-variant mb-1">الساعات (تلقائي)</label>
+            <input type="number" name="auto_hours[]" min="0" value="" readonly
+                   class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-gray-50 text-on-surface-variant outline-none">
+          </div>
+          <div class="w-20">
+            <label class="block text-xs font-bold text-on-surface-variant mb-1">ساعات يدوية</label>
+            <input type="number" name="manual_hours[]" min="1" max="24" value="0"
+                   class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none">
+          </div>
+          <div class="w-32">
+            <label class="block text-xs font-bold text-on-surface-variant mb-1">تاريخ التكليف</label>
+            <input type="date" name="assignment_date[]"
+                   class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none">
+          </div>
+          <div class="w-32">
+            <label class="block text-xs font-bold text-on-surface-variant mb-1">من تاريخ</label>
+            <input type="date" name="start_date[]" required
+                   class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none">
+          </div>
+          <div class="w-32">
+            <label class="block text-xs font-bold text-on-surface-variant mb-1">إلى تاريخ</label>
+            <input type="date" name="end_date[]"
+                   class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none">
+          </div>
+          <div class="flex-1 min-w-[120px]">
+            <label class="block text-xs font-bold text-on-surface-variant mb-1">ملاحظات</label>
+            <input type="text" name="notes[]" value=""
+                   class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none"
+                   placeholder="اختياري">
+          </div>
+          <button type="button" onclick="this.closest('.assignment-row').remove()"
+                  class="p-2 rounded-lg hover:bg-red-50 text-red-500 transition">
+            <span class="material-symbols-outlined text-lg">delete</span>
+          </button>
+        </div>
+        {% endif %}
+      </div>
+
+      <button type="button" onclick="addAssignmentRow()"
+              class="mt-3 flex items-center gap-1.5 text-sm font-bold text-primary hover:text-primary/80 transition">
+        <span class="material-symbols-outlined text-lg">add_circle</span>
+        إضافة تكليف جديد
+      </button>
+    </div>
+
+    <div class="px-5 py-4 border-t border-primary/10 bg-surface-dim flex justify-end gap-3">
+      <a href="{{ url_for('faculty_performance.preview', teacher_id=teacher.id, year=academic_year, semester=semester) }}"
+         class="flex items-center gap-2 bg-surface-container text-on-surface-variant hover:bg-surface-container-high border border-outline-variant px-4 py-2 rounded-lg text-sm font-bold transition">
+        <span class="material-symbols-outlined text-lg">arrow_back</span>
+        عودة
+      </a>
+      <button type="submit"
+              class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-5 py-2 rounded-lg text-sm font-bold transition shadow-sm">
+        <span class="material-symbols-outlined text-lg">save</span>
+        حفظ
+      </button>
+    </div>
+  </form>
+
+</div>
+
+<script>
+window.FACULTY_EDIT_ASSIGNMENTS_BOOT = {
+  taskHours: {{ admin_task_hours | tojson }},
+  taskTypes: {{ admin_task_types | tojson }}
+};
+</script>
+<script src="{{ url_for('static', filename='js/faculty_performance_edit_assignments.js') }}"></script>
+
+{% endblock %}

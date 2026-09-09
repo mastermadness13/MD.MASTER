@@ -1,0 +1,228 @@
+{% include 'shared/components/head_preamble.html' %}
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet"/>
+{% include 'shared/components/head_assets.html' %}
+<title>{% block title %}{{ page_title|default('لوحة التحكم') }} — منصة رقمية لإدارة الجداول والمقرارت الدراسية{% endblock %}</title>
+{% block head_extra %}{% endblock %}
+</head>
+<body class="sidebar-layout{% if hide_sidebar %} no-sidebar{% endif %}">
+
+<!-- App background -->
+<div class="auth-bg">
+  <div class="auth-bg-gradient"></div>
+  <div class="auth-bg-pattern"></div>
+  <div class="auth-bg-shapes">
+    <div class="auth-bg-shape"></div>
+    <div class="auth-bg-shape"></div>
+    <div class="auth-bg-shape"></div>
+    <div class="auth-bg-shape"></div>
+    <div class="auth-bg-shape"></div>
+  </div>
+</div>
+
+{% set user = user if user is defined else current_user() %}
+{% set active_key = sidebar_active | default('') %}
+
+{% if not hide_sidebar %}
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebarMobile()"></div>
+
+<aside class="sidebar" id="appSidebar">
+  <div class="sidebar-header">
+    <button type="button" class="sidebar-toggle-btn" onclick="toggleSidebar()" aria-label="القائمة الجانبية">
+      <span class="material-symbols-outlined">menu</span>
+    </button>
+    <a href="{{ url_for(session.get('landing_endpoint', 'dashboard.dashboard')) }}" class="sidebar-brand">
+      <img src="/static/image/logo.png" alt="شعار الكلية" style="height:28px;width:28px;border-radius:8px;object-fit:cover;flex-shrink:0"/>
+      <span>كلية التقنية الهندسية زوارة</span>
+    </a>
+  </div>
+
+  <div class="sidebar-body">
+    {% if user %}
+    {% set user_display = user.label or user.username %}
+    <div class="sidebar-profile">
+      <div class="user-avatar" style="background:var(--primary)">{{ user_display[:1] }}</div>
+      <div class="sidebar-profile-info">
+        <strong class="text-sm">{{ user_display }}</strong>
+        <small class="text-xs" style="color:var(--text-muted)">{{ role_labels.get(session.get('role') or user.role, session.get('role') or user.role) }}</small>
+      </div>
+    </div>
+    {% endif %}
+
+    <nav class="sidebar-nav">
+      {% for item in nav_items %}
+        {% if item.get('section', 'main') == 'main' %}
+        <a href="{{ url_for(item.endpoint) }}"
+           class="sidebar-link {% if active_key in item.active_keys %}active{% endif %}"
+           {% if active_key in item.active_keys %}aria-current="page"{% endif %}>
+          <span class="material-symbols-outlined">{{ item.icon }}</span>
+          <span>{{ item.label }}</span>
+        </a>
+        {% endif %}
+      {% endfor %}
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% set has_more = nav_items | selectattr('section', 'equalto', 'more') | list %}
+      {% if has_more %}
+      <div class="sidebar-nav-divider" id="sidebarMoreDivider" onclick="toggleSidebarMore()" role="button" tabindex="0" aria-expanded="false" aria-label="خيارات إضافية">
+        <span class="material-symbols-outlined sidebar-nav-divider-icon" id="sidebarMoreIcon">expand_more</span>
+        <span class="sidebar-nav-divider-label">خيارات إضافية</span>
+        <span class="sidebar-nav-divider-line"></span>
+      </div>
+      <div class="sidebar-nav-more collapsed" id="sidebarMoreGroup">
+        {% for item in nav_items %}
+          {% if item.get('section') == 'more' %}
+        <a href="{{ url_for(item.endpoint) }}"
+           class="sidebar-link {% if active_key in item.active_keys %}active{% endif %}"
+           {% if active_key in item.active_keys %}aria-current="page"{% endif %}>
+          <span class="material-symbols-outlined">{{ item.icon }}</span>
+          <span>{{ item.label }}</span>
+        </a>
+          {% endif %}
+        {% endfor %}
+        <button type="button" class="sidebar-link sidebar-theme-link" onclick="toggleTheme()" aria-label="تبديل المظهر (فاتح/داكن)">
+          <span class="material-symbols-outlined" id="sidebarThemeIcon">dark_mode</span>
+          <span id="sidebarThemeLabel">الوضع الليلي</span>
+        </button>
+      </div>
+      {% endif %}
+    </nav>
+  </div>
+
+  <div class="sidebar-footer">
+    {% if user %}
+    <a href="{{ url_for('auth.logout') }}" class="sidebar-link logout-link text-red-500 hover:bg-red-500/10">
+      <span class="material-symbols-outlined">logout</span>
+      <span>تسجيل الخروج</span>
+    </a>
+    {% endif %}
+  </div>
+</aside>
+{% endif %}
+
+<div class="sidebar-content" id="sidebarContent">
+  <header class="app-header bg-surface flex items-center justify-between px-margin-mobile md:px-margin-desktop py-md border-b border-outline-variant">
+    <div class="flex items-center gap-sm">
+      {% if not hide_sidebar %}
+      <button type="button" class="p-sm rounded-xl hover:bg-surface-container-high transition-colors lg:hidden" onclick="toggleSidebar()" aria-label="فتح القائمة">
+        <span class="material-symbols-outlined">menu</span>
+      </button>
+      {% endif %}
+      <a href="{{ url_for(session.get('landing_endpoint', 'dashboard.dashboard')) }}" class="topbar-brand flex items-center gap-sm no-underline">
+        <span class="brand-mark inline-flex items-center justify-center w-10 h-10 rounded-xl bg-primary text-on-primary shadow-sm">
+          <img src="/static/image/logo.png" alt="شعار الكلية" class="h-6 w-6 object-cover rounded-lg" />
+        </span>
+        <span class="brand-copy hidden sm:block">
+          <small class="text-xs text-on-surface-variant">كلية التقنية الهندسية زوارة</small>
+        </span>
+      </a>
+    </div>
+
+    <div class="topbar-actions flex items-center gap-sm">
+      {% if header_messages_url %}
+      <a href="{{ url_for(header_messages_url) }}" class="topbar-icon-button" aria-label="الرسائل" title="الرسائل">
+        <span class="material-symbols-outlined">mail</span>
+      </a>
+      {% endif %}
+
+      <div class="notif-dropdown relative">
+        <button type="button" class="topbar-icon-button notif-bell" aria-label="الإشعارات" title="الإشعارات">
+          <span class="material-symbols-outlined notif-bell-icon">notifications</span>
+          <span class="notif-badge" id="notifBadge" style="display:none">0</span>
+        </button>
+        <div class="notif-menu">
+          <div class="notif-menu-header">
+            <span>الإشعارات</span>
+            <button type="button" class="notif-mark-all" id="markAllRead">تحديد الكل كمقروء</button>
+          </div>
+          <div class="notif-menu-body" id="notifList"></div>
+        </div>
+      </div>
+
+      <a href="{{ url_for('public_site.index_page') }}" class="topbar-icon-button" title="الموقع العام" aria-label="الموقع العام" target="_blank" rel="noopener">
+        <span class="material-symbols-outlined">globe</span>
+      </a>
+
+      {% if user %}
+      {% set user_display = user.label or user.username %}
+      {% if hide_sidebar %}
+      <button type="button" id="themeToggleTopbar" class="topbar-icon-button" onclick="toggleTheme()" aria-label="تبديل المظهر (فاتح/داكن)" title="تبديل المظهر">
+        <span class="material-symbols-outlined" id="themeToggleIconTopbar">dark_mode</span>
+      </button>
+      {% endif %}
+      <a href="{{ url_for('auth.logout') }}" class="topbar-icon-button text-red-500 hover:bg-red-500/10" title="تسجيل الخروج" aria-label="تسجيل الخروج">
+        <span class="material-symbols-outlined">logout</span>
+      </a>
+      {% if user_roles and user_roles | length > 1 %}
+      <div class="relative" id="roleSwitcher">
+        <button type="button" id="roleSwitchBtn" onclick="toggleRoleMenu()"
+                class="flex items-center gap-2 rounded-xl border border-outline px-3 py-2 text-sm font-bold hover:bg-surface-container transition no-underline text-on-surface">
+          <span class="material-symbols-outlined text-lg text-primary">swap_horiz</span>
+          <span class="hidden xl:inline">{{ role_labels.get(session.get('role') or '', 'واجهة') }}</span>
+          <span class="material-symbols-outlined text-base text-on-surface-variant">expand_more</span>
+        </button>
+        <div id="roleMenu" style="display:none"
+             class="absolute end-0 top-full mt-2 w-56 rounded-xl border border-outline bg-surface-container-lowest shadow-lg overflow-hidden z-50">
+          {% for r in user_roles %}
+          {% if r in role_labels %}
+          <form method="post" action="{{ url_for('dashboard.switch_role') }}" class="m-0">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="role" value="{{ r }}">
+            <button type="submit"
+                    class="w-full text-right px-4 py-2.5 text-sm font-bold hover:bg-primary/10 transition
+                           {% if (session.get('role') or '') == r %}bg-primary/10 text-primary{% else %}text-on-surface{% endif %}">
+              {% if (session.get('role') or '') == r %}<span class="material-symbols-outlined text-base align-middle">check</span>{% endif %}
+              {{ role_labels.get(r, r) }}
+            </button>
+          </form>
+          {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      <a href="{{ url_for('profile.profile') }}" class="topbar-avatar-btn flex items-center gap-3 rounded-xl border border-outline px-3 py-2 hover:bg-surface-container transition-colors no-underline">
+        <span class="user-avatar inline-flex items-center justify-center w-10 h-10 rounded-xl bg-primary text-on-primary font-bold">{{ user_display[:1] }}</span>
+        <span class="hidden lg:flex flex-col text-right">
+          <strong class="text-sm text-on-surface">{{ user_display }}</strong>
+          <small class="text-xs text-on-surface-variant">{{ role_labels.get(session.get('role') or user.role, session.get('role') or user.role) }}</small>
+        </span>
+      </a>
+      {% endif %}
+    </div>
+  </header>
+
+  <main class="main-content" id="mainContent">
+    <div class="main-content-inner">
+      <div class="p-4 sm:p-6">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+          <script>window.BASE_FLASH_BOOT = { messages: {{ messages|tojson }} };</script>
+<script src="{{ url_for('static', filename='js/base_flash.js') }}"></script>
+          {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+      </div>
+    </div>
+  </main>
+</div>
+
+<button id="backToTop" class="material-symbols-outlined" style="display:none;position:fixed;bottom:24px;left:24px;z-index:50;width:44px;height:44px;border:none;border-radius:50%;background:var(--primary);color:var(--text-on-primary);cursor:pointer;box-shadow:0 4px 14px var(--shadow-lg);align-items:center;justify-content:center;font-size:24px;line-height:1">arrow_upward</button>
+
+<script src="/static/js/main.js"></script>
+<script src="/static/js/notifications.js"></script>
+<script src="/static/js/toast.js"></script>
+{% if welcome_user %}
+<script>window.BASE_GREETING_BOOT = { name: {{ welcome_user | tojson }} };</script>
+<script src="{{ url_for('static', filename='js/base_greeting.js') }}"></script>
+{% endif %}
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+<script src="{{ url_for('static', filename='js/base_role_menu.js') }}"></script>
+<script src="/static/js/preview.js"></script>
+<script src="{{ url_for('static', filename='js/base_sidebar.js') }}"></script>
+<script src="{{ url_for('static', filename='js/base_double_submit.js') }}"></script>
+<script src="/static/js/mobile.js"></script>
+<script src="/static/js/mobile_actions.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

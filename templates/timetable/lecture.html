@@ -1,0 +1,72 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'timetable.timetable' %}
+{% set page_title = 'جدول المحاضرات' %}
+
+{% block head_extra %}
+<style>
+  @media print {
+    .sidebar, .app-header, .sidebar-overlay, .no-print { display: none !important; }
+    .sidebar-content { margin-right: 0 !important; }
+    .main-content { height: auto; overflow: visible; padding-top: 0; }
+    body { overflow: visible; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+
+  <!-- Page Header -->
+  <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <div class="flex items-center gap-3">
+      <span class="material-symbols-outlined text-primary text-3xl">schedule</span>
+      <div>
+        <h1 class="text-2xl font-bold text-on-surface">جدول المحاضرات</h1>
+        <p class="page-subtitle">عرض الجداول الدراسية للكليات والأقسام</p>
+      </div>
+    </div>
+    <a href="{{ url_for('print_routes.print_timetable_all') }}"
+            target="_blank" rel="noopener"
+            class="no-print flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm no-underline">
+      <span class="material-symbols-outlined text-lg">print</span>
+      طباعة
+    </a>
+  </div>
+
+  <!-- Quick links -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+    <a href="{{ url_for('timetable.timetable') }}"
+       class="bg-surface-card rounded-2xl border border-outline-variant p-5 shadow-sm hover:border-primary/40 hover:shadow-md transition group no-underline">
+      <span class="material-symbols-outlined text-primary text-3xl block mb-3">calendar_view_week</span>
+      <h3 class="font-bold text-on-surface mb-1">الجدول العام</h3>
+      <p class="text-sm text-on-surface-variant">عرض جدول المحاضرات الكامل لجميع الأقسام</p>
+    </a>
+    <a href="{{ url_for('timetable.timetable_department_view') }}"
+       class="bg-surface-card rounded-2xl border border-outline-variant p-5 shadow-sm hover:border-primary/40 hover:shadow-md transition group no-underline">
+      <span class="material-symbols-outlined text-primary text-3xl block mb-3">domain</span>
+      <h3 class="font-bold text-on-surface mb-1">جدول حسب القسم</h3>
+      <p class="text-sm text-on-surface-variant">عرض الجدول مرتباً حسب كل قسم كلية</p>
+    </a>
+    <a href="{{ url_for('timetable.teachers_schedule') }}"
+       class="bg-surface-card rounded-2xl border border-outline-variant p-5 shadow-sm hover:border-primary/40 hover:shadow-md transition group no-underline">
+      <span class="material-symbols-outlined text-primary text-3xl block mb-3">person_search</span>
+      <h3 class="font-bold text-on-surface mb-1">جدول أعضاء هيئة التدريس</h3>
+      <p class="text-sm text-on-surface-variant">عرض الجدول الأسبوعي لكل مدرس</p>
+    </a>
+  </div>
+
+  <!-- Info note -->
+  <div class="bg-surface-card rounded-2xl shadow-sm border border-outline-variant overflow-hidden">
+    <div class="px-5 py-4 border-b border-outline-variant bg-surface-dim flex items-center gap-2">
+      <span class="material-symbols-outlined text-primary">info</span>
+      <h3 class="font-bold text-primary">حول هذه الصفحة</h3>
+    </div>
+    <div class="p-5 text-sm text-on-surface-variant leading-relaxed">
+      <p>تعرض هذه الصفحة روابط سريعة لجميع طرق عرض الجداول الدراسية المتاحة في النظام.
+      يمكنك تصفح الجدول العام، أو الجدول مرتباً حسب الأقسام، أو الجدول الأسبوعي الخاص بأعضاء هيئة التدريس.
+      كما يمكنك استخدام زر «طباعة» أعلاه لحفظ أي من هذه الصفحات كملف PDF.</p>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

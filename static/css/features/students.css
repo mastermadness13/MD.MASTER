@@ -1,0 +1,40 @@
+.student-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px;
+  text-align: center;
+  transition: all 0.2s;
+}
+.student-card:hover {
+  box-shadow: 0 4px 12px var(--shadow-md);
+  transform: translateY(-2px);
+}
+.student-card-avatar {
+  width: 64px; height: 64px; border-radius: 50%;
+  background: var(--primary-faint); color: var(--primary);
+  display: flex; align-items: center; justify-content: center; font-size: 24px;
+  margin: 0 auto 12px; font-weight: 700;
+}
+.student-card-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+.student-card-dept { font-size: 12px; color: var(--text-muted); }
+.student-card-class { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+.student-card-actions { display: flex; gap: 8px; justify-content: center; }
+
+.students-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+
+.enroll-form .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.enroll-form .form-grid .full { grid-column: 1 / -1; }
+.enroll-form .form-group { display: flex; flex-direction: column; gap: 6px; }
+.enroll-form .form-group label { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+.enroll-form .form-control { width: 100%; height: 46px; padding: 0 14px; border: 1px solid var(--border-input); border-radius: 10px; font-size: 14px; font-family: inherit; background: var(--surface-card); color: var(--text-primary); transition: border-color 0.2s, box-shadow 0.2s; box-sizing: border-box; }
+.enroll-form .form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow); }
+
+.grade-view .gradebook-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.grade-view .gradebook-table th { background: var(--table-header); padding: 12px 14px; text-align: center; font-weight: 600; color: var(--text-muted); border-bottom: 2px solid var(--primary); }
+.grade-view .gradebook-table td { padding: 12px 14px; text-align: center; border-bottom: 1px solid var(--border); }
+.grade-view .gradebook-table td:first-child { text-align: right; font-weight: 500; }
+.grade-view .gradebook-table tr:hover { background: var(--surface-hover); }
+.grade-view .stu-score { font-weight: 600; }
+.grade-view .stu-score.pass { color: var(--pass-color); }
+.grade-view .stu-score.fail { color: var(--fail-color); }

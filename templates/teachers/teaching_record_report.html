@@ -1,0 +1,8 @@
+{% extends 'print/layouts/print.html' %}
+{% set print_title = 'كشف السجلات التدريسية — ' + teacher.name %}
+{% set sidebar_active = 'teachers' %}
+
+{% block print_content %}
+{% set mode = 'report' %}
+{% include 'teachers/_teaching_record_sheet.html' %}
+{% endblock %}

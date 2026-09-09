@@ -1,0 +1,181 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'dashboard.dashboard' %}
+{% set page_title = 'لوحة شؤون الامتحانات' %}
+
+{% set d = dept_data | default({}) %}
+{% set next_exams = d.get('next_exams', []) | default([]) %}
+{% set upcoming_exams_list = d.get('upcoming_exams_list', []) | default([]) %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="page-header-info">
+      <span class="material-symbols-outlined page-header-icon">grading</span>
+      <div>
+        <h1 class="page-title">لوحة شؤون الامتحانات</h1>
+        <p class="page-subtitle">مرحباً {{ user.label or user.username }}، نظرة عامة على الامتحانات.</p>
+      </div>
+    </div>
+    <a href="{{ url_for('exams.exams') }}"
+       class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm no-underline">
+      <span class="material-symbols-outlined text-lg">calendar_month</span>
+      جدول الامتحانات
+    </a>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white rounded-xl border border-outline-variant p-4 flex items-center gap-4 shadow-sm">
+      <div class="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined">assignment</span>
+      </div>
+      <div>
+        <div class="text-2xl font-bold text-on-surface">{{ d.get('total_exams', 0) }}</div>
+        <div class="text-xs font-bold text-on-surface-variant mt-0.5">إجمالي الامتحانات</div>
+      </div>
+    </div>
+    <div class="bg-white rounded-xl border border-outline-variant p-4 flex items-center gap-4 shadow-sm">
+      <div class="w-12 h-12 rounded-xl bg-success-teal/20 text-success-teal flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined">event_available</span>
+      </div>
+      <div>
+        <div class="text-2xl font-bold text-on-surface">{{ d.get('upcoming_exams', 0) }}</div>
+        <div class="text-xs font-bold text-on-surface-variant mt-0.5">امتحانات قادمة</div>
+      </div>
+    </div>
+    <div class="bg-white rounded-xl border border-outline-variant p-4 flex items-center gap-4 shadow-sm">
+      <div class="w-12 h-12 rounded-xl bg-error/10 text-error flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined">event_busy</span>
+      </div>
+      <div>
+        <div class="text-2xl font-bold text-on-surface">{{ d.get('past_exams', 0) }}</div>
+        <div class="text-xs font-bold text-on-surface-variant mt-0.5">امتحانات سابقة</div>
+      </div>
+    </div>
+    <div class="bg-white rounded-xl border border-outline-variant p-4 flex items-center gap-4 shadow-sm">
+      <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined">meeting_room</span>
+      </div>
+      <div>
+        <div class="text-2xl font-bold text-on-surface">{{ d.get('total_rooms', 0) }}</div>
+        <div class="text-xs font-bold text-on-surface-variant mt-0.5">القاعات</div>
+      </div>
+    </div>
+    <div class="bg-white rounded-xl border border-outline-variant p-4 flex items-center gap-4 shadow-sm">
+      <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined">menu_book</span>
+      </div>
+      <div>
+        <div class="text-2xl font-bold text-on-surface">{{ d.get('total_courses', 0) }}</div>
+        <div class="text-xs font-bold text-on-surface-variant mt-0.5">المقررات</div>
+      </div>
+    </div>
+    <div class="bg-white rounded-xl border border-outline-variant p-4 flex items-center gap-4 shadow-sm">
+      <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined">domain</span>
+      </div>
+      <div>
+        <div class="text-2xl font-bold text-on-surface">{{ d.get('total_departments', 0) }}</div>
+        <div class="text-xs font-bold text-on-surface-variant mt-0.5">الأقسام</div>
+      </div>
+    </div>
+    <div class="bg-white rounded-xl border border-outline-variant p-4 flex items-center gap-4 shadow-sm">
+      <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined">schedule</span>
+      </div>
+      <div>
+        <div class="text-2xl font-bold text-on-surface">{{ d.get('exam_periods', 0) }}</div>
+        <div class="text-xs font-bold text-on-surface-variant mt-0.5">فترات الامتحانات</div>
+      </div>
+    </div>
+    <div class="bg-white rounded-xl border border-outline-variant p-4 flex items-center gap-4 shadow-sm">
+      <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined">grading</span>
+      </div>
+      <div>
+        <div class="text-2xl font-bold text-on-surface">{{ next_exams|length }}</div>
+        <div class="text-xs font-bold text-on-surface-variant mt-0.5">الامتحانات القادمة</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Next exams -->
+  <div class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden mb-6">
+    <div class="px-5 py-4 border-b border-primary/10 bg-surface-dim flex items-center gap-2">
+      <span class="material-symbols-outlined text-primary">event</span>
+      <h3 class="font-bold text-primary">الامتحانات القادمة</h3>
+    </div>
+    <div class="overflow-x-auto">
+      {% if next_exams %}
+      <table class="w-full text-right border-collapse text-sm">
+        <thead>
+          <tr class="bg-surface-dim font-label-md text-label-md text-on-surface-variant">
+            <th class="px-4 py-3 border-b border-outline-variant font-bold">المقرر</th>
+            <th class="px-4 py-3 border-b border-outline-variant font-bold">التاريخ</th>
+            <th class="px-4 py-3 border-b border-outline-variant font-bold">الفصل</th>
+            <th class="px-4 py-3 border-b border-outline-variant font-bold">القاعة</th>
+            <th class="px-4 py-3 border-b border-outline-variant font-bold">الوقت</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ex in next_exams %}
+          <tr class="border-b border-outline-variant last:border-b-0 hover:bg-primary/5 transition-colors">
+            <td class="px-4 py-3 font-bold text-on-surface">{{ ex.course_name }}{% if ex.course_code %} <span class="text-xs text-on-surface-variant">({{ ex.course_code }})</span>{% endif %}</td>
+            <td class="px-4 py-3 text-on-surface-variant" dir="ltr">{{ ex.exam_date }}</td>
+            <td class="px-4 py-3 text-on-surface-variant">الفصل {{ ex.semester or '—' }}</td>
+            <td class="px-4 py-3 text-on-surface-variant">{{ ex.room_name or '—' }}</td>
+            <td class="px-4 py-3 text-on-surface-variant">{{ ex.start_time or '—' }}{% if ex.end_time %} — {{ ex.end_time }}{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="py-14 text-center">
+        <span class="material-symbols-outlined text-6xl text-outline-variant block mb-3">event</span>
+        <p class="text-on-surface-variant text-sm">لا توجد امتحانات قادمة</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- All upcoming -->
+  <div class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
+    <div class="px-5 py-4 border-b border-primary/10 bg-surface-dim flex items-center gap-2">
+      <span class="material-symbols-outlined text-primary">grading</span>
+      <h3 class="font-bold text-primary">جميع الامتحانات القادمة</h3>
+    </div>
+    <div class="overflow-x-auto">
+      {% if upcoming_exams_list %}
+      <table class="w-full text-right border-collapse text-sm">
+        <thead>
+          <tr class="bg-surface-dim font-label-md text-label-md text-on-surface-variant">
+            <th class="px-4 py-3 border-b border-outline-variant font-bold">المقرر</th>
+            <th class="px-4 py-3 border-b border-outline-variant font-bold">التاريخ</th>
+            <th class="px-4 py-3 border-b border-outline-variant font-bold">القاعة</th>
+            <th class="px-4 py-3 border-b border-outline-variant font-bold">الوقت</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ex in upcoming_exams_list %}
+          <tr class="border-b border-outline-variant last:border-b-0 hover:bg-primary/5 transition-colors">
+            <td class="px-4 py-3 font-bold text-on-surface">{{ ex.course_name }}{% if ex.course_code %} <span class="text-xs text-on-surface-variant">({{ ex.course_code }})</span>{% endif %}</td>
+            <td class="px-4 py-3 text-on-surface-variant" dir="ltr">{{ ex.exam_date }}</td>
+            <td class="px-4 py-3 text-on-surface-variant">{{ ex.room_name or '—' }}</td>
+            <td class="px-4 py-3 text-on-surface-variant">{{ ex.start_time or '—' }}{% if ex.end_time %} — {{ ex.end_time }}{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="py-14 text-center">
+        <span class="material-symbols-outlined text-6xl text-outline-variant block mb-3">grading</span>
+        <p class="text-on-surface-variant text-sm">لا توجد امتحانات قادمة</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

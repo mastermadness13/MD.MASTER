@@ -1,0 +1,178 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'academic_calendar' %}
+{% set page_title = semester.name_ar ~ ' — تفاصيل الفصل' %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto print-hidden">
+
+  <!-- رأس الصفحة -->
+  <div class="page-header">
+    <div class="page-header-info">
+      <a href="{{ url_for('academic_calendar.index') }}" class="inline-flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary transition-colors no-underline mb-2">
+        <span class="material-symbols-outlined text-lg">arrow_forward</span>
+        العودة للتقويم
+      </a>
+      <div class="flex items-center gap-3">
+        <span class="material-symbols-outlined page-header-icon
+          {% if semester.status == 'active' %}text-success
+          {% elif semester.status == 'past' %}text-on-surface-variant
+          {% else %}text-primary{% endif %}">
+          {% if semester.status == 'active' %}check_circle
+          {% elif semester.status == 'past' %}archive
+          {% else %}schedule{% endif %}
+        </span>
+        <div>
+          <h1 class="page-title">{{ semester.name_ar }}</h1>
+          <p class="page-subtitle">
+            {{ semester.name_en }}
+            {% if semester.status == 'active' %}
+              <span class="badge badge-success ms-2">الفصل الحالي</span>
+            {% elif semester.status == 'past' %}
+              <span class="badge badge-neutral ms-2">منتهٍ</span>
+            {% else %}
+              <span class="badge badge-warning ms-2">قادم</span>
+            {% endif %}
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- معلومات الفصل الأساسية -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div class="bg-white p-5 rounded-xl shadow-sm border border-outline-variant">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="material-symbols-outlined text-primary">date_range</span>
+        <h3 class="font-bold text-on-surface">فترات الفصل</h3>
+      </div>
+      <div class="space-y-2 text-sm">
+        <div class="flex justify-between">
+          <span class="text-on-surface-variant">بداية الفصل</span>
+          <span class="font-bold text-on-surface">{{ semester.start_date or '—' }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-on-surface-variant">نهاية الفصل</span>
+          <span class="font-bold text-on-surface">{{ semester.end_date or '—' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white p-5 rounded-xl shadow-sm border border-outline-variant">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="material-symbols-outlined text-primary">edit_note</span>
+        <h3 class="font-bold text-on-surface">فترات الامتحانات</h3>
+      </div>
+      <div class="space-y-2 text-sm">
+        <div class="flex justify-between">
+          <span class="text-on-surface-variant">بداية الامتحانات</span>
+          <span class="font-bold text-on-surface">{{ semester.exam_start_date or '—' }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-on-surface-variant">نهاية الامتحانات</span>
+          <span class="font-bold text-on-surface">{{ semester.exam_end_date or '—' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white p-5 rounded-xl shadow-sm border border-outline-variant">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="material-symbols-outlined text-primary">bar_chart</span>
+        <h3 class="font-bold text-on-surface">إحصائيات الفصل</h3>
+      </div>
+      <div class="space-y-2 text-sm">
+        <div class="flex justify-between">
+          <span class="text-on-surface-variant">عدد المقررات</span>
+          <span class="font-bold text-on-surface">{{ courses|length }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-on-surface-variant">عدد الأساتذة</span>
+          <span class="font-bold text-on-surface">{{ teachers|length }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-on-surface-variant">عدد الأقسام</span>
+          <span class="font-bold text-on-surface">{{ departments|length }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- الأقسام المرتبطة -->
+  {% if departments %}
+  <div class="page-card mb-6">
+    <h2 class="text-lg font-bold text-on-surface mb-4 flex items-center gap-2">
+      <span class="material-symbols-outlined text-primary">account_tree</span>
+      الأقسام
+    </h2>
+    <div class="flex flex-wrap gap-2">
+      {% for d in departments %}
+        <a href="{{ url_for('departments.departments_list') }}" class="badge bg-primary/10 text-primary hover:bg-primary/20 transition-colors no-underline px-3 py-1.5 text-sm">
+          {{ d.name }}
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- المقررات -->
+  <div class="page-card mb-6">
+    <h2 class="text-lg font-bold text-on-surface mb-4 flex items-center gap-2">
+      <span class="material-symbols-outlined text-primary">menu_book</span>
+      المقررات ({{ courses|length }})
+    </h2>
+    {% if courses %}
+    <div class="overflow-x-auto">
+      <table class="courses-table w-full text-right text-sm">
+        <thead>
+          <tr>
+            <th class="w-14">#</th>
+            <th>رمز المقرر</th>
+            <th>اسم المقرر</th>
+            <th>القسم</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in courses %}
+          <tr>
+            <td class="row-num">{{ loop.index }}</td>
+            <td><span class="dept-badge">{{ c.code }}</span></td>
+            <td class="font-bold">{{ c.name }}</td>
+            <td class="text-on-surface-variant">{{ c.department or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center py-8 text-on-surface-variant">
+      <span class="material-symbols-outlined text-5xl text-outline-variant block mb-3">menu_book</span>
+      <p>لا توجد مقررات مسجلة في هذا الفصل</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- الأساتذة -->
+  <div class="page-card">
+    <h2 class="text-lg font-bold text-on-surface mb-4 flex items-center gap-2">
+      <span class="material-symbols-outlined text-primary">school</span>
+      الأساتذة ({{ teachers|length }})
+    </h2>
+    {% if teachers %}
+    <div class="flex flex-wrap gap-3">
+      {% for t in teachers %}
+        <a href="{{ url_for('teachers.teacher_detail', id=t.id) }}"
+           class="flex items-center gap-2 bg-white border border-outline-variant rounded-xl px-4 py-2.5 hover:shadow-sm hover:border-primary/30 transition-all no-underline">
+          <span class="user-avatar inline-flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 text-primary text-xs font-bold">{{ t.name[:1] }}</span>
+          <span class="font-bold text-on-surface text-sm">{{ t.name }}</span>
+        </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-8 text-on-surface-variant">
+      <span class="material-symbols-outlined text-5xl text-outline-variant block mb-3">school</span>
+      <p>لا يوجد أساتذة مسندين في هذا الفصل</p>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,157 @@
+.exams-list .exam-row {
+  transition: background 0.15s;
+}
+.exams-list .exam-row:hover {
+  background: var(--surface-hover);
+}
+
+.exam-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.exam-status-badge.published { background: var(--primary-faint); color: var(--primary); }
+.exam-status-badge.scheduled { background: var(--success-faint); color: var(--success-text); }
+.exam-status-badge.planned { background: var(--warning-faint); color: var(--warning-text); }
+
+.hall-distribution .hall-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.hall-card-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.hall-card-body { padding: 16px; }
+.hall-capacity-bar { height: 8px; border-radius: 4px; background: var(--border-heavy); overflow: hidden; margin-top: 8px; }
+.hall-capacity-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+.hall-capacity-fill.safe { background: var(--success); }
+.hall-capacity-fill.warn { background: var(--warning); }
+.hall-capacity-fill.over { background: var(--error); }
+
+.proctor-list .proctor-row {
+  border-bottom: 1px solid var(--border-subtle);
+}
+.proctor-row:last-child { border-bottom: none; }
+
+.reports-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.report-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+}
+.report-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.report-card-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+.report-card-title { font-weight: 700; font-size: 16px; }
+.report-card-value { font-size: 28px; font-weight: 800; margin-top: 4px; }
+.report-card-bar { height: 8px; border-radius: 4px; background: var(--border-heavy); overflow: hidden; margin-top: 12px; }
+.report-card-fill { height: 100%; border-radius: 4px; transition: width 1s; }
+
+.planning-grid { display: grid; grid-template-columns: 280px 1fr; gap: 24px; }
+@media (max-width: 1024px) { .planning-grid { grid-template-columns: 1fr; } }
+
+.planning-sidebar .room-list { display: flex; flex-direction: column; gap: 8px; }
+.planning-sidebar .room-badge { padding: 12px 16px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-card); display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.15s; }
+.planning-sidebar .room-badge:hover { border-color: var(--primary); background: var(--primary-fixed); }
+.planning-sidebar .room-badge.selected { border-color: var(--primary); background: var(--primary); color: white; }
+.planning-sidebar .room-badge.assigning { border-color: var(--warning); background: var(--warning); color: white; }
+
+.planning-main .day-section { margin-bottom: 32px; }
+.planning-main .day-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.planning-main .day-header .w-2 { width: 8px; height: 32px; background: var(--primary); border-radius: 4px; }
+.planning-main .exam-card { border-radius: 12px; border: 1px solid var(--border); overflow: hidden; background: var(--surface-card); transition: all 0.2s; }
+.planning-main .exam-card.scheduled { border-color: var(--success-green); background: rgba(21, 128, 61, 0.05); }
+.planning-main .exam-card.published { border-color: var(--primary); background: rgba(107, 33, 168, 0.05); }
+.planning-main .exam-card.planned { border-color: var(--border); }
+.planning-main .exam-form { padding: 16px; }
+.planning-main .exam-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+.planning-main .exam-title { font-weight: 700; font-size: 14px; }
+.planning-main .exam-meta { display: flex; gap: 12px; font-size: 12px; color: var(--text-muted); flex-wrap: wrap; }
+.planning-main .exam-resources { display: flex; align-items: center; gap: 8px; font-size: 12px; margin-top: 12px; }
+.planning-main .assign-controls { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.planning-main .session-select { font-size: 11px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-card); }
+
+/* ===== Exam Planning ===== */
+.exam-card { transition: all 0.2s; }
+.exam-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px var(--border-subtle); }
+.room-badge { transition: all 0.15s; cursor: pointer; border: 2px solid transparent; }
+.room-badge:hover { border-color: var(--primary); background: var(--primary-fixed); }
+.room-badge.selected { border-color: var(--primary); background: var(--primary); color: white; }
+.room-badge.assigning { border-color: var(--academic-gold); background: var(--academic-gold); color: white; }
+.view-tab { cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.15s; }
+.view-tab.active { border-bottom-color: var(--primary); color: var(--primary); font-weight: 700; }
+.capacity-bar { height: 6px; border-radius: 3px; background: var(--border-heavy); overflow: hidden; }
+.capacity-bar .fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+.capacity-bar .fill.safe { background: var(--success-green); }
+.capacity-bar .fill.warn { background: var(--academic-gold); }
+.capacity-bar .fill.over { background: var(--error); }
+.view-section { display: none; }
+.view-section.active { display: block; }
+
+/* ===== Exam List ===== */
+.academic-table-container::-webkit-scrollbar { height: 8px; }
+.academic-table-container::-webkit-scrollbar-thumb { background: var(--border-accent); border-radius: 10px; }
+.department-scroll-area::-webkit-scrollbar { width: 6px; }
+.department-scroll-area::-webkit-scrollbar-thumb { background: #32005840; border-radius: 10px; }
+.sticky-col { position: sticky; right: 0; z-index: 20; background-color: inherit; }
+.header-sticky { position: sticky; top: 0; z-index: 30; }
+.th-sticky { position: sticky; top: 0; z-index: 25; }
+
+/* ===== Exam Dept Schedule ===== */
+.cell-btn { width: 100%; min-height: 60px; border-radius: 8px; border: 2px solid transparent; transition: all 0.15s; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 500; background: var(--surface-container-low); color: var(--on-surface-variant); }
+.cell-btn:hover:not(.scheduled):not(.published) { border-color: var(--primary); background: var(--primary-fixed); color: var(--primary); }
+.cell-btn.selected { border-color: var(--primary); background: var(--primary); color: var(--on-primary); font-weight: 700; }
+.cell-btn.scheduled { border-color: var(--success-green); background: var(--success-green); color: white; font-weight: 700; cursor: default; opacity: 0.9; }
+.cell-btn.published { border-color: var(--primary); background: var(--primary); color: white; font-weight: 700; cursor: default; opacity: 0.9; }
+.cell-btn.saving { pointer-events: none; opacity: 0.6; }
+
+/* ===== HOD Cell Modal (scoped schedule) ===== */
+.ws-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.ws-modal-card { width: 100%; max-width: 460px; max-height: 92vh; overflow-y: auto; animation: wsModalIn 0.16s ease-out; }
+@keyframes wsModalIn { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: none; } }
+
+/* ===== Workspace loading / error states ===== */
+.ws-loading { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 48px 16px; color: var(--text-muted); font-weight: 700; }
+.ws-loading::before { content: ''; width: 20px; height: 20px; border: 3px solid var(--border-accent); border-top-color: var(--primary); border-radius: 50%; animation: wsSpin 0.8s linear infinite; }
+@keyframes wsSpin { to { transform: rotate(360deg); } }
+.ws-error { background: var(--error-faint); color: var(--error-text); border: 1px solid var(--error-border); border-radius: 12px; padding: 24px 16px; text-align: center; font-weight: 700; }
+
+/* ===== Exam workspace toast ===== */
+.exam-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(140%); z-index: 9999; max-width: calc(100vw - 32px); background: var(--surface-card); color: var(--text-primary); border: 1px solid var(--border-accent); box-shadow: 0 12px 32px var(--shadow-lg); border-radius: 12px; padding: 12px 20px; font-size: 14px; font-weight: 700; text-align: center; opacity: 0; transition: opacity 0.25s ease, transform 0.25s ease; }
+.exam-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.exam-toast-error { background: var(--error-faint); color: var(--error-text); border-color: var(--error-border); }
+
+/* ===== Week tabs (independent weeks 1-5) ===== */
+.week-tab { transition: all 0.15s ease; }
+.week-tab.active { background-color: var(--primary); color: var(--text-on-primary, #fff); border-color: var(--primary); }
+.week-add { transition: all 0.15s ease; }
+
+/* ===== Dept tabs ===== */
+.ws-dept-tab { transition: all 0.15s ease; }
+.ws-dept-tab.active { background-color: var(--primary); color: var(--text-on-primary, #fff); border-color: var(--primary); }
+
+/* ===== A4 Document Layout ===== */
+.ws-a4 {
+  width: 100%; max-width: 210mm; margin: 0 auto;
+  background: #fff; border: 1px solid #cfc2d3;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+  padding: 40px 48px;
+}
+@media (max-width: 768px) {
+  .ws-a4 { padding: 16px; border: none; box-shadow: none; }
+}
+@media print {
+  .ws-a4 {
+    border: none; box-shadow: none; padding: 0; max-width: none;
+    width: 100%; margin: 0;
+  }
+}

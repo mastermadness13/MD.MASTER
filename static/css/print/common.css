@@ -1,0 +1,511 @@
+/* print/common.css — Master print stylesheet v2
+   Transforms any page into a clean A4 paper document.
+   Loaded globally via app.css.
+   Updated: 2026-07-14 — Fixed specificity wars with teachers.css */
+
+/* ── Screen: print-header is invisible ── */
+.print-header {
+  display: none !important;
+}
+
+/* ── Screen: A4 document container (exam schedule) ── */
+.a4-document {
+  width: 100%;
+  max-width: 210mm;
+  min-height: 297mm;
+  background: white;
+  margin: 0 auto 24px;
+  padding: 40px 48px;
+  border: 1px solid #CFC2D3;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+
+@media print {
+  /* ── Page geometry ── */
+  @page {
+    size: A4 portrait;
+    margin: 18mm 15mm 20mm 15mm;
+  }
+
+  /* ── Body reset ── */
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 12pt;
+    line-height: 1.5;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* ── Hide all web UI chrome ── */
+  /* Sidebar - use ID for highest specificity */
+  #sidebar,
+  aside.sidebar,
+  .sidebar-overlay,
+  .sidebar-backdrop,
+  .sidebar-header,
+  .sidebar-body,
+  .sidebar-profile,
+  .sidebar-nav,
+  .sidebar-nav a,
+  /* Header / topbar */
+  header.app-header,
+  header#header,
+  .app-topbar,
+  /* Footer */
+  footer:not(.page-footer),
+  /* UI elements */
+  .back-to-top,
+  #toastContainer,
+  #toastContainer *,
+  .toast-container,
+  .toast-container *,
+  .no-print,
+  .modal-overlay,
+  .paste-modal,
+  .student-card-modal,
+  .auto-save-indicator,
+  .hero-actions-right,
+  .form-actions-bar,
+  .timetable-toolbar,
+  /* Back buttons */
+  a[href="javascript:history.back()"],
+  /* Print buttons */
+  button[onclick="window.print()"],
+  /* Page header icons and actions */
+  .page-header-icon,
+  /* Navigation */
+  nav,
+  /* Breadcrumb */
+  .breadcrumb,
+  /* Filter bars */
+  #filterButtons,
+  #bulkDropdown,
+  /* Modals / popups */
+  .modal-sheet,
+  .modal-header,
+  .modal-footer,
+  /* Misc UI */
+  .toast,
+  .toast *,
+  .alert {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* ── Sidebar-content becomes the paper ── */
+  /* When sidebar is hidden, flex: 1 automatically expands this to full width */
+  .sidebar-content {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .sidebar-content > main {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* The app shell locks height+overflow; release it so ALL pages print */
+  .sidebar-content,
+  .main-content,
+  .main-content-inner,
+  #mainContent {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* ── Page container cleanup ── */
+  body .page,
+  body .page-card,
+  body .auth-containerapp-content,
+  body .space-y-lg,
+  body .max-w-7xl,
+  body [class*="bg-white"],
+  body [class*="rounded-xl"],
+  body [class*="shadow-sm"],
+  body [class*="shadow-md"],
+  body [class*="border-outline"],
+  /* Beat teachers.css specificity */
+  body .course-content .page-card,
+  body .course-content .page {
+    max-width: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+    border: none !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* ── Form elements: clean document style ── */
+  /* Use body selector to override all specificity */
+  body .page-form-control,
+  body .page-form-control-sm,
+  body input[type="text"],
+  body input[type="number"],
+  body input[type="email"],
+  body input[type="date"],
+  body input[type="time"],
+  body textarea,
+  body select {
+    border: 0.5pt solid #999 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    padding: 4pt 6pt !important;
+    font-size: 10.5pt !important;
+    color: #000 !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
+    width: 100% !important;
+    height: auto !important;
+    background-image: none !important;
+    background-size: 0 !important;
+    transition: none !important;
+    min-height: auto !important;
+    outline: none !important;
+  }
+
+  /* Beat teachers.css .course-content .page-form-control specificity */
+  body .course-content .page-form-control,
+  body .course-content .page-form-control-sm {
+    border: 0.5pt solid #999 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    padding: 4pt 6pt !important;
+    font-size: 10.5pt !important;
+    color: #000 !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
+    width: 100% !important;
+    height: auto !important;
+    background-image: none !important;
+    background-size: 0 !important;
+    transition: none !important;
+    min-height: auto !important;
+  }
+
+  body .course-content textarea.page-form-control {
+    min-height: 40pt !important;
+    overflow: visible !important;
+  }
+
+  body .course-content select.page-form-control {
+    background-image: none !important;
+    padding-left: 6pt !important;
+  }
+
+  /* Remove number input spinners */
+  body input[type="number"]::-webkit-outer-spin-button,
+  body input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none !important;
+    margin: 0 !important;
+  }
+
+  body input[type="number"] {
+    -moz-appearance: textfield !important;
+  }
+
+  /* ── Form groups / grid ── */
+  body .form-group,
+  body .form-grid,
+  body .form-grid-2,
+  body .form-grid-3,
+  body .form-grid-4,
+  body .course-content .form-grid {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    padding: 4pt 0 !important;
+    gap: 8pt !important;
+  }
+
+  /* Labels */
+  body label {
+    font-size: 10pt !important;
+    font-weight: 700 !important;
+    color: #000 !important;
+    margin-bottom: 2pt !important;
+  }
+
+  /* ── Tables: clean document style ── */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin: 8pt 0 !important;
+    font-size: 10.5pt;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  tr {
+    page-break-inside: avoid;
+  }
+
+  th {
+    background: #e8e8e8 !important;
+    color: #000 !important;
+    padding: 6pt 8pt !important;
+    font-weight: 700 !important;
+    font-size: 10pt;
+    border: 0.5pt solid #999 !important;
+    white-space: nowrap !important;
+  }
+
+  td {
+    padding: 5pt 8pt !important;
+    font-size: 10.5pt;
+    color: #000 !important;
+    border: 0.5pt solid #ccc !important;
+    vertical-align: middle !important;
+  }
+
+  tr:nth-child(even) td {
+    background: #f7f7f7 !important;
+  }
+
+  tr:hover td {
+    background: transparent !important;
+  }
+
+  /* ── Links: remove hover effects ── */
+  a {
+    text-decoration: none !important;
+    color: #000 !important;
+  }
+
+  /* ── Score / badge colors preserved ── */
+  .stu-score,
+  .stu-status-badge,
+  .total-cell,
+  [style*="color: var(--pass-color)"],
+  [style*="color: var(--fail-color)"] {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* ── Status badges ── */
+  .stu-status-badge,
+  .inline-flex.items-center.px-sm {
+    border: 0.5pt solid #999;
+    padding: 1pt 4pt !important;
+  }
+
+  /* ── Gradebook specific ── */
+  .gradebook-table th {
+    background: #e0e0e0 !important;
+    border-bottom: 1.5pt solid #000 !important;
+  }
+
+  .gradebook-table input[type="number"] {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    width: auto !important;
+    padding: 0 !important;
+  }
+
+  /* ── Search / filter bars ── */
+  .flex.items-center.gap-xs input[type="text"],
+  .flex.items-center.gap-sm input[type="text"] {
+    display: none !important;
+  }
+
+  /* ── Buttons: only hide explicitly marked no-print ── */
+  .no-print,
+  button.no-print {
+    display: none !important;
+  }
+
+  /* ── Page break helpers ── */
+  .page-break-before {
+    page-break-before: always;
+  }
+
+  .page-break-after {
+    page-break-after: always;
+  }
+
+  /* ── Official header variant (timetable print pages) ── */
+  .official-header {
+    border-bottom-color: #000 !important;
+  }
+
+  /* ── Info bar ── */
+  .info-bar {
+    background: #f0f0f0 !important;
+    border-right: 3pt solid #000 !important;
+  }
+
+  /* ── Legend ── */
+  .legend {
+    background: #f5f5f5 !important;
+    border: 0.5pt solid #999 !important;
+  }
+
+  /* ── Signatures block ── */
+  .signatures {
+    page-break-inside: avoid;
+    margin-top: 30pt;
+  }
+
+  /* ── Footer on printed page ── */
+  .page-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-top: 1pt solid #999;
+    font-size: 8pt;
+    color: #666;
+    padding: 4pt 15mm;
+  }
+
+  /* ── Logo ── */
+  .logo-placeholder img {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* ── Remove Tailwind utility backgrounds on print ── */
+  .bg-surface-container-high,
+  .bg-surface-container-highest,
+  .bg-primary-fixed,
+  .bg-primary-container,
+  .bg-green-50,
+  .bg-red-50,
+  .bg-info-container,
+  .bg-surface-container-low,
+  .bg-surface-container-lowest,
+  .bg-white {
+    background: transparent !important;
+  }
+
+  /* ── Remove borders and shadows from everything ── */
+  [class*="border"] {
+    border-color: #ccc !important;
+  }
+
+  [class*="shadow"] {
+    box-shadow: none !important;
+  }
+
+  [class*="rounded"] {
+    border-radius: 0 !important;
+  }
+
+  /* ── Exam schedule: A4 document ── */
+  .a4-document {
+    border: 1px solid #CFC2D3 !important;
+    box-shadow: none !important;
+    margin: 0 auto !important;
+    padding: 15mm 12mm !important;
+    min-height: auto !important;
+    page-break-after: always;
+  }
+
+  /* ── Exam schedule: grid table ── */
+  .exam-grid {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    table-layout: fixed !important;
+  }
+
+  .exam-grid td,
+  .exam-grid th {
+    border: 1px solid #94a3b8 !important;
+  }
+
+  /* ── Exam cell: written (نظري) ── */
+  .exam-cell-written {
+    background: #e8f5e9 !important;
+    color: #1b5e20 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* ── Exam cell: practical (عملي) ── */
+  .exam-cell-practical {
+    background: #e3f2fd !important;
+    color: #0d47a1 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* ── Exam badge: written ── */
+  .exam-badge-written {
+    background: #c8e6c9 !important;
+    color: #1b5e20 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* ── Exam badge: practical ── */
+  .exam-badge-practical {
+    background: #bbdefb !important;
+    color: #0d47a1 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* ── Exam header accent border ── */
+  .exam-print-header {
+    border-bottom: 2px solid #320058 !important;
+  }
+
+  /* ── Word-style timetable grids (protected from generic print resets) ── */
+  .timetable-print,
+  .timetable-print * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .timetable-print th,
+  .timetable-print td {
+    border: 1px solid #000 !important;
+    border-radius: 0 !important;
+    text-align: center !important;
+  }
+  .timetable-print thead th {
+    background: #ececec !important;
+  }
+  .timetable-print tbody td.day-cell {
+    background: #f5f5f5 !important;
+  }
+  .timetable-print tbody tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+
+/* ── Portrait override ── */
+@media print and (orientation: portrait) {
+  @page {
+    size: A4 portrait;
+    margin: 18mm 15mm 20mm 15mm;
+  }
+}
+
+/* ── Landscape for wide tables (timetable etc.) ── */
+@media print and (orientation: landscape) {
+  @page {
+    size: A4 landscape;
+    margin: 12mm 15mm;
+  }
+}

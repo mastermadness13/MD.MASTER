@@ -1,0 +1,191 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'timetable.timetable' %}
+{% set page_title = 'جدولي الأسبوعي' %}
+
+{% set teacher = teacher | default(None) %}
+{% set weekly_schedule = weekly_schedule | default({}) %}
+{% set days_order = days_order | default([]) %}
+{% set dept_colors = dept_colors | default({}) %}
+
+{% block head_extra %}
+<style>
+  @media print {
+    html { direction: rtl; }
+    .sidebar, .app-header, .sidebar-overlay, #backToTop, .no-print { display: none !important; }
+    .sidebar-content { margin-right: 0 !important; }
+    .main-content { height: auto; overflow: visible; padding-top: 0; }
+    body { overflow: visible; }
+  }
+
+  /* Day accordion */
+  .day-acc-header { cursor: pointer; user-select: none; }
+  .day-acc-chevron { transition: transform .25s ease; }
+  .day-acc-collapsed .day-acc-chevron { transform: rotate(-90deg); }
+  .day-acc-collapsed .day-acc-body { display: none; }
+  .day-accordion { transition: background-color .3s ease; }
+</style>
+{% set print_orientation = 'A4 landscape' %}
+{% set print_margin = '10mm' %}
+{% include 'print/_embedded_styles.html' %}
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto print-hidden">
+
+  <!-- Page Header -->
+  <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <div class="flex items-center gap-3">
+      <span class="material-symbols-outlined text-primary text-3xl">calendar_view_week</span>
+      <div>
+        <h1 class="text-2xl font-bold text-on-surface">جدولي الأسبوعي</h1>
+        <p class="page-subtitle">
+          {% if teacher %}جدول محاضرات {{ teacher.name }}{% else %}—{% endif %}
+        </p>
+      </div>
+    </div>
+    <a href="{{ url_for('print_routes.print_timetable_teacher') }}"
+            target="_blank" rel="noopener"
+            class="no-print flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm no-underline">
+      <span class="material-symbols-outlined text-lg">print</span>
+      طباعة
+    </a>
+  </div>
+
+  <!-- Legend -->
+  <div class="no-print flex flex-wrap items-center gap-4 mb-5 text-xs text-on-surface-variant">
+    {% for name, color in dept_colors.items() %}
+    <div class="flex items-center gap-1.5">
+      <span class="w-3 h-3 rounded" style="background-color: {{ color }}"></span>
+      {{ name }}
+    </div>
+    {% endfor %}
+  </div>
+
+  {% set any_entries = false %}
+  {% for day in days_order %}
+    {% if weekly_schedule.get(day) %}{% set any_entries = true %}{% endif %}
+  {% endfor %}
+
+  {% if any_entries %}
+  <div class="space-y-5">
+    {% for day in days_order %}
+    {% set entries = weekly_schedule.get(day, []) %}
+    <div class="day-accordion bg-surface-card rounded-2xl shadow-sm border border-outline-variant overflow-hidden" data-day="{{ day }}">
+      <div class="day-acc-header p-3.5 border-b border-outline-variant bg-surface-dim flex items-center justify-between">
+        <h3 class="font-bold text-primary flex items-center gap-2">
+          <span class="material-symbols-outlined">today</span>
+          {{ day }}
+        </h3>
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-bold text-primary bg-surface-card border border-outline-variant rounded-lg px-2.5 py-1">
+            {{ entries | length }} محاضرة
+          </span>
+          <span class="day-acc-chevron material-symbols-outlined text-on-surface-variant">expand_more</span>
+        </div>
+      </div>
+      <div class="day-acc-body">
+        {% if entries %}
+        <div class="overflow-x-auto">
+          <table class="w-full text-right border-collapse text-sm">
+            <thead>
+              <tr class="bg-primary-container">
+                <th class="px-4 py-2.5 text-right text-xs font-bold text-primary border-b border-outline-variant">الوقت</th>
+                <th class="px-4 py-2.5 text-right text-xs font-bold text-primary border-b border-outline-variant">المقرر</th>
+                <th class="px-4 py-2.5 text-right text-xs font-bold text-primary border-b border-outline-variant">الفصل</th>
+                <th class="px-4 py-2.5 text-right text-xs font-bold text-primary border-b border-outline-variant">القسم</th>
+                <th class="px-4 py-2.5 text-right text-xs font-bold text-primary border-b border-outline-variant">القاعة</th>
+                <th class="px-4 py-2.5 text-right text-xs font-bold text-primary border-b border-outline-variant">السعة</th>
+                <th class="px-4 py-2.5 text-right text-xs font-bold text-primary border-b border-outline-variant">الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for e in entries %}
+              <tr class="border-b border-outline last:border-b-0 hover:bg-primary-container transition-colors">
+                <td class="px-4 py-2.5 font-bold text-on-surface whitespace-nowrap">
+                   <span dir="ltr">{{ format_time12(e.start_time) or '—' }}{% if e.end_time %} ← {{ format_time12(e.end_time) }}{% endif %}</span>
+                </td>
+                <td class="px-4 py-2.5">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full shrink-0" style="background-color: {{ dept_colors.get(e.department_name, '#4CAF50') }}"></span>
+                    <span class="font-bold text-on-surface">{{ e.course_name }}</span>
+                    {% if e.course_code %}<span class="text-xs text-on-surface-variant">({{ e.course_code }})</span>{% endif %}
+                  </div>
+                </td>
+                <td class="px-4 py-2.5 text-on-surface-variant">الفصل {{ e.semester or '—' }} {% if e.year %}(س{{ e.year }}){% endif %}</td>
+                <td class="px-4 py-2.5 text-on-surface-variant">{{ e.department_name or '—' }}</td>
+                <td class="px-4 py-2.5 text-on-surface-variant">{{ e.room_name or '—' }}</td>
+                <td class="px-4 py-2.5 text-on-surface-variant">{{ e.room_capacity or '—' }}</td>
+                <td class="px-4 py-2.5">
+                  {% set syk = (content_maps.syllabus.get(e.teacher_id ~ ':' ~ e.course_id) if content_maps else none) or (content_maps.syllabus.get('*:' ~ e.course_id) if content_maps else none) %}
+                  {% set frm = content_maps.form.get(e.course_id) if content_maps else none %}
+                  {% set has_own_syllabus = syk and syk.teacher_id and syk.teacher_id == current_teacher_id %}
+                  <div class="flex flex-wrap items-center gap-1.5">
+                    <form action="{{ url_for('teacher_pages.teacher_syllabus_upload') }}" method="POST" enctype="multipart/form-data" class="inline-flex items-center gap-1">
+                      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                      <input type="hidden" name="course_id" value="{{ e.course_id }}">
+                      <label class="inline-flex items-center gap-1 bg-primary/10 hover:bg-primary/20 text-primary px-2.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer">
+                        <input type="file" name="file" accept=".pdf" onchange="this.form.submit()" class="hidden">
+                        <span class="material-symbols-outlined text-sm">upload_file</span>
+                        {% if has_own_syllabus %}تحديد المنهج{% else %}رفع المنهج{% endif %}
+                      </label>
+                    </form>
+                    {% if syk and syk.url %}
+                    <a href="{{ syk.url }}{% if '?' in syk.url %}&{% else %}?{% endif %}download=1"
+                       class="inline-flex items-center gap-1 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-2.5 py-1.5 rounded-lg text-xs font-bold transition no-underline">
+                      <span class="material-symbols-outlined text-sm">download</span>
+                      تحميل المنهج
+                    </a>
+                    {% endif %}
+                    {% if frm and frm.url %}
+                    <a href="{{ frm.url }}{% if '?' in frm.url %}&{% else %}?{% endif %}download=1"
+                       class="inline-flex items-center gap-1 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-2.5 py-1.5 rounded-lg text-xs font-bold transition no-underline">
+                      <span class="material-symbols-outlined text-sm">description</span>
+                      تحميل المقرر
+                    </a>
+                    {% endif %}
+                    {% if has_own_syllabus %}
+                    <form action="{{ url_for('teacher_pages.teacher_syllabus_delete', tf_id=syk.id) }}" method="POST" onsubmit="return confirm('حذف ملف المنهج هذا؟');" class="inline-flex">
+                      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                      <button type="submit" class="inline-flex items-center gap-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-2.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer">
+                        <span class="material-symbols-outlined text-sm">delete</span>
+                        حذف
+                      </button>
+                    </form>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="py-8 text-center text-on-surface-variant">
+          <span class="material-symbols-outlined text-4xl text-outline-variant block mb-1">event_busy</span>
+          <p class="text-sm">لا توجد محاضرات في هذا اليوم</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="bg-surface-card rounded-2xl shadow-sm border border-outline-variant py-16 text-center">
+    <span class="material-symbols-outlined text-6xl text-outline-variant block mb-3">calendar_month</span>
+    <h3 class="text-on-surface font-bold mb-1">لا توجد محاضرات مجدولة</h3>
+    <p class="text-on-surface-variant text-sm">لم يتم إدراجك في أي جدول دراسي بعد</p>
+  </div>
+  {% endif %}
+
+  {% include 'teachers/_upload_section.html' %}
+
+</div>
+
+<div class="print-only">
+  {% include 'print/timetables/_teacher_content.html' %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/pages/timetable_teacher.js') }}"></script>
+{% endblock %}

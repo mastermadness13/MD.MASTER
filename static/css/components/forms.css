@@ -1,0 +1,305 @@
+input::placeholder, textarea::placeholder, select::placeholder {
+  text-align: right;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.form-input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-default);
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color 0.2s;
+  background: var(--surface-card);
+  color: var(--text-primary);
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--border-input-focus);
+  box-shadow: 0 0 0 2px var(--primary-glow);
+}
+
+.form-select {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-default);
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  background: var(--surface-card);
+  color: var(--text-primary);
+  appearance: auto;
+}
+
+.form-textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-default);
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 100px;
+  background: var(--surface-card);
+  color: var(--text-primary);
+}
+
+.form-error {
+  color: var(--error);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.form-hint {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.required::after {
+  content: " *";
+  color: var(--error);
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  align-items: end;
+}
+
+.form-actions .btn {
+  padding: 8px 20px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.form-grid .full {
+  grid-column: 1 / -1;
+}
+
+.searchable-wrapper {
+  position: relative;
+}
+
+.searchable-list {
+  display: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 100;
+  max-height: 240px;
+  overflow: auto;
+  background: var(--surface-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 6px 18px var(--border-subtle);
+  margin-top: 4px;
+}
+
+.searchable-item {
+  padding: .5rem .75rem;
+  cursor: pointer;
+  border-bottom: 1px solid var(--surface-zebra);
+}
+
+.searchable-item:hover,
+.searchable-item-active {
+  background: var(--info-faint);
+}
+
+.searchable-list .searchable-item[aria-disabled="true"] {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+.form-control {
+  width: 100%;
+  height: 46px;
+  padding: 0 14px;
+  border: 1px solid var(--border-input);
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: inherit;
+  background: var(--surface-card);
+  color: var(--text-primary);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+.page-form-control {
+  width: 100%;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--surface-card);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.page-form-control:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+.page-form-control[readonly] {
+  background: var(--page-bg);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+textarea.page-form-control {
+  height: auto;
+  padding: 10px 12px;
+  resize: vertical;
+  min-height: 60px;
+}
+
+select.page-form-control {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: left 12px center;
+  padding-left: 32px;
+}
+
+.page-form-control-sm {
+  width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-family: inherit;
+  background: var(--surface-card);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.page-form-control-sm:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-glow);
+}
+
+/* Sticky Action Bar — always visible while scrolling form pages */
+.sticky-action-bar {
+  position: sticky;
+  top: 80px;
+  z-index: 20;
+  background: var(--surface-card);
+  border-bottom: 1px solid var(--border-accent);
+  box-shadow: 0 2px 8px var(--shadow-sm);
+  padding: 10px 16px;
+  margin-bottom: 12px;
+  margin-left: -16px;
+  margin-right: -16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  backdrop-filter: blur(8px);
+}
+.sticky-action-bar .action-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sticky-action-bar .action-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+@media (min-width: 768px) {
+  .sticky-action-bar {
+    margin-left: -40px;
+    margin-right: -40px;
+    padding: 10px 32px;
+  }
+}
+
+/* Compact form card — reduces internal spacing */
+.form-card-compact {
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-accent);
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px 0 var(--shadow-sm);
+  padding: 16px;
+}
+.form-card-compact .form-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.form-card-compact .form-card-header .material-symbols-outlined {
+  font-size: 20px;
+}
+.form-card-compact .form-card-header h2,
+.form-card-compact .form-card-header h3 {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* Collapsible section — for optional/advanced fields */
+.collapsible-trigger {
+  cursor: pointer;
+  user-select: none;
+}
+.collapsible-trigger summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.collapsible-trigger summary::-webkit-details-marker { display: none; }
+.collapsible-trigger summary::marker { content: ''; }
+.collapsible-trigger[open] summary .collapsible-arrow {
+  transform: rotate(90deg);
+}
+.collapsible-arrow {
+  transition: transform 0.2s ease;
+  font-size: 18px;
+}

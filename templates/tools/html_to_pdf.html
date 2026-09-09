@@ -1,0 +1,150 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'html_to_pdf.html_to_pdf' %}
+{% set page_title = 'تحويل إلى PDF' %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+
+  <div class="flex items-center gap-3 mb-6">
+    <span class="material-symbols-outlined text-primary text-3xl">picture_as_pdf</span>
+    <div>
+      <h1 class="text-2xl font-bold text-on-surface">تحويل صفحة إلى PDF</h1>
+      <p class="page-subtitle">حفظ أي صفحة من صفحات النظام كملف PDF جاهز للطباعة</p>
+    </div>
+  </div>
+
+  <!-- How it works -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div class="bg-white rounded-2xl border border-primary/10 p-5 shadow-sm">
+      <span class="material-symbols-outlined text-primary text-3xl block mb-3">open_in_new</span>
+      <h3 class="font-bold text-on-surface mb-1">1. افتح الصفحة</h3>
+      <p class="text-sm text-on-surface-variant">انتقل إلى الصفحة التي تريد حفظها من قائمة النظام</p>
+    </div>
+    <div class="bg-white rounded-2xl border border-primary/10 p-5 shadow-sm">
+      <span class="material-symbols-outlined text-primary text-3xl block mb-3">print</span>
+      <h3 class="font-bold text-on-surface mb-1">2. اضغط طباعة</h3>
+      <p class="text-sm text-on-surface-variant">استخدم زر الطباعة في الصفحة أو الاختصار Ctrl+P</p>
+    </div>
+    <div class="bg-white rounded-2xl border border-primary/10 p-5 shadow-sm">
+      <span class="material-symbols-outlined text-primary text-3xl block mb-3">save_alt</span>
+      <h3 class="font-bold text-on-surface mb-1">3. احفظ PDF</h3>
+      <p class="text-sm text-on-surface-variant">اختر «حفظ كـ PDF» من وجهة الطباعة في المتصفح</p>
+    </div>
+  </div>
+
+  <!-- Quick convert -->
+  <div class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden mb-6">
+    <div class="px-5 py-4 border-b border-primary/10 bg-surface-dim flex items-center gap-2">
+      <span class="material-symbols-outlined text-primary">bolt</span>
+      <h3 class="font-bold text-primary">تحويل الصفحة الحالية مباشرة</h3>
+    </div>
+    <div class="p-6 text-center">
+      <button type="button" onclick="window.print()"
+              class="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-6 py-3 rounded-xl text-sm font-bold transition shadow-sm">
+        <span class="material-symbols-outlined text-lg">picture_as_pdf</span>
+        تحويل الصفحة الحالية إلى PDF
+      </button>
+      <p class="text-xs text-on-surface-variant mt-3">سيتم فتح نافذة الطباعة — اختر «حفظ كـ PDF» كوجهة</p>
+    </div>
+  </div>
+
+  <!-- Printable reports -->
+  <div class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
+    <div class="px-5 py-4 border-b border-primary/10 bg-surface-dim flex items-center gap-2">
+      <span class="material-symbols-outlined text-primary">summarize</span>
+      <h3 class="font-bold text-primary">تقارير جاهزة للطباعة</h3>
+    </div>
+    <div class="p-6 space-y-3">
+      <a href="{{ url_for('print_routes.print_timetable_all') }}"
+         class="flex items-center justify-between gap-3 rounded-xl border border-outline-variant p-4 hover:border-primary/40 hover:shadow-sm transition group no-underline">
+        <div class="flex items-center gap-3">
+          <span class="material-symbols-outlined text-primary">calendar_view_week</span>
+          <div>
+            <div class="font-bold text-on-surface text-sm">تقرير الجداول — جميع الأقسام</div>
+            <div class="text-xs text-on-surface-variant">الجداول الأسبوعية لكل الأقسام في صفحة واحدة</div>
+          </div>
+        </div>
+        <span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary">chevron_left</span>
+      </a>
+      <a href="{{ url_for('print_routes.print_timetable_department') }}"
+         class="flex items-center justify-between gap-3 rounded-xl border border-outline-variant p-4 hover:border-primary/40 hover:shadow-sm transition group no-underline">
+        <div class="flex items-center gap-3">
+          <span class="material-symbols-outlined text-primary">view_week</span>
+          <div>
+            <div class="font-bold text-on-surface text-sm">الجدول الأسبوعي للقسم</div>
+            <div class="text-xs text-on-surface-variant">جدول القسم حسب النسخة النشطة</div>
+          </div>
+        </div>
+        <span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary">chevron_left</span>
+      </a>
+      <a href="{{ url_for('print_routes.print_timetable_teacher') }}"
+         class="flex items-center justify-between gap-3 rounded-xl border border-outline-variant p-4 hover:border-primary/40 hover:shadow-sm transition group no-underline">
+        <div class="flex items-center gap-3">
+          <span class="material-symbols-outlined text-primary">person</span>
+          <div>
+            <div class="font-bold text-on-surface text-sm">الجدول الأسبوعي لعضو هيئة التدريس</div>
+            <div class="text-xs text-on-surface-variant">جدول محاضرات المستخدم الحالي</div>
+          </div>
+        </div>
+        <span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary">chevron_left</span>
+      </a>
+      <a href="{{ url_for('print_routes.print_exams_schedule') }}"
+         class="flex items-center justify-between gap-3 rounded-xl border border-outline-variant p-4 hover:border-primary/40 hover:shadow-sm transition group no-underline">
+        <div class="flex items-center gap-3">
+          <span class="material-symbols-outlined text-primary">event</span>
+          <div>
+            <div class="font-bold text-on-surface text-sm">جدول الامتحانات</div>
+            <div class="text-xs text-on-surface-variant">امتحانات كل الأقسام حسب الفترة الحالية</div>
+          </div>
+        </div>
+        <span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary">chevron_left</span>
+      </a>
+      <a href="{{ url_for('print_routes.print_courses') }}"
+         class="flex items-center justify-between gap-3 rounded-xl border border-outline-variant p-4 hover:border-primary/40 hover:shadow-sm transition group no-underline">
+        <div class="flex items-center gap-3">
+          <span class="material-symbols-outlined text-primary">menu_book</span>
+          <div>
+            <div class="font-bold text-on-surface text-sm">تقرير المقررات</div>
+            <div class="text-xs text-on-surface-variant">سجل المقررات الدراسية مع الأقسام</div>
+          </div>
+        </div>
+        <span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary">chevron_left</span>
+      </a>
+      <a href="{{ url_for('print_routes.print_list_departments') }}"
+         class="flex items-center justify-between gap-3 rounded-xl border border-outline-variant p-4 hover:border-primary/40 hover:shadow-sm transition group no-underline">
+        <div class="flex items-center gap-3">
+          <span class="material-symbols-outlined text-primary">domain</span>
+          <div>
+            <div class="font-bold text-on-surface text-sm">قائمة الأقسام</div>
+            <div class="text-xs text-on-surface-variant">الأقسام والشعب وعدد الفصول</div>
+          </div>
+        </div>
+        <span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary">chevron_left</span>
+      </a>
+      <a href="{{ url_for('print_routes.print_list_teachers') }}"
+         class="flex items-center justify-between gap-3 rounded-xl border border-outline-variant p-4 hover:border-primary/40 hover:shadow-sm transition group no-underline">
+        <div class="flex items-center gap-3">
+          <span class="material-symbols-outlined text-primary">groups</span>
+          <div>
+            <div class="font-bold text-on-surface text-sm">قائمة أعضاء هيئة التدريس</div>
+            <div class="text-xs text-on-surface-variant">أعضاء هيئة التدريس وأقسامهم وأرقامهم الكلية</div>
+          </div>
+        </div>
+        <span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary">chevron_left</span>
+      </a>
+      <a href="{{ url_for('print_routes.print_list_rooms') }}"
+         class="flex items-center justify-between gap-3 rounded-xl border border-outline-variant p-4 hover:border-primary/40 hover:shadow-sm transition group no-underline">
+        <div class="flex items-center gap-3">
+          <span class="material-symbols-outlined text-primary">meeting_room</span>
+          <div>
+            <div class="font-bold text-on-surface text-sm">قائمة القاعات</div>
+            <div class="text-xs text-on-surface-variant">القاعات الدراسية وأنواعها وسعاتها</div>
+          </div>
+        </div>
+        <span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary">chevron_left</span>
+      </a>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

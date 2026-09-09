@@ -1,0 +1,69 @@
+{% extends 'print/layouts/print.html' %}
+{% set print_title = 'طباعة الجداول الدراسية — جميع الأقسام' %}
+{% set sections = sections | default([]) %}
+{% set days = days | default([]) %}
+
+{% block print_content %}
+{% set academic_label = academic_label | default('') %}
+<div class="space-y-6">
+  {% if not sections %}
+  <div class="bg-white rounded-2xl shadow-sm border border-outline-variant py-16 text-center text-on-surface-variant text-sm">
+    لا توجد جداول لعرضها
+  </div>
+  {% endif %}
+  {% for section in sections %}
+  <div class="timetable-print print-sheet">
+    <div class="text-center" style="margin-bottom: 8px;">
+      <div style="font-size: 20px; font-weight: 800; color: #000;">كلية التقنية الهندسية زوارة</div>
+      <div style="font-size: 16px; font-weight: 700; color: #000; margin-top: 2px;">قسم {{ section.department.name if section.department else '—' }}</div>
+      <div style="font-size: 14px; font-weight: 700; color: #000; margin-top: 2px;">{{ academic_label or section.semester_name_ar or section.semester_code or '—' }}</div>
+      <div style="font-size: 14px; font-weight: 700; color: #000; margin-top: 2px;">الجدول الدراسي — {{ semester_label(section.semester) if section.semester else '—' }}</div>
+    </div>
+    <div style="overflow: visible;">
+      {% if section.periods %}
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 130px;">اليوم</th>
+            {% for p in section.periods %}
+            <th>{{ p.label if p.label else p.code }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for day in days %}
+          <tr>
+            <td class="day-cell">{{ day }}</td>
+            {% for p in section.periods %}
+            {% set cell = [] %}
+            {% for e in section.entries %}
+              {% if e.day == day and e.period == p.code %}{% set _ = cell.append(e) %}{% endif %}
+            {% endfor %}
+            <td>
+              {% if cell %}
+                {% for e in cell %}
+                <div style="margin: 2px 0;">
+                  <div style="font-weight: 700;">{{ e.course_name or '—' }}</div>
+                  <div>{{ teacher_label(e.teacher_name) }}</div>
+                  <div>قاعة: {{ e.room_name or '—' }}</div>
+                  <div dir="ltr">{{ format_time12(e.start_time) or '—' }}{% if e.end_time %} ← {{ format_time12(e.end_time) }}{% endif %}</div>
+                </div>
+                {% endfor %}
+              {% else %}
+                <span style="color:#666;">—</span>
+              {% endif %}
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div style="text-align:center; padding: 40px; color: #333;">لا يوجد جدول بعد لهذا القسم</div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+  <div class="text-center text-xs text-on-surface-variant">تاريخ الطباعة: {{ now().strftime('%Y/%m/%d %H:%M') }}</div>
+</div>
+{% endblock %}

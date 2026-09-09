@@ -1,0 +1,10 @@
+{% extends 'print/layouts/print.html' %}
+{% set print_title = 'قائمة أعضاء هيئة التدريس' %}
+
+{% block print_styles %}
+@page { size: A4 portrait; margin: 12mm; }
+{% endblock %}
+
+{% block print_content %}
+{% include 'print/lists/_teacher_content.html' %}
+{% endblock %}

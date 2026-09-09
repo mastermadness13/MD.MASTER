@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>الأقسام — كلية التقنية الهندسية زوارة</title>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&family=Hanken+Grotesk:wght@400;600;700;800&family=Tajawal:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #500088;
+      --primary-dark: #320058;
+      --text: #181c20;
+      --muted: #4c4452;
+      --faint: #7d7483;
+      --surface: #ffffff;
+      --bg: #f7f9ff;
+      --border: #e0e3e8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Hanken Grotesk', 'Tajawal', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .material-symbols-outlined {
+      font-family: 'Material Symbols Outlined'; font-weight: normal; font-style: normal;
+      line-height: 1; letter-spacing: normal; text-transform: none; display: inline-block;
+      white-space: nowrap; direction: ltr; -webkit-font-feature-settings: 'liga';
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 40px 20px 60px; }
+    .page-head { text-align: center; margin-bottom: 36px; }
+    .page-head h1 { font-size: 24px; font-weight: 800; color: var(--primary); display: flex; align-items: center; justify-content: center; gap: 10px; }
+    .page-head p { color: var(--muted); margin-top: 8px; font-size: 14px; }
+
+    /* ---------- Carousel ---------- */
+    .carousel { position: relative; margin: 0 auto; max-width: 880px; }
+    .viewport { overflow: hidden; padding: 30px 0; }
+    .track {
+      display: flex;
+      transition: transform 0.55s cubic-bezier(0.22, 0.61, 0.36, 1);
+      will-change: transform;
+    }
+    .card {
+      flex: 0 0 340px;
+      margin: 0 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      overflow: hidden;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(80, 0, 136, 0.08);
+      transition: transform 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease;
+      user-select: none;
+    }
+    .card:hover { box-shadow: 0 12px 28px rgba(80, 0, 136, 0.18); }
+    .card.peak {
+      opacity: 0.55;
+      transform: scale(0.92);
+    }
+    .card.peak:hover { opacity: 0.8; }
+    .card.active { cursor: pointer; }
+    .card.active .card-body h2 { color: var(--primary); }
+    .card-img {
+      height: 150px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      position: relative;
+    }
+    .card-img .big-icon { font-size: 64px; text-shadow: 0 4px 14px rgba(0, 0, 0, 0.25); }
+    .card-img .badge {
+      position: absolute; top: 12px; left: 12px;
+      background: rgba(255, 255, 255, 0.22);
+      backdrop-filter: blur(4px);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #fff;
+    }
+    .card-body { padding: 18px; }
+    .card-body h2 { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
+    .card-body .desc {
+      font-size: 12.5px;
+      color: var(--muted);
+      line-height: 1.7;
+      height: 64px;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+    }
+    .card-body .meta { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .chip {
+      font-size: 11px; font-weight: 600;
+      background: #f1dbff; color: var(--primary);
+      border-radius: 999px; padding: 4px 10px;
+    }
+    .card .open-hint {
+      margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border);
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      font-size: 12px; font-weight: 700; color: var(--primary);
+    }
+
+    .arrow {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      width: 46px; height: 46px; border-radius: 50%;
+      border: none; cursor: pointer;
+      background: var(--primary); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 6px 16px rgba(80, 0, 136, 0.3);
+      transition: background 0.2s, transform 0.2s;
+      z-index: 5;
+    }
+    .arrow:hover { background: var(--primary-dark); transform: translateY(-50%) scale(1.06); }
+    .arrow .material-symbols-outlined { font-size: 26px; }
+    .arrow.next { left: -8px; }
+    .arrow.prev { right: -8px; }
+
+    .dots { display: flex; justify-content: center; gap: 8px; margin-top: 22px; }
+    .dot {
+      width: 9px; height: 9px; border-radius: 50%;
+      background: #deb7ff; border: none; cursor: pointer;
+      transition: all 0.25s;
+    }
+    .dot.active { width: 26px; border-radius: 999px; background: var(--primary); }
+
+    .hint { text-align: center; color: var(--faint); font-size: 12px; margin-top: 26px; }
+    .hint .material-symbols-outlined { font-size: 15px; vertical-align: -3px; }
+
+    @media (max-width: 600px) {
+      .card { flex-basis: 82vw; margin: 0 4px; }
+      .arrow.next { left: 2px; }
+      .arrow.prev { right: 2px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <div class="wrap">
+    <div class="page-head">
+      <h1><span class="material-symbols-outlined">apartment</span> أقسام الكلية</h1>
+      <p>تصفح الأقسام الكلية ثم اضغط على أي كرت لفتح معلومات القسم</p>
+    </div>
+
+    <div class="carousel">
+      <button class="arrow prev" id="prevBtn" title="السابق"><span class="material-symbols-outlined">arrow_forward</span></button>
+      <div class="viewport" id="viewport">
+        <div class="track" id="track"></div>
+      </div>
+      <button class="arrow next" id="nextBtn" title="التالي"><span class="material-symbols-outlined">arrow_back</span></button>
+    </div>
+
+    <div class="dots" id="dots"></div>
+    <p class="hint"><span class="material-symbols-outlined">touch_app</span> اضغط على الكرت لعرض معلومات القسم</p>
+  </div>
+
+  <div id="site-footer"></div>
+
+  <script src="../shared/utils.js"></script>
+  <script src="../shared/data-inline.js"></script>
+  <script src="../shared/data-client.js"></script>
+  <script src="../shared/nav.js" data-current="departments"></script>
+  <script>
+    (function () {
+      var DEPTS = [], COURSES = [];
+      var CARDS = [];          // DOM elements in "real" order
+      var current = 0;         // index into DEPTS
+      var CARD_GAP = 24;       // margin 12px each side
+
+      function courseCount(id) {
+        var n = 0;
+        COURSES.forEach(function (c) { if (c.departmentId === id) n++; });
+        return n;
+      }
+
+      function buildCards() {
+        var track = document.getElementById('track');
+        track.innerHTML = '';
+        CARDS = [];
+        DEPTS.forEach(function (d) {
+          var card = document.createElement('div');
+          card.className = 'card';
+          card.dataset.name = d.name;
+          card.innerHTML =
+            '<div class="card-img" style="background:linear-gradient(160deg,' + d.accentColor + ' 0%,#1e1b4b 100%)">' +
+              '<span class="material-symbols-outlined big-icon">' + (d.icon || 'school') + '</span>' +
+              '<span class="badge">' + d.majors + ' تخصص</span>' +
+            '</div>' +
+            '<div class="card-body">' +
+              '<h2>' + Utils.escapeHtml(d.name) + '</h2>' +
+              '<p class="desc">' + Utils.escapeHtml(d.description || '') + '</p>' +
+              '<div class="meta">' +
+                '<span class="chip">' + courseCount(d.id) + ' مقرر</span>' +
+                '<span class="chip">' + (d.semesters || 0) + ' فصل دراسي</span>' +
+              '</div>' +
+              '<div class="open-hint"><span class="material-symbols-outlined">open_in_new</span> عرض المعلومات</div>' +
+            '</div>';
+          card.addEventListener('click', function () { openDept(d.name); });
+          track.appendChild(card);
+          CARDS.push(card);
+        });
+      }
+
+      function openDept(name) {
+        window.location.href = 'department-info.html?dept=' + encodeURIComponent(name);
+      }
+
+      function goTo(index) {
+        var n = DEPTS.length;
+        current = ((index % n) + n) % n;
+        render();
+      }
+      function next() { goTo(current + 1); }
+      function prev() { goTo(current - 1); }
+
+      function cardWidth() {
+        var c = CARDS[0];
+        if (!c) return 340;
+        var s = getComputedStyle(c);
+        return c.offsetWidth + (parseFloat(s.marginLeft) + parseFloat(s.marginRight));
+      }
+
+      function layout() {
+        var viewport = document.getElementById('viewport');
+        var vw = viewport.clientWidth;
+        var cw = cardWidth();
+        var offset = (vw - cw) / 2;
+        document.getElementById('track').style.transform = 'translateX(' + (current * cw - offset) + 'px)';
+
+        CARDS.forEach(function (c, i) {
+          var active = (i === current);
+          c.classList.toggle('active', active);
+          c.classList.toggle('peak', !active);
+        });
+
+        var dots = document.getElementById('dots');
+        dots.innerHTML = '';
+        DEPTS.forEach(function (_, i) {
+          var b = document.createElement('button');
+          b.className = 'dot' + (i === current ? ' active' : '');
+          b.onclick = function () { goTo(i); };
+          dots.appendChild(b);
+        });
+      }
+
+      function render() { layout(); }
+
+      function resize() { layout(); }
+
+      function load() {
+        Promise.all([DataClient.getDepartments(), DataClient.getCourses()]).then(function (res) {
+          DEPTS = res[0];
+          COURSES = res[1];
+          buildCards();
+          var p = window.location.search.match(/[?&]dept=(\d+)/);
+          if (p) { var idx = 0; DEPTS.forEach(function (d, i) { if (String(d.id) === p[1]) idx = i; }); current = idx; }
+          layout();
+        }).catch(function (err) {
+          document.getElementById('track').innerHTML = '<p class="text-red-600" style="color:#dc2626;padding:40px;text-align:center">تعذر تحميل البيانات.</p>';
+          console.error(err);
+        });
+      }
+
+      document.getElementById('prevBtn').addEventListener('click', prev);
+      document.getElementById('nextBtn').addEventListener('click', next);
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowRight') prev();
+        if (e.key === 'ArrowLeft') next();
+      });
+      window.addEventListener('resize', resize);
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(resize);
+
+      load();
+    })();
+  </script>
+</body>
+</html>

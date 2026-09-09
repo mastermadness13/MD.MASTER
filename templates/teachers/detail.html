@@ -1,0 +1,307 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'teachers' %}
+{% set page_title = 'ملف عضو هيئة التدريس' %}
+{% set teacher = teacher | default({}) %}
+{% set courses = courses | default([]) %}
+{% set stats = stats | default({'course_count': 0, 'timetable_count': 0, 'hours_count': 0}) %}
+{% set teaching = teaching | default({'years_data': [], 'years': [], 'periods': [], 'semesters': [], 'total_hours': 0, 'missing_hours_count': 0}) %}
+{% set teacher_depts = teacher_depts | default([]) %}
+{% set extra_roles = extra_roles | default([]) %}
+{% set is_active = is_active | default(True) %}
+{% set can_manage = has_permission('teachers.manage') %}
+{% set can_print = has_permission('teachers.view') %}
+{% set perf_year = perf_year | default('') %}
+{% set perf_semester = perf_semester | default(1) %}
+{% set is_hod = 'head_of_department' in extra_roles %}
+
+{% block content %}
+<div class="flex flex-col w-full gap-lg">
+
+  <!-- Page Header -->
+  <div class="flex items-center justify-between flex-wrap gap-md">
+    <div class="flex items-center gap-md">
+      <a href="{{ url_for('teachers.teachers_list') }}"
+         class="w-10 h-10 rounded-full bg-surface-container hover:bg-surface-container-high transition-colors flex items-center justify-center text-on-surface-variant no-underline">
+        <span class="material-symbols-outlined">arrow_forward</span>
+      </a>
+      <div>
+        <div class="flex items-center gap-sm text-body-md text-on-surface-variant mb-xs">
+          <span>أعضاء هيئة التدريس</span>
+          <span class="material-symbols-outlined text-[16px]">chevron_left</span>
+          <span>تفاصيل العضو</span>
+        </div>
+        <h1 class="font-headline-sm text-on-surface flex items-center gap-sm">
+          {{ teacher.name }}
+          {% if is_active %}
+          <span class="px-sm py-xs bg-primary-container text-on-primary-container rounded-lg font-label-sm">نشط</span>
+          {% else %}
+          <span class="px-sm py-xs bg-error-container text-on-error-container rounded-lg font-label-sm">موقوف</span>
+          {% endif %}
+        </h1>
+      </div>
+    </div>
+    <div class="flex gap-sm">
+      <button onclick="window.print()"
+              class="px-lg py-sm rounded-xl font-label-lg bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors flex items-center gap-xs shadow-sm cursor-pointer">
+        <span class="material-symbols-outlined text-[20px]">print</span>
+        طباعة
+      </button>
+      {% if can_manage %}
+      <a href="{{ url_for('teachers.teachers_edit', id=teacher.id) }}"
+         class="px-lg py-sm rounded-xl font-label-lg bg-primary text-on-primary hover:bg-primary/90 transition-colors flex items-center gap-xs shadow-md no-underline">
+        <span class="material-symbols-outlined text-[20px]">edit</span>
+        تعديل البيانات
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-lg">
+
+    <!-- ── Left column ─────────────────────────────────────── -->
+    <div class="lg:col-span-1 flex flex-col gap-lg">
+
+      <!-- Identity Card -->
+      <div class="bg-surface-container rounded-2xl p-lg shadow-sm relative overflow-hidden group">
+        <div class="absolute -right-xl -top-xl w-32 h-32 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-colors duration-500"></div>
+        <div class="relative flex flex-col items-center text-center gap-md">
+          <div class="w-24 h-24 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center text-display-lg shadow-inner">
+            {{ teacher.name[:1] }}
+          </div>
+          <div>
+            <h2 class="font-title-lg text-on-surface mb-xs">{{ teacher.name }}</h2>
+            <p class="font-body-md text-on-surface-variant">
+              {{ [teacher.rank_name, teacher.dept_name] | select | reject('equalto', '') | join(' • ') or 'عضو هيئة تدريس' }}
+            </p>
+          </div>
+          {% if teacher.username %}
+          <span class="px-md py-xs rounded-full bg-secondary-container text-on-secondary-container font-label-sm" dir="ltr">{{ teacher.username }}</span>
+          {% endif %}
+          <div class="w-full flex flex-col gap-sm mt-md">
+            <div class="flex justify-between items-center py-xs border-b border-outline-variant/50 border-dashed last:border-0">
+              <span class="font-label-lg text-on-surface-variant">الرقم الكلية</span>
+              <span class="font-body-md text-on-surface font-mono" dir="ltr">{{ teacher.academic_number or '—' }}</span>
+            </div>
+            <div class="flex justify-between items-center py-xs border-b border-outline-variant/50 border-dashed last:border-0">
+              <span class="font-label-lg text-on-surface-variant">البريد الإلكتروني</span>
+              <span class="font-body-md text-on-surface text-left dir-ltr">{{ teacher.email or '—' }}</span>
+            </div>
+            <div class="flex justify-between items-center py-xs border-b border-outline-variant/50 border-dashed last:border-0">
+              <span class="font-label-lg text-on-surface-variant">رقم الهاتف</span>
+              <span class="font-body-md text-on-surface font-mono dir-ltr">{{ teacher.phone or '—' }}</span>
+            </div>
+            <div class="flex justify-between items-center py-xs border-b border-outline-variant/50 border-dashed last:border-0">
+              <span class="font-label-lg text-on-surface-variant">الرقم الوطني</span>
+              <span class="font-body-md text-on-surface font-mono dir-ltr">{{ teacher.national_id or '—' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Qualification & Degree -->
+      <div class="bg-surface-container rounded-2xl p-lg shadow-sm">
+        <h3 class="font-title-md text-on-surface mb-lg flex items-center gap-sm">
+          <span class="material-symbols-outlined text-primary">school</span>
+          المؤهل العلمي والدرجة
+        </h3>
+        <div class="flex flex-col gap-md">
+          <div>
+            <p class="font-label-sm text-on-surface-variant mb-xs">المؤهل العلمي</p>
+            <p class="font-body-lg text-on-surface font-medium">{{ teacher.qual_name or '—' }}</p>
+          </div>
+          <div>
+            <p class="font-label-sm text-on-surface-variant mb-xs">الدرجة العلمية</p>
+            <p class="font-body-lg text-on-surface font-medium">{{ teacher.rank_name or '—' }}</p>
+          </div>
+          <div>
+            <p class="font-label-sm text-on-surface-variant mb-xs">التصنيف</p>
+            <p class="font-body-lg text-on-surface font-medium">{{ teacher.class_name or '—' }}</p>
+          </div>
+          <div>
+            <p class="font-label-sm text-on-surface-variant mb-xs">تاريخ التعاقد</p>
+            <p class="font-body-lg text-on-surface font-medium">{{ (teacher.contract_date or '—')[:10] }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Stats -->
+      <div class="bg-surface-container rounded-2xl p-lg shadow-sm">
+        <h3 class="font-title-md text-on-surface mb-lg flex items-center gap-sm">
+          <span class="material-symbols-outlined text-primary">monitoring</span>
+          ملخص العبء
+        </h3>
+        <div class="flex flex-col gap-md">
+          <div class="flex justify-between items-center py-xs border-b border-outline-variant/50 border-dashed last:border-0">
+            <span class="font-label-lg text-on-surface-variant">المقررات المسندة</span>
+            <span class="font-body-lg text-on-surface font-bold">{{ stats.course_count }}</span>
+          </div>
+          <div class="flex justify-between items-center py-xs border-b border-outline-variant/50 border-dashed last:border-0">
+            <span class="font-label-lg text-on-surface-variant">محاضرات مجدولة</span>
+            <span class="font-body-lg text-on-surface font-bold">{{ stats.timetable_count }}</span>
+          </div>
+          <div class="flex justify-between items-center py-xs border-b border-outline-variant/50 border-dashed last:border-0">
+            <span class="font-label-lg text-on-surface-variant">ساعة أسبوعية</span>
+            <span class="font-body-lg text-on-surface font-bold">{{ stats.hours_count }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Right column ────────────────────────────────────── -->
+    <div class="lg:col-span-2 flex flex-col gap-lg">
+
+      <!-- Roles & Assignments -->
+      <div class="bg-surface-container rounded-2xl p-lg shadow-sm">
+        <h3 class="font-title-md text-on-surface mb-lg flex items-center gap-sm">
+          <span class="material-symbols-outlined text-primary">badge</span>
+          الأدوار الإضافية والتكليفات
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-xl">
+          <div>
+            <h4 class="font-label-lg text-on-surface-variant mb-md">الأدوار الإضافية في النظام</h4>
+            <div class="flex flex-wrap gap-sm">
+              {% for r in extra_roles %}
+              <span class="px-md py-xs rounded-full bg-secondary-container text-on-secondary-container font-label-lg flex items-center gap-xs">
+                <span class="material-symbols-outlined text-[16px]">badge</span>
+                {{ role_labels.get(r, r) }}
+              </span>
+              {% else %}
+              <span class="font-body-md text-on-surface-variant">لا توجد أدوار إضافية</span>
+              {% endfor %}
+            </div>
+          </div>
+          <div>
+            <h4 class="font-label-lg text-on-surface-variant mb-md">التكليف بمهام إدارية</h4>
+            {% if teacher.get('position') %}
+            <div class="p-md bg-surface rounded-xl border border-outline-variant flex items-start gap-md">
+              <div class="w-10 h-10 rounded-full bg-tertiary-container text-on-tertiary-container flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined">account_balance</span>
+              </div>
+              <div>
+                <p class="font-title-md text-on-surface">{{ teacher.get('position') }}</p>
+                <p class="font-body-md text-on-surface-variant mt-xs">
+                  {%- if assignment_date -%}تاريخ التكليف: {{ assignment_date }}{%- else -%}—{%- endif -%}
+                </p>
+                {% if teacher.get('hod_dept_name') %}
+                <p class="font-body-md text-on-surface-variant mt-xs">
+                  القسم الذي يرأسه: {{ teacher.get('hod_dept_name') }}
+                </p>
+                {% endif %}
+              </div>
+            </div>
+            {% elif is_hod %}
+            <div class="p-md bg-surface rounded-xl border border-outline-variant flex items-start gap-md">
+              <div class="w-10 h-10 rounded-full bg-tertiary-container text-on-tertiary-container flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined">account_balance</span>
+              </div>
+              <div>
+                <p class="font-title-md text-on-surface">{{ role_labels.get('head_of_department', 'رئيس قسم') }}</p>
+                <p class="font-body-md text-on-surface-variant mt-xs">{{ teacher.dept_name or '—' }}</p>
+              </div>
+            </div>
+            {% else %}
+            <span class="font-body-md text-on-surface-variant">لا توجد تكليفات إدارية</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Linked Departments -->
+      <div class="bg-surface-container rounded-2xl p-lg shadow-sm relative overflow-hidden">
+        <div class="absolute left-0 bottom-0 opacity-5 pointer-events-none">
+          <svg fill="none" height="200" viewBox="0 0 200 200" width="200" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="100" cy="100" r="80" stroke="currentColor" stroke-width="40"></circle>
+            <circle cx="100" cy="100" fill="currentColor" r="30"></circle>
+          </svg>
+        </div>
+        <h3 class="font-title-md text-on-surface mb-lg flex items-center gap-sm relative z-10">
+          <span class="material-symbols-outlined text-primary">account_tree</span>
+          الأقسام المرتبطة
+        </h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-md relative z-10">
+          {% for d in teacher_depts %}
+          <div class="p-md rounded-xl bg-surface border-l-4 border-primary flex items-center gap-md">
+            <span class="material-symbols-outlined text-primary">dns</span>
+            <div>
+              <p class="font-title-md text-on-surface">{{ d.name }}</p>
+              <p class="font-label-sm text-on-surface-variant">{{ 'القسم الرئيسي' if d.id == teacher.department_id else 'قسم منتدب إليه' }}</p>
+            </div>
+          </div>
+          {% else %}
+          <span class="font-body-md text-on-surface-variant py-md">{{ teacher.dept_name or 'لا توجد أقسام مرتبطة' }}</span>
+          {% endfor %}
+          {% if not teacher_depts and teacher.dept_name %}
+          <div class="p-md rounded-xl bg-surface border-l-4 border-primary flex items-center gap-md">
+            <span class="material-symbols-outlined text-primary">dns</span>
+            <div>
+              <p class="font-title-md text-on-surface">{{ teacher.dept_name }}</p>
+              <p class="font-label-sm text-on-surface-variant">القسم الرئيسي</p>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Assigned Courses -->
+      <div class="bg-surface-container rounded-2xl p-lg shadow-sm">
+        <div class="flex items-center justify-between mb-lg">
+          <h3 class="font-title-md text-on-surface flex items-center gap-sm">
+            <span class="material-symbols-outlined text-primary">menu_book</span>
+            المقررات المسندة
+          </h3>
+          <span class="font-label-sm text-on-surface-variant bg-surface-variant px-sm py-xs rounded-lg">{{ courses | length }} مقرر</span>
+        </div>
+        {% if courses %}
+        <div class="overflow-x-auto">
+          <table class="w-full text-right border-collapse">
+            <thead>
+              <tr class="border-b border-outline-variant/50 text-on-surface-variant font-label-sm">
+                <th class="py-sm px-md">الكود</th>
+                <th class="py-sm px-md">اسم المقرر</th>
+                <th class="py-sm px-md text-center">نظري</th>
+                <th class="py-sm px-md text-center">عملي</th>
+                <th class="py-sm px-md text-center">الساعات</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-outline-variant/30 text-on-surface font-body-md">
+              {% for c in courses %}
+              <tr>
+                <td class="py-md px-md font-mono text-primary">{{ c.code }}</td>
+                <td class="py-md px-md">{{ c.name }}</td>
+                <td class="py-md px-md text-center">{{ c.theoretical_hours or '—' }}</td>
+                <td class="py-md px-md text-center">{{ c.practical_hours or '—' }}</td>
+                <td class="py-md px-md text-center font-bold">{{ c.total_hours or '—' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="py-xl text-center">
+          <span class="material-symbols-outlined text-5xl text-on-surface-variant/30 block mb-sm">menu_book</span>
+          <p class="font-body-md text-on-surface-variant">لا توجد مقررات مسندة لهذا العضو</p>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Teaching Archive -->
+      <div class="bg-surface-container rounded-2xl p-lg shadow-sm">
+        <div class="flex items-center justify-between mb-lg">
+          <h3 class="font-title-md text-on-surface flex items-center gap-sm">
+            <span class="material-symbols-outlined text-primary">folder_open</span>
+            أرشيف محاضر
+          </h3>
+          {% if can_print and perf_year %}
+          <a href="{{ url_for('faculty_performance.print_form', teacher_id=teacher.id, year=perf_year, semester=perf_semester) }}"
+             class="px-lg py-sm rounded-xl font-label-lg bg-primary text-on-primary hover:bg-primary/90 transition-colors flex items-center gap-xs shadow-md no-underline">
+            <span class="material-symbols-outlined text-[20px]">description</span>
+            نموذج معدل الأداء
+          </a>
+          {% endif %}
+        </div>
+      </div>  
+
+    </div>
+  </div>
+</div>
+{% endblock %}

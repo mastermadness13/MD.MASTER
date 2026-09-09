@@ -1,0 +1,58 @@
+<!-- ── Upload modal ─────────────────────────────────────────────────── -->
+<div id="uploadModalOverlay" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4" style="display:none">
+  <div class="bg-white rounded-2xl shadow-xl border border-primary/10 w-full max-w-md max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-outline-variant/60">
+      <h3 class="font-bold text-on-surface flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary">upload_file</span>
+        رفع المنهاج
+      </h3>
+      <button type="button" onclick="closeUploadModal()" aria-label="إغلاق"
+              class="p-1 rounded-lg hover:bg-surface-container transition-colors cursor-pointer">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <form id="uploadForm" method="POST" enctype="multipart/form-data">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="send_rnd">
+      <input type="hidden" name="course_id" id="uploadCourseId">
+      <input type="hidden" name="submission_id" id="uploadSubmissionId">
+
+      <div class="px-5 py-4">
+        <div class="mb-4 p-3.5 rounded-xl bg-surface-container/60 border border-outline-variant/60">
+          <p id="uploadCourseName" class="font-bold text-on-surface text-lg">—</p>
+          <p class="text-xs text-on-surface-variant mt-0.5">
+            <span id="uploadCourseCode" dir="ltr" class="font-mono font-bold text-primary"></span>
+            <span id="uploadCourseMeta"></span>
+          </p>
+        </div>
+
+        <label id="uploadDropZone" for="uploadFileInput"
+               class="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-outline-variant rounded-xl px-4 py-10 text-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors">
+          <span class="material-symbols-outlined text-4xl text-outline-variant" id="uploadDropIcon">picture_as_pdf</span>
+          <span class="font-bold text-on-surface text-sm" id="uploadDropText">اختر ملف PDF</span>
+          <span class="text-xs text-on-surface-variant">أو اسحب الملف هنا</span>
+          <input type="file" name="file" id="uploadFileInput" accept=".pdf,.PDF" class="hidden">
+        </label>
+        <p id="uploadFileName" class="hidden mt-2 text-xs font-bold text-primary flex items-center gap-1">
+          <span class="material-symbols-outlined text-sm">description</span>
+          <span class="truncate"></span>
+        </p>
+
+        <p class="text-[11px] font-bold text-on-surface-variant mt-3">PDF فقط — الحد الأقصى 16 ميجابايت.</p>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 px-5 py-4 border-t border-outline-variant/60">
+        <button type="button" onclick="closeUploadModal()"
+                class="px-4 py-2.5 rounded-lg text-sm font-bold bg-white border border-outline-variant text-on-surface-variant hover:bg-surface-container transition cursor-pointer">
+          إلغاء
+        </button>
+        <button type="submit"
+                class="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-5 py-2.5 rounded-lg text-sm font-bold transition shadow-md cursor-pointer">
+          <span class="material-symbols-outlined text-lg">upload</span>
+          رفع الملف
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

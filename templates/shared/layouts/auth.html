@@ -1,0 +1,51 @@
+{% include 'shared/components/head_preamble.html' %}
+{% include 'shared/components/head_assets.html' %}
+<title>{% block title %}{{ page_title|default('منصة رقمية لإدارة الجداول والمقرارت الدراسية') }}{% endblock %}</title>
+{% block head_extra %}{% endblock %}
+</head>
+<body class="auth-body">
+
+<a href="{{ url_for('public_site.index_page') }}" class="fixed top-4 start-4 z-50 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/85 text-slate-700 text-sm font-bold shadow-md border border-slate-200 hover:bg-white hover:text-slate-900 transition-colors no-underline" title="الموقع العام" target="_blank" rel="noopener">
+  <span class="material-symbols-outlined text-[18px]">globe</span>
+  الموقع العام
+</a>
+
+<div class="auth-bg">
+  <div class="auth-bg-gradient"></div>
+  <div class="auth-bg-pattern"></div>
+  <div class="auth-bg-shapes">
+    <div class="auth-bg-shape"></div>
+    <div class="auth-bg-shape"></div>
+    <div class="auth-bg-shape"></div>
+    <div class="auth-bg-shape"></div>
+    <div class="auth-bg-shape"></div>
+  </div>
+</div>
+
+<section class="auth-screen">
+  <div class="flex items-center justify-center min-h-screen w-full px-4 sm:px-6 py-8">
+    <div class="w-full max-w-md">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="mb-md space-y-sm">
+            {% for category, message in messages %}
+              <div class="flex items-center gap-sm p-md rounded-lg text-sm
+                {% if category == 'error' %}bg-error-container text-error
+                {% elif category == 'success' %}bg-success-teal text-on-surface
+                {% else %}bg-primary-fixed text-primary{% endif %}">
+                <span class="material-symbols-outlined text-[18px] shrink-0">{% if category == 'error' %}error{% elif category == 'success' %}check_circle{% else %}info{% endif %}</span>
+                <span>{{ message }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+</section>
+
+<script src="/static/js/main.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

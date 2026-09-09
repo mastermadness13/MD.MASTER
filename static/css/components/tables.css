@@ -1,0 +1,350 @@
+.students-table-wrap, .courses-table-wrap {
+  overflow-x: auto;
+}
+
+.students-table, .courses-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.students-table th, .students-table td,
+.courses-table th, .courses-table td {
+  padding: 12px 14px;
+  text-align: right;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.students-table th, .courses-table th {
+  background: var(--table-header);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.students-table tr:hover, .courses-table tr:hover {
+  background: var(--surface-hover);
+}
+
+.row-num {
+  color: var(--text-faint);
+  font-size: 12px;
+}
+
+.teacher-name-link {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.teacher-name-link:hover {
+  text-decoration: underline;
+}
+
+.dept-badge, .year-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.dept-badge {
+  background: var(--primary-faint);
+  color: var(--primary);
+}
+
+.year-badge {
+  background: var(--secondary-faint);
+  color: var(--secondary);
+}
+
+.actions-cell {
+  white-space: nowrap;
+  display: flex;
+  gap: 6px;
+}
+
+.actions-cell .btn {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.search-table thead th,
+.search-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--surface-card, #fff);
+}
+
+.table-container {
+  overflow-x: auto;
+  background: var(--surface-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+}
+
+.table-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.table-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.table-search input {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 8px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  width: 240px;
+  background: var(--surface-card);
+  color: var(--text-primary);
+}
+
+.table-search input:focus {
+  outline: none;
+  border-color: var(--border-input-focus);
+  box-shadow: 0 0 0 2px var(--primary-glow);
+}
+
+.table-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+table th {
+  background: var(--table-header);
+  padding: 12px 16px;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--table-border);
+  white-space: nowrap;
+}
+
+table td {
+  padding: 12px 16px;
+  font-size: 14px;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+table tr:hover td {
+  background: var(--table-row-hover);
+}
+
+.table-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.gradebook-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.gradebook-table th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-card);
+  z-index: 10;
+  padding: 8px 6px;
+  text-align: center;
+  font-weight: 700;
+  border-bottom: 2px solid var(--primary);
+  white-space: nowrap;
+}
+
+.gradebook-table th.student-col {
+  text-align: right;
+  min-width: 180px;
+}
+
+.gradebook-table td {
+  padding: 4px 3px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+}
+
+.gradebook-table td.student-cell {
+  text-align: right;
+  font-weight: 500;
+}
+
+.gradebook-table tr:hover {
+  background: var(--primary-glow);
+}
+
+.gradebook-table input[type="number"] {
+  width: 60px;
+  padding: 4px 6px;
+  text-align: center;
+  border: 1px solid var(--border-heavy);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  background: var(--surface-card);
+  transition: all 0.15s;
+}
+
+.gradebook-table input[type="number"]:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-glow);
+  outline: none;
+}
+
+.gradebook-table input[type="number"].saved {
+  border-color: var(--pass-color);
+  background: var(--success-faint);
+}
+
+.gradebook-table input[type="number"].modified {
+  border-color: var(--warning);
+  background: var(--warning-faint);
+}
+
+.total-cell {
+  font-weight: 700;
+  min-width: 60px;
+}
+
+.grade-cell-entered {
+  color: var(--success-text);
+}
+
+.grade-cell-empty {
+  color: var(--text-muted);
+}
+
+.scheme-header {
+  background: var(--primary-faint) !important;
+}
+
+.scheme-header th {
+  color: var(--primary-deep);
+}
+
+.sticky-col {
+  position: sticky;
+  right: 0;
+  background: inherit;
+  z-index: 5;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border-accent);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+.department-scroll-area::-webkit-scrollbar {
+  width: 6px;
+}
+
+.department-scroll-area::-webkit-scrollbar-thumb {
+  background: #32005840;
+  border-radius: 10px;
+}
+
+.academic-table-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.academic-table-container::-webkit-scrollbar-thumb {
+  background: var(--border-accent);
+  border-radius: 10px;
+}
+
+/* ── Print: paper-quality tables ── */
+@media print {
+  .courses-table,
+  .students-table,
+  .gradebook-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .courses-table th,
+  .students-table th {
+    background: #e8e8e8 !important;
+    color: #000 !important;
+    border: 0.5pt solid #999 !important;
+    font-size: 10pt !important;
+    padding: 6pt 8pt !important;
+  }
+
+  .courses-table td,
+  .students-table td {
+    border: 0.5pt solid #ccc !important;
+    font-size: 10.5pt !important;
+    padding: 5pt 8pt !important;
+    color: #000 !important;
+  }
+
+  .courses-table tr:nth-child(even) td,
+  .students-table tr:nth-child(even) td {
+    background: #f7f7f7 !important;
+  }
+
+  .courses-table tr:hover td,
+  .students-table tr:hover td {
+    background: transparent !important;
+  }
+
+  .courses-table-wrap,
+  .students-table-wrap {
+    overflow: visible !important;
+  }
+
+  .row-num {
+    color: #666 !important;
+  }
+
+  /* Hide input spinners, show values as plain text */
+  input[type="number"] {
+    -moz-appearance: textfield !important;
+    -webkit-appearance: textfield !important;
+    appearance: textfield !important;
+  }
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none !important;
+    margin: 0 !important;
+  }
+}

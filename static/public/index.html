@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>بوابة الكلية — كلية التقنية الهندسية زوارة</title>
+  <link rel="icon" type="image/png" href="image/logo.png">
+  <link rel="stylesheet" href="shared/responsive.css">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+  <style>
+    :root{
+      --primary:#500088; --primary-dark:#320058;
+      --soft:#f1dbff; --bg:#f7f9ff;
+      --ink:#181c20; --ink2:#4c4452; --ink3:#7d7483;
+      --line:#e0e3e8; --line2:#ebeef3;
+      --gold:#fdc003; --gold-deep:#785900;
+      --shadow:0 1px 2px rgba(50,0,88,.04),0 8px 22px -14px rgba(50,0,88,.14);
+    }
+    *{box-sizing:border-box}
+    body{font-family:'Tajawal',system-ui,sans-serif;background:var(--bg);color:var(--ink);margin:0;padding:0}
+    ::selection{background:var(--soft)}
+    :focus-visible{outline:2px solid #7d3fb5;outline-offset:2px;border-radius:6px}
+    .material-symbols-outlined{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;font-size:20px;line-height:1;display:inline-block;white-space:nowrap;direction:ltr;-webkit-font-feature-settings:'liga';-webkit-font-smoothing:antialiased}
+
+    .view{display:block}
+    .view[hidden]{display:none}
+    .hidden{display:none!important}
+
+    /* Tailwind class mappings for schedule.js generated buttons */
+    .bg-primary{background-color:var(--primary)!important}
+    .text-on-primary{color:#fff!important}
+    .bg-surface{background-color:#fff!important}
+    .bg-surface-container-lowest{background-color:#fff!important}
+    .bg-surface-container-low{background-color:#f6f1fb!important}
+    .bg-surface-container{background-color:#faf7ff!important}
+    .text-on-surface{color:var(--ink)!important}
+    .text-on-surface-variant{color:var(--ink2)!important}
+    .border-outline-variant{border-color:var(--line)!important}
+    .border{border:1px solid var(--line)!important}
+    .shadow-sm{box-shadow:0 1px 2px rgba(0,0,0,.06)!important}
+    .ambient-shadow{box-shadow:var(--shadow)!important}
+    .rounded{border-radius:8px!important}
+    .rounded-lg{border-radius:12px!important}
+    .rounded-xl{border-radius:14px!important}
+    .rounded-2xl{border-radius:16px!important}
+    .rounded-sm{border-radius:4px!important}
+    .font-bold{font-weight:700!important}
+    .whitespace-nowrap{white-space:nowrap!important}
+    .transition-colors{transition:color .15s,background-color .15s,border-color .15s!important}
+    .px-3{padding-inline:12px!important}
+    .px-4{padding-inline:16px!important}
+    .px-5{padding-inline:20px!important}
+    .py-1{padding-block:4px!important}
+    .py-1\.5{padding-block:6px!important}
+    .py-2{padding-block:8px!important}
+    .p-1\.5{padding:6px!important}
+    .p-lg{padding:24px!important}
+    .mb-1{margin-bottom:4px!important}
+    .mb-4{margin-bottom:16px!important}
+    .mb-xs{margin-bottom:4px!important}
+    .mb-sm{margin-bottom:8px!important}
+    .mb-md{margin-bottom:16px!important}
+    .mt-1{margin-top:4px!important}
+    .mt-2{margin-top:8px!important}
+    .mt-6{margin-top:24px!important}
+    .mt-auto{margin-top:auto!important}
+    .pt-2{padding-top:8px!important}
+    .pt-4{padding-top:16px!important}
+    .gap-1{gap:4px!important}
+    .gap-2{gap:8px!important}
+    .gap-4{gap:16px!important}
+    .gap-6{gap:24px!important}
+    .gap-sm{gap:8px!important}
+    .gap-md{gap:16px!important}
+    .flex{display:flex!important}
+    .flex-col{flex-direction:column!important}
+    .flex-wrap{flex-wrap:wrap!important}
+    .items-center{align-items:center!important}
+    .items-start{align-items:flex-start!important}
+    .justify-center{justify-content:center!important}
+    .justify-between{justify-content:space-between!important}
+    .justify-end{justify-content:flex-end!important}
+    .overflow-x-auto{overflow-x:auto!important}
+    .overflow-hidden{overflow:hidden!important}
+    .pb-1{padding-bottom:4px!important}
+    .pb-2{padding-bottom:8px!important}
+    .block{display:block!important}
+    .inline-block{display:inline-block!important}
+    .inline-flex{display:inline-flex!important}
+    .w-full{width:100%!important}
+    .max-w-full{max-width:100%!important}
+    .max-w-md{max-width:448px!important}
+    .mx-auto{margin-inline:auto!important}
+    .text-center{text-align:center!important}
+    .text-xs{font-size:.75rem!important}
+    .text-sm{font-size:.875rem!important}
+    .text-body-md{font-size:.875rem;line-height:1.5!important}
+    .text-label-md{font-size:.75rem;line-height:1.5!important}
+    .text-headline-md{font-size:1.25rem;line-height:1.5!important}
+    .text-lg{font-size:1.125rem!important}
+    .text-\[15px\]{font-size:15px!important}
+    .text-\[16px\]{font-size:16px!important}
+    .text-\[18px\]{font-size:18px!important}
+    .text-\[20px\]{font-size:20px!important}
+    .text-\[40px\]{font-size:40px!important}
+    .truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap!important}
+    .relative{position:relative!important}
+    .border-t{border-top:1px solid var(--line)!important}
+    .border-b{border-bottom:1px solid var(--line)!important}
+    .space-y-md>*+*{margin-top:16px!important}
+    .space-y-1>*+*{margin-top:4px!important}
+    .list-disc{list-style-type:disc!important}
+    .pr-5{padding-right:20px!important}
+    .hover\:bg-surface-container:hover{background-color:#faf7ff!important}
+    .hover\:bg-gray-50:hover{background-color:#fafafa!important}
+    .hover\:bg-red-100:hover{background-color:#fee2e2!important}
+    .hover\:text-on-surface:hover{color:var(--ink)!important}
+    .hover\:text-primary:hover{color:var(--primary)!important}
+    .hover\:bg-primary\/90:hover{background-color:rgba(80,0,136,.9)!important}
+    .bg-red-50{background-color:#fef2f2!important}
+    .bg-red-100{background-color:#fee2e2!important}
+    .border-red-200{border-color:#fecaca!important}
+    .border-red-300{border-color:#fca5a5!important}
+    .text-red-700{color:#b91c1c!important}
+    .text-gray-300{color:#d1d5db!important}
+    .ring-2{box-shadow:0 0 0 2px rgba(80,0,136,.2)!important}
+    .ring-primary\/20{box-shadow:0 0 0 2px rgba(80,0,136,.2)!important}
+    .focus\:ring-2:focus{box-shadow:0 0 0 2px rgba(80,0,136,.2)!important}
+    .focus\:border-primary:focus{border-color:var(--primary)!important}
+    .searchable-list{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);z-index:100;max-height:200px;overflow-y:auto}
+    .searchable-item{padding:8px 12px;cursor:pointer;font-size:.85rem;transition:background .15s}
+    .searchable-item:hover{background:var(--soft)}
+    .searchable-item-active{background:var(--soft);color:var(--primary);font-weight:700}
+    .list-disc{list-style-type:disc}
+    .pr-5{padding-right:20px}
+    main{max-width:1200px;margin:0 auto;padding:24px 16px 40px}
+    @media(min-width:1024px){main{padding:28px 24px 48px}}
+    .sec-title{display:flex;align-items:center;gap:9px;font-size:1.12rem;font-weight:800;margin:26px 0 14px}
+    .sec-title i{color:var(--primary);font-size:.95rem}
+    .sec-title .cnt{font-size:.75rem;font-weight:700;color:var(--gold-deep);background:var(--gold);border-radius:999px;padding:2px 10px}
+
+    /* ===== Home ===== */
+    .home-hero{display:flex;align-items:center;gap:16px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px 22px;box-shadow:var(--shadow)}
+    .hero-logo{width:64px;height:64px;border:1px solid var(--line);border-radius:14px;padding:6px;background:#fff;flex:none;display:flex;align-items:center;justify-content:center;color:var(--primary);font-size:36px}
+    .home-hero h1{margin:0;font-size:1.35rem;font-weight:800}
+    .home-hero p{margin:4px 0 0;color:var(--ink2);font-size:.92rem}
+    .shortcuts{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+    .shortcut{display:flex;align-items:center;gap:11px;background:#fff;border:1px solid var(--line);border-radius:13px;padding:14px 16px;font-weight:700;font-size:.9rem;color:var(--ink);transition:border-color .18s,box-shadow .18s;cursor:pointer;text-decoration:none}
+    .shortcut:hover{border-color:#deb7ff;box-shadow:var(--shadow)}
+    .shortcut .sc-ic{width:38px;height:38px;border-radius:11px;background:var(--soft);color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:.95rem;flex:none}
+    .dept-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+    .dept-card{display:flex;flex-direction:column;align-items:flex-start;gap:10px;text-align:right;background:#fff;border:1px solid var(--line);border-top:3px solid var(--c,#500088);border-radius:14px;padding:16px;cursor:pointer;font-family:inherit;transition:box-shadow .18s,transform .18s}
+    .dept-card:hover{box-shadow:var(--shadow);transform:translateY(-2px)}
+    .dc-icon{width:42px;height:42px;border-radius:11px;background:var(--c,#500088);color:#fff;display:flex;align-items:center;justify-content:center}
+    .dc-name{font-weight:800;font-size:.95rem;color:var(--ink)}
+    .dc-meta{font-size:.78rem;font-weight:700;color:var(--ink3)}
+    .dc-go{margin-top:auto;display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:700;color:var(--c,#500088)}
+    .dc-go i{font-size:.72rem}
+
+    /* ===== Toolbar / chips ===== */
+    .toolbar{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;margin-bottom:18px}
+    .frow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .frow + .frow{border-top:1px dashed var(--line2);padding-top:10px}
+    .flabel{font-size:.78rem;font-weight:800;color:var(--ink2);min-width:52px}
+    .chipbar{display:flex;flex-wrap:wrap;gap:7px}
+    .chip{padding:7px 15px;border:1.5px solid var(--line);background:#fff;border-radius:999px;font-family:inherit;font-size:.82rem;font-weight:700;color:var(--ink2);cursor:pointer;transition:all .16s;display:inline-flex;align-items:center;gap:6px}
+    .chip:hover{border-color:#deb7ff;color:var(--primary)}
+    .chip.active{background:var(--primary);border-color:var(--primary);color:#fff}
+    .chip.active .material-symbols-outlined{color:#deb7ff}
+    .chip .material-symbols-outlined{font-size:17px;color:var(--primary)}
+    .search-box{flex:1;min-width:230px;position:relative}
+    .search-box input{width:100%;padding:9px 36px 9px 12px;border:1.5px solid var(--line);border-radius:10px;font-family:inherit;font-size:.88rem;background:#fff;color:var(--ink)}
+    .search-box input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--soft)}
+    .search-box .material-symbols-outlined{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--ink3);font-size:19px;pointer-events:none}
+    .chip-group{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+    .chip-group .glabel{font-size:.74rem;font-weight:800;color:var(--ink3)}
+    .chip.sm{padding:5px 12px;font-size:.76rem}
+
+    /* ===== Panels & tables ===== */
+    .panel{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;margin-bottom:20px}
+    .panel-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line2)}
+    .panel-head h3{margin:0;font-size:.98rem;font-weight:800}
+    .panel-head .sub{display:block;font-size:.74rem;font-weight:700;color:var(--ink3);margin-top:2px}
+    .panel-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+    .ghost-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border:1px solid var(--line);border-radius:9px;background:#fff;font-family:inherit;font-size:.78rem;font-weight:700;color:var(--ink2);cursor:pointer;transition:all .16s}
+    .ghost-btn:hover{border-color:var(--primary);color:var(--primary);background:var(--soft)}
+    .solid-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border:1px solid var(--primary);border-radius:9px;background:var(--primary);font-family:inherit;font-size:.78rem;font-weight:700;color:#fff;cursor:pointer;transition:background .16s}
+    .solid-btn:hover{background:var(--primary-dark)}
+    .tblwrap{overflow-x:auto}
+    table.data{width:100%;border-collapse:collapse}
+    table.data th{background:#f6f1fb;color:var(--ink2);font-size:.76rem;font-weight:800;text-align:right;padding:10px 12px;border-bottom:2px solid #e7dbf4;white-space:nowrap}
+    table.data td{padding:9px 12px;border-bottom:1px solid var(--line2);font-size:.84rem;vertical-align:middle}
+    table.data tbody tr:hover{background:#faf7ff}
+    table.data tbody tr:last-child td{border-bottom:none}
+    td.num,th.num{text-align:center}
+    .totals td{background:#faf7ff;font-weight:800;border-top:2px solid var(--line)}
+
+    /* Timetable grid */
+    table.tt{width:100%;min-width:760px;border-collapse:collapse;table-layout:fixed}
+    table.tt th{background:#f6f1fb;color:var(--ink2);font-size:.76rem;font-weight:800;padding:10px 8px;border-bottom:2px solid #e7dbf4;text-align:center}
+    table.tt th.day-th{text-align:right;width:96px;padding-inline:14px}
+    table.tt td{border:1px solid var(--line2);vertical-align:top;padding:5px;height:104px}
+    td.day-cell{background:#faf7ff;font-weight:800;font-size:.82rem;text-align:center;width:96px}
+    .tt-stack{display:flex;flex-direction:column;gap:6px;height:100%}
+    .tt-item{background:var(--card-bg,rgba(80,0,136,.08));border-right:3px solid var(--accent,#500088);border-radius:8px;padding:6px 9px}
+    .tt-teacher{font-size:11.5px;font-weight:700;color:var(--ink)}
+    .tt-course{font-size:12.5px;font-weight:700;color:var(--ink);line-height:1.45}
+    .tt-code{font-size:10px;color:var(--ink3);font-weight:400}
+    .tt-meta{display:flex;align-items:center;gap:4px;font-size:10.5px;color:var(--ink2);margin-top:2px}
+    .tt-meta .material-symbols-outlined{font-size:13px}
+    .tt-time{font-size:10.5px;font-weight:600;color:var(--ink2);margin-top:2px;direction:ltr;text-align:right}
+    .file-btns{display:flex;gap:4px;margin-top:5px}
+    .fbtn{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--primary);text-decoration:none;padding:0}
+    .fbtn .material-symbols-outlined{font-size:14px}
+    .fbtn:hover:not(:disabled){background:var(--soft)}
+    .fbtn:disabled{opacity:.35;cursor:not-allowed}
+    .sem-title{display:flex;align-items:center;gap:8px;font-size:.95rem;font-weight:800;color:var(--primary);margin:20px 2px 10px;padding-inline-start:10px;border-inline-start:4px solid var(--primary)}
+    .sem-title:first-child{margin-top:4px}
+    .sem-title .sub{font-size:.72rem;color:var(--ink3);font-weight:700}
+
+    /* Exams */
+    .exam-header{background:var(--soft);border:1px solid var(--line);border-radius:14px;padding:16px 20px;margin-bottom:18px}
+    .exam-badge{display:inline-block;background:var(--primary);color:#fff;font-size:.72rem;font-weight:800;padding:3px 12px;border-radius:999px;margin-bottom:10px}
+    .exam-title{margin:0 0 2px;font-size:1.1rem;font-weight:800;color:var(--primary)}
+    .exam-subtitle{margin:0;color:var(--ink2);font-size:.85rem}
+    .exam-controls{display:flex;flex-direction:column;gap:10px;margin-bottom:18px}
+    .exam-dept-tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+    .exam-dept-tabs::-webkit-scrollbar{display:none}
+    .exam-dept-tab{padding:8px 16px;border:1.5px solid var(--line);border-radius:999px;background:#fff;font-family:inherit;font-size:.82rem;font-weight:700;color:var(--ink2);cursor:pointer;white-space:nowrap;transition:all .16s}
+    .exam-dept-tab:hover{border-color:#deb7ff;color:var(--primary)}
+    .exam-dept-tab.active{background:var(--primary);border-color:var(--primary);color:#fff}
+    .exam-week-tabs{display:flex;gap:5px;background:var(--line2);padding:4px;border-radius:10px;flex-wrap:wrap;width:fit-content}
+    .exam-week-tab{border:none;background:transparent;padding:5px 12px;border-radius:999px;font-family:inherit;font-size:.76rem;font-weight:700;color:var(--ink2);cursor:pointer;transition:all .16s}
+    .exam-week-tab.active{background:var(--primary);color:#fff}
+    .exam-legend{display:flex;flex-wrap:wrap;align-items:center;gap:14px;padding:10px 16px;border-top:1px solid var(--line2);background:#fcfaff;border-radius:0 0 14px 14px}
+    .legend-item{display:inline-flex;align-items:center;gap:5px;font-size:.73rem;font-weight:700;color:var(--ink2)}
+    .legend-dot{width:11px;height:11px;border-radius:50%;display:inline-block}
+
+    /* Exam matrix */
+    .ws-a4{max-width:100%;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+    .matrix-grid{display:grid;grid-template-columns:120px repeat(var(--matrix-cols,6),minmax(150px,1fr));border-top:1px solid var(--line);border-right:1px solid var(--line)}
+    .matrix-header{background:#f6f1fb;font-weight:700;text-align:center;padding:12px 8px;border-bottom:2px solid var(--line);border-left:1px solid var(--line);color:var(--ink);font-size:15px}
+    .matrix-header.day-col{border-bottom-color:var(--primary)}
+    .matrix-cell{padding:6px;min-height:120px;display:flex;flex-direction:column;gap:4px;border-bottom:1px solid var(--line);border-left:1px solid var(--line);background:#fff;transition:background-color .2s}
+    .matrix-cell:hover{background-color:#f6f1fb}
+    .matrix-row-header{background:#f6f1fb;font-weight:700;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px;border-bottom:1px solid var(--line);border-left:1px solid var(--line);text-align:center}
+    .matrix-date-chip{font-size:12px;font-weight:400;color:var(--ink2);background:var(--line2);padding:2px 8px;border-radius:6px;margin-top:4px}
+    .mx-card{background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px;font-size:13px;position:relative;height:100%;display:flex;flex-direction:column;box-shadow:0 1px 2px rgba(0,0,0,.05);transition:box-shadow .2s}
+    .mx-card:hover{box-shadow:0 3px 8px rgba(0,0,0,.12)}
+    .mx-add{opacity:0;width:100%;height:100%;border:1px dashed var(--line);border-radius:8px;display:none;align-items:center;justify-content:center;gap:4px;font-size:13px;font-weight:500;color:var(--ink2);transition:opacity .2s}
+    .matrix-container{overflow-x:auto;padding-bottom:8px}
+    .matrix-container::-webkit-scrollbar{height:8px;width:8px}
+    .matrix-container::-webkit-scrollbar-track{background:#f6f1fb;border-radius:4px}
+    .matrix-container::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+    .ws-loading,.ws-error{text-align:center;padding:40px;font-size:16px;color:var(--ink2)}
+    .ws-error{color:#dc2626}
+
+    /* Study plan */
+    .study-plan{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:16px;box-shadow:var(--shadow)}
+    .study-plan-header{background:var(--soft);padding:12px 16px;font-size:.88rem;font-weight:800;color:var(--primary);border-bottom:1px solid var(--line2)}
+    .study-plan-table{width:100%;border-collapse:collapse}
+    .study-plan-table th{background:#f6f1fb;color:var(--ink2);font-size:.76rem;font-weight:800;text-align:right;padding:10px 12px;border-bottom:2px solid #e7dbf4}
+    .study-plan-table td{padding:9px 12px;border-bottom:1px solid var(--line2);font-size:.84rem}
+    .study-plan-table tbody tr:hover{background:#faf7ff}
+    .study-plan-table tbody tr:last-child td{border-bottom:none}
+    .status-badge{display:inline-block;padding:2px 10px;border-radius:999px;font-size:.68rem;font-weight:800}
+    .status-badge.required{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca}
+    .status-badge.elective{background:#f0fdf4;color:#166534;border:1px solid #bbf7d0}
+
+    /* Course cards */
+    .course-list{display:flex;flex-direction:column;gap:10px}
+    .course-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow);transition:box-shadow .16s}
+    .course-card:hover{box-shadow:0 4px 16px -6px rgba(50,0,88,.18)}
+    .course-card-header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+    .course-name{font-weight:800;font-size:.92rem;color:var(--ink)}
+    .course-code{font-size:.72rem;font-weight:700;color:var(--ink3);background:var(--line2);padding:2px 8px;border-radius:6px;direction:ltr;unicode-bidi:embed}
+    .course-meta{display:flex;flex-wrap:wrap;gap:12px;font-size:.76rem;color:var(--ink2);font-weight:700;margin-bottom:10px}
+    .course-meta span{display:inline-flex;align-items:center;gap:4px}
+    .course-meta .material-symbols-outlined{font-size:15px;color:var(--primary)}
+    .course-actions{display:flex;gap:6px;flex-wrap:wrap}
+    .course-btn{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border:1px solid var(--line);border-radius:9px;background:#fff;font-family:inherit;font-size:.72rem;font-weight:700;color:var(--ink2);cursor:pointer;transition:all .15s}
+    .course-btn:hover:not(:disabled){border-color:var(--primary);color:var(--primary);background:var(--soft)}
+    .course-btn:disabled{opacity:.35;cursor:not-allowed}
+    .course-btn .material-symbols-outlined{font-size:16px}
+
+    /* States / misc */
+    .loading-state,.error-state,.empty-state{text-align:center;padding:44px 16px;color:#7d7483;font-weight:700;font-size:.9rem}
+    .spinner{width:34px;height:34px;margin:0 auto 10px;border:4px solid #e5e7eb;border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .empty-sm{display:flex;align-items:center;justify-content:center;gap:9px;padding:42px 16px;color:var(--ink3);font-weight:700;font-size:.9rem;background:#fff;border:1px dashed var(--line);border-radius:14px}
+    .empty-sm .material-symbols-outlined{font-size:26px;color:#c080fa}
+    .toast{position:fixed;bottom:80px;inset-inline:0;margin:0 auto;width:max-content;max-width:90%;background:var(--primary-dark);color:#fff;font-size:.8rem;font-weight:800;padding:10px 22px;border-radius:999px;box-shadow:0 14px 30px -12px rgba(50,0,88,.6);opacity:0;transform:translateY(14px);transition:all .3s ease;pointer-events:none;z-index:200}
+    .toast.show{opacity:1;transform:translateY(0)}
+    @media(min-width:900px){.toast{bottom:26px}}
+    .print-only{display:none}
+    .no-print{}
+
+    @media(max-width:640px){
+      .home-hero{flex-direction:column;align-items:flex-start}
+      .exam-controls{flex-direction:column}
+    }
+    @media print{
+      @page{size:A4 landscape;margin:10mm}
+      .site-header,.mobile-nav,.site-footer,.toolbar,.no-print,.panel-actions,.exam-controls,.exam-header,.exam-legend,.toast{display:none!important}
+      body{background:#fff}
+      main{padding:0;max-width:none}
+      .panel{box-shadow:none;border:1px solid #999;break-inside:avoid}
+      .ws-a4{border:1px solid #999}
+      .tblwrap{overflow:visible}
+      table.tt,table.data{min-width:0!important;font-size:10px}
+      td.day-cell{width:70px}
+      table.tt td{height:80px}
+      .print-only{display:block;padding:8px 16px;border-bottom:2px solid #333;font-size:12px;margin-bottom:8px}
+    }
+  </style>
+</head>
+<body>
+
+  <div id="site-header"></div>
+
+  <main>
+
+    <!-- ===================== HOME ===================== -->
+    <section class="view" id="view-home" data-view="home">
+      <header class="home-hero">
+        <div class="hero-logo">
+          <span class="material-symbols-outlined" style="font-size:36px">apartment</span>
+        </div>
+        <div class="hero-text">
+          <h1>كلية التقنية الهندسية – زوارة</h1>
+          <p>الجداول الدراسية، جداول الامتحانات، والمقررات وملفاتها — للطلبة والأقسام.</p>
+        </div>
+      </header>
+
+      <h2 class="sec-title"><i class="fa-solid fa-layer-group"></i> اختصارات</h2>
+      <div class="shortcuts">
+        <a class="shortcut" data-nav="timetables">
+          <span class="sc-ic"><span class="material-symbols-outlined">calendar_month</span></span>
+          الجداول الأسبوعية
+        </a>
+        <a class="shortcut" data-nav="exams">
+          <span class="sc-ic"><span class="material-symbols-outlined">fact_check</span></span>
+          جداول الامتحانات
+        </a>
+        <a class="shortcut" data-nav="courses">
+          <span class="sc-ic"><span class="material-symbols-outlined">local_library</span></span>
+          المواد والملفات
+        </a>
+      </div>
+
+      <h2 class="sec-title"><i class="fa-solid fa-building-columns"></i> الأقسام <span class="cnt" id="home-dept-count"></span></h2>
+      <div class="dept-grid" id="homeDepts">
+        <div class="loading-state"><div class="spinner"></div>جاري تحميل الأقسام...</div>
+      </div>
+    </section>
+
+    <!-- ===================== TIMETABLES ===================== -->
+    <section class="view" id="view-timetables" data-view="timetables" hidden>
+      <div class="toolbar" id="ttToolbar" hidden>
+        <div class="frow">
+          <span class="flabel">القسم</span>
+          <div class="chipbar" id="ttDepts"></div>
+        </div>
+        <div class="frow" id="ttSemRow" hidden>
+          <span class="flabel">الفصل</span>
+          <div class="chipbar" id="ttSems"></div>
+        </div>
+      </div>
+      <div id="ttOutput"></div>
+    </section>
+
+    <!-- ===================== EXAMS ===================== -->
+    <section class="view" id="view-exams" data-view="exams" hidden>
+      <div class="exam-header">
+        <span class="exam-badge" id="exPeriodLabel">فترة الامتحانات</span>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
+          <div>
+            <h2 class="exam-title" id="exam-matrix-title">جدول الامتحانات</h2>
+            <p class="exam-subtitle">البوابة العامة — عرض فقط.</p>
+          </div>
+          <button type="button" onclick="window.print()" class="solid-btn no-print">
+            <span class="material-symbols-outlined" style="font-size:15px">print</span>
+            طباعة
+          </button>
+        </div>
+      </div>
+
+      <div class="exam-controls no-print" id="exam-controls">
+        <div class="exam-dept-tabs" id="exam-dept-tabs"></div>
+        <div class="exam-week-tabs" id="exam-week-tabs"></div>
+      </div>
+
+      <div id="panelSchedule">
+        <div class="ws-loading">جارٍ تحميل جدول الامتحانات…</div>
+      </div>
+    </section>
+
+    <!-- ===================== COURSES ===================== -->
+    <section class="view" id="view-courses" data-view="courses" hidden>
+      <div class="toolbar" id="crToolbar" hidden>
+        <div class="frow">
+          <div class="search-box">
+            <input type="text" id="libSearch" placeholder="ابحث باسم المقرر أو الرمز...">
+            <span class="material-symbols-outlined">search</span>
+          </div>
+        </div>
+        <div class="frow">
+          <span class="flabel">القسم</span>
+          <div class="chipbar" id="crDepts"></div>
+        </div>
+        <div class="frow">
+          <div class="chip-group" id="libStatus">
+            <span class="glabel">حالة المقرر:</span>
+          </div>
+        </div>
+      </div>
+
+      <h2 class="sec-title"><i class="fa-solid fa-book-open"></i> المواد والملفات</h2>
+      <div id="crLibOutput"></div>
+
+      <h2 class="sec-title" style="margin-top:32px"><i class="fa-solid fa-graduation-cap"></i> الخطة الدراسية</h2>
+      <div id="crOutput"></div>
+    </section>
+
+  </main>
+
+  <div id="site-footer"></div>
+  <div id="toast" class="toast no-print" role="status"></div>
+
+  <script src="shared/utils.js"></script>
+  <script src="shared/data-inline.js"></script>
+  <script src="shared/data-client.js"></script>
+  <script src="shared/nav.js" data-current="home" data-minimal></script>
+  <script src="/static/js/exams/api.js"></script>
+  <script src="/static/js/exams/schedule.js"></script>
+  <script>
+  (function () {
+    'use strict';
+    function $(s, c) { return (c || document).querySelector(s); }
+    function $$(s, c) { return Array.prototype.slice.call((c || document).querySelectorAll(s)); }
+
+    var esc = function (s) { return Utils.escapeHtml(s); };
+    var ORDINAL = ['الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس', 'السابع'];
+    var TT_DAYS = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'];
+    var FALLBACK_PERIODS = [
+      { code: 'A', label: 'الفترة الأولى' }, { code: 'B', label: 'الفترة الثانية' }, { code: 'C', label: 'الفترة الثالثة' }
+    ];
+
+    /* ============ data-nav click handler ============ */
+    document.addEventListener('click', function (ev) {
+      var el = ev.target.closest ? ev.target.closest('[data-nav]') : null;
+      if (!el) return;
+      ev.preventDefault();
+      var target = el.getAttribute('data-nav');
+      if (target) window.location.hash = '#' + target;
+    });
+
+    /* ============ data store ============ */
+    var D = { depts: [], periods: [], entries: [], vocab: {}, syllabus: {}, courses: [], exams: [] };
+    var pending = {};
+
+    function loadCore() {
+      if (!pending.core) pending.core = (async function () {
+        try {
+          var r = await fetch('/public/api/timetables');
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          var d = await r.json();
+          D.depts = d.departments || [];
+          D.periods = d.periods || [];
+          D.entries = d.entries || [];
+          D.vocab = d.vocab || {};
+          D.syllabus = d.syllabus || {};
+          D.academicLabel = (d.academic_semester && d.academic_semester.label) || '';
+        } catch (e) {
+          D.depts = await DataClient.getDepartments();
+          D.periods = await DataClient.getPeriods();
+          D.entries = await DataClient.getTimetable();
+        }
+        if (!D.periods.length) D.periods = FALLBACK_PERIODS.slice();
+      }());
+      return pending.core;
+    }
+
+    function loadCourses() {
+      if (!pending.courses) pending.courses = (async function () {
+        try {
+          var r = await fetch('/public/api/courses');
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          var d = await r.json();
+          D.depts = d.departments && d.departments.length ? d.departments : D.depts;
+          D.courses = d.courses || [];
+        } catch (e) {
+          var res = await Promise.all([DataClient.getDepartments(), DataClient.getCourses(), DataClient.getTimetable()]);
+          D.depts = res[0];
+          var inTt = {};
+          (res[2] || []).forEach(function (en) { if (en.courseId) inTt[en.courseId] = true; });
+          D.courses = res[1].map(function (c) {
+            c.departmentName = c.department || '';
+            c.vocabFile = null; c.syllabusFiles = []; c.formFile = null;
+            c.inTimetable = !!inTt[c.id];
+            return c;
+          });
+        }
+      }());
+      return pending.courses;
+    }
+
+    function loadExams() {
+      if (!pending.exams) pending.exams = (async function () {
+        try {
+          var r = await fetch('/public/api/exams');
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          var d = await r.json();
+          D.exams = d.exams || [];
+        } catch (e) {
+          D.exams = [];
+        }
+      }());
+      return pending.exams;
+    }
+
+    /* ============ shared helpers ============ */
+    function deptById(id) {
+      for (var i = 0; i < D.depts.length; i++) if (String(D.depts[i].id) === String(id)) return D.depts[i];
+      return null;
+    }
+    function hexToRgba(hex, a) { return Utils.hexToRgba(hex, a); }
+    function timeToMin(t) { return Utils.timeToMinutes(t) || 0; }
+    function entryTime(e, p) {
+      var own = e.startTime ? e.startTime + (e.endTime ? ' ← ' + e.endTime : '') : '';
+      if (own) return own;
+      return p && p.startTime ? p.startTime + (p.endTime ? ' ← ' + p.endTime : '') : '';
+    }
+    function semLabel(s) { return 'الفصل ' + (ORDINAL[s - 1] || s); }
+
+    function renderChips(el, items, activeVal, onPick) {
+      el.innerHTML = '';
+      items.forEach(function (it) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        var isActive = String(it.value) === String(activeVal);
+        b.className = 'chip' + (isActive ? ' active' : '');
+        b.setAttribute('aria-pressed', String(isActive));
+        b.innerHTML = it.html || esc(it.label);
+        b.addEventListener('click', function () { onPick(it.value); });
+        el.appendChild(b);
+      });
+    }
+
+    var toastTimer;
+    function toast(msg) {
+      var t = $('#toast'); t.textContent = msg; t.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { t.classList.remove('show'); }, 2400);
+    }
+
+    function fileBtn(file, title, icon) {
+      if (file && file.url) {
+        var href = file.url + (file.url.indexOf('?') >= 0 ? '&' : '?') + 'download=1';
+        return '<a class="fbtn" href="' + href + '" title="' + esc(title) + '" target="_blank" rel="noopener"><span class="material-symbols-outlined">' + icon + '</span></a>';
+      }
+      return '<button type="button" class="fbtn" title="' + esc(title) + '" disabled><span class="material-symbols-outlined">' + icon + '</span></button>';
+    }
+
+    function printHead(context) {
+      return '<div class="print-only"><strong>كلية التقنية الهندسية زوارة</strong> — ' + esc(context) + '</div>';
+    }
+
+    /* ============ router ============ */
+    var VIEWS = ['home', 'timetables', 'exams', 'courses'];
+    var INIT = {};
+    var inited = {};
+    var PENDING = {};
+    var BOOT = {};
+
+    function currentView() {
+      var h = (window.location.hash || '').replace('#', '');
+      if (h === 'library') h = 'courses';
+      return VIEWS.indexOf(h) >= 0 ? h : 'home';
+    }
+    function show(v) {
+      VIEWS.forEach(function (name) {
+        var sec = $('#view-' + name);
+        if (sec) sec.hidden = (name !== v);
+      });
+      window.scrollTo({ top: 0 });
+      if (!inited[v]) { inited[v] = true; INIT[v](); }
+    }
+    window.addEventListener('hashchange', function () { show(currentView()); });
+
+    /* ============ HOME ============ */
+    INIT.home = async function () {
+      try {
+        await loadCore();
+        $('#home-dept-count').textContent = D.depts.length + ' أقسام';
+        var wrap = $('#homeDepts');
+        wrap.innerHTML = '';
+        D.depts.forEach(function (d) {
+          var color = d.accentColor || '#500088';
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'dept-card';
+          b.style.setProperty('--c', color);
+          b.setAttribute('data-dept', d.id);
+          b.setAttribute('data-nav', 'timetables');
+          b.innerHTML =
+            '<span class="dc-icon"><span class="material-symbols-outlined">' + esc(d.icon || 'domain') + '</span></span>' +
+            '<span class="dc-name">' + esc(d.name) + '</span>' +
+            '<span class="dc-meta">' + (+(d.semesters || 1)) + ' فصول دراسية</span>' +
+            '<span class="dc-go"><i class="fa-solid fa-arrow-left"></i> الجدول الدراسي</span>';
+          b.addEventListener('click', function () {
+            PENDING.timetables = { dept: d.id };
+          });
+          wrap.appendChild(b);
+        });
+      } catch (err) {
+        $('#homeDepts').innerHTML = '<div class="error-state">تعذر تحميل البيانات.</div>';
+        console.error(err);
+      }
+    };
+
+    /* ============ TIMETABLES ============ */
+    var TT = { dept: null, sem: null };
+
+    function ttSemOptions(dept) {
+      var total = +(dept.semesters || 1);
+      if (total <= 1) return [1];
+      var out = [];
+      for (var s = 2; s <= Math.min(total, 7); s++) out.push(s);
+      return out;
+    }
+    function ttEntries(deptId, sem) {
+      return D.entries.filter(function (e) {
+        if (String(e.departmentId) !== String(deptId)) return false;
+        if (sem != null && +e.semester !== +sem) return false;
+        return true;
+      });
+    }
+    function ttCell(dept, sem, day, period) {
+      var accent = dept.accentColor || '#500088';
+      var list = D.entries.filter(function (e) {
+        return e.day === day && e.period === period.code &&
+          String(e.departmentId) === String(dept.id) &&
+          (sem == null || +e.semester === +sem);
+      }).sort(function (a, b) { return timeToMin(a.startTime) - timeToMin(b.startTime); });
+
+      if (!list.length) return '<div></div>';
+      var html = '<div class="tt-stack">';
+      list.forEach(function (e) {
+        html += '<div class="tt-item" style="--accent:' + accent + ';--card-bg:' + hexToRgba(accent, 0.09) + '">' +
+          '<div class="tt-teacher">' + esc(e.teacherName || '—') + '</div>' +
+          '<div class="tt-course">' + esc(e.courseName || '—') +
+            (e.courseCode ? '<span class="tt-code"> (' + esc(e.courseCode) + ')</span>' : '') + '</div>' +
+          (e.roomName ? '<div class="tt-meta"><span class="material-symbols-outlined">meeting_room</span>' + esc(e.roomName) + '</div>' : '') +
+          '<div class="tt-time">' + esc(entryTime(e, period)) + '</div>' +
+          '<div class="file-btns">' +
+            fileBtn(e.formFile, 'تحميل المقرر', 'menu_book') +
+            fileBtn(e.syllabusFile, 'تحميل المنهج', 'download') +
+            fileBtn(e.vocabFile, 'تحميل المفردات', 'description') +
+          '</div>' +
+        '</div>';
+      });
+      return html + '</div>';
+    }
+
+    function ttDeptSems(deptId) {
+      var set = {};
+      D.entries.forEach(function (e) {
+        if (String(e.departmentId) === String(deptId) && e.semester != null) set[e.semester] = 1;
+      });
+      return Object.keys(set).map(Number).sort(function (a, b) { return a - b; });
+    }
+
+    function ttRender() {
+      var out = $('#ttOutput');
+      if (!TT.dept || !deptById(TT.dept)) {
+        out.innerHTML = '<div class="empty-sm"><span class="material-symbols-outlined">table_chart</span>اختر قسمًا لعرض جدوله.</div>';
+        return;
+      }
+      var dept = deptById(TT.dept);
+      var all = ttEntries(dept.id, null);
+      var title = dept.name + (D.academicLabel ? ' — ' + D.academicLabel : '') + (TT.sem != null ? ' — ' + semLabel(TT.sem) : '');
+
+      var headCells = D.periods.map(function (p, i) {
+        var t = p.startTime ? '<div style="font-weight:600;font-size:.68rem;color:var(--ink3);direction:ltr">' + esc(p.startTime + (p.endTime ? ' – ' + p.endTime : '')) + '</div>' : '';
+        return '<th>' + esc(p.label || p.code || ('الفترة ' + (i + 1))) + t + '</th>';
+      }).join('');
+      function gridFor(sem) {
+        var rows = TT_DAYS.map(function (day) {
+          var cells = D.periods.map(function (p) { return '<td>' + ttCell(dept, sem, day, p) + '</td>'; }).join('');
+          return '<tr><td class="day-cell">' + esc(day) + '</td>' + cells + '</tr>';
+        }).join('');
+        return '<div class="tblwrap"><table class="tt"><thead><tr><th class="day-th">اليوم</th>' + headCells + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+      }
+
+      var bodyHtml;
+      if (!all.length) {
+        bodyHtml = '<div class="empty-sm"><span class="material-symbols-outlined">event_busy</span>لا توجد حصص مجدولة لهذا القسم بعد.</div>';
+      } else if (TT.sem != null) {
+        bodyHtml = ttEntries(dept.id, TT.sem).length
+          ? '<h4 class="sem-title">' + esc(semLabel(TT.sem)) + '</h4>' + gridFor(TT.sem)
+          : '<div class="empty-sm"><span class="material-symbols-outlined">event_busy</span>لا توجد حصص في ' + esc(semLabel(TT.sem)) + ' حاليًا.</div>';
+      } else {
+        var sems = ttDeptSems(dept.id);
+        bodyHtml = sems.length
+          ? sems.map(function (s) {
+              var c = ttEntries(dept.id, s).length;
+              if (!c) return '';
+              return '<h4 class="sem-title">' + esc(semLabel(s)) + '<span class="sub">' + c + ' محاضرة</span></h4>' + gridFor(s);
+            }).join('')
+          : gridFor(null);
+      }
+
+      out.innerHTML =
+        '<div class="panel">' +
+          '<div class="panel-head">' +
+            '<h3>' + esc(dept.name) + (D.academicLabel ? ' <span class="sub">' + esc(D.academicLabel) + '</span>' : '') + '<span class="sub">' + all.length + ' محاضرة مجدولة</span></h3>' +
+            '<div class="panel-actions no-print">' +
+              '<button type="button" class="solid-btn" id="tt-print"><span class="material-symbols-outlined" style="font-size:15px">print</span> طباعة</button>' +
+            '</div>' +
+          '</div>' +
+          printHead(title) +
+          bodyHtml +
+        '</div>';
+
+      $('#tt-print').addEventListener('click', function () { window.print(); });
+    }
+
+    function ttRenderFilters() {
+      renderChips($('#ttDepts'), D.depts.map(function (d) {
+        return { value: d.id, label: d.name, html: '<span class="material-symbols-outlined">' + esc(d.icon || 'domain') + '</span>' + esc(d.name) };
+      }), TT.dept, function (v) {
+        TT.dept = v;
+        TT.sem = null;
+        ttRenderFilters(); ttRender();
+      });
+      var dept = TT.dept ? deptById(TT.dept) : null;
+      var sems = dept ? ttSemOptions(dept) : [];
+      $('#ttSemRow').hidden = !(dept && sems.length);
+      if (dept && sems.length) {
+        renderChips($('#ttSems'), sems.map(function (s) {
+          return { value: String(s), label: semLabel(s) };
+        }), TT.sem == null ? null : String(TT.sem), function (v) {
+          TT.sem = (+v === +TT.sem) ? null : +v;
+          ttRender(); ttRenderFilters();
+        });
+      }
+    }
+
+    INIT.timetables = async function () {
+      try {
+        await loadCore();
+        var want = (PENDING.timetables && PENDING.timetables.dept) || BOOT.dept;
+        PENDING.timetables = null;
+        if (want && deptById(want)) TT.dept = want;
+        else if (!TT.dept) {
+          var withData = D.depts.filter(function (d) {
+            return D.entries.some(function (e) { return String(e.departmentId) === String(d.id); });
+          });
+          TT.dept = (withData[0] || D.depts[0] || {}).id || null;
+        }
+        $('#ttToolbar').hidden = false;
+        ttRenderFilters();
+        ttRender();
+      } catch (err) {
+        $('#ttOutput').innerHTML = '<div class="error-state">تعذر تحميل البيانات.</div>';
+        console.error(err);
+      }
+    };
+
+    /* ============ EXAMS (public read-only) ============ */
+    INIT.exams = async function () {
+      try {
+        var r = await fetch('/public/api/exam-schedule');
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        var data = await r.json();
+        var panel = document.getElementById('panelSchedule');
+        if (panel) {
+          window.ExamSchedule.init(panel, { data: data, role: '' });
+        }
+      } catch (err) {
+        var panel = document.getElementById('panelSchedule');
+        if (panel) {
+          panel.innerHTML =
+            '<div class="empty-sm">' +
+              '<span class="material-symbols-outlined">event_busy</span>' +
+              '<span>تعذر تحميل جدول الامتحانات.</span>' +
+            '</div>';
+        }
+        console.error(err);
+      }
+    };
+
+    /* ============ LIBRARY (merged into courses view) ============ */
+    var LIB = { q: '', status: '' };
+
+    function libHasForm(c) { return !!c.formFile; }
+    function libHasPdf(c) { return (c.syllabusFiles || []).length > 0; }
+    function libFiltered() {
+      return D.courses.filter(function (c) {
+        if (CR.dept && String(c.departmentId) !== String(CR.dept)) return false;
+        if (CR.sem && +c.semester !== +CR.sem) return false;
+        if (LIB.status === 'required' && !c.inTimetable) return false;
+        if (LIB.status === 'elective' && c.inTimetable) return false;
+        if (LIB.q) {
+          var q = LIB.q.toLowerCase();
+          return (c.name || '').toLowerCase().indexOf(q) >= 0 ||
+                 (c.code || '').toLowerCase().indexOf(q) >= 0 ||
+                 String(c.id).indexOf(q) >= 0;
+        }
+        return true;
+      }).sort(function (a, b) {
+        var na = String(a.name || ''), nb = String(b.name || '');
+        if (na !== nb) return na.localeCompare(nb, 'ar');
+        return String(a.code || '').localeCompare(String(b.code || ''), 'ar');
+      });
+    }
+    function libFileBtn(file, cls, icon, label, title, extra) {
+      var href = file.url + (file.url.indexOf('?') >= 0 ? '&' : '?') + 'download=1';
+      return '<a class="course-btn ' + cls + '" href="' + href + '" target="_blank" rel="noopener"' +
+        (title ? ' title="' + esc(title) + '"' : '') + '><span class="material-symbols-outlined">' + icon + '</span>' + esc(label) +
+        (extra || '') + '</a>';
+    }
+    function libFilePills(c) {
+      var out = '';
+      var pdfs = c.syllabusFiles || [];
+      pdfs.forEach(function (f) {
+        if (!f.url) return;
+        out += libFileBtn(f, '', 'download', 'المنهج',
+          'المنهج' + (f.teacherName ? ' — ' + f.teacherName : ''),
+          (pdfs.length > 1 && f.teacherName) ? ' <small style="opacity:.7;font-size:.64rem">' + esc(f.teacherName) + '</small>' : '');
+      });
+      if (c.vocabFile && c.vocabFile.url) {
+        out += libFileBtn(c.vocabFile, '', 'description', 'المفردات', 'مفردات المقرر', null);
+      }
+      if (c.formFile && c.formFile.url) {
+        out += libFileBtn(c.formFile, '', 'menu_book', 'المقرر', 'وصف المقرر (النموذج)', null);
+      }
+      if (!out) out = '<span style="font-size:.75rem;color:var(--ink3);font-weight:600">لا توجد ملفات منشورة</span>';
+      return out;
+    }
+
+    function libRender() {
+      var list = libFiltered();
+      var wrap = $('#crLibOutput');
+      if (!list.length) {
+        wrap.innerHTML = '<div class="empty-sm"><span class="material-symbols-outlined">search_off</span>لا توجد مقررات مطابقة للفلاتر.</div>';
+        return;
+      }
+      wrap.innerHTML = '<div class="course-list">' + list.map(function (c) {
+        var deptObj = deptById(c.departmentId);
+        var dn = c.departmentName || (deptObj ? deptObj.name : '');
+        var semStr = c.semester ? semLabel(c.semester) : '';
+        var isRequired = c.is_required !== false;
+        return '<div class="course-card">' +
+          '<div class="course-card-header">' +
+            '<span class="course-name">' + esc(c.name || '—') + '</span>' +
+            (c.code ? '<span class="course-code">' + esc(c.code) + '</span>' : '') +
+          '</div>' +
+          '<div class="course-meta">' +
+            (c.teacherName ? '<span><span class="material-symbols-outlined">person</span>' + esc(c.teacherName) + '</span>' : '') +
+            (c.roomName ? '<span><span class="material-symbols-outlined">meeting_room</span>' + esc(c.roomName) + '</span>' : '') +
+            (c.totalHours ? '<span><span class="material-symbols-outlined">schedule</span>' + esc(c.totalHours) + ' ساعات</span>' : '') +
+            (semStr ? '<span><span class="material-symbols-outlined">layers</span>' + esc(semStr) + '</span>' : '') +
+          '</div>' +
+          '<div class="course-actions">' +
+            libFilePills(c) +
+          '</div>' +
+        '</div>';
+      }).join('') + '</div>';
+    }
+
+    function libRenderGroups() {
+      var el = $('#libStatus');
+      var opts = [
+        { v: '', l: 'الكل' },
+        { v: 'required', l: 'في الجدول' },
+        { v: 'elective', l: 'خارج الجدول' }
+      ];
+      $$('button', el).forEach(function (b) { b.remove(); });
+      opts.forEach(function (o) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'chip' + (LIB.status === o.v ? ' active' : '');
+        b.textContent = o.l;
+        b.addEventListener('click', function () { LIB.status = o.v; libRenderGroups(); libRender(); });
+        el.appendChild(b);
+      });
+    }
+
+    /* ============ COURSES (study plans) ============ */
+    var CR = { dept: null, sem: '' };
+
+    function crRender() {
+      var out = $('#crOutput');
+      if (!CR.dept || !deptById(CR.dept)) {
+        out.innerHTML = '<div class="empty-sm"><span class="material-symbols-outlined">menu_book</span>اختر قسمًا لعرض خطته الدراسية.</div>';
+        return;
+      }
+      var dept = deptById(CR.dept);
+      var courses = D.courses.filter(function (c) {
+        if (String(c.departmentId) !== String(CR.dept)) return false;
+        if (CR.sem && +c.semester !== +CR.sem) return false;
+        return true;
+      }).sort(function (a, b) {
+        if ((a.semester || 0) !== (b.semester || 0)) return (a.semester || 0) - (b.semester || 0);
+        return String(a.code || '').localeCompare(String(b.code || ''), 'ar');
+      });
+
+      if (!courses.length) {
+        out.innerHTML = '<div class="empty-sm"><span class="material-symbols-outlined">menu_book</span>لا توجد مقررات مسجلة لهذا القسم.</div>';
+        return;
+      }
+
+      var grouped = {};
+      courses.forEach(function (c) {
+        var s = c.semester || 0;
+        if (!grouped[s]) grouped[s] = [];
+        grouped[s].push(c);
+      });
+
+      var html = '';
+      Object.keys(grouped).sort(function (a, b) { return +a - +b; }).forEach(function (sem) {
+        var semCourses = grouped[sem];
+        var totalHours = 0;
+        semCourses.forEach(function (c) { totalHours += (c.totalHours || 0); });
+        html += '<div class="study-plan">' +
+          '<div class="study-plan-header">' +
+            esc(semLabel(+sem)) + ' — ' + semCourses.length + ' مقررات — ' + totalHours + ' ساعة معتمدة' +
+          '</div>' +
+          '<div class="tblwrap"><table class="study-plan-table">' +
+            '<thead><tr>' +
+              '<th>الحالة</th>' +
+              '<th>المقرر</th>' +
+              '<th>الرمز</th>' +
+              '<th>الساعات</th>' +
+              '<th>المحاضرين</th>' +
+              '<th>الملفات</th>' +
+            '</tr></thead>' +
+            '<tbody>' +
+            semCourses.map(function (c) {
+              var inTt = !!c.inTimetable;
+              var syl = (c.syllabusFiles || []).find(function (f) { return f && f.url; }) || null;
+              var form = (c.formFile && c.formFile.url) ? c.formFile : null;
+              var voc = (c.vocabFile && c.vocabFile.url) ? c.vocabFile : null;
+              return '<tr>' +
+                '<td><span class="status-badge ' + (inTt ? 'elective' : 'required') + '">' + (inTt ? 'في الجدول' : 'خارج الجدول') + '</span></td>' +
+                '<td style="font-weight:600">' + esc(c.name || '—') + '</td>' +
+                '<td style="direction:ltr;text-align:right;font-size:.78rem;color:var(--ink2)">' + esc(c.code || '—') + '</td>' +
+                '<td>' + (c.totalHours || '—') + '</td>' +
+                '<td style="font-size:.78rem">' + esc(c.teacherName || '—') + '</td>' +
+                '<td><div class="file-btns">' +
+                  fileBtn(form, 'تحميل المقرر', 'menu_book') +
+                  fileBtn(syl, 'تحميل المنهج', 'download') +
+                  fileBtn(voc, 'تحميل المفردات', 'description') +
+                '</div></td>' +
+              '</tr>';
+            }).join('') +
+            '</tbody>' +
+          '</table></div>' +
+        '</div>';
+      });
+
+      out.innerHTML = html;
+    }
+
+    function crRenderFilters() {
+      renderChips($('#crDepts'), D.depts.map(function (d) {
+        return { value: d.id, label: d.name, html: '<span class="material-symbols-outlined">' + esc(d.icon || 'domain') + '</span>' + esc(d.name) };
+      }), CR.dept, function (v) {
+        CR.dept = v; CR.sem = '';
+        crRenderFilters(); crRender(); libRender();
+      });
+    }
+
+    INIT.courses = async function () {
+      try {
+        await loadCore();
+        await loadCourses();
+        if (BOOT.dept && deptById(BOOT.dept)) CR.dept = BOOT.dept;
+        else if (!CR.dept) {
+          var withData = D.depts.filter(function (d) {
+            return D.courses.some(function (c) { return String(c.departmentId) === String(d.id); });
+          });
+          CR.dept = (withData[0] || D.depts[0] || {}).id || null;
+        }
+        $('#crToolbar').hidden = false;
+        crRenderFilters();
+        libRenderGroups();
+        $('#libSearch').addEventListener('input', Utils.debounce(function () { LIB.q = this.value.trim(); libRender(); }, 250));
+        crRender();
+        libRender();
+      } catch (err) {
+        $('#crOutput').innerHTML = '<div class="error-state">تعذر تحميل البيانات.</div>';
+        console.error(err);
+      }
+    };
+
+    /* ============ boot ============ */
+    try {
+      var qs = new URLSearchParams(window.location.search);
+      var qd = parseInt(qs.get('dept'), 10);
+      if (qd > 0) BOOT.dept = qd;
+    } catch (e) {}
+
+    show(currentView());
+  })();
+  </script>
+</body>
+</html>

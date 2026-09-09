@@ -1,0 +1,118 @@
+{# Shared print sheet for a teacher's teaching record for one period.
+   Rendered inside the `print_content` block of print/layouts/print.html.
+
+   Expects: teacher, group, entries, print_flag, mode
+   mode = 'record'  -> inline course code, no semester strip (السجل التدريسي)
+   mode = 'report'  -> separate رمز المقرر column + semester strip (كشف السجلات) #}
+{% set group = group | default({}) %}
+{% set entries = entries | default([]) %}
+{% set type_map = {'theory': 'نظري', 'practical': 'عملي'} %}
+{% set is_report = (mode == 'report') %}
+<div class="print-sheet">
+
+  <!-- Report Header -->
+  <div class="mb-5 pb-4 border-b border-outline-variant">
+    <div class="flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        {% if teacher.photo_filename %}
+        <img src="{{ url_for('uploads.uploaded_file', filename=teacher.photo_filename) }}"
+             alt="{{ teacher.name }}"
+             class="w-14 h-14 rounded-full object-cover border-2 border-outline-variant shrink-0">
+        {% else %}
+        <span class="w-14 h-14 rounded-full bg-surface-container flex items-center justify-center text-xl font-black text-on-surface shrink-0">{{ teacher.name[:1] }}</span>
+        {% endif %}
+        <div>
+          <h1 class="text-xl font-bold text-on-surface">{{ teacher.name }}</h1>
+          <p class="text-sm text-on-surface-variant">
+            {% if teacher.academic_number %}<span dir="ltr">{{ teacher.academic_number }}</span> · {% endif %}
+            {{ teacher.dept_name or '—' }}
+          </p>
+        </div>
+      </div>
+      <div class="text-left">
+        <div class="text-base font-bold text-on-surface flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary">calendar_month</span>
+          {{ group.year }}
+        </div>
+        {% if group.date_hint %}
+        <div class="text-xs text-on-surface-variant mt-1">{{ group.date_hint }}</div>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if is_report %}
+    <!-- Period / semester strip -->
+    <div class="mt-4 flex flex-wrap gap-4 text-sm">
+      <div class="px-3 py-1.5 rounded-lg bg-surface-container flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary text-base">schedule</span>
+        الفصل الدراسي:
+        <span class="font-bold text-on-surface">{{ group.semesters[0].label if group.semesters and group.semesters[0].label else '—' }}</span>
+      </div>
+      <div class="px-3 py-1.5 rounded-lg bg-surface-container flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary text-base">school</span>
+        العدد الإجمالي للمقررات:
+        <span class="font-bold text-on-surface">{{ entries | length }}</span>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if entries %}
+  <div class="overflow-x-auto rounded-lg border border-outline-variant">
+    <table class="w-full text-right border-collapse text-sm">
+      <thead>
+        <tr class="bg-surface-dim font-label-md text-label-md text-on-surface-variant">
+          <th class="px-4 py-3 border-b border-outline-variant font-bold w-12">#</th>
+          <th class="px-4 py-3 border-b border-outline-variant font-bold">المقرر</th>
+          {% if is_report %}
+          <th class="px-4 py-3 border-b border-outline-variant font-bold">رمز المقرر</th>
+          {% endif %}
+          <th class="px-4 py-3 border-b border-outline-variant font-bold text-center">النوع</th>
+          <th class="px-4 py-3 border-b border-outline-variant font-bold text-center">المرحلة</th>
+          <th class="px-4 py-3 border-b border-outline-variant font-bold">القسم</th>
+          <th class="px-4 py-3 border-b border-outline-variant font-bold text-center">الساعات</th>
+          <th class="px-4 py-3 border-b border-outline-variant font-bold text-center">المحاضرات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in entries %}
+        <tr class="border-b border-outline-variant last:border-b-0">
+          <td class="px-4 py-3 text-on-surface-variant">{{ loop.index }}</td>
+          <td class="px-4 py-3">
+            <span class="font-bold text-on-surface">{{ e.course_name }}</span>
+            {% if not is_report and e.course_code %}<span class="text-xs text-on-surface-variant font-mono">({{ e.course_code }})</span>{% endif %}
+          </td>
+          {% if is_report %}
+          <td class="px-4 py-3 text-on-surface-variant font-mono">{{ e.course_code or '—' }}</td>
+          {% endif %}
+          <td class="px-4 py-3 text-on-surface-variant text-center">{{ type_map.get(e.lecture_type or '', '—') }}</td>
+          <td class="px-4 py-3 text-on-surface-variant text-center">{{ e.semester or '—' }}</td>
+          <td class="px-4 py-3 text-on-surface-variant">{{ e.department_name or '—' }}</td>
+          <td class="px-4 py-3 text-on-surface font-bold text-center">{% if e.missing_hours and e.missing_hours == e.entry_count %}<span class="text-on-surface-variant">—</span>{% else %}{{ e.hours or 0 }}{% endif %}</td>
+          <td class="px-4 py-3 text-on-surface-variant text-center">{{ e.entry_count }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr class="bg-surface-dim font-bold">
+          <td colspan="{{ 6 if is_report else 5 }}" class="px-4 py-3 text-xs text-on-surface-variant">إجمالي الساعات</td>
+          <td class="px-4 py-3 text-primary text-center">{{ group.total_hours }}</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  {% else %}
+  <div class="py-12 text-center">
+    <span class="material-symbols-outlined text-5xl text-outline-variant block mb-2">history</span>
+    <p class="text-sm text-on-surface-variant">لا توجد سجلات تدريس لهذه الفترة</p>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+window.TEACHING_RECORD_PRINT_BOOT = {
+    printFlag: {{ 'true' if print_flag else 'false' }}
+};
+</script>
+<script src="{{ url_for('static', filename='js/teaching_record_print.js') }}"></script>

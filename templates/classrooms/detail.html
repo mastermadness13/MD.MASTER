@@ -1,0 +1,119 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'rooms' %}
+{% set page_title = 'تفاصيل القاعة' %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+  <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <div class="flex items-center gap-3">
+      <span class="material-symbols-outlined text-primary text-3xl">meeting_room</span>
+      <div>
+        <h1 class="text-2xl font-bold text-on-surface">{{ room.name }}</h1>
+        <p class="page-subtitle">تفاصيل القاعة والمعلومات المرتبطة</p>
+      </div>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <a href="{{ url_for('classrooms.rooms_edit', id=room.id) }}"
+         class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm no-underline">
+        <span class="material-symbols-outlined text-lg">edit</span>
+        تعديل
+      </a>
+      <form method="post" action="{{ url_for('classrooms.rooms_delete', id=room.id) }}"
+            onsubmit="return confirm('تأكيد نقل القاعة إلى الأرشيف؟')">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="flex items-center gap-2 bg-white hover:bg-error/10 text-error border border-error/30 px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm">
+          <span class="material-symbols-outlined text-lg">archive</span>
+          أرشفة
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
+    <div class="p-5 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-5">
+      <div class="flex items-center gap-3">
+        <span class="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+          <span class="material-symbols-outlined">meeting_room</span>
+        </span>
+        <div>
+          <p class="text-xs text-on-surface-variant font-bold">اسم القاعة</p>
+          <p class="font-bold text-on-surface">{{ room.name }}</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+          <span class="material-symbols-outlined">tag</span>
+        </span>
+        <div>
+          <p class="text-xs text-on-surface-variant font-bold">رمز القاعة</p>
+          <p class="font-bold text-on-surface" dir="ltr">{{ room.code or '—' }}</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+          <span class="material-symbols-outlined">groups</span>
+        </span>
+        <div>
+          <p class="text-xs text-on-surface-variant font-bold">السعة</p>
+          <p class="font-bold text-on-surface">{{ room.capacity if room.capacity is not none else '—' }}</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+          <span class="material-symbols-outlined">category</span>
+        </span>
+        <div>
+          <p class="text-xs text-on-surface-variant font-bold">نوع القاعة</p>
+          <p class="font-bold text-on-surface">{{ room.type_name or '—' }}</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+          <span class="material-symbols-outlined">computer</span>
+        </span>
+        <div>
+          <p class="text-xs text-on-surface-variant font-bold">حاسوب</p>
+          <p class="font-bold text-on-surface">{{ 'نعم' if room.computers else 'لا' }}</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+          <span class="material-symbols-outlined">location_city</span>
+        </span>
+        <div>
+          <p class="text-xs text-on-surface-variant font-bold">الطابق</p>
+          <p class="font-bold text-on-surface">{{ room.floor_name or '—' }}</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+          <span class="material-symbols-outlined">domain</span>
+        </span>
+        <div>
+          <p class="text-xs text-on-surface-variant font-bold">القسم</p>
+          <p class="font-bold text-on-surface">{{ room.dept_name or '—' }}</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3 sm:col-span-2">
+        <span class="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+          <span class="material-symbols-outlined">info</span>
+        </span>
+        <div>
+          <p class="text-xs text-on-surface-variant font-bold">الحالة</p>
+          <span class="inline-block px-3 py-1 rounded-full text-xs font-bold mt-0.5 {% if room.status_name == 'متاحة' %}bg-success-teal/20 text-success-teal{% elif room.status_name == 'مشغولة' %}bg-error/10 text-error{% else %}bg-surface-container text-on-surface-variant{% endif %}">
+            {{ room.status_name or '—' }}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-5">
+    <a href="{{ url_for('classrooms.rooms_list') }}"
+       class="inline-flex items-center gap-2 bg-surface-container-highest hover:bg-surface-container text-on-surface px-5 py-2.5 rounded-lg text-sm font-bold transition no-underline">
+      <span class="material-symbols-outlined text-lg">arrow_right</span>
+      العودة إلى القاعات
+    </a>
+  </div>
+</div>
+{% endblock %}

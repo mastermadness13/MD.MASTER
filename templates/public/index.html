@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>كلية التقنية الهندسية زوارة - البوابة الرسمية</title>
+  <link rel="stylesheet" href="shared/responsive.css">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&family=Tajawal:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+  <script src="{{ url_for('static', filename='js/pages/public_index_block2.js') }}"></script>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" defer></script>
+  <style>
+    body { font-family: 'Tajawal', sans-serif; background: #f8f5ff; }
+    .material-symbols-outlined { font-family: 'Material Symbols Outlined'; font-weight: normal; font-style: normal; font-size: 20px; line-height: 1; letter-spacing: normal; text-transform: none; display: inline-block; white-space: nowrap; word-wrap: normal; direction: ltr; -webkit-font-feature-settings: 'liga'; -webkit-font-smoothing: antialiased; }
+    .hero { background: linear-gradient(135deg, #4a1573 0%, #6b21a8 55%, #9333ea 100%); position: relative; overflow: hidden; }
+    .hero::before { content: ''; position: absolute; inset: 0; background-image: radial-gradient(circle, rgba(255,255,255,.14) 1px, transparent 1px); background-size: 26px 26px; opacity: .4; }
+    .tt-cell-chip { display: inline-block; padding: 4px 10px; border-radius: 8px; background: #f3e8ff; color: #6b21a8; font-size: .78rem; font-weight: 600; }
+    .carousel { position: relative; margin: 0 auto; max-width: 880px; }
+    .viewport { overflow: hidden; padding: 30px 0; }
+    .track { display: flex; transition: transform 0.55s cubic-bezier(0.22, 0.61, 0.36, 1); will-change: transform; }
+    .card { flex: 0 0 340px; margin: 0 12px; background: #fff; border: 1px solid #e2e8f0; border-radius: 20px; overflow: hidden; cursor: pointer; box-shadow: 0 4px 14px rgba(107,33,168,.08); transition: transform .3s ease, opacity .3s ease, box-shadow .3s ease; user-select: none; }
+    .card:hover { box-shadow: 0 12px 28px rgba(107,33,168,.18); }
+    .card.peak { opacity: .55; transform: scale(.92); }
+    .card.peak:hover { opacity: .8; }
+    .card.active .card-body h2 { color: #6b21a8; }
+    .card-img { height: 150px; display: flex; align-items: center; justify-content: center; color: #fff; position: relative; }
+    .card-img .big-icon { font-size: 64px; text-shadow: 0 4px 14px rgba(0,0,0,.25); }
+    .card-img .badge { position: absolute; top: 12px; left: 12px; background: rgba(255,255,255,.22); backdrop-filter: blur(4px); border-radius: 999px; padding: 4px 10px; font-size: 11px; font-weight: 600; color: #fff; }
+    .card-body { padding: 18px; }
+    .card-body h2 { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
+    .card-body .desc { font-size: 12.5px; color: #64748b; line-height: 1.7; height: 64px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+    .card-body .meta { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .chip { font-size: 11px; font-weight: 600; background: #f3e8ff; color: #6b21a8; border-radius: 999px; padding: 4px 10px; }
+    .card .open-hint { margin-top: 14px; padding-top: 12px; border-top: 1px dashed #e2e8f0; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; font-weight: 700; color: #6b21a8; }
+    .arrow { position: absolute; top: 50%; transform: translateY(-50%); width: 46px; height: 46px; border-radius: 50%; border: none; cursor: pointer; background: #6b21a8; color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 16px rgba(107,33,168,.3); transition: background .2s, transform .2s; z-index: 5; }
+    .arrow:hover { background: #581c87; transform: translateY(-50%) scale(1.06); }
+    .arrow .material-symbols-outlined { font-size: 26px; }
+    .arrow.next { left: -8px; }
+    .arrow.prev { right: -8px; }
+    .dots { display: flex; justify-content: center; gap: 8px; margin-top: 22px; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: #ddd6fe; border: none; cursor: pointer; transition: all .25s; }
+    .dot.active { width: 26px; border-radius: 999px; background: #6b21a8; }
+    .hint { text-align: center; color: #94a3b8; font-size: 12px; margin-top: 26px; }
+    .hint .material-symbols-outlined { font-size: 15px; vertical-align: -3px; }
+    @media (max-width: 600px) {
+      .card { flex-basis: 82vw; margin: 0 4px; }
+      .arrow.next { left: 2px; }
+      .arrow.prev { right: 2px; }
+    }
+    @media print { .no-print { display: none !important; } }
+  </style>
+</head>
+<body class="font-sans bg-[#f8f5ff] text-text-primary min-h-screen">
+
+  <div id="site-header"></div>
+
+  <!-- Hero -->
+  <section class="hero text-white py-14 px-4 relative">
+    <div class="relative max-w-4xl mx-auto text-center">
+      <div class="inline-flex items-center gap-2 bg-white/15 border border-white/25 rounded-full px-4 py-1.5 text-sm mb-5 backdrop-blur">
+        <span class="material-symbols-outlined text-base">school</span> كلية التقنية الهندسية - زوارة
+      </div>
+      <h1 class="text-3xl sm:text-4xl font-bold leading-snug mb-4">بوابتك الشاملة للأقسام والجداول والامتحانات</h1>
+      <p class="text-purple-100 leading-loose max-w-2xl mx-auto mb-8">كل ما يحتاجه الطالب في مكان واحد — اكتشف الأقسام الكلية، تصفح الجداول الدراسية الأسبوعية، تابع الامتحانات، وصولاً إلى المكتبة الرقمية للمواد.</p>
+      <div class="flex flex-wrap gap-3 justify-center">
+        <a href="#departments" class="bg-white text-purple-800 font-bold px-6 py-3 rounded-xl hover:bg-purple-50 transition shadow-lg flex items-center gap-2">
+          <span class="material-symbols-outlined">account_balance</span> استكشف الأقسام
+        </a>
+        <a href="pages/schugle/timetables.html" class="bg-white/15 border border-white/30 text-white font-bold px-6 py-3 rounded-xl hover:bg-white/25 transition flex items-center gap-2">
+          <span class="material-symbols-outlined">calendar_month</span> عرض الجداول
+        </a>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-10">
+        <div class="bg-white/10 border border-white/20 rounded-xl py-4 backdrop-blur">
+          <b id="stat-depts" class="block text-2xl">-</b><span class="text-purple-200 text-xs">قسم كلية</span>
+        </div>
+        <div class="bg-white/10 border border-white/20 rounded-xl py-4 backdrop-blur">
+          <b id="stat-courses" class="block text-2xl">-</b><span class="text-purple-200 text-xs">مقرر دراسي</span>
+        </div>
+        <div class="bg-white/10 border border-white/20 rounded-xl py-4 backdrop-blur">
+          <b id="stat-teachers" class="block text-2xl">-</b><span class="text-purple-200 text-xs">عضو هيئة تدريس</span>
+        </div>
+        <div class="bg-white/10 border border-white/20 rounded-xl py-4 backdrop-blur">
+          <b id="stat-rooms" class="block text-2xl">-</b><span class="text-purple-200 text-xs">قاعة ومختبر</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <main class="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+
+    <!-- Quick access -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+      <a href="pages/schugle/timetables.html" class="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 hover:border-primary hover:shadow-lg hover:-translate-y-0.5 transition">
+        <span class="w-11 h-11 rounded-xl bg-purple-600 text-white flex items-center justify-center"><span class="material-symbols-outlined">calendar_month</span></span>
+        <div><h4 class="font-bold text-sm">الجداول الأسبوعية</h4><span class="text-xs text-gray-500">مواعيد المحاضرات والقاعات</span></div>
+      </a>
+      <a href="pages/exams.html" class="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 hover:border-primary hover:shadow-lg hover:-translate-y-0.5 transition">
+        <span class="w-11 h-11 rounded-xl bg-emerald-600 text-white flex items-center justify-center"><span class="material-symbols-outlined">fact_check</span></span>
+        <div><h4 class="font-bold text-sm">جداول الامتحانات</h4><span class="text-xs text-gray-500">مواعيد الامتحانات والقاعات</span></div>
+      </a>
+      <a href="pages/library.html" class="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 hover:border-primary hover:shadow-lg hover:-translate-y-0.5 transition">
+        <span class="w-11 h-11 rounded-xl bg-amber-600 text-white flex items-center justify-center"><span class="material-symbols-outlined">local_library</span></span>
+        <div><h4 class="font-bold text-sm">المكتبة الرقمية</h4><span class="text-xs text-gray-500">المقررات والمواد الدراسية</span></div>
+      </a>
+      <a href="#departments" class="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 hover:border-primary hover:shadow-lg hover:-translate-y-0.5 transition">
+        <span class="w-11 h-11 rounded-xl bg-violet-600 text-white flex items-center justify-center"><span class="material-symbols-outlined">info</span></span>
+        <div><h4 class="font-bold text-sm">الأقسام</h4><span class="text-xs text-gray-500">استكشف الأقسام بالكروت الدائرية</span></div>
+      </a>
+    </div>
+
+    <!-- Departments -->
+    <section class="mb-12" id="departments">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="material-symbols-outlined text-primary">apartment</span>
+        <h2 class="text-xl font-bold">أقسام الكلية</h2>
+        <span class="text-xs text-gray-400 mr-auto hidden sm:block">اضغط على أي كرت لعرض معلومات القسم</span>
+      </div>
+      <div class="carousel">
+        <button class="arrow prev" id="prevBtn" title="السابق"><span class="material-symbols-outlined">arrow_forward</span></button>
+        <div class="viewport" id="viewport">
+          <div class="track" id="track"></div>
+        </div>
+        <button class="arrow next" id="nextBtn" title="التالي"><span class="material-symbols-outlined">arrow_back</span></button>
+      </div>
+      <div class="dots" id="dots"></div>
+      <p class="hint"><span class="material-symbols-outlined">touch_app</span> تصفح الأقسام بالأسهم أو النقاط واضغط على الكرت لعرض معلوماته</p>
+    </section>
+
+    <!-- Timetable preview -->
+    <section class="mb-12">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="material-symbols-outlined text-primary">calendar_month</span>
+        <h2 class="text-xl font-bold">الجداول الدراسية الأسبوعية</h2>
+        <span class="text-xs text-gray-400 mr-auto hidden sm:block">نظرة سريعة على المحاضرات القادمة</span>
+      </div>
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto" id="tt-preview"></div>
+      <div class="text-center mt-4">
+        <a href="pages/schugle/timetables.html" class="inline-flex items-center gap-2 text-primary font-semibold hover:bg-primary-faint px-4 py-2 rounded-lg transition text-sm">
+          عرض الجدول الكامل <span class="material-symbols-outlined">arrow_back</span>
+        </a>
+      </div>
+    </section>
+
+    <!-- Exams preview -->
+    <section class="mb-12">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="material-symbols-outlined text-primary">fact_check</span>
+        <h2 class="text-xl font-bold">الامتحانات القادمة</h2>
+        <span class="text-xs text-gray-400 mr-auto hidden sm:block">آخر مواعيد الامتحانات المسجلة</span>
+      </div>
+      <div id="exams-preview"></div>
+      <div class="text-center mt-4">
+        <a href="pages/exams.html" class="inline-flex items-center gap-2 text-primary font-semibold hover:bg-primary-faint px-4 py-2 rounded-lg transition text-sm">
+          عرض جميع الامتحانات <span class="material-symbols-outlined">arrow_back</span>
+        </a>
+      </div>
+    </section>
+
+    <!-- Services -->
+    <section class="mb-8">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="material-symbols-outlined text-primary">school</span>
+        <h2 class="text-xl font-bold">خدمات الكلية</h2>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <a href="pages/library.html" class="bg-white border border-gray-200 rounded-xl p-5 hover:border-primary hover:shadow-lg hover:-translate-y-0.5 transition">
+          <span class="w-12 h-12 rounded-xl bg-purple-600 text-white flex items-center justify-center mb-3"><span class="material-symbols-outlined">local_library</span></span>
+          <h3 class="font-bold text-sm mb-1.5">المكتبة الرقمية</h3>
+          <p class="text-xs text-gray-500 leading-relaxed">مكتبة تحتوي على جميع المقررات والمواد الدراسية لكل الأقسام.</p>
+        </a>
+        <a href="pages/department.html" class="bg-white border border-gray-200 rounded-xl p-5 hover:border-primary hover:shadow-lg hover:-translate-y-0.5 transition">
+          <span class="w-12 h-12 rounded-xl bg-emerald-600 text-white flex items-center justify-center mb-3"><span class="material-symbols-outlined">person_search</span></span>
+          <h3 class="font-bold text-sm mb-1.5">الهيئة التدريسية</h3>
+          <p class="text-xs text-gray-500 leading-relaxed">دليل شامل لأعضاء هيئة التدريس حسب التخصص والقسم.</p>
+        </a>
+        <a href="pages/department.html" class="bg-white border border-gray-200 rounded-xl p-5 hover:border-primary hover:shadow-lg hover:-translate-y-0.5 transition">
+          <span class="w-12 h-12 rounded-xl bg-amber-600 text-white flex items-center justify-center mb-3"><span class="material-symbols-outlined">meeting_room</span></span>
+          <h3 class="font-bold text-sm mb-1.5">القاعات والمختبرات</h3>
+          <p class="text-xs text-gray-500 leading-relaxed">قاعات المحاضرات والمختبرات المتاحة لكل قسم.</p>
+        </a>
+        <a href="pages/exams.html" class="bg-white border border-gray-200 rounded-xl p-5 hover:border-primary hover:shadow-lg hover:-translate-y-0.5 transition">
+          <span class="w-12 h-12 rounded-xl bg-violet-600 text-white flex items-center justify-center mb-3"><span class="material-symbols-outlined">fact_check</span></span>
+          <h3 class="font-bold text-sm mb-1.5">الامتحانات</h3>
+          <p class="text-xs text-gray-500 leading-relaxed">جدول الامتحانات ومواعيدها لكل المقررات الدراسية.</p>
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <div id="site-footer"></div>
+
+  <script src="shared/utils.js"></script>
+      <script src="shared/data-inline.js"></script>
+    <script src="shared/data-client.js"></script>
+  <script src="shared/nav.js" data-current="home"></script>
+  <script src="{{ url_for('static', filename='js/pages/public_index_block1.js') }}"></script>
+</body>
+</html>

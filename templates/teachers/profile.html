@@ -1,0 +1,232 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'profile' %}
+{% set page_title = 'ملفي الشخصي' %}
+{% set teacher = teacher | default({}) %}
+{% set departments = departments | default([]) %}
+{% set assignments = assignments | default([]) %}
+{% set weekly = weekly | default({}) %}
+{% set days_order = days_order | default([]) %}
+{% set total_courses = total_courses | default(0) %}
+{% set total_departments = total_departments | default(0) %}
+{% set teacher_display = teacher_display_name(teacher.name, teacher.rank_name, teacher.qualification_name) %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+
+  <!-- Page Header -->
+  <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <div class="flex items-center gap-3">
+      <span class="material-symbols-outlined text-primary text-3xl">badge</span>
+      <div>
+        <h1 class="text-2xl font-bold text-on-surface">ملفي الشخصي</h1>
+        <p class="page-subtitle">{{ teacher_display or '' }}</p>
+      </div>
+    </div>
+    <a href="{{ url_for('timetable.teachers_schedule') }}"
+       class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm no-underline">
+      <span class="material-symbols-outlined text-lg">calendar_view_week</span>
+      جدولي الأسبوعي
+    </a>
+  </div>
+
+  <!-- Stats -->
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+    <div class="bg-white rounded-2xl shadow-sm border border-primary/10 p-4 flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined">menu_book</span>
+      </div>
+      <div>
+        <div class="text-2xl font-bold text-on-surface">{{ total_courses }}</div>
+        <div class="text-xs font-bold text-on-surface-variant mt-0.5">مقرر مسند</div>
+      </div>
+    </div>
+    <div class="bg-white rounded-2xl shadow-sm border border-primary/10 p-4 flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined">account_tree</span>
+      </div>
+      <div>
+        <div class="text-2xl font-bold text-on-surface">{{ total_departments }}</div>
+        <div class="text-xs font-bold text-on-surface-variant mt-0.5">قسم تدريس</div>
+      </div>
+    </div>
+    <div class="bg-white rounded-2xl shadow-sm border border-primary/10 p-4 flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-green-50 text-green-600 flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined">calendar_view_week</span>
+      </div>
+      <div>
+        <div class="text-2xl font-bold text-on-surface">{{ weekly.values() | reject('none') | list | map('length') | sum }}</div>
+        <div class="text-xs font-bold text-on-surface-variant mt-0.5">محاضرة أسبوعية</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Identity Card -->
+  <div class="bg-white rounded-2xl shadow-sm border border-primary/10 p-5 mb-6">
+    <div class="flex flex-wrap items-center gap-4">
+      {% if teacher.photo_filename %}
+        <img src="{{ url_for('uploads.uploaded_file', filename=teacher.photo_filename) }}" alt="{{ teacher_display }}"
+             class="w-16 h-16 rounded-full object-cover border-4 border-surface shadow-sm shrink-0">
+        {% else %}
+<span class="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center text-2xl font-black shrink-0">
+        {{ teacher_display[:1] }}
+      </span>
+        {% endif %}
+      <div class="flex-1 min-w-0">
+        <h2 class="text-lg font-bold text-on-surface">{{ teacher_display }}</h2>
+        <p class="text-sm text-on-surface-variant">{{ teacher.rank_name or teacher.qualification_name or 'عضو هيئة تدريس' }}</p>
+      </div>
+      {% if teacher.username %}
+      <span class="px-3 py-1.5 rounded-full text-xs font-bold bg-primary/10 text-primary" dir="ltr">{{ teacher.username }}</span>
+      {% endif %}
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-5 pt-5 border-t border-primary/10 text-sm">
+      <div>
+        <p class="text-xs font-bold text-on-surface-variant">القسم الرئيسي</p>
+        <p class="font-bold text-on-surface mt-1">{{ teacher.department_name or '—' }}</p>
+      </div>
+      <div>
+        <p class="text-xs font-bold text-on-surface-variant">المؤهل العلمي</p>
+        <p class="font-bold text-on-surface mt-1">{{ teacher.qualification_name or '—' }}</p>
+      </div>
+      <div>
+        <p class="text-xs font-bold text-on-surface-variant">الدرجة العلمية</p>
+        <p class="font-bold text-on-surface mt-1">{{ teacher.rank_name or '—' }}</p>
+      </div>
+      <div>
+        <p class="text-xs font-bold text-on-surface-variant">التصنيف</p>
+        <p class="font-bold text-on-surface mt-1">{{ teacher.classification_name or '—' }}</p>
+      </div>
+      <div>
+        <p class="text-xs font-bold text-on-surface-variant">البريد الإلكتروني</p>
+        <p class="font-bold text-on-surface mt-1" dir="ltr">{{ teacher.user_email or teacher.email or '—' }}</p>
+      </div>
+      <div>
+        <p class="text-xs font-bold text-on-surface-variant">الهاتف</p>
+        <p class="font-bold text-on-surface mt-1" dir="ltr">{{ teacher.phone or '—' }}</p>
+      </div>
+      <div>
+        <p class="text-xs font-bold text-on-surface-variant">الرقم الكلية</p>
+        <p class="font-bold text-on-surface mt-1" dir="ltr">{{ teacher.academic_number or '—' }}</p>
+      </div>
+      <div>
+        <p class="text-xs font-bold text-on-surface-variant">تاريخ التعاقد</p>
+        <p class="font-bold text-on-surface mt-1">{{ (teacher.contract_date or '—')[:10] }}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Departments & Assignments -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <div class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
+      <div class="p-4 border-b border-primary/10 bg-surface-dim">
+        <h2 class="font-bold text-primary flex items-center gap-2">
+          <span class="material-symbols-outlined">account_tree</span>
+          أقسام التدريس
+        </h2>
+      </div>
+      {% if departments %}
+      <div class="p-5 flex flex-wrap gap-2">
+        {% for d in departments %}
+        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-primary/10 text-primary">
+          <span class="material-symbols-outlined text-sm">domain</span>
+          {{ d.name }}
+        </span>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="py-10 text-center text-sm text-on-surface-variant">لا توجد أقسام تدريس مرتبطة</div>
+      {% endif %}
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
+      <div class="p-4 border-b border-primary/10 bg-surface-dim">
+        <h2 class="font-bold text-primary flex items-center gap-2">
+          <span class="material-symbols-outlined">menu_book</span>
+          المقررات المسندة
+        </h2>
+      </div>
+      {% if assignments %}
+      <div class="p-5 flex flex-wrap gap-2">
+        {% for a in assignments %}
+        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-surface-container text-on-surface-variant">
+          <span class="material-symbols-outlined text-sm text-primary">book</span>
+          {{ a.course_name }}
+          {% if a.course_code %}<span class="font-mono" dir="ltr">({{ a.course_code }})</span>{% endif %}
+        </span>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="py-10 text-center text-sm text-on-surface-variant">لا توجد مقررات مسندة</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Weekly Schedule -->
+  <div class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
+    <div class="p-4 border-b border-primary/10 bg-surface-dim flex items-center justify-between">
+      <h2 class="font-bold text-primary flex items-center gap-2">
+        <span class="material-symbols-outlined">calendar_view_week</span>
+        أسبوعي المقرر
+      </h2>
+    </div>
+    {% set any_entries = false %}
+    {% for day in days_order %}
+      {% if weekly.get(day) %}{% set any_entries = true %}{% endif %}
+    {% endfor %}
+    {% if any_entries %}
+    <div class="p-5 space-y-5">
+      {% for day in days_order %}
+      {% set entries = weekly.get(day, []) %}
+      {% if entries %}
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="font-bold text-on-surface flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary text-lg">today</span>
+            {{ day }}
+          </h3>
+          <span class="text-xs font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-lg">{{ entries | length }} محاضرة</span>
+        </div>
+        <div class="overflow-x-auto rounded-lg border border-outline-variant">
+          <table class="w-full text-right border-collapse text-sm">
+            <thead>
+              <tr class="bg-surface-dim font-label-md text-label-md text-on-surface-variant">
+                <th class="px-4 py-2.5 border-b border-outline-variant font-bold">الوقت</th>
+                <th class="px-4 py-2.5 border-b border-outline-variant font-bold">المقرر</th>
+                <th class="px-4 py-2.5 border-b border-outline-variant font-bold">الفصل</th>
+                <th class="px-4 py-2.5 border-b border-outline-variant font-bold">القسم</th>
+                <th class="px-4 py-2.5 border-b border-outline-variant font-bold">القاعة</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for e in entries %}
+              <tr class="border-b border-outline-variant last:border-b-0 hover:bg-primary/5 transition-colors">
+                <td class="px-4 py-2.5 font-bold text-on-surface whitespace-nowrap">
+                  {{ e.start_time or '—' }}{% if e.end_time %} - {{ e.end_time }}{% endif %}
+                </td>
+                <td class="px-4 py-2.5">
+                  <span class="font-bold text-on-surface">{{ e.course_name }}</span>
+                  {% if e.course_code %}<span class="text-xs text-on-surface-variant font-mono">({{ e.course_code }})</span>{% endif %}
+                </td>
+                <td class="px-4 py-2.5 text-on-surface-variant">{{ semester_label(e.semester) or '—' }}</td>
+                <td class="px-4 py-2.5 text-on-surface-variant">{{ e.department_name or '—' }}</td>
+                <td class="px-4 py-2.5 text-on-surface-variant">{{ e.room_name or '—' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="py-12 text-center">
+      <span class="material-symbols-outlined text-5xl text-outline-variant block mb-2">calendar_month</span>
+      <p class="text-sm text-on-surface-variant">لا توجد محاضرات مجدولة</p>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

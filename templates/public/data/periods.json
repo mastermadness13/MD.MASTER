@@ -1,0 +1,28 @@
+{
+  "periods": [
+    {
+      "code": "A",
+      "label": "الفترة الأولى",
+      "startTime": "09:00",
+      "endTime": "12:00",
+      "enabled": true,
+      "sortOrder": 1
+    },
+    {
+      "code": "B",
+      "label": "الفترة الثانية",
+      "startTime": "12:00",
+      "endTime": "15:00",
+      "enabled": true,
+      "sortOrder": 2
+    },
+    {
+      "code": "C",
+      "label": "الفترة الثالثة",
+      "startTime": "15:00",
+      "endTime": "18:00",
+      "enabled": true,
+      "sortOrder": 3
+    }
+  ]
+}

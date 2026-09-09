@@ -1,0 +1,320 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'rooms' %}
+{% set page_title = 'القاعات' %}
+{% set rooms = rooms | default([]) %}
+{% set total = total | default(0) %}
+{% set page = page | default(1) %}
+{% set per_page = per_page | default(20) %}
+{% set search = search | default('') %}
+{% set department_id = department_id | default('') %}
+{% set departments = departments | default([]) %}
+{% set total_pages = (total // per_page) + (1 if total % per_page else 0) %}
+
+{% block head_extra %}
+{% set print_orientation = 'A4 portrait' %}
+{% set print_margin = '12mm' %}
+{% include 'print/_embedded_styles.html' %}
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto print-hidden">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="page-header-info">
+      <span class="material-symbols-outlined page-header-icon">meeting_room</span>
+      <div>
+        <h1 class="page-title">القاعات</h1>
+        <p class="page-subtitle">إدارة قاعات المحاضرات والمنشآت</p>
+      </div>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <button type="button" onclick="openRoomModal()"
+         class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm">
+        <span class="material-symbols-outlined text-lg">add</span>
+        + إضافة
+      </button>
+      <button type="button" onclick="window.print()"
+              class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-outline-variant px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm">
+        <span class="material-symbols-outlined text-lg">print</span>
+        طباعة
+      </button>
+      <a href="{{ url_for('classrooms.rooms_archive') }}"
+         class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm no-underline">
+        <span class="material-symbols-outlined text-lg">archive</span>
+        الأرشيف
+      </a>
+    </div>
+  </div>
+
+  <!-- Create Room Modal -->
+  <div id="roomModalOverlay" class="fixed inset-0 bg-black/40 z-40 hidden" onclick="closeRoomModal()"></div>
+  <div id="roomModal" class="fixed inset-0 z-50 hidden p-4 overflow-y-auto flex items-center justify-center">
+    <div class="w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden border border-outline-variant">
+      <div class="px-6 py-4 border-b border-outline-variant flex items-center justify-between bg-surface-dim">
+        <div class="flex items-center gap-3">
+          <span class="material-symbols-outlined text-primary text-2xl">meeting_room</span>
+          <div>
+            <h2 class="text-xl font-bold text-on-surface" id="roomModalTitle">إضافة قاعة / معمل</h2>
+            <p class="text-sm text-on-surface-variant">أضف قاعة أو معمل جديداً باسم أساسي واحد.</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeRoomModal()" class="p-2 rounded-lg hover:bg-surface-container transition">
+          <span class="material-symbols-outlined text-on-surface-variant">close</span>
+        </button>
+      </div>
+      <div class="px-6 py-6">
+        {% if create_error %}
+        <div class="mb-4 flex items-center gap-2 px-4 py-3 rounded-lg text-sm bg-error-container text-error">
+          <span class="material-symbols-outlined shrink-0 text-[18px]">error</span>
+          <span>{{ create_error }}</span>
+        </div>
+        {% endif %}
+        <form id="roomCreateForm" method="POST" action="{{ url_for('classrooms.rooms_list') }}">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="sm:col-span-2">
+              <label for="name" class="text-xs font-bold text-on-surface-variant mb-1.5 block">اسم القاعة *</label>
+              <input type="text" id="name" name="name" value="{{ create_form.get('name', '') }}" required
+                     placeholder="مثال: Room أو مختبر الحاسوب"
+                     class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+              <p class="text-xs text-on-surface-variant mt-1.5 flex items-center gap-1">
+                <span class="material-symbols-outlined text-[14px]">info</span>
+                ستُنشأ قاعات/معامل متسلسلة منفصلة لكل رقم عند تحديد عدد أكبر من 1.
+              </p>
+            </div>
+            <div>
+              <label for="room_type_id" class="text-xs font-bold text-on-surface-variant mb-1.5 block">نوع القاعة</label>
+              <select id="room_type_id" name="room_type_id"
+                      class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+                <option value="">— اختر النوع —</option>
+                {% for t in room_types %}
+                <option value="{{ t.id }}" {{ 'selected' if create_form.get('room_type_id') | string == t.id | string }}>{{ t.name_ar }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+            <div>
+              <label for="capacity" class="text-xs font-bold text-on-surface-variant mb-1.5 block">السعة</label>
+              <input type="number" id="capacity" name="capacity" min="0" value="{{ create_form.get('capacity', '') }}"
+                     class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+              <p class="text-xs text-on-surface-variant mt-1.5 flex items-center gap-1">
+                <span class="material-symbols-outlined text-[14px]">info</span>
+                عدد الطلبة الذين تتسع لهم القاعة الواحدة.
+              </p>
+            </div>
+            <div>
+              <label for="quantity" class="text-xs font-bold text-on-surface-variant mb-1.5 block">عدد القاعات</label>
+              <input type="number" id="quantity" name="quantity" min="1" value="{{ create_form.get('quantity', 1) }}"
+                     class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+              <p class="text-xs text-on-surface-variant mt-1.5 flex items-center gap-1">
+                <span class="material-symbols-outlined text-[14px]">info</span>
+                عدد القاعات (أو المعامل) التي ستُنشأ بهذا الاسم.
+              </p>
+            </div>
+          </div>
+          <div class="mt-4">
+            <label class="inline-flex items-center gap-2 text-sm font-bold text-on-surface-variant">
+              <input type="checkbox" id="computers" name="computers" value="1" {{ 'checked' if create_form.get('computers') == 1 }} class="accent-[#320058]">
+              يوجد حاسوب في القاعة
+            </label>
+          </div>
+          <div class="mt-6 flex flex-wrap items-center gap-3 justify-end">
+            <button type="button" onclick="closeRoomModal()" class="border border-outline-variant text-on-surface-variant hover:bg-surface-container rounded-lg px-5 py-2.5 text-sm font-bold transition">إلغاء</button>
+            <button type="submit" class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-5 py-2.5 rounded-lg text-sm font-bold transition shadow-sm">
+              <span class="material-symbols-outlined text-lg">save</span>
+              حفظ القاعات
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search Bar -->
+  <form id="roomsSearchForm" method="GET" action="{{ url_for('classrooms.rooms_list') }}"
+        class="flex flex-wrap items-center gap-3 mb-4">
+    <div class="relative flex-1 min-w-[220px]">
+      <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">search</span>
+      <input type="text" name="search" value="{{ search or '' }}" placeholder="البحث باسم القاعة أو رمزها..."
+             class="search-input w-full bg-white border border-outline-variant rounded-lg pr-10 pl-10 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+      <button type="button" class="search-clear absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-error transition-colors bg-transparent border-0 cursor-pointer"
+              style="display: {{ 'flex' if search else 'none' }}" title="مسح البحث">
+        <span class="material-symbols-outlined text-lg">close</span>
+      </button>
+      <span class="material-symbols-outlined search-spinner absolute left-3 top-1/2 -translate-y-1/2 text-primary animate-spin" style="display:none">hourglass_empty</span>
+    </div>
+    <select name="department_id"
+            class="bg-white border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+      <option value="">كل الأقسام</option>
+      {% for d in departments %}
+      <option value="{{ d.id }}" {{ 'selected' if department_id | string == d.id | string }}>{{ d.name }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit"
+            class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm">
+      <span class="material-symbols-outlined text-lg">search</span>
+      بحث
+    </button>
+    <span class="search-results-count text-xs font-bold text-on-surface-variant bg-surface-container px-3 py-1.5 rounded-full">{{ total }} نتيجة</span>
+  </form>
+
+  <!-- Rooms Table -->
+  <div class="page-card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="search-table w-full text-right border-collapse text-sm">
+        <thead>
+          <tr class="bg-surface-dim font-label-md text-label-md text-on-surface-variant">
+            {% if can_manage %}
+            <th class="px-4 py-3 border-b border-outline-variant font-bold w-12">
+              <div class="flex items-center justify-center gap-1">
+                <input type="checkbox" id="roomSelectAll" class="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" title="تحديد الكل">
+                <button type="button" id="roomHeaderDeleteBtn"
+                        class="material-symbols-outlined text-red-600 hover:text-red-700 transition-colors bg-transparent border-0 cursor-pointer"
+                        style="display:none" title="حذف المحدد">archive</button>
+              </div>
+            </th>
+            {% endif %}
+            <th class="px-4 py-3 border-b border-outline-variant font-bold w-14">#</th>
+            <th class="px-4 py-3 border-b border-outline-variant font-bold">القاعة</th>
+            <th class="px-4 py-3 border-b border-outline-variant font-bold">النوع</th>
+            <th class="px-4 py-3 border-b border-outline-variant font-bold">السعة</th>
+            <th class="px-4 py-3 border-b border-outline-variant font-bold">حاسوب</th>
+            <th class="px-4 py-3 border-b border-outline-variant font-bold">القسم</th>
+            <th class="px-4 py-3 border-b border-outline-variant font-bold">الحالة</th>
+            <th class="px-4 py-3 border-b border-outline-variant font-bold text-center w-32">الإجراءات</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if rooms %}
+          {% for r in rooms %}
+          <tr class="hover:bg-primary/5 transition-colors border-b border-outline-variant last:border-b-0">
+            {% if can_manage %}
+            <td class="px-4 py-3 text-center">
+              <input type="checkbox" class="room-select rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" value="{{ r.id }}" onchange="onRoomCheck()">
+            </td>
+            {% endif %}
+            <td class="px-4 py-3 text-on-surface-variant">{{ (page - 1) * per_page + loop.index }}</td>
+            <td class="px-4 py-3">
+              <div class="flex items-center gap-2.5">
+                <span class="material-symbols-outlined text-primary text-xl shrink-0">meeting_room</span>
+                <div>
+                  <p class="font-bold text-on-surface">{{ highlight(r.name, search) | safe if highlight is defined else r.name }}</p>
+                  {% if r.code %}<p class="text-xs text-on-surface-variant" dir="ltr">{{ r.code }}</p>{% endif %}
+                </div>
+              </div>
+            </td>
+            <td class="px-4 py-3 text-on-surface-variant">{{ r.type_name or '—' }}</td>
+            <td class="px-4 py-3">
+              {% if r.capacity %}
+              <span class="inline-flex items-center gap-1 font-bold text-on-surface"><span class="material-symbols-outlined text-base text-primary">groups</span>{{ r.capacity }}</span>
+              {% else %}
+              <span class="text-on-surface-variant text-xs">—</span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-3 text-on-surface-variant">
+              {% if r.computers %}
+              <span class="inline-flex items-center gap-1 text-success-teal font-bold"><span class="material-symbols-outlined text-base">check_circle</span>نعم</span>
+              {% else %}
+              <span class="inline-flex items-center gap-1 text-on-surface-variant font-bold"><span class="material-symbols-outlined text-base">cancel</span>لا</span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-3">
+              {% if r.dept_name %}
+              <span class="inline-block bg-primary/10 text-primary px-2 py-0.5 rounded-full text-xs font-bold">{{ r.dept_name }}</span>
+              {% else %}
+              <span class="text-on-surface-variant text-xs">—</span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-3">
+              <span class="inline-block px-2.5 py-1 rounded-full text-xs font-bold {% if r.status_name == 'متاحة' %}bg-success-teal/20 text-success-teal{% elif r.status_name == 'مشغولة' %}bg-error/10 text-error{% else %}bg-surface-container text-on-surface-variant{% endif %}">
+                {{ r.status_name or '—' }}
+              </span>
+            </td>
+            <td class="px-4 py-3">
+              <div class="flex items-center justify-center gap-2">
+                <a href="{{ url_for('classrooms.room_detail', id=r.id) }}"
+                   class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors no-underline" title="عرض">visibility</a>
+                <a href="{{ url_for('classrooms.rooms_edit', id=r.id) }}"
+                   class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors no-underline" title="تعديل">edit</a>
+                <form method="post" action="{{ url_for('classrooms.rooms_delete', id=r.id) }}" style="display:inline"
+                      onsubmit="return confirm('تأكيد نقل القاعة إلى الأرشيف؟')">
+                  <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="material-symbols-outlined text-red-600 hover:text-red-700 transition-colors bg-transparent border-0 cursor-pointer" title="حذف">delete</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+          {% else %}
+          <tr>
+            <td colspan="{{ 9 if can_manage else 8 }}" class="px-4 py-14 text-center">
+              <span class="material-symbols-outlined text-6xl text-outline-variant block mb-3">meeting_room</span>
+              {% if search or department_id %}
+              <h3 class="text-on-surface font-bold mb-1">لا توجد نتائج</h3>
+              <p class="text-on-surface-variant text-sm">لا توجد قاعات تطابق معايير البحث</p>
+              {% else %}
+              <h3 class="text-on-surface font-bold mb-1">لا توجد قاعات</h3>
+              <p class="text-on-surface-variant text-sm">لم يتم إضافة أي قاعات بعد</p>
+              {% endif %}
+            </td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  {% if total_pages > 1 %}
+  <div class="search-pagination flex flex-wrap items-center justify-between gap-4 mt-5">
+    <span class="text-xs font-bold text-on-surface-variant">عرض {{ ((page - 1) * per_page) + 1 }} إلى {{ [page * per_page, total] | min }} من {{ total }}</span>
+    <div class="flex flex-wrap gap-2">
+      {% if page > 1 %}
+      <a href="{{ url_for('classrooms.rooms_list', page=page - 1, search=search, department_id=department_id) }}"
+         class="px-3 py-2 rounded-lg border border-outline-variant bg-white hover:bg-primary/10 text-on-surface text-sm font-bold transition no-underline">السابق</a>
+      {% endif %}
+      {% for p in range(1, total_pages + 1) %}
+      {% if p == page %}
+      <span class="px-3 py-2 rounded-lg bg-primary text-on-primary text-sm font-bold">{{ p }}</span>
+      {% elif p >= page - 2 and p <= page + 2 %}
+      <a href="{{ url_for('classrooms.rooms_list', page=p, search=search, department_id=department_id) }}"
+         class="px-3 py-2 rounded-lg border border-outline-variant bg-white hover:bg-primary/10 text-on-surface text-sm font-bold transition no-underline">{{ p }}</a>
+      {% endif %}
+      {% endfor %}
+      {% if page * per_page < total %}
+      <a href="{{ url_for('classrooms.rooms_list', page=page + 1, search=search, department_id=department_id) }}"
+         class="px-3 py-2 rounded-lg border border-outline-variant bg-white hover:bg-primary/10 text-on-surface text-sm font-bold transition no-underline">التالي</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+{% if can_manage %}
+  <form id="bulkDeleteForm" method="post" action="{{ url_for('classrooms.rooms_bulk_delete') }}" style="display:none">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+  </form>
+{% endif %}
+
+</div>
+
+<div class="print-only">
+  {% with rooms = print_rooms %}
+  {% include 'print/lists/_room_content.html' %}
+  {% endwith %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/search.js"></script>
+<script>
+window.CLASSROOMS_LIST_BOOT = {
+  csrfToken: {{ csrf_token() | tojson }},
+  canManage: {{ 'true' if can_manage else 'false' }},
+  autoOpen: {{ 'true' if create_error else 'false' }}
+};
+</script>
+<script src="{{ url_for('static', filename='js/classrooms_list.js') }}"></script>
+
+{% endblock %}

@@ -1,0 +1,79 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'courses' %}
+{% set page_title = 'تعديل بيانات المقرر' %}
+{% set course = course | default({}) %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+
+  <!-- Page Header -->
+  <div class="flex items-center gap-3 mb-6">
+    <span class="material-symbols-outlined text-primary text-3xl">edit_note</span>
+    <div>
+      <h1 class="text-2xl font-bold text-on-surface">تعديل بيانات المقرر</h1>
+      <p class="page-subtitle">{{ course.name }} ({{ course.code }})</p>
+    </div>
+  </div>
+
+  <form method="post" action="{{ url_for('teacher_pages.teacher_course_edit', id=course.id) }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+    <div class="bg-white rounded-2xl shadow-sm border border-primary/10 p-5 mb-6">
+      <h2 class="font-bold text-primary flex items-center gap-2 mb-4">
+        <span class="material-symbols-outlined text-lg">schedule</span>
+        الساعات الأسبوعية
+      </h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label class="block text-xs font-bold text-on-surface-variant mb-1.5">الساعات النظرية</label>
+          <input type="number" name="theoretical_hours" min="0" value="{{ course.theoretical_hours or 0 }}"
+                 class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-on-surface-variant mb-1.5">الساعات العملية</label>
+          <input type="number" name="practical_hours" min="0" value="{{ course.practical_hours or 0 }}"
+                 class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-on-surface-variant mb-1.5">إجمالي الساعات</label>
+          <input type="number" name="total_hours" min="0" value="{{ course.total_hours or 0 }}"
+                 class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-primary/10 p-5 mb-6">
+      <h2 class="font-bold text-primary flex items-center gap-2 mb-4">
+        <span class="material-symbols-outlined text-lg">emoji_events</span>
+        رمز المقرر
+      </h2>
+      {% set icon_value = course.icon or '📖' %}
+      {% include 'courses/_icon_picker.html' %}
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-primary/10 p-5 mb-6">
+      <h2 class="font-bold text-primary flex items-center gap-2 mb-4">
+        <span class="material-symbols-outlined text-lg">notes</span>
+        ملاحظات
+      </h2>
+      <textarea name="notes" rows="3"
+                class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">{{ course.notes or '' }}</textarea>
+    </div>
+
+    <div class="flex items-center gap-3 mb-8">
+      <button type="submit"
+              class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-6 py-2.5 rounded-lg text-sm font-bold transition shadow-sm">
+        <span class="material-symbols-outlined text-lg">save</span>
+        حفظ التعديلات
+      </button>
+      <a href="{{ url_for('teacher_pages.teacher_profile') }}"
+         class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-5 py-2.5 rounded-lg text-sm font-bold transition shadow-sm no-underline">
+        إلغاء
+      </a>
+    </div>
+  </form>
+
+</div>
+{% endblock %}
+
+{% block scripts %}{% endblock %}

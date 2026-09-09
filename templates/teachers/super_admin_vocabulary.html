@@ -1,0 +1,96 @@
+﻿{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'course_content_admin' %}
+{% set page_title = 'مفردات المقرر' %}
+{% set course = course | default({}) %}
+{% set vocab = vocab | default(None) %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+
+  <!-- Page Header -->
+  <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <div class="flex items-center gap-3">
+      <span class="material-symbols-outlined text-primary text-3xl">translate</span>
+      <div>
+        <h1 class="text-2xl font-bold text-on-surface">مفردات مقرر «{{ course.name or '—' }}»</h1>
+        <p class="page-subtitle">
+          {% if course.code %}<span class="font-mono" dir="ltr">{{ course.code }}</span> · {% endif %}
+          {{ course.dept_name or '—' }} · {{ semester_label(course.semester) or '—' }}
+        </p>
+      </div>
+    </div>
+    <a href="{{ url_for('teacher_pages.super_admin_course_content_list') }}"
+       class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm no-underline">
+      <span class="material-symbols-outlined text-lg">arrow_forward</span>
+      العودة للقائمة
+    </a>
+  </div>
+
+  <!-- ما هي المفردات؟ -->
+  <div class="mb-5 p-4 rounded-lg bg-primary/5 border border-primary/15 text-sm">
+    <p class="font-bold text-primary flex items-center gap-2">
+      <span class="material-symbols-outlined text-lg">info</span>
+      ما هي «المفردات»؟
+    </p>
+    <p class="text-on-surface-variant mt-1 leading-6">
+      ملف PDF يعرض <b class="text-on-surface">موضوعات المقرر وتوزيعها الأسبوعية</b> (الوحدات الدراسية ومحتوى كل أسبوع).
+      يُرفع من قسم البحث والتطوير، ويظهر للتحميل مباشرة في جدول القسم والمكتبة العامة لأعضاء هيئة التدريس والطلاب.
+    </p>
+  </div>
+
+  <!-- الملف الحالي -->
+  {% if vocab %}
+  <div class="bg-white rounded-2xl shadow-sm border border-primary/10 p-5 mb-5">
+    <h2 class="font-bold text-primary flex items-center gap-2 mb-4">
+      <span class="material-symbols-outlined">description</span>
+      الملف الحالي
+    </h2>
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <p class="font-bold text-on-surface break-all">{{ vocab.original_filename or 'ملف PDF' }}</p>
+        <p class="text-xs text-on-surface-variant mt-1">
+          {% if vocab.file_size %}{{ (vocab.file_size / 1024) | round(0) | int }} KB{% endif %}
+          {% if vocab.created_at %}{% if vocab.file_size %} · {% endif %}تاريخ الرفع: {{ vocab.created_at[:16] }}{% endif %}
+        </p>
+      </div>
+      <div class="flex items-center gap-2">
+        <a href="{{ url_for('public_library.vocabulary_file', vocab_id=vocab.id) }}" target="_blank"
+           class="inline-flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2.5 rounded-lg text-sm font-bold transition no-underline">
+          <span class="material-symbols-outlined text-lg">download</span>
+          تحميل الملف
+        </a>
+        <form method="POST" action="{{ url_for('teacher_pages.super_admin_vocabulary_delete', vocab_id=vocab.id) }}"
+              onsubmit="return confirm('حذف مفردات هذا المقرر؟');">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+          <button type="submit"
+                  class="inline-flex items-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-4 py-2.5 rounded-lg text-sm font-bold transition cursor-pointer">
+            <span class="material-symbols-outlined text-lg">delete</span>
+            حذف
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- استبدال -->
+  <div class="bg-white rounded-2xl shadow-sm border-2 border-primary/20 p-5">
+    <h2 class="font-bold text-primary flex items-center gap-2 mb-1">
+      <span class="material-symbols-outlined">upload_file</span>
+      استبدال الملف
+    </h2>
+    <p class="text-xs text-on-surface-variant mb-4">رفع ملف جديد يحذف الملف الحالي تلقائياً ويحل محله.</p>
+    {% include 'teachers/_vocab_upload_form.html' %}
+  </div>
+  {% else %}
+  <div class="bg-white rounded-2xl shadow-sm border-2 border-primary/20 p-5">
+    <h2 class="font-bold text-primary flex items-center gap-2 mb-1">
+      <span class="material-symbols-outlined">upload_file</span>
+      رفع ملف المفردات
+    </h2>
+    <p class="text-xs text-on-surface-variant mb-4">لم تُرفع مفردات لهذا المقرر بعد — اختر ملف PDF وارفعه.</p>
+    {% include 'teachers/_vocab_upload_form.html' %}
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

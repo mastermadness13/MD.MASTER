@@ -1,0 +1,56 @@
+{% set courses = courses | default([]) %}
+{% set course_depts = course_depts | default({}) %}
+<div class="bg-white rounded-2xl shadow-sm border border-outline-variant overflow-hidden print-sheet">
+  <div class="px-6 py-4 border-b-2 border-primary bg-surface-dim flex items-center justify-between">
+    <div>
+      <h1 class="text-lg font-bold text-primary m-0">كلية التقنية الهندسية زوارة</h1>
+      <p class="text-sm text-on-surface-variant mt-0.5">سجل المقررات الدراسية</p>
+    </div>
+    <div class="text-left text-xs text-on-surface-variant">تاريخ الطباعة: {{ now().strftime('%Y/%m/%d %H:%M') }}</div>
+  </div>
+  <div class="p-4 overflow-x-auto">
+    <table class="w-full text-right border-collapse text-xs">
+      <thead>
+        <tr class="bg-primary-container">
+          <th class="px-3 py-2 text-right font-bold text-primary border-b border-outline-variant w-10">#</th>
+          <th class="px-3 py-2 text-right font-bold text-primary border-b border-outline-variant w-28">رمز المقرر</th>
+          <th class="px-3 py-2 text-right font-bold text-primary border-b border-outline-variant">اسم المقرر</th>
+          <th class="px-3 py-2 text-right font-bold text-primary border-b border-outline-variant">الأقسام</th>
+          <th class="px-3 py-2 text-right font-bold text-primary border-b border-outline-variant">المدرّس</th>
+          <th class="px-3 py-2 text-center font-bold text-primary border-b border-outline-variant">حالة النموذج</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in courses %}
+        {% set teachers = c.teachers if c.teachers is defined else [] %}
+        {% set form_status = c.form_status if c.form_status is defined else '' %}
+        <tr class="border-b border-outline-variant last:border-b-0">
+          <td class="px-3 py-2 text-on-surface-variant">{{ loop.index }}</td>
+          <td class="px-3 py-2 text-on-surface-variant" dir="ltr">{{ c.code or '—' }}</td>
+          <td class="px-3 py-2 font-bold text-on-surface">{{ c.name }}</td>
+          <td class="px-3 py-2 text-on-surface-variant">
+            {% if course_depts.get(c.id) %}{{ course_depts.get(c.id) | join('، ') }}{% else %}—{% endif %}
+          </td>
+          <td class="px-3 py-2 text-on-surface-variant">
+            {% if teachers %}{{ teachers | join('، ') }}{% else %}—{% endif %}
+          </td>
+          <td class="px-3 py-2 text-center whitespace-nowrap">
+            {% if form_status %}
+            <span class="inline-block px-2.5 py-1 rounded-full font-bold {{ submission_status_color(form_status) }}">{{ submission_status_label(form_status) }}</span>
+            {% else %}
+            <span class="text-on-surface-variant">لا يوجد نموذج بعد</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="px-3 py-12 text-center text-on-surface-variant">لا توجد مقررات</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="px-6 py-3 bg-surface-dim border-t border-outline-variant text-center text-xs text-on-surface-variant">
+    عدد المقررات: {{ courses|length }}
+  </div>
+</div>

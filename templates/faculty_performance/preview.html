@@ -1,0 +1,420 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'faculty_performance' %}
+{% set page_title = 'معاينة كشف العبء التدريسي' %}
+{% set fd = form_data %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+
+  <!-- Action Bar -->
+  <div class="no-print flex flex-wrap items-center justify-between gap-3 mb-4 bg-white border border-outline-variant rounded-xl px-4 py-3 shadow-sm">
+    <div class="flex items-center gap-2 text-sm font-bold text-on-surface">
+      <span class="material-symbols-outlined text-primary">assignment</span>
+      كشف العبء التدريسي — {{ fd.header.teacher_name }}
+    </div>
+    <div class="flex items-center gap-2">
+      {% if has_permission('faculty_performance.edit_research') %}
+      <a href="{{ url_for('faculty_performance.edit_research', teacher_id=fd.teacher.id, year=fd.header.academic_year, semester=fd.header.semester_number) }}"
+         class="flex items-center gap-1.5 bg-surface-container hover:bg-surface-container-high border border-outline-variant px-3 py-2 rounded-lg text-xs font-bold transition">
+        <span class="material-symbols-outlined text-sm">science</span>
+        تعديل الساعات البحثية
+      </a>
+      {% endif %}
+      {% if has_permission('faculty_performance.edit_assignments') %}
+      <a href="{{ url_for('faculty_performance.edit_assignments', teacher_id=fd.teacher.id, year=fd.header.academic_year, semester=fd.header.semester_number) }}"
+         class="flex items-center gap-1.5 bg-surface-container hover:bg-surface-container-high border border-outline-variant px-3 py-2 rounded-lg text-xs font-bold transition">
+        <span class="material-symbols-outlined text-sm">work</span>
+        تعديل التكليفات الإدارية
+      </a>
+      {% endif %}
+      {% if has_permission('faculty_performance.edit_leaves') %}
+      <a href="{{ url_for('faculty_performance.edit_leaves', teacher_id=fd.teacher.id, year=fd.header.academic_year, semester=fd.header.semester_number) }}"
+         class="flex items-center gap-1.5 bg-surface-container hover:bg-surface-container-high border border-outline-variant px-3 py-2 rounded-lg text-xs font-bold transition">
+        <span class="material-symbols-outlined text-sm">event_busy</span>
+        تعديل الإجازات
+      </a>
+      {% endif %}
+      {% if has_permission('faculty_performance.print') %}
+      <a href="{{ url_for('faculty_performance.print_form', teacher_id=fd.teacher.id, year=fd.header.academic_year, semester=fd.header.semester_number, dept=request.args.get('dept')) }}"
+         target="_blank"
+         class="flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-on-primary px-3 py-2 rounded-lg text-xs font-bold transition">
+        <span class="material-symbols-outlined text-sm">print</span>
+        طباعة
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Warnings -->
+  {% if fd.warnings %}
+  <div class="no-print mb-4 space-y-2">
+    {% for w in fd.warnings %}
+    <div class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold
+      {% if w.severity == 'warning' %}bg-amber-50 text-amber-700 border border-amber-200
+      {% elif w.severity == 'error' %}bg-red-50 text-red-700 border border-red-200
+      {% else %}bg-blue-50 text-blue-700 border border-blue-200{% endif %}">
+      <span class="material-symbols-outlined text-lg">
+        {% if w.severity == 'warning' %}warning{% elif w.severity == 'error' %}error{% else %}info{% endif %}
+      </span>
+      {{ w.message }}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Word-style Document -->
+  <div class="bg-white text-black shadow-xl rounded-lg overflow-hidden" style="font-family: 'Traditional Arabic', 'Times New Roman', serif;">
+
+    <!-- Title -->
+    <div class="text-center font-bold text-base border-b-2 border-black py-3 px-4" style="font-size: 14pt;">
+      نموذج معدل الأداء الموحد لعضو هيئة تدريس قار خاص بنظامي (الفصل - السنة)
+    </div>
+
+    <div id="docScroll" class="p-5 space-y-4 text-xs" style="line-height: 1.8;">
+
+      <!-- Org Info -->
+      <table style="width: 45%; margin: 0 auto; border-collapse: collapse; border: 1px solid #000;">
+        <tr>
+          <td style="border: 1px solid #000; padding: 4px 8px; font-weight: bold; width: 40%; background: #e6e6e6;">اسم المؤسسة</td>
+          <td style="border: 1px solid #000; padding: 4px 8px;">{{ fd.header.org_name or '—' }}</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid #000; padding: 4px 8px; font-weight: bold; background: #e6e6e6;">المعهد أو الكلية</td>
+          <td style="border: 1px solid #000; padding: 4px 8px;">{{ fd.header.college_name }}</td>
+        </tr>
+      </table>
+
+      <!-- Personal Data -->
+      <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; font-size: 10pt;">
+        <tr>
+          <td style="border:1px solid #000; padding:3px 6px; font-weight:bold; background:#e6e6e6; width:12%;">الاسم</td>
+          <td style="border:1px solid #000; padding:3px 6px; width:21%;">{{ fd.header.teacher_name }}</td>
+          <td style="border:1px solid #000; padding:3px 6px; font-weight:bold; background:#e6e6e6; width:12%;">القسم</td>
+          <td style="border:1px solid #000; padding:3px 6px; width:21%;">{{ fd.header.department }}</td>
+          <td style="border:1px solid #000; padding:3px 6px; font-weight:bold; background:#e6e6e6; width:12%;">الشعبة</td>
+          <td style="border:1px solid #000; padding:3px 6px; width:22%;">{{ fd.header.section or '—' }}</td>
+        </tr>
+        <tr>
+          <td style="border:1px solid #000; padding:3px 6px; font-weight:bold; background:#e6e6e6;">المؤهل العلمي</td>
+          <td style="border:1px solid #000; padding:3px 6px;">{{ fd.header.qualification }}</td>
+          <td style="border:1px solid #000; padding:3px 6px; font-weight:bold; background:#e6e6e6;">الرقم الكلية</td>
+          <td style="border:1px solid #000; padding:3px 6px;">{{ fd.header.academic_number or '—' }}</td>
+          <td style="border:1px solid #000; padding:3px 6px; font-weight:bold; background:#e6e6e6;">الرقم الوطني</td>
+          <td style="border:1px solid #000; padding:3px 6px;">{{ fd.header.national_id or '—' }}</td>
+        </tr>
+        <tr>
+          <td style="border:1px solid #000; padding:3px 6px; font-weight:bold; background:#e6e6e6;">العام الجامعي</td>
+          <td style="border:1px solid #000; padding:3px 6px;">{{ fd.header.academic_year_label or fd.header.academic_year }}</td>
+          <td style="border:1px solid #000; padding:3px 6px; font-weight:bold; background:#e6e6e6;">التخصص</td>
+          <td style="border:1px solid #000; padding:3px 6px;">{{ fd.header.specialization or '—' }}</td>
+          <td style="border:1px solid #000; padding:3px 6px; font-weight:bold; background:#e6e6e6;">الدرجة العلمية</td>
+          <td style="border:1px solid #000; padding:3px 6px;">{{ fd.header.rank }}</td>
+        </tr>
+        <tr>
+          <td style="border:1px solid #000; padding:3px 6px; font-weight:bold; background:#e6e6e6;">تاريخ أول محاضرة</td>
+          <td style="border:1px solid #000; padding:3px 6px;">{{ fd.header.first_lecture_date or fd.header.contract_date or '—' }}</td>
+          <td style="border:1px solid #000; padding:3px 6px; font-weight:bold; background:#e6e6e6;">الفصل الدراسي</td>
+          <td style="border:1px solid #000; padding:3px 6px;">{{ fd.header.semester_label }}</td>
+          <td style="border:1px solid #000; padding:3px 6px; font-weight:bold; background:#e6e6e6;">تاريخ مباشرة العمل</td>
+          <td style="border:1px solid #000; padding:3px 6px;">{{ fd.header.work_start_date or fd.header.contract_date or '—' }}</td>
+        </tr>
+      </table>
+
+      <!-- Section 1: Basic Teaching Hours -->
+      <div>
+        <div class="font-bold mb-1" style="font-size: 11pt;">
+          أولاً: جدول الساعات التدريسية الأساسية (10-4 ساعات حسب الدرجة العلمية - ساعات نظرية أو عملية)
+        </div>
+        <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; font-size: 9pt;">
+          <thead>
+            <tr style="background: #f2f2f2;">
+              <th rowspan="2" style="border:1px solid #000; padding:3px 4px; width:3%;">ت</th>
+              <th rowspan="2" style="border:1px solid #000; padding:3px 4px; width:18%;">أسم المقرر</th>
+              <th rowspan="2" style="border:1px solid #000; padding:3px 4px; width:9%;">رمز المقرر</th>
+              <th rowspan="2" style="border:1px solid #000; padding:3px 4px; width:7%;">نظري/عملي</th>
+              <th rowspan="2" style="border:1px solid #000; padding:3px 4px; width:10%;">مرحلة المقرر</th>
+              <th rowspan="2" style="border:1px solid #000; padding:3px 4px; width:10%;">القسم</th>
+              <th rowspan="2" style="border:1px solid #000; padding:3px 4px; width:7%;">المجموعة</th>
+              <th rowspan="2" style="border:1px solid #000; padding:3px 4px; width:7%;">الطلبة</th>
+              <th colspan="3" style="border:1px solid #000; padding:3px 4px;">الجدول الدراسي</th>
+              <th rowspan="2" style="border:1px solid #000; padding:3px 4px; width:7%;">الساعات</th>
+            </tr>
+            <tr style="background: #f2f2f2;">
+              <th style="border:1px solid #000; padding:2px 4px;">اليوم</th>
+              <th style="border:1px solid #000; padding:2px 4px;">من</th>
+              <th style="border:1px solid #000; padding:2px 4px;">إلى</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for entry in fd.basic_teaching %}
+            <tr>
+              <td style="border:1px solid #000; padding:3px 4px; text-align:center;">{{ entry.index }}</td>
+              <td style="border:1px solid #000; padding:3px 4px; text-align:center;">{{ entry.course_name }}</td>
+              <td style="border:1px solid #000; padding:3px 4px; text-align:center;">{{ entry.course_code }}</td>
+              <td style="border:1px solid #000; padding:3px 4px; text-align:center;">{{ entry.lecture_type or '—' }}</td>
+              <td style="border:1px solid #000; padding:3px 4px; text-align:center;">{{ entry.course_phase or '—' }}</td>
+              <td style="border:1px solid #000; padding:3px 4px; text-align:center;">{{ entry.department }}</td>
+              <td style="border:1px solid #000; padding:3px 4px; text-align:center;">{{ entry.group_number or '—' }}</td>
+              <td style="border:1px solid #000; padding:3px 4px; text-align:center;">{{ entry.student_count or '—' }}</td>
+              <td style="border:1px solid #000; padding:3px 4px; text-align:center;">{{ entry.day }}</td>
+              <td style="border:1px solid #000; padding:3px 4px; text-align:center;">{{ entry.start_time }}</td>
+              <td style="border:1px solid #000; padding:3px 4px; text-align:center;">{{ entry.end_time }}</td>
+              <td style="border:1px solid #000; padding:3px 4px; text-align:center; font-weight:bold;">{{ entry.hours }}</td>
+            </tr>
+            {% endfor %}
+            {% if not fd.basic_teaching %}
+            <tr>
+              <td colspan="12" style="border:1px solid #000; padding:6px; text-align:center; color:#999;">لا توجد محاضرات مسجلة في الجدول لهذا الفصل</td>
+            </tr>
+            {% endif %}
+            <tr style="background: #e6e6e6; font-weight: bold;">
+              <td colspan="11" style="border:1px solid #000; padding:4px 8px; text-align:right;">إجمالي عدد الساعات الأساسية</td>
+              <td style="border:1px solid #000; padding:4px 8px; text-align:center;">{{ fd.basic_total }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Section 2: Research Hours -->
+      <div>
+        <div class="font-bold mb-1" style="font-size: 11pt;">
+          ثانياً: الساعات البحثية (10-4 ساعات حسب الدرجة العلمية)
+        </div>
+        <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; font-size: 10pt;">
+          <thead>
+            <tr style="background: #f2f2f2;">
+              <th style="border:1px solid #000; padding:4px 6px; width:70%; text-align: right;">نوع النشاط</th>
+              <th style="border:1px solid #000; padding:4px 6px; width:30%;">عدد الساعات</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in fd.research %}
+            <tr>
+              <td style="border:1px solid #000; padding:4px 6px; text-align:right;">{{ r.type }}</td>
+              <td style="border:1px solid #000; padding:4px 6px; text-align:center;">{{ r.hours }}</td>
+            </tr>
+            {% endfor %}
+            {% if not fd.research %}
+            <tr>
+              <td style="border:1px solid #000; padding:4px 6px; text-align:right; color:#999;">مشروع تخرج</td>
+              <td style="border:1px solid #000; padding:4px 6px; text-align:center;">—</td>
+            </tr>
+            <tr>
+              <td style="border:1px solid #000; padding:4px 6px; text-align:right;">دراسات ميدانية</td>
+              <td style="border:1px solid #000; padding:4px 6px; text-align:center;"></td>
+            </tr>
+            <tr>
+              <td style="border:1px solid #000; padding:4px 6px; text-align:right;">مجموعات بحثية</td>
+              <td style="border:1px solid #000; padding:4px 6px; text-align:center;"></td>
+            </tr>
+            <tr>
+              <td style="border:1px solid #000; padding:4px 6px; text-align:right;">دراسة حقلية</td>
+              <td style="border:1px solid #000; padding:4px 6px; text-align:center;"></td>
+            </tr>
+            <tr>
+              <td style="border:1px solid #000; padding:4px 6px; text-align:right;">بحث علمي</td>
+              <td style="border:1px solid #000; padding:4px 6px; text-align:center;"></td>
+            </tr>
+            <tr>
+              <td style="border:1px solid #000; padding:4px 6px; text-align:right;">الإرشاد الكلية</td>
+              <td style="border:1px solid #000; padding:4px 6px; text-align:center;"></td>
+            </tr>
+            {% endif %}
+            <tr style="background: #e6e6e6; font-weight: bold;">
+              <td style="border:1px solid #000; padding:4px 6px; text-align:right;">إجمالي عدد الساعات البحثية</td>
+              <td style="border:1px solid #000; padding:4px 6px; text-align:center;">{{ fd.research_total }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Section 3: Additional Teaching Hours -->
+      <div>
+        <div class="font-bold mb-1" style="font-size: 11pt;">
+          ثالثاً: الساعات الإضافية (1-6 ساعات حسب الدرجة العلمية - ساعات نظرية أو عملية)
+        </div>
+        <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; font-size: 9pt;">
+          <thead>
+            <tr style="background: #f2f2f2;">
+              <th rowspan="2" style="border:1px solid #000; padding:3px 4px; width:3%;">ت</th>
+              <th rowspan="2" style="border:1px solid #000; padding:3px 4px; width:18%;">أسم المقرر</th>
+              <th rowspan="2" style="border:1px solid #000; padding:3px 4px; width:9%;">رمز المقرر</th>
+              <th rowspan="2" style="border:1px solid #000; padding:3px 4px; width:7%;">نظري/عملي</th>
+              <th rowspan="2" style="border:1px solid #000; padding:3px 4px; width:10%;">مرحلة المقرر</th>
+              <th rowspan="2" style="border:1px solid #000; padding:3px 4px; width:10%;">القسم</th>
+              <th rowspan="2" style="border:1px solid #000; padding:3px 4px; width:7%;">المجموعة</th>
+              <th rowspan="2" style="border:1px solid #000; padding:3px 4px; width:7%;">الطلبة</th>
+              <th colspan="3" style="border:1px solid #000; padding:3px 4px;">الجدول الدراسي</th>
+              <th rowspan="2" style="border:1px solid #000; padding:3px 4px; width:7%;">الساعات</th>
+            </tr>
+            <tr style="background: #f2f2f2;">
+              <th style="border:1px solid #000; padding:2px 4px;">اليوم</th>
+              <th style="border:1px solid #000; padding:2px 4px;">من</th>
+              <th style="border:1px solid #000; padding:2px 4px;">إلى</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for entry in fd.additional_teaching %}
+            <tr>
+              <td style="border:1px solid #000; padding:3px 4px; text-align:center;">{{ loop.index }}</td>
+              <td style="border:1px solid #000; padding:3px 4px; text-align:center;">{{ entry.course_name }}</td>
+              <td style="border:1px solid #000; padding:3px 4px; text-align:center;">{{ entry.course_code }}</td>
+              <td style="border:1px solid #000; padding:3px 4px; text-align:center;">{{ entry.lecture_type or '—' }}</td>
+              <td style="border:1px solid #000; padding:3px 4px; text-align:center;">{{ entry.course_phase or '—' }}</td>
+              <td style="border:1px solid #000; padding:3px 4px; text-align:center;">{{ entry.department }}</td>
+              <td style="border:1px solid #000; padding:3px 4px; text-align:center;">{{ entry.group_number or '—' }}</td>
+              <td style="border:1px solid #000; padding:3px 4px; text-align:center;">{{ entry.student_count or '—' }}</td>
+              <td style="border:1px solid #000; padding:3px 4px; text-align:center;">{{ entry.day }}</td>
+              <td style="border:1px solid #000; padding:3px 4px; text-align:center;">{{ entry.start_time }}</td>
+              <td style="border:1px solid #000; padding:3px 4px; text-align:center;">{{ entry.end_time }}</td>
+              <td style="border:1px solid #000; padding:3px 4px; text-align:center; font-weight:bold;">{{ entry.hours }}</td>
+            </tr>
+            {% endfor %}
+            {% if not fd.additional_teaching %}
+            {% for i in range(3) %}
+            <tr>
+              <td style="border:1px solid #000; padding:3px 4px; text-align:center;">{{ i + 1 }}</td>
+              <td colspan="10" style="border:1px solid #000; padding:3px 4px; text-align:center;"></td>
+              <td style="border:1px solid #000; padding:3px 4px; text-align:center;"></td>
+            </tr>
+            {% endfor %}
+            {% endif %}
+            <tr style="background: #e6e6e6; font-weight: bold;">
+              <td colspan="11" style="border:1px solid #000; padding:4px 8px; text-align:right;">إجمالي عدد الساعات الإضافية</td>
+              <td style="border:1px solid #000; padding:4px 8px; text-align:center;">{{ fd.additional_total }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Section 4: Admin Assignments -->
+      <div>
+        <div class="font-bold mb-1" style="font-size: 11pt;">رابعاً: التكليف بمهام إدارية</div>
+        <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; font-size: 10pt;">
+          <thead>
+            <tr style="background: #f2f2f2;">
+              <th style="border:1px solid #000; padding:4px 6px; width:45%;">المهمة الإدارية</th>
+              <th style="border:1px solid #000; padding:4px 6px; width:30%;">تاريخ التكليف</th>
+              <th style="border:1px solid #000; padding:4px 6px; width:25%;">عدد الساعات</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in fd.admin_assignments %}
+            <tr>
+              <td style="border:1px solid #000; padding:4px 6px; text-align:center;">{{ a.task }}</td>
+              <td style="border:1px solid #000; padding:4px 6px; text-align:center;">{{ a.assignment_date or a.start_date or '' }}</td>
+              <td style="border:1px solid #000; padding:4px 6px; text-align:center;">{{ a.hours_used }}</td>
+            </tr>
+            {% endfor %}
+            {% if not fd.admin_assignments %}
+            <tr>
+              <td style="border:1px solid #000; padding:4px 6px; text-align:center; color:#999;">—</td>
+              <td style="border:1px solid #000; padding:4px 6px; text-align:center;">—</td>
+              <td style="border:1px solid #000; padding:4px 6px; text-align:center;">—</td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Section 5: Leaves -->
+      <div>
+        <div class="font-bold mb-1" style="font-size: 11pt;">خامساً: (إجازة التفرغ العلمي - التفرغ الدراسي - الإيفاد بالداخل)</div>
+        <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; font-size: 10pt;">
+          <thead>
+            <tr style="background: #f2f2f2;">
+              <th style="border:1px solid #000; padding:4px 6px; width:25%;">نوع القرار</th>
+              <th style="border:1px solid #000; padding:4px 6px; width:25%;">رقم القرار</th>
+              <th style="border:1px solid #000; padding:4px 6px; width:25%;">جهة صدور القرار</th>
+              <th style="border:1px solid #000; padding:4px 6px; width:25%;">تاريخ صدور القرار</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for lv in fd.leaves %}
+            <tr>
+              <td style="border:1px solid #000; padding:4px 6px; text-align:center;">{{ lv.type }}</td>
+              <td style="border:1px solid #000; padding:4px 6px; text-align:center;">{{ lv.decision_number or '—' }}</td>
+              <td style="border:1px solid #000; padding:4px 6px; text-align:center;">{{ lv.decision_authority or '—' }}</td>
+              <td style="border:1px solid #000; padding:4px 6px; text-align:center;">{{ lv.decision_date or '—' }}</td>
+            </tr>
+            {% endfor %}
+            {% if not fd.leaves %}
+            <tr>
+              <td style="border:1px solid #000; padding:4px 6px; text-align:center; color:#999;">—</td>
+              <td style="border:1px solid #000; padding:4px 6px; text-align:center;">—</td>
+              <td style="border:1px solid #000; padding:4px 6px; text-align:center;">—</td>
+              <td style="border:1px solid #000; padding:4px 6px; text-align:center;">—</td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Section 6: Grand Total -->
+      <div>
+        <div class="font-bold mb-1" style="font-size: 11pt;">سادساً: مجموع الساعات</div>
+        <table style="width: 100%; border-collapse: collapse; border: 1px solid #000;">
+          <tr style="background: #f2f2f2;">
+            <th style="border:1px solid #000; padding:4px 6px; font-weight:bold;">مجموع الساعات</th>
+          </tr>
+          <tr>
+            <td style="border:1px solid #000; padding:8px; text-align:center; font-weight:bold; font-size: 11pt;">{{ fd.grand_total }}</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- Signatures -->
+      <div style="margin-top: 20px;">
+        <div class="text-center font-bold" style="font-size: 11pt;">
+          توقيع عضو هيئة التدريس: ....................................................
+        </div>
+        <div class="flex justify-between text-center font-bold" style="margin-top: 15px; font-size: 10pt; line-height: 1.8;">
+          <div style="width: 30%;">
+            رئيس القسم العلمي:...........................<br>
+            الاسم:............................................<br>
+            التوقيع:..........................................
+          </div>
+          <div style="width: 30%;">
+            مدير مكتب أعضاء هيئة التدريس<br>
+            الاسم:............................................<br>
+            التوقيع:..........................................
+          </div>
+          <div style="width: 30%;">
+            مدير مكتب الشؤون العلمية/وكيل الشؤون العلمية بالكلية<br>
+            الاسم:............................................<br>
+            التوقيع:..........................................
+          </div>
+        </div>
+        <div class="text-center font-bold" style="margin-top: 15px; font-size: 10pt; line-height: 1.8;">
+          اعتماد<br>
+          عميد الكلية التقنية/ مدير عام المعهد/ مدير إدارة أعضاء هيئة التدريس<br>
+          الاسم:............................................<br>
+          التوقيع:..........................................
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div style="margin-top: 15px; font-size: 9pt; line-height: 1.5;">
+        <strong>ملاحظات: -</strong><br>
+        يعد هذا النموذج من 3 نسخ إلكترونية
+        <ul style="padding-right: 20px; margin: 3px 0;">
+          <li>ساعة المقرر الدراسي بالدراسات العليا تعادل ساعتين لمقرر الدراسة الجامعية.</li>
+          <li>يتحمل عضو هيئة التدريس ورئيس القسم العلمي وإدارة أعضاء هيئة التدريس المسئولية عن صحة البيانات الواردة بالنموذج.</li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+  /* Phone: wide document tables scroll horizontally instead of being crushed */
+  @media (max-width: 768px) {
+    #docScroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    #docScroll table[style*="width: 100%"] { min-width: 640px; }
+  }
+</style>
+{% endblock %}

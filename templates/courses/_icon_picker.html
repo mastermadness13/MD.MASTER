@@ -1,0 +1,12 @@
+{% set icon_value = icon_value | default('📖') %}
+<div class="md:col-span-2">
+  <label class="block text-xs font-bold text-on-surface-variant mb-1.5">أيقونة المقرر</label>
+  <div class="flex items-center gap-2 mb-2">
+    <span class="text-2xl" id="iconPreview">{{ icon_value }}</span>
+    <input type="text" name="icon" id="iconInput" value="{{ icon_value }}" maxlength="8"
+           class="flex-1 bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+  </div>
+  <div id="iconPicker"></div>
+</div>
+<script src="{{ url_for('static', filename='js/icon_picker.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pages/courses__icon_picker.js') }}"></script>

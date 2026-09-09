@@ -1,0 +1,27 @@
+{% extends "shared/layouts/auth.html" %}
+{% set sidebar_active = '' %}
+{% set page_title = '404 - الصفحة غير موجودة' %}
+{% block content %}
+<div class="bg-white/80 backdrop-blur-lg border border-outline-variant/30 rounded-2xl p-xl shadow-lg">
+<div class="w-24 h-24 rounded-2xl bg-primary-fixed flex items-center justify-center mx-auto mb-lg">
+<span class="material-symbols-outlined text-primary text-5xl" style="font-variation-settings:'FILL'1;">explore_off</span>
+</div>
+<h1 class="font-display-lg text-display-lg text-primary font-bold mb-xs">404</h1>
+<p class="font-headline-sm text-headline-sm text-on-surface-variant mb-md">الصفحة التي تبحث عنها غير موجودة</p>
+<p class="font-body-md text-body-md text-on-surface-variant mb-xl leading-relaxed">قد تكون الصفحة قد أزيلت أو تم تغيير رابطها. تحقق من العنوان وحاول مرة أخرى.</p>
+<div class="flex flex-col sm:flex-row items-center justify-center gap-md">
+<a href="/" class="px-5 py-2 bg-primary text-on-primary font-label-md text-label-md rounded-lg shadow-sm hover:shadow-md transition-all flex items-center gap-sm active:scale-95">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings:'FILL'1;">dashboard</span>
+العودة للرئيسية
+</a>
+<button onclick="history.back()" class="px-5 py-2 border border-outline text-on-surface-variant font-label-md text-label-md rounded-lg hover:bg-surface-container-highest transition-all flex items-center gap-sm active:scale-95">
+<span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+الصفحة السابقة
+</button>
+</div>
+</div>
+<div class="mt-lg flex items-center justify-center gap-sm">
+<span class="material-symbols-outlined text-outline-variant text-[18px]">error_outline</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">إذا كنت تعتقد أن هذا خطأ، يرجى التواصل مع قسم الدعم الفني</span>
+</div>
+{% endblock %}

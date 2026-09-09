@@ -1,0 +1,145 @@
+:root, [data-theme="light"] {
+  /* Academic Prestige light palette (see private/DESIGN.md) */
+  --page-bg: #f7f9ff;
+  --surface: #ffffff;
+  --surface-alt: #f7f9ff;
+
+  --surface-card: #ffffff;
+  --surface-hover: #f1f4f9;
+  --surface-zebra: #ebeef3;
+  --surface-glass: rgba(255, 255, 255, 0.85);
+  --surface-glass-panel: rgba(255, 255, 255, 0.8);
+
+  --text-primary: #181c20;
+  --text-secondary: #4c4452;
+  --text-muted: #7d7483;
+  --text-faint: #a79db0;
+  --text-on-primary: #ffffff;
+
+  --primary: #320058;
+  --primary-dark: #2d0050;
+  --primary-light: #7d3fb5;
+  --primary-faint: #f1dbff;
+  --primary-container: #f1dbff;
+  --primary-container-deep: #500088;
+  --on-primary-container: #c080fa;
+  --inverse-primary: #deb7ff;
+  --surface-tint: #7d3fb5;
+  --primary-deep: #320058;
+  --primary-glow: rgba(50, 0, 88, 0.1);
+
+  --secondary: #2563eb;
+  --secondary-faint: #dbeafe;
+
+  --tertiary: #d97706;
+  --tertiary-faint: #fef3c7;
+
+  --gold: #fdc003;
+  --gold-strong: #785900;
+  --gold-dim: #fabd00;
+  --gold-faint: #ffdf9e;
+  --on-gold: #6c5000;
+
+  --error: #ba1a1a;
+  --error-text: #93000a;
+  --error-faint: #ffdad6;
+  --success: #15803d;
+  --success-text: #166534;
+  --success-faint: #f0fdf4;
+  --warning: #f59e0b;
+  --warning-text: #92400e;
+  --warning-faint: #fffbeb;
+  --info: #1e40af;
+  --info-faint: #eff6ff;
+  --danger: #ba1a1a;
+
+  --sidebar-bg: #ffffff;
+  --sidebar-border: #cfc2d3;
+  --sidebar-text: #4c4452;
+  --sidebar-hover-bg: #f1f4f9;
+  --sidebar-active-bg: #f1dbff;
+  --sidebar-active-text: #320058;
+  --sidebar-footer-border: #e0e3e8;
+  --sidebar-settings-bg: #f1f4f9;
+
+  --border: #e0e3e8;
+  --border-subtle: #f1f4f9;
+  --border-accent: #cfc2d3;
+  --border-input: #cfc2d3;
+  --border-input-focus: #320058;
+
+  --table-header: #f7f9ff;
+  --table-border: #e0e3e8;
+  --table-row-hover: #f1f4f9;
+  --table-row-alt: #ebeef3;
+  --table-row-tint: rgba(50, 0, 88, 0.03);
+
+  --topbar-bg: #ffffff;
+  --header-bg: #ffffff;
+
+  --overlay: rgba(0, 0, 0, 0.4);
+  --overlay-light: rgba(0, 0, 0, 0.3);
+
+  --shadow-sm: rgba(0, 0, 0, 0.04);
+  --shadow-md: rgba(0, 0, 0, 0.08);
+  --shadow-lg: rgba(0, 0, 0, 0.12);
+  --shadow-xl: rgba(0, 0, 0, 0.2);
+
+  --icon-bg-1: #f1dbff;
+  --icon-bg-2: #dbeafe;
+  --icon-bg-3: #fef3c7;
+  --icon-bg-4: #e0f2fe;
+  --icon-bg-5: #fce7f3;
+
+  --stat-up: #059669;
+
+  --skeleton-base: #eceef0;
+  --skeleton-shine: #f7f9fb;
+
+  --notif-unread: #f8f3fd;
+  --notif-unread-hover: #f1dbff;
+
+  --empty-icon: #cfc2d3;
+
+  --auth-deep: #2d0050;
+  --auth-brand-start: #320058;
+  --auth-brand-mid: #500088;
+  --auth-brand-end: #7d3fb5;
+  --auth-shape: #7d3fb5;
+  --auth-card-bg: rgba(255,255,255,0.98);
+
+  --success-light: #d1fae5;
+  --success-dark: #065f46;
+  --success-border: #86efac;
+  --error-light: #fee2e2;
+  --error-dark: #991b1b;
+  --error-border: #fecaca;
+  --warning-border: #fcd34d;
+  --info-border: #93c5fd;
+
+  --border-heavy: #d7dadf;
+
+  --dept-green: #4CAF50;
+  --dept-blue: #2196F3;
+  --dept-orange: #FF9800;
+  --dept-purple: #9C27B0;
+  --dept-gray: #607D8B;
+
+  --avatar-default: #f59e0b;
+
+  --pass-color: #4ade80;
+  --pass-bg: #f0fdf4;
+  --fail-color: #f87171;
+  --fail-bg: #fef2f2;
+
+  --main-content-bg: #e2e2ea;
+
+  --app-content-bg: rgba(247, 249, 255, 0.62);
+
+  --radius-sm: 0.125rem;
+  --radius-default: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-full: 9999px;
+}

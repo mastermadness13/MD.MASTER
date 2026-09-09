@@ -1,0 +1,89 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'dashboard.dashboard' %}
+{% set page_title = 'مكتب إدارة أعضاء هيئة التدريس' %}
+
+{% set f = faculty_data | default({}) %}
+{% set teachers = f.get('teachers', []) %}
+{% set can_manage = has_permission('teachers.manage') %}
+{% set can_print = has_permission('faculty_performance.print') %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="page-header-info">
+      <span class="material-symbols-outlined page-header-icon">badge</span>
+      <div>
+        <h1 class="page-title">مكتب إدارة أعضاء هيئة التدريس</h1>
+        <p class="page-subtitle">مرحباً {{ user.label or user.username }}، إدارة أعضاء هيئة التدريس والعبء التدريسي.</p>
+      </div>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      {% if can_manage %}
+      <a href="{{ url_for('teachers.teachers_create') }}"
+         class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm no-underline">
+        <span class="material-symbols-outlined text-lg">person_add</span>
+        إضافة عضو
+      </a>
+      <a href="{{ url_for('teachers.teachers_archive') }}"
+         class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm no-underline">
+        <span class="material-symbols-outlined text-lg">archive</span>
+        الأرشيف
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if can_print %}
+  <!-- Quick Access: نموذج معدل الأداء الموحد -->
+  <div class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
+    <div class="px-4 py-3 border-b border-primary/10 bg-surface-dim">
+      <h3 class="font-bold text-primary flex items-center gap-2">
+        <span class="material-symbols-outlined">assignment</span>
+        نموذج معدل الأداء الموحد
+      </h3>
+      <p class="text-xs text-on-surface-variant mt-1">اختر العضو لفتح نموذجه فوراً</p>
+    </div>
+    <div class="p-6">
+      {% if teachers %}
+      <label for="perf-teacher-select" class="block text-sm font-bold text-on-surface mb-1.5">عضو هيئة التدريس</label>
+      <select id="perf-teacher-select"
+              class="w-full border border-outline-variant rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition">
+        <option value="">— اختر عضو هيئة التدريس —</option>
+        {% for dept_name, members in teachers | groupby('dept_name') %}
+        <optgroup label="{{ dept_name or 'بدون قسم' }}">
+          {% for t in members %}
+          <option value="{{ t.id }}"
+                  data-url="{{ url_for('faculty_performance.print_form', teacher_id=t.id) }}">
+            {{ t.name }}{% if t.academic_number %} ({{ t.academic_number }}){% endif %}
+          </option>
+          {% endfor %}
+        </optgroup>
+        {% endfor %}
+      </select>
+      <p class="text-xs text-on-surface-variant mt-2 flex items-center gap-1">
+        <span class="material-symbols-outlined text-sm">bolt</span>
+        سيتم الانتقال إلى النموذج مباشرة عند الاختيار
+      </p>
+      {% else %}
+      <div class="py-10 text-center">
+        <span class="material-symbols-outlined text-5xl text-outline-variant block mb-2">school</span>
+        <p class="text-sm text-on-surface-variant">لا يوجد أعضاء هيئة تدريس بعد</p>
+        {% if can_manage %}
+        <a href="{{ url_for('teachers.teachers_create') }}"
+           class="inline-flex items-center gap-2 mt-3 bg-primary hover:bg-primary/90 text-on-primary px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm no-underline">
+          <span class="material-symbols-outlined text-lg">person_add</span>
+          إضافة عضو
+        </a>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+<script src="{{ url_for('static', filename='js/pages/dashboard_faculty_affairs.js') }}"></script>
+{% endblock %}

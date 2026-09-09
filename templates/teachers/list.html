@@ -1,0 +1,164 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'teachers' %}
+{% set page_title = 'أعضاء هيئة التدريس' %}
+{% set teachers = teachers | default([]) %}
+{% set total = total | default(0) %}
+{% set page = page | default(1) %}
+{% set per_page = per_page | default(20) %}
+{% set search = search | default('') %}
+{% set department_id = department_id | default('') %}
+{% set total_pages = (total // per_page) + (1 if total % per_page else 0) %}
+{% set can_manage = has_permission('teachers.manage') %}
+{# الجدول الكامل يظهر لجميع الأدوار (بما فيها مكتب أعضاء هيئة التدريس و مدير النظام) بعد إزالة القائمة المختصرة #}
+{% set show_full_table = True %}
+
+{% block head_extra %}
+{% set print_orientation = 'A4 portrait' %}
+{% set print_margin = '12mm' %}
+{% include 'print/_embedded_styles.html' %}
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto print-hidden">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="page-header-info">
+      <span class="material-symbols-outlined page-header-icon">school</span>
+      <div>
+        <h1 class="page-title">أعضاء هيئة التدريس</h1>
+        <p class="page-subtitle">إدارة أعضاء هيئة التدريس والأقسام المرتبطة</p>
+      </div>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      {% if can_manage %}
+      <a href="{{ url_for('teachers.teachers_create') }}"
+         class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm no-underline">
+        <span class="material-symbols-outlined text-lg">person_add</span>
+        + إضافة
+      </a>
+      <a href="{{ url_for('teachers.teachers_archive') }}"
+         class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm no-underline">
+        <span class="material-symbols-outlined text-lg">archive</span>
+        الأرشيف
+      </a>
+      {% endif %}
+      {% if has_permission('teachers.assign') %}
+      <button type="button" onclick="openAssignDrawer()"
+              class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm">
+        <span class="material-symbols-outlined text-lg">person_add</span>
+        + إضافة أستاذ للقسم
+      </button>
+      {% endif %}
+      {% if show_full_table %}
+      <button type="button" onclick="window.print()"
+              class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-outline-variant px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm">
+        <span class="material-symbols-outlined text-lg">print</span>
+        طباعة
+      </button>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if show_full_table %}
+
+  <!-- Search & Filter -->
+  <form id="teachersSearchForm" method="GET" action="{{ url_for('teachers.teachers_list') }}"
+        class="flex flex-wrap items-center gap-3 mb-4">
+    <div class="relative flex-1 min-w-[240px]">
+      <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">search</span>
+      <input type="text" name="search" value="{{ search or '' }}" placeholder="البحث بالاسم أو البريد أو الرقم الكلية..."
+             class="search-input w-full bg-white border border-outline-variant rounded-lg pr-10 pl-10 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+      <button type="button" class="search-clear absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-error transition-colors bg-transparent border-0 cursor-pointer"
+              style="display: {{ 'flex' if search else 'none' }}" title="مسح البحث">
+        <span class="material-symbols-outlined text-lg">close</span>
+      </button>
+      <span class="material-symbols-outlined search-spinner absolute left-3 top-1/2 -translate-y-1/2 text-primary animate-spin" style="display:none">hourglass_empty</span>
+    </div>
+    <select name="department_id" class="bg-white border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40 min-w-[160px]">
+      <option value="">جميع الأقسام</option>
+      {% for d in departments %}
+      <option value="{{ d.id }}" {{ 'selected' if department_id|string == d.id|string }}>{{ d.name }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit"
+            class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm">
+      <span class="material-symbols-outlined text-lg">search</span>
+      بحث
+    </button>
+    <span class="search-results-count text-xs font-bold text-on-surface-variant bg-surface-container px-3 py-1.5 rounded-full">{{ total }} عضو</span>
+  </form>
+
+  <!-- Teachers Table -->
+  <div class="page-card overflow-hidden">
+    <div class="overflow-x-auto">
+      {% include 'teachers/list_table.html' %}
+    </div>
+  </div>
+
+  {% endif %}
+
+</div>
+
+<!-- Assign Teacher Side Drawer -->
+{% if has_permission('teachers.assign') %}
+<div id="assignDrawer" class="fixed inset-0 z-50 hidden" dir="rtl">
+  <div id="assignOverlay" class="absolute inset-0 bg-black/30 transition-opacity duration-300" onclick="closeAssignDrawer()" style="opacity:0"></div>
+  <div id="assignPanel" class="absolute top-0 right-0 h-full bg-surface-container-lowest shadow-2xl border-r border-outline-variant flex flex-col transition-transform duration-300 ease-out"
+       style="width:420px; max-width:100vw; transform:translateX(100%);">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-outline-variant bg-surface-container-lowest shrink-0">
+      <h3 class="font-bold text-on-surface text-base flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary text-xl">person_add</span>
+        إضافة أستاذ إلى القسم
+      </h3>
+      <button onclick="closeAssignDrawer()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface-variant text-on-surface-variant hover:text-error transition-colors bg-transparent border-0 cursor-pointer">
+        <span class="material-symbols-outlined text-xl">close</span>
+      </button>
+    </div>
+    <div class="p-4 shrink-0">
+      <div class="relative">
+        <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">search</span>
+        <input type="text" id="assignSearchInput" placeholder="بحث بالاسم أو الرقم الكلية..."
+               class="w-full bg-surface-container border border-outline-variant rounded-lg pr-10 pl-4 py-2.5 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+      </div>
+    </div>
+    <div id="assignResults" class="flex-1 overflow-y-auto px-4 pb-4 divide-y divide-outline-variant/20">
+      <p class="text-sm text-on-surface-variant text-center py-12">اكتب للبحث...</p>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="print-only">
+  {% with teachers = print_teachers %}
+  {% include 'print/lists/_teacher_content.html' %}
+  {% endwith %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if show_full_table %}
+<script src="/static/js/search.js"></script>
+<script>
+window.TEACHERS_LIST_BOOT = {
+  total: {{ total | default(0) | tojson }},
+  urls: { bulkIds: {{ url_for('teachers.teachers_bulk_ids') | tojson }} }
+};
+</script>
+<script src="{{ url_for('static', filename='js/teachers_list.js') }}"></script>
+{% endif %}
+
+{% if has_permission('teachers.assign') %}
+<script>
+window.TEACHERS_ASSIGN_BOOT = {
+  urls: {
+      pool: {{ url_for('teachers.teacher_pool') | tojson }},
+      assign: {{ url_for('teachers.dept_assign') | tojson }}
+    },
+  csrfToken: {{ csrf_token() | tojson }}
+};
+</script>
+<script src="{{ url_for('static', filename='js/teachers_assign.js') }}"></script>
+
+{% endif %}
+{% endblock %}

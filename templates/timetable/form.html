@@ -1,0 +1,167 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'timetable.timetable' %}
+{% set page_title = 'إضافة حصة' if entry is none else 'تعديل حصة' %}
+
+{% set days = days | default([]) %}
+{% set enabled_periods = enabled_periods | default([]) %}
+{% set courses = courses | default([]) %}
+{% set teachers = teachers | default([]) %}
+{% set initial_rooms = initial_rooms | default([]) %}
+{% set departments = departments | default([]) %}
+{% set available_semesters = available_semesters | default([1]) %}
+{% set default_day = default_day | default(days[0] if days else '') %}
+{% set default_semester = default_semester | default(1) %}
+{% set default_period_code = default_period_code | default(enabled_periods[0].code if enabled_periods else '') %}
+{% set form_error = form_error | default(None) %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+  <div class="flex items-center gap-3 mb-6">
+    <span class="material-symbols-outlined text-primary text-3xl">calendar_today</span>
+    <div>
+      <h1 class="text-2xl font-bold text-on-surface">{% if entry is none %}إضافة حصة{% else %}تعديل حصة{% endif %}</h1>
+      <p class="page-subtitle">تسجيل محاضرة في الجدول الدراسي</p>
+    </div>
+  </div>
+
+  {% if active_semester and active_semester.start_date %}
+  <div class="mb-4 flex items-center gap-3 px-4 py-3 rounded-lg bg-primary/5 border border-primary/20 text-sm">
+    <span class="material-symbols-outlined text-primary text-lg">calendar_month</span>
+    <span class="font-bold text-primary">{{ active_semester.name_ar }}</span>
+    <span class="text-on-surface-variant">—</span>
+    <span class="text-on-surface">{{ active_semester.start_date }} إلى {{ active_semester.end_date }}</span>
+    {% if active_semester.exam_start_date %}
+    <span class="text-on-surface-variant">|</span>
+    <span class="text-on-surface-variant">امتحانات: {{ active_semester.exam_start_date }} — {{ active_semester.exam_end_date }}</span>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if form_error %}
+  <div class="mb-4 flex items-center gap-2 px-4 py-3 rounded-lg text-sm bg-error-container text-error">
+    <span class="material-symbols-outlined shrink-0 text-[18px]">error</span>
+    <span>{{ form_error }}</span>
+  </div>
+  {% endif %}
+
+  <div class="bg-surface-card rounded-2xl shadow-sm border border-outline-variant overflow-hidden">
+    <div class="p-5 sm:p-6">
+      <form method="post" action="{% if entry is none %}{{ url_for('timetable.timetable_create') }}{% else %}{{ url_for('timetable.timetable_edit', entry_id=entry.id) }}{% endif %}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+          <div>
+            <label for="day" class="text-xs font-bold text-on-surface-variant mb-1.5 block">اليوم *</label>
+            <select id="day" name="day" required
+                    class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+              {% for d in days %}
+                <option value="{{ d }}" {% if d == default_day %}selected{% endif %}>{{ d }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div>
+            <label for="semester" class="text-xs font-bold text-on-surface-variant mb-1.5 block">الفصل الدراسي *</label>
+            <select id="semester" name="semester" required
+                    class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+              {% for s in available_semesters %}
+                <option value="{{ s }}" {% if s == default_semester %}selected{% endif %}>الفصل {{ s }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div>
+            <label for="section" class="text-xs font-bold text-on-surface-variant mb-1.5 block">الحصة (المحاضرة) *</label>
+            <select id="section" name="section" required
+                    class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+              {% for p in enabled_periods %}
+                <option value="{{ p.code }}" {% if p.code == default_period_code %}selected{% endif %}>
+                  {{ p.label if p.label else p.code }}{% if p.start_time %} — {{ format_time12(p.start_time) }}{% if p.end_time %} - {{ format_time12(p.end_time) }}{% endif %}{% endif %}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div>
+            <label for="department_id" class="text-xs font-bold text-on-surface-variant mb-1.5 block">القسم *</label>
+            {% if entry is none and departments %}
+            <select id="department_id" name="department_id" required
+                    class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+              <option value="">— اختر القسم —</option>
+              {% for d in departments %}
+                <option value="{{ d.id }}" {% if d.id == selected_department_id %}selected{% endif %}>{{ d.name }}</option>
+              {% endfor %}
+            </select>
+            {% else %}
+            <input type="hidden" name="department_id" value="{{ selected_department_id or '' }}">
+            <div class="w-full bg-surface-container-highest border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface">
+              {{ selected_department_name or '—' }}
+            </div>
+            {% endif %}
+          </div>
+
+          <div>
+            <label for="course_id" class="text-xs font-bold text-on-surface-variant mb-1.5 block">المادة *</label>
+            <select id="course_id" name="course_id" required
+                    class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+              <option value="">— اختر المادة —</option>
+              {% for c in courses %}
+                <option value="{{ c.id }}" {% if entry and entry.course_id == c.id %}selected{% endif %}>{{ c.name }}{% if c.code %} ({{ c.code }}){% endif %}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div>
+            <label for="teacher_id" class="text-xs font-bold text-on-surface-variant mb-1.5 block">عضو هيئة التدريس *</label>
+            <select id="teacher_id" name="teacher_id" required
+                    class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+              <option value="">— اختر عضو هيئة التدريس —</option>
+              {% for t in teachers %}
+                <option value="{{ t.id }}" {% if entry and entry.teacher_id == t.id %}selected{% endif %}>{{ t.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div>
+            <label for="room_id" class="text-xs font-bold text-on-surface-variant mb-1.5 block">القاعة *</label>
+            <select id="room_id" name="room_id" required
+                    class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+              <option value="">— اختر القاعة —</option>
+              {% for r in initial_rooms %}
+                <option value="{{ r.id }}" {% if entry and entry.room_id == r.id %}selected{% endif %}>{{ r.name_ar or r.name }}{% if r.code %} ({{ r.code }}){% endif %}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div>
+            <label for="start_time" class="text-xs font-bold text-on-surface-variant mb-1.5 block">وقت البداية</label>
+            <input type="time" id="start_time" name="start_time" value="{{ form_start_time or '' }}"
+                   class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+          </div>
+
+          <div>
+            <label for="end_time" class="text-xs font-bold text-on-surface-variant mb-1.5 block">وقت النهاية</label>
+            <input type="time" id="end_time" name="end_time" value="{{ form_end_time or '' }}"
+                   class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+          </div>
+
+        </div>
+
+        <div class="mt-6 flex flex-wrap items-center gap-3">
+          <button type="submit"
+                  class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-5 py-2.5 rounded-lg text-sm font-bold transition shadow-sm">
+            <span class="material-symbols-outlined text-lg">save</span>
+            {% if entry is none %}حفظ الحصة{% else %}حفظ التعديلات{% endif %}
+          </button>
+          <a href="{{ url_for('timetable.timetable') }}"
+             class="flex items-center gap-2 bg-surface-container-highest hover:bg-surface-container text-on-surface px-5 py-2.5 rounded-lg text-sm font-bold transition">
+            <span class="material-symbols-outlined text-lg">arrow_right</span>
+            رجوع
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

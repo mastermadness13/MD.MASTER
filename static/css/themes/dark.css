@@ -1,0 +1,295 @@
+/* themes/dark.css — Dark theme. Loaded LAST in app.css so these rules win.
+   [data-theme="dark"] has the same (0,1,0) specificity as :root, so source
+   order decides; the "body ." prefix on Tailwind remaps beats the Tailwind CDN
+   and theme-overrides.css (which uses "body ." at (0,1,1)). */
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --page-bg: #14101c;
+  --surface: #1f1a2a;
+  --surface-alt: #1a1524;
+  --surface-card: #241e31;
+  --surface-hover: #2a233a;
+  --surface-zebra: #1e1828;
+  --surface-glass: rgba(31, 26, 42, 0.85);
+  --surface-glass-panel: rgba(31, 26, 42, 0.8);
+
+  --text-primary: #ece6f4;
+  --text-secondary: #c9c0d9;
+  --text-muted: #a298b8;
+  --text-faint: #847a98;
+  --text-on-primary: #ffffff;
+
+  --primary: #c080fa;
+  --primary-dark: #7d3fb5;
+  --primary-light: #c4b5fd;
+  --primary-faint: rgba(167, 139, 250, 0.16);
+  --primary-container: rgba(167, 139, 250, 0.22);
+  --primary-container-deep: #7d3fb5;
+  --on-primary-container: #deb7ff;
+  --inverse-primary: #320058;
+  --surface-tint: #c080fa;
+  --primary-deep: #7d3fb5;
+  --primary-glow: rgba(167, 139, 250, 0.2);
+
+  --secondary: #60a5fa;
+  --secondary-faint: rgba(96, 165, 250, 0.16);
+
+  --tertiary: #fbbf24;
+  --tertiary-faint: rgba(251, 191, 36, 0.16);
+
+  --gold: #fbbf24;
+  --gold-strong: #fcd34d;
+  --gold-dim: #f59e0b;
+  --gold-faint: rgba(251, 191, 36, 0.16);
+  --on-gold: #422b00;
+
+  --error: #f87171;
+  --error-text: #fca5a5;
+  --error-faint: rgba(248, 113, 113, 0.16);
+  --success: #16a34a;
+  --success-text: #6ee7b7;
+  --success-faint: rgba(52, 211, 153, 0.16);
+  --warning: #fbbf24;
+  --warning-text: #fcd34d;
+  --warning-faint: rgba(251, 191, 36, 0.16);
+  --info: #93c5fd;
+  --info-faint: rgba(147, 197, 253, 0.16);
+  --danger: #f87171;
+
+  --sidebar-bg: #1a1524;
+  --sidebar-border: #38304a;
+  --sidebar-text: #c9c0d9;
+  --sidebar-hover-bg: #2a233a;
+  --sidebar-active-bg: rgba(139, 92, 246, 0.2);
+  --sidebar-active-text: #c4b5fd;
+  --sidebar-footer-border: #38304a;
+  --sidebar-settings-bg: #241e31;
+
+  --border: #38304a;
+  --border-subtle: #2a233a;
+  --border-accent: #4a4060;
+  --border-input: #4a4060;
+  --border-input-focus: #c080fa;
+
+  --table-header: #1a1524;
+  --table-border: #38304a;
+  --table-row-hover: #262033;
+  --table-row-alt: #1e1828;
+  --table-row-tint: rgba(139, 92, 246, 0.06);
+
+  --topbar-bg: #1a1524;
+  --header-bg: #1a1524;
+
+  --overlay: rgba(0, 0, 0, 0.6);
+  --overlay-light: rgba(0, 0, 0, 0.5);
+
+  --shadow-sm: rgba(0, 0, 0, 0.35);
+  --shadow-md: rgba(0, 0, 0, 0.45);
+  --shadow-lg: rgba(0, 0, 0, 0.55);
+  --shadow-xl: rgba(0, 0, 0, 0.65);
+
+  --icon-bg-1: rgba(139, 92, 246, 0.18);
+  --icon-bg-2: rgba(96, 165, 250, 0.18);
+  --icon-bg-3: rgba(251, 191, 36, 0.18);
+  --icon-bg-4: rgba(34, 211, 238, 0.18);
+  --icon-bg-5: rgba(244, 114, 182, 0.18);
+
+  --stat-up: #34d399;
+
+  --skeleton-base: #2a233a;
+  --skeleton-shine: #332b44;
+
+  --notif-unread: rgba(139, 92, 246, 0.1);
+  --notif-unread-hover: rgba(139, 92, 246, 0.16);
+
+  --empty-icon: #5b5372;
+
+  --auth-deep: #0c0813;
+  --auth-brand-start: #500088;
+  --auth-brand-mid: #7d3fb5;
+  --auth-brand-end: #c080fa;
+  --auth-shape: #deb7ff;
+  --auth-card-bg: rgba(31, 26, 42, 0.97);
+
+  --success-light: rgba(52, 211, 153, 0.18);
+  --success-dark: #6ee7b7;
+  --success-border: rgba(52, 211, 153, 0.45);
+  --error-light: rgba(248, 113, 113, 0.18);
+  --error-dark: #fca5a5;
+  --error-border: rgba(248, 113, 113, 0.45);
+  --warning-border: rgba(251, 191, 36, 0.45);
+  --info-border: rgba(147, 197, 253, 0.45);
+
+  --border-heavy: #4a4060;
+
+  --dept-green: #4CAF50;
+  --dept-blue: #2196F3;
+  --dept-orange: #FF9800;
+  --dept-purple: #9C27B0;
+  --dept-gray: #607D8B;
+
+  --avatar-default: #fbbf24;
+
+  --pass-color: #4ade80;
+  --pass-bg: rgba(74, 222, 128, 0.15);
+  --fail-color: #f87171;
+  --fail-bg: rgba(248, 113, 113, 0.15);
+
+  --main-content-bg: #110d18;
+
+  --app-content-bg: rgba(17, 13, 24, 0.62);
+}
+
+/* ===== Tailwind gray utilities not covered by theme-overrides.css ===== */
+
+[data-theme="dark"] body .text-gray-300 { color: #cfc2d3; }
+[data-theme="dark"] body .text-gray-400 { color: #9b94ad; }
+[data-theme="dark"] body .text-gray-500 { color: #a6a0b5; }
+[data-theme="dark"] body .text-gray-600 { color: #a6a0b5; }
+[data-theme="dark"] body .text-gray-900 { color: var(--text-primary); }
+[data-theme="dark"] body .text-slate-600 { color: var(--text-secondary); }
+[data-theme="dark"] body .bg-gray-100 { background-color: #2a233a; }
+[data-theme="dark"] body .bg-gray-200 { background-color: #2a233a; }
+[data-theme="dark"] body .bg-gray-400 { background-color: #5b5372; }
+[data-theme="dark"] body .bg-slate-200 { background-color: #38304a; }
+[data-theme="dark"] body .hover\:bg-gray-50:hover,
+[data-theme="dark"] body .hover\:bg-gray-100:hover { background-color: #2a233a; }
+[data-theme="dark"] body .border-gray-100 { border-color: #2a233a; }
+[data-theme="dark"] body .border-gray-200 { border-color: #38304a; }
+[data-theme="dark"] body .border-gray-300 { border-color: #4a4060; }
+
+/* ===== Tailwind status tint backgrounds (light tints -> translucent dark) ===== */
+
+[data-theme="dark"] body .bg-red-50,
+[data-theme="dark"] body .bg-red-100 { background-color: rgba(248, 113, 113, 0.14); }
+[data-theme="dark"] body .bg-green-50,
+[data-theme="dark"] body .bg-green-100 { background-color: rgba(52, 211, 153, 0.14); }
+[data-theme="dark"] body .bg-amber-50,
+[data-theme="dark"] body .bg-amber-100 { background-color: rgba(251, 191, 36, 0.14); }
+[data-theme="dark"] body .bg-blue-50,
+[data-theme="dark"] body .bg-blue-100 { background-color: rgba(96, 165, 250, 0.14); }
+[data-theme="dark"] body .bg-purple-100 { background-color: rgba(167, 139, 250, 0.14); }
+[data-theme="dark"] body .bg-orange-100 { background-color: rgba(251, 146, 60, 0.14); }
+[data-theme="dark"] body .bg-cyan-100 { background-color: rgba(103, 232, 249, 0.14); }
+[data-theme="dark"] body .bg-teal-100 { background-color: rgba(94, 234, 212, 0.14); }
+[data-theme="dark"] body .bg-yellow-100 { background-color: rgba(250, 204, 21, 0.14); }
+
+/* ===== Tailwind status text (dark shades -> bright readable on dark) ===== */
+
+[data-theme="dark"] body .text-red-300,
+[data-theme="dark"] body .text-red-400,
+[data-theme="dark"] body .text-red-500,
+[data-theme="dark"] body .text-red-600,
+[data-theme="dark"] body .text-red-700,
+[data-theme="dark"] body .text-red-800 { color: #f87171; }
+[data-theme="dark"] body .text-green-600,
+[data-theme="dark"] body .text-green-700,
+[data-theme="dark"] body .text-green-800 { color: #34d399; }
+[data-theme="dark"] body .text-amber-600,
+[data-theme="dark"] body .text-amber-700,
+[data-theme="dark"] body .text-amber-800 { color: #fbbf24; }
+[data-theme="dark"] body .text-blue-600,
+[data-theme="dark"] body .text-blue-700,
+[data-theme="dark"] body .text-blue-800 { color: #60a5fa; }
+[data-theme="dark"] body .text-purple-800 { color: #c4b5fd; }
+[data-theme="dark"] body .text-orange-700,
+[data-theme="dark"] body .text-orange-800 { color: #fb923c; }
+[data-theme="dark"] body .text-cyan-800 { color: #67e8f9; }
+[data-theme="dark"] body .text-teal-800 { color: #5eead4; }
+[data-theme="dark"] body .text-yellow-700 { color: #facc15; }
+
+/* ===== Tailwind status borders ===== */
+
+[data-theme="dark"] body .border-red-200 { border-color: rgba(248, 113, 113, 0.4); }
+[data-theme="dark"] body .border-green-200 { border-color: rgba(52, 211, 153, 0.4); }
+[data-theme="dark"] body .border-amber-200 { border-color: rgba(251, 191, 36, 0.4); }
+[data-theme="dark"] body .border-blue-200 { border-color: rgba(96, 165, 250, 0.4); }
+
+/* ===== Tailwind primary opacity fills (dark theme = translucent purple) =====
+   Light theme keeps its natural light tints from the #320058 hex. */
+
+[data-theme="dark"] body .bg-primary\/5,
+[data-theme="dark"] body .bg-primary\/10,
+[data-theme="dark"] body .bg-primary\/20,
+[data-theme="dark"] body .bg-primary\/30 { background-color: var(--primary-container); }
+[data-theme="dark"] body .hover\:bg-primary\/5:hover,
+[data-theme="dark"] body .hover\:bg-primary\/10:hover { background-color: var(--primary-container); }
+[data-theme="dark"] body .border-primary\/10,
+[data-theme="dark"] body .border-primary\/20,
+[data-theme="dark"] body .border-primary\/30,
+[data-theme="dark"] body .border-primary\/40 { border-color: var(--primary-container); }
+[data-theme="dark"] body .hover\:border-primary\/40:hover { border-color: var(--primary); }
+
+/* ===== Checkbox / radio accent from the light palette ===== */
+
+[data-theme="dark"] body .accent-\[#320058\] { accent-color: var(--primary); }
+
+/* ===== Amber action button (archive banner) ===== */
+
+[data-theme="dark"] body .bg-amber-600 { background-color: #b45309; }
+[data-theme="dark"] body .hover\:bg-amber-700:hover { background-color: #92400e; }
+
+/* ===== Semantic text utilities that must read brighter on dark ===== */
+
+[data-theme="dark"] body .text-success-teal,
+[data-theme="dark"] body .text-success-green { color: #4ade80; }
+[data-theme="dark"] body .text-on-error-container { color: #fca5a5; }
+
+/* --primary-container is a translucent fill; as text/hover it needs a solid tint */
+[data-theme="dark"] body .text-primary-container { color: #deb7ff; }
+[data-theme="dark"] body .hover\:text-primary-container:hover { color: #deb7ff; }
+
+/* ===== Tailwind white-glass cards (error pages) ===== */
+
+[data-theme="dark"] body .bg-white\/80 { background-color: rgba(31, 26, 42, 0.8); }
+
+/* ===== Flash message: bg-success-teal + text-on-surface combo ===== */
+
+[data-theme="dark"] body .bg-success-teal.text-on-surface {
+  background-color: var(--success-faint);
+  color: #4ade80;
+}
+
+/* ===== Component fixes (hardcoded light colors) ===== */
+
+[data-theme="dark"] .planning-main .session-select { background: var(--surface-card); }
+
+[data-theme="dark"] .auth-submit-btn {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+}
+
+/* .btn-* fallbacks (currently unused by templates) — keep white text readable */
+[data-theme="dark"] .btn-success { background: #15803d; }
+[data-theme="dark"] .btn-error { background: #dc2626; }
+[data-theme="dark"] .btn-warning { background: #b45309; }
+
+/* ===== Print: official documents always stay light ===== */
+
+@media print {
+  [data-theme="dark"] {
+    --page-bg: #ffffff !important;
+    --surface: #ffffff !important;
+    --surface-card: #ffffff !important;
+    --surface-hover: #ffffff !important;
+    --surface-zebra: #f1f4f9 !important;
+    --surface-glass: rgba(255, 255, 255, 0.85) !important;
+    --surface-glass-panel: rgba(255, 255, 255, 0.8) !important;
+    --text-primary: #000000 !important;
+    --text-secondary: #333333 !important;
+    --text-muted: #555555 !important;
+    --text-faint: #777777 !important;
+    --text-on-primary: #ffffff !important;
+    --border: #cccccc !important;
+    --border-accent: #cccccc !important;
+    --table-border: #dddddd !important;
+    --table-header: #f7f9ff !important;
+    --table-row-alt: #f1f4f9 !important;
+    --main-content-bg: #ffffff !important;
+    --topbar-bg: #ffffff !important;
+    --header-bg: #ffffff !important;
+    --sidebar-bg: #ffffff !important;
+  }
+  [data-theme="dark"] body { background: #ffffff !important; color: #000000 !important; }
+}

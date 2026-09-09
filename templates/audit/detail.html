@@ -1,0 +1,112 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'history' %}
+{% set page_title = 'تفاصيل السجل' %}
+
+{% set record = record | default(None) %}
+{% set action_labels = {'create': 'إضافة', 'update': 'تعديل', 'delete': 'حذف', 'restore': 'استعادة', 'assign': 'تخصيص', 'login': 'تسجيل دخول', 'logout': 'تسجيل خروج'} %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+
+  <!-- Page Header -->
+  <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <div class="flex items-center gap-3">
+      <span class="material-symbols-outlined text-primary text-3xl">visibility</span>
+      <div>
+        <h1 class="text-2xl font-bold text-on-surface">تفاصيل السجل</h1>
+        <p class="page-subtitle">عرض تفاصيل حدث من سجل التغييرات</p>
+      </div>
+    </div>
+    <a href="{{ url_for('history.history_list') }}"
+       class="flex items-center gap-2 bg-surface-container text-on-surface px-4 py-2 rounded-lg text-sm font-bold hover:bg-surface-container-highest transition shadow-sm">
+      <span class="material-symbols-outlined text-lg">arrow_back</span>
+      عودة للسجل
+    </a>
+  </div>
+
+  {% if record %}
+  <div class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
+    <div class="px-5 py-4 border-b border-primary/10 bg-primary/5 flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary">receipt_long</span>
+        <h2 class="font-bold text-on-surface">سجل #{{ record.id }}</h2>
+      </div>
+      <span class="inline-block px-2.5 py-1 rounded-full text-xs font-bold
+        {% if record.action == 'delete' %}bg-error/10 text-error
+        {% elif record.action == 'create' %}bg-success-teal/20 text-success-teal
+        {% elif record.action == 'restore' %}bg-primary/10 text-primary
+        {% else %}bg-surface-container text-on-surface-variant{% endif %}">
+        {{ action_labels.get(record.action, record.action) }}
+      </span>
+    </div>
+
+    <div class="p-5 space-y-6">
+      <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+        <div>
+          <dt class="text-xs font-bold text-on-surface-variant mb-1">العملية</dt>
+          <dd class="font-bold text-on-surface">{{ action_labels.get(record.action, record.action) }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-bold text-on-surface-variant mb-1">التاريخ</dt>
+          <dd class="text-on-surface" dir="ltr">{{ record.created_at }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-bold text-on-surface-variant mb-1">المستخدم</dt>
+          <dd class="flex items-center gap-1.5 font-bold text-on-surface">
+            <span class="material-symbols-outlined text-primary text-lg">person</span>{{ record.actor_username or '—' }}
+          </dd>
+        </div>
+        <div>
+          <dt class="text-xs font-bold text-on-surface-variant mb-1">معرف المستخدم</dt>
+          <dd class="text-on-surface">{{ record.actor_user_id or '—' }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-bold text-on-surface-variant mb-1">الكيان</dt>
+          <dd>
+            <span class="inline-block bg-primary/10 text-primary px-2 py-0.5 rounded-full text-xs font-bold">{{ record.entity_type }}</span>
+          </dd>
+        </div>
+        <div>
+          <dt class="text-xs font-bold text-on-surface-variant mb-1">معرف الكيان</dt>
+          <dd class="text-on-surface">{{ record.entity_id or '—' }}</dd>
+        </div>
+      </dl>
+
+      <div>
+        <dt class="text-xs font-bold text-on-surface-variant mb-1">الرسالة</dt>
+        <dd class="mt-1 rounded-lg bg-surface-container px-4 py-3 text-on-surface">{{ record.message or '—' }}</dd>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <dt class="text-xs font-bold text-on-surface-variant mb-1">القيمة القديمة</dt>
+          <dd class="mt-1 rounded-lg bg-surface-container px-4 py-3">
+            {% if record.old_value %}
+            <pre class="text-xs text-on-surface-variant whitespace-pre-wrap font-mono" dir="ltr">{{ record.old_value }}</pre>
+            {% else %}
+            <span class="text-xs text-on-surface-variant">—</span>
+            {% endif %}
+          </dd>
+        </div>
+        <div>
+          <dt class="text-xs font-bold text-on-surface-variant mb-1">القيمة الجديدة</dt>
+          <dd class="mt-1 rounded-lg bg-surface-container px-4 py-3">
+            {% if record.new_value %}
+            <pre class="text-xs text-on-surface-variant whitespace-pre-wrap font-mono" dir="ltr">{{ record.new_value }}</pre>
+            {% else %}
+            <span class="text-xs text-on-surface-variant">—</span>
+            {% endif %}
+          </dd>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="bg-white rounded-2xl shadow-sm border border-primary/10 py-16 text-center">
+    <span class="material-symbols-outlined block text-[40px] text-gray-300 mb-2">history</span>
+    <p class="text-gray-400">لم يتم العثور على السجل المطلوب</p>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

@@ -1,0 +1,94 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'dashboard.dashboard' %}
+{% set page_title = 'تقرير لوحة التحكم' %}
+
+{% block head_extra %}
+<style>
+  @media print {
+    html { direction: rtl; }
+    .sidebar, .app-header, .sidebar-overlay, .no-print { display: none !important; }
+    .sidebar-content { margin-right: 0 !important; }
+    .main-content { height: auto; overflow: visible; padding-top: 0; }
+    body { overflow: visible; background: white; }
+  }
+  .report-sheet { page-break-inside: avoid; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+
+  <div class="flex flex-wrap items-center justify-between gap-4 mb-6 no-print">
+    <div class="flex items-center gap-3">
+      <span class="material-symbols-outlined text-primary text-3xl">summarize</span>
+      <h1 class="text-2xl font-bold text-on-surface">تقرير لوحة التحكم</h1>
+      <p class="page-subtitle">طباعة تقرير شامل عن حالة النظام</p>
+    </div>
+    <button type="button" onclick="window.print()"
+            class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm">
+      <span class="material-symbols-outlined text-lg">print</span>
+      طباعة التقرير
+    </button>
+  </div>
+
+  <div class="bg-white rounded-2xl shadow-sm border border-outline-variant overflow-hidden report-sheet">
+    <!-- Report header -->
+    <div class="px-8 py-6 border-b-4 border-primary bg-surface-dim">
+      <div class="text-center">
+        <h2 class="text-xl font-bold text-primary mb-1">كلية التقنية الهندسية زوارة</h2>
+        <p class="text-on-surface-variant text-sm">تقرير لوحة التحكم الرئيسية</p>
+      </div>
+    </div>
+
+    <!-- Report meta -->
+    <div class="px-8 py-5 border-b border-outline-variant text-sm">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <span class="font-bold text-on-surface">المستخدم: </span>
+          <span class="text-on-surface-variant">{{ user.label or user.username }}</span>
+        </div>
+        <div>
+          <span class="font-bold text-on-surface">الصلاحية: </span>
+          <span class="text-on-surface-variant">{{ user.role or '—' }}</span>
+        </div>
+        <div>
+          <span class="font-bold text-on-surface">تاريخ التقرير: </span>
+          <span class="text-on-surface-variant" dir="ltr">{{ now().strftime('%Y-%m-%d %H:%M') }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Report sections -->
+    <div class="px-8 py-6 space-y-5">
+      <div class="rounded-xl border border-outline-variant p-5">
+        <h3 class="font-bold text-on-surface mb-2 flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary">overview</span>
+          نظرة عامة
+        </h3>
+        <p class="text-sm text-on-surface-variant leading-relaxed">
+          هذا التقرير يلخص حالة النظام من خلال لوحة التحكم الرئيسية. تعتمد البيانات المعروضة
+          على أحدث الإحصائيات المتوفرة في قاعدة البيانات عند لحظة إنشاء التقرير.
+        </p>
+      </div>
+
+      <div class="rounded-xl border border-outline-variant p-5">
+        <h3 class="font-bold text-on-surface mb-2 flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary">description</span>
+          تقارير النظام المتاحة
+        </h3>
+        <ul class="text-sm text-on-surface-variant space-y-1.5 list-disc pr-5">
+          <li>تقرير الجدول الدراسي العام (جدول المحاضرات لكل الأقسام).</li>
+          <li>تقرير سجل المقررات الدراسية.</li>
+          <li>تقرير لوحة التحكم (هذه الصفحة).</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Report footer -->
+    <div class="px-8 py-4 bg-surface-dim border-t border-outline-variant text-center text-xs text-on-surface-variant">
+      تم إنشاء التقرير بواسطة نظام الكلية — كلية التقنية الهندسية زوارة
+    </div>
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,438 @@
+{% set doc = doc | default({}) %}
+{% set doc_mode = doc_mode | default('view') %}
+{% set curriculum = curriculum | default([]) %}
+{% set locked = locked | default(false) %}
+{% set teacher_name = teacher_name | default('') %}
+{% set ro = doc_mode == 'readonly_form' %}
+{% set cc_rows = curriculum if curriculum else [{}] %}
+
+{% set study_type_map = {'theoretical': 'نظري', 'practical': 'عملي', 'both': 'نظري وعملي'} %}
+
+<style>
+  .cc-sheet { background: #fff; border: 1px solid var(--outline-variant, #cfc2d3); border-radius: 12px; overflow: hidden; page-break-inside: avoid; }
+  .cc-sheet table { width: 100%; border-collapse: collapse; }
+  .cc-sheet th, .cc-sheet td { border: 1px solid #cfc2d3; padding: 7px 10px; font-size: 13px; line-height: 1.6; }
+  .cc-sheet .dotted { border-bottom: 1px dotted #000; display: inline-block; min-width: 110px; }
+  .cc-sheet input[type="text"], .cc-sheet input[type="number"], .cc-sheet select, .cc-sheet textarea {
+    width: 100%; background: #f7f9ff; border: 1px solid #cfc2d3; border-radius: 6px;
+    padding: 6px 8px; font-size: 13px; font-weight: 700; color: #181c20; font-family: 'Hanken Grotesk', 'Tajawal', sans-serif;
+  }
+  .cc-sheet textarea { resize: vertical; }
+  .cc-sheet input[readonly], .cc-sheet input:disabled, .cc-sheet select:disabled {
+    background: #e5e8ee; color: #4c4452; cursor: not-allowed;
+  }
+  .cc-sheet .cc-cell-label { background: #ebeef3; font-weight: 800; }
+  /* print-only helper: hide on screen, show when printing */
+  .print-only { display: none; }
+  @media print {
+    .print-only { display: block; }
+  }
+  /* weeks total warning style */
+  .weeks-warning { color: #b91c1c; font-weight: 800; transform: translateX(-6px); display: inline-block; transition: transform .12s ease, color .12s ease; }
+  /* Phone fit — wide sheet tables scroll horizontally instead of crushing */
+  @media (max-width: 768px) {
+    .cc-sheet section { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .cc-sheet table.cc-wide-table { min-width: 640px; }
+  }
+  @media print {
+    .cc-sheet { box-shadow: none; border-radius: 0; overflow: visible !important; page-break-inside: auto !important; break-inside: auto !important; }
+    .cc-sheet input[type="text"], .cc-sheet input[type="number"], .cc-sheet select, .cc-sheet textarea {
+      border: none; background: transparent; padding: 0; font-size: inherit; color: #000;
+    }
+    .cc-sheet th, .cc-sheet td { border-color: #000; }
+  }
+</style>
+
+<div class="cc-sheet">
+  <!-- Official header -->
+  <header class="text-center border-b-2 border-black pb-4 px-6 pt-6" style="border-bottom:2px solid #000;">
+    <h1 class="text-xl font-bold mb-1 text-black">كلية التقنية الهندسية - زوارة</h1>
+    <h2 class="text-base text-black">مكتب الشؤون العلمية - قسم البحث والتطوير والمناهج</h2>
+    <h3 class="text-sm mt-1 text-black">Course Description Sheet / وصف المقرر الدراسي</h3>
+  </header>
+
+  <!-- Identity rows -->
+  <div class="px-6 py-5 text-sm text-black space-y-3">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="flex items-center gap-2">
+        <span class="font-bold whitespace-nowrap">اسم المقرر:</span>
+        {% if doc_mode == 'edit' and not locked %}
+        <input type="text" name="course_name" value="{{ doc.course_name or '' }}" class="dotted flex-1">
+        {% else %}
+        <span class="dotted flex-1">{{ doc.course_name or '' }}</span>
+        {% endif %}
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="font-bold whitespace-nowrap">القسم:</span>
+        <span class="dotted flex-1">{{ doc.department_name or doc.dept_name or '' }}</span>
+      </div>
+      {% if doc_mode == 'view' %}
+      <div class="flex items-center gap-2" dir="ltr">
+        <span class="font-bold whitespace-nowrap" dir="rtl">Course Name:</span>
+        <span class="dotted flex-1">{{ doc.course_name_en or doc.course_name or '' }}</span>
+      </div>
+      <div class="flex items-center gap-2" dir="ltr">
+        <span class="font-bold whitespace-nowrap" dir="rtl">Department:</span>
+        <span class="dotted flex-1">{{ doc.department_name_en or doc.department_name or doc.dept_name or '' }}</span>
+      </div>
+      {% endif %}
+      <div class="flex items-center gap-2">
+        <span class="font-bold whitespace-nowrap">الشعبة:</span>
+        {% if doc_mode == 'edit' or ro %}
+        <input type="text" name="section_id" value="{{ doc.section_id or '' }}" class="dotted flex-1" {% if locked or ro %}disabled{% endif %}>
+        {% else %}
+        <span class="dotted flex-1">{{ doc.section_id or '' }}</span>
+        {% endif %}
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="font-bold whitespace-nowrap">نوع الدراسة:</span>
+        {% if doc_mode == 'edit' or ro %}
+        <select name="study_type" class="dotted flex-1" {% if ro %}disabled{% endif %}>
+          <option value="">— اختر —</option>
+          <option value="theoretical" {{ 'selected' if doc.study_type == 'theoretical' }}>الجانب النظري فقط</option>
+          <option value="practical" {{ 'selected' if doc.study_type == 'practical' }}>الجانب العملي فقط</option>
+          <option value="both" {{ 'selected' if doc.study_type == 'both' }}>الجانب النظري والعملي</option>
+        </select>
+        {% else %}
+        <span class="dotted flex-1">{{ study_type_map.get(doc.study_type, doc.study_type or '—') }}</span>
+        {% if doc_mode != 'edit' and doc.study_type_en %}<span class="dotted flex-1 block mt-1" dir="ltr">{{ doc.study_type_en }}</span>{% endif %}
+        {% endif %}
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <span class="font-bold whitespace-nowrap">اسم عضو هيئة التدريس:</span>
+      <span class="dotted flex-1">{{ teacher_name or doc.teacher_name or '' }}</span>
+    </div>
+  </div>
+
+  <!-- Core course info table -->
+  <section class="px-6 pb-1">
+    <table>
+      <tbody>
+        <tr>
+          <td class="w-1/4 cc-cell-label text-right">اسم المقرر</td>
+          <td class="w-1/4 text-center text-black">
+            {% if doc_mode == 'edit' or ro %}
+            <input type="text" name="course_name" value="{{ doc.course_name or '' }}" placeholder="اسم المقرر" {% if ro %}disabled{% endif %}>
+            {% else %}
+            <span class="font-bold">{{ doc.course_name or '' }}</span>
+            {% endif %}
+          </td>
+          <td class="w-1/4 text-center text-black">
+            {% if doc_mode == 'edit' or ro %}
+            <input type="text" name="course_name_en" dir="ltr" value="{{ doc.course_name_en or doc.course_name or '' }}" placeholder="Course Name" {% if ro %}disabled{% endif %}>
+            {% else %}
+            <span class="font-bold" dir="ltr">{{ doc.course_name_en or doc.course_name or '' }}</span>
+            {% endif %}
+          </td>
+          <td class="w-1/4 cc-cell-label">{% if doc_mode == 'edit' or ro %}course name{% else %}Course Name{% endif %}</td>
+        </tr>
+        <tr>
+          <td class="cc-cell-label text-right">رمز المقرر</td>
+          <td class="text-center text-black">
+            <span dir="ltr">{{ doc.course_code_en or doc.course_code or '' }}</span>
+          </td>
+          <td class="text-center text-black font-bold" dir="ltr">
+            
+            <input type="text" name="course_code" dir="ltr" value="" {% if ro %}disabled{% endif %}>
+            
+          </td>
+          <td class="cc-cell-label">Course Code</td>
+        </tr>
+        <tr>
+          <td class="cc-cell-label text-right">عدد الوحدات</td>
+          <td class="text-center text-black">
+            {% if doc_mode == 'edit' or ro %}
+            <input type="number" data-mirror="credits" class="mirror-input" min="0" value="{{ doc.credits or 0 }}" readonly {% if ro %}disabled{% endif %}>
+            {% else %}
+            <span class="font-bold">{{ doc.credits or 0 }}</span>
+            {% endif %}
+          </td>
+          <td class="text-center text-black">
+            {% if doc_mode == 'edit' or ro %}
+            <input type="number" name="credits" min="0" value="{{ doc.credits or 0 }}" {% if ro %}disabled{% endif %}>
+            {% else %}
+            <span class="font-bold">{{ doc.credits or 0 }}</span>
+            {% endif %}
+          </td>
+          <td class="cc-cell-label">Credits</td>
+        </tr>
+        <tr>
+          <td class="cc-cell-label text-right">الفصل الدراسي</td>
+          <td class="text-center text-black">
+            {% if doc_mode == 'edit' or ro %}
+            <select name="semester" {% if ro %}disabled{% endif %}>
+              <option value="">— اختر —</option>
+              {% for n in range(1, 9) %}
+              <option value="{{ n }}" {{ 'selected' if doc.semester | string == n | string }}>الفصل {{ n }}</option>
+              {% endfor %}
+            </select>
+            {% else %}
+            <span class="font-bold">{{ semester_label(doc.semester) or doc.semester or '—' }}</span>
+            {% endif %}
+          </td>
+          <td class="text-center text-black">
+            {% if doc_mode == 'edit' or ro %}
+            <select data-mirror="semester" class="mirror-input" dir="ltr" disabled>
+              <option value="">— اختر —</option>
+              {% for n in range(1, 9) %}
+              <option value="{{ n }}" {{ 'selected' if doc.semester | string == n | string }}>Semester {{ n }}</option>
+              {% endfor %}
+            </select>
+            {% else %}
+            {{ semester_label(doc.semester) or doc.semester or '—' }}
+            {% endif %}
+          </td>
+          <td class="cc-cell-label">Semester</td>
+        </tr>
+      </tbody>
+      {% if doc_mode == 'edit' %}
+      {% endif %}
+    </table>
+  </section>
+
+  <!-- Weekly hours -->
+  <section class="px-6 py-1">
+    <table>
+      <thead>
+        <tr class="cc-cell-label">
+          <th style="width:110px">عدد الساعات الأسبوعية</th>
+          <th>النظري<br>Theory</th>
+          <th>العملي<br>Practical</th>
+          <th>الإجمالي<br>Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="cc-cell-label text-center font-bold">No. Of hours / week</td>
+          <td class="text-center">
+            {% if doc_mode == 'edit' or ro %}
+            <input type="number" name="theory_hours" min="0" value="{{ doc.theory_hours or 0 }}" {% if ro %}disabled{% endif %}>
+            {% else %}
+            <span class="font-bold">{{ doc.theory_hours or 0 }}</span>
+            {% endif %}
+          </td>
+          <td class="text-center">
+            {% if doc_mode == 'edit' or ro %}
+            <input type="number" name="practical_hours" min="0" value="{{ doc.practical_hours or 0 }}" {% if ro %}disabled{% endif %}>
+            {% else %}
+            <span class="font-bold">{{ doc.practical_hours or 0 }}</span>
+            {% endif %}
+          </td>
+          <td class="text-center">
+            {% if doc_mode == 'edit' or ro %}
+            <input type="number" name="total_hours" min="0" value="{{ doc.total_hours or 0 }}" {% if ro %}disabled{% endif %}>
+            {% else %}
+            <span class="font-bold">{{ doc.total_hours or 0 }}</span>
+            {% endif %}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Objectives / prerequisites / textbooks -->
+  <section class="px-6 py-1">
+    <table>
+      <tbody>
+        <tr>
+          <td class="w-1/6 cc-cell-label text-right align-top">الهدف من المقرر</td>
+          <td class="w-1/3 align-top">
+            {% if doc_mode == 'edit' or ro %}
+            <textarea name="course_objective" rows="3" {% if ro %}disabled{% endif %}>{{ doc.course_objective or '' }}</textarea>
+            {% else %}
+            <p class="whitespace-pre-line min-h-[48px]">{{ doc.course_objective or '' }}</p>
+            {% endif %}
+          </td>
+          {% if doc_mode == 'edit' or ro %}
+          <td class="w-1/3 align-top">
+            <textarea name="course_objective_en" rows="3" dir="ltr" placeholder="Course Objective (English)" {% if ro %}disabled{% endif %}>{{ doc.course_objective_en or '' }}</textarea>
+          </td>
+          <td class="w-1/6 cc-cell-label align-top">Course Objective</td>
+          {% else %}
+          <td class="w-1/4 align-top" dir="ltr">
+            <p class="whitespace-pre-line min-h-[48px] border-l border-slate-200 pl-3">{{ doc.course_objective_en or doc.course_objective or '' }}</p>
+          </td>
+          <td class="w-1/4 cc-cell-label align-top">Course Objective</td>
+          {% endif %}
+        </tr>
+        <tr>
+          <td class="w-1/6 cc-cell-label text-right align-top">المقررات التي تعتمد عليها</td>
+          <td class="w-1/3 align-top">
+            {% if doc_mode == 'edit' or ro %}
+            <textarea name="prerequisites" rows="2" {% if ro %}disabled{% endif %}>{{ doc.prerequisites or '' }}</textarea>
+            {% else %}
+            <p class="whitespace-pre-line">{{ doc.prerequisites or '' }}</p>
+            {% endif %}
+          </td>
+          {% if doc_mode == 'edit' or ro %}
+          <td class="w-1/3 align-top">
+            <textarea name="prerequisites_en" rows="2" dir="ltr" placeholder="Prerequisites (English)" {% if ro %}disabled{% endif %}>{{ doc.prerequisites_en or '' }}</textarea>
+          </td>
+          <td class="w-1/6 cc-cell-label align-top">Prerequisites</td>
+          {% else %}
+          <td class="w-1/4 align-top" dir="ltr">
+            <p class="whitespace-pre-line border-l border-slate-200 pl-3">{{ doc.prerequisites_en or doc.prerequisites or '' }}</p>
+          </td>
+          <td class="w-1/4 cc-cell-label">Prerequisites</td>
+          {% endif %}
+        </tr>
+        <tr>
+          <td class="w-1/6 cc-cell-label text-right align-top">الكتاب المرجعي (أو أكثر)</td>
+          <td class="w-1/3 align-top">
+            {% if doc_mode == 'edit' or ro %}
+            <textarea name="textbooks" rows="2" {% if ro %}disabled{% endif %}>{{ doc.textbooks or '' }}</textarea>
+            {% else %}
+            <p class="whitespace-pre-line">{{ doc.textbooks or '' }}</p>
+            {% endif %}
+          </td>
+          {% if doc_mode == 'edit' or ro %}
+          <td class="w-1/3 align-top">
+            <textarea name="textbooks_en" rows="2" dir="ltr" placeholder="Text Book (English)" {% if ro %}disabled{% endif %}>{{ doc.textbooks_en or '' }}</textarea>
+          </td>
+          <td class="w-1/6 cc-cell-label align-top">Text Book (Books)</td>
+          {% else %}
+          <td class="w-1/4 align-top" dir="ltr">
+            <p class="whitespace-pre-line border-l border-slate-200 pl-3">{{ doc.textbooks_en or doc.textbooks or '' }}</p>
+          </td>
+          <td class="w-1/4 cc-cell-label">Text Book (Books)</td>
+          {% endif %}
+        </tr>
+        <tr>
+          <td class="w-1/6 cc-cell-label text-right align-top">ملاحظات</td>
+          <td class="w-1/3 align-top">
+            {% if doc_mode == 'edit' or ro %}
+            <textarea name="notes" rows="2" {% if ro %}disabled{% endif %}>{{ doc.notes or '' }}</textarea>
+            {% else %}
+            <p class="whitespace-pre-line">{{ doc.notes or '' }}</p>
+            {% endif %}
+          </td>
+          {% if doc_mode == 'edit' or ro %}
+          <td class="w-1/3 align-top">
+            <textarea name="notes_en" rows="2" dir="ltr" placeholder="Notes (English)" {% if ro %}disabled{% endif %}>{{ doc.notes_en or '' }}</textarea>
+          </td>
+          <td class="w-1/6 cc-cell-label align-top">Notes</td>
+          {% else %}
+          <td class="w-1/4 align-top" dir="ltr">
+            <p class="whitespace-pre-line">{{ doc.notes_en or doc.notes or '' }}</p>
+          </td>
+          <td class="w-1/4 cc-cell-label">Notes</td>
+          {% endif %}
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Curriculum -->
+  <section class="px-6 py-1">
+    <table class="cc-wide-table">
+      <thead>
+        <tr class="cc-cell-label">
+          {% if doc_mode == 'edit' or ro %}
+                    <th style="width:5%">#</th>
+
+          <th style="width:20%">الموضوع (عربي)</th>
+          <th style="width:20%">المحتوى (عربي)</th>
+          <th style="width:8%">الأسابيع<br>Weeks</th>
+          <th style="width:20%">Topic (EN)</th>
+          <th style="width:20%">Content (EN)</th>
+          <th style="width:40px"></th>
+          {% else %}
+          <th style="width:25%">الموضوع (عربي)<br>Topic (AR)</th>
+          <th style="width:25%">Topic (EN)</th>
+          <th style="width:10%">الأسابيع<br>Weeks</th>
+          <th style="width:20%">المحتوى (عربي)<br>Content (AR)</th>
+          <th style="width:20%">Content (EN)</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody id="ccCurriculumBody">
+        {% if doc_mode == 'edit' or ro %}
+          {% set rows = cc_rows %}
+          {% for r in rows %}
+          <tr>
+            <td class="align-top text-center font-bold text-black">{{ loop.index }}</td>
+
+            <td class="align-top">
+              <input type="text" name="curriculum_topic[]" value="{{ r.topic or '' }}" placeholder="الموضوع" {% if ro %}disabled{% endif %}>
+            </td>
+            <td class="align-top">
+              <input type="text" name="curriculum_content[]" value="{{ r.content or '' }}" placeholder="المحتوى" {% if ro %}disabled{% endif %}>
+            </td>
+            <td class="align-top">
+              <input type="number" name="curriculum_weeks[]" min="1" value="{{ r.weeks or 1 }}" {% if ro %}disabled{% endif %}>
+            </td>
+            <td class="align-top">
+              <input type="text" name="curriculum_topic_en[]" value="{{ r.topic_en or '' }}" dir="ltr" placeholder="Topic (EN)" {% if ro %}disabled{% endif %}>
+            </td>
+            <td class="align-top">
+              <input type="text" name="curriculum_content_en[]" value="{{ r.content_en or '' }}" dir="ltr" placeholder="Content (EN)" {% if ro %}disabled{% endif %}>
+            </td>
+            <td class="align-top text-center">
+              <button type="button" class="cc-curriculum-remove material-symbols-outlined text-red-500 hover:text-red-600 bg-transparent border-0 cursor-pointer no-print" title="حذف" {% if ro %}disabled{% endif %}>delete</button>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          {% set filled = curriculum | selectattr('topic') | list %}
+          {% if filled %}
+            {% for r in curriculum %}
+            {% if r.topic %}
+            <tr>
+              <td class="align-top text-right font-bold text-black">{{ r.topic }}</td>
+              <td class="align-top text-left font-bold text-black" dir="ltr">{{ r.topic_en or r.topic or '—' }}</td>
+              <td class="align-top text-center text-black">{{ r.weeks or '—' }}</td>
+              <td class="align-top text-right text-black whitespace-pre-line">{{ r.content or '—' }}</td>
+              <td class="align-top text-left text-black whitespace-pre-line" dir="ltr">{{ r.content_en or r.content or '—' }}</td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="5" class="text-center text-slate-500">لا يوجد منهاج مرفق بعد.</td></tr>
+          {% endif %}
+        {% endif %}
+      </tbody>
+    </table>
+    {% if doc_mode == 'edit' or ro %}
+    <div class="pt-2 pb-1 flex items-center gap-3 no-print">
+      <button type="button" id="ccAddCurriculumRow" {% if ro %}disabled{% endif %}
+              class="flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 text-primary px-3 py-2 rounded-lg text-xs font-bold transition cursor-pointer">
+        <span class="material-symbols-outlined text-base">add</span>
+        إضافة صف
+      </button>
+      <label class="text-sm flex items-center gap-2">
+        <input id="ccAutoAddToggle" type="checkbox" {% if ro %}disabled{% endif %}>
+        إضافة صف تلقائياً عند الوصول للنهاية
+      </label>
+      <div class="ml-auto text-sm text-on-surface-variant" aria-label="إجمالي الأسابيع">
+        <span class="text-xs">إجمالي الأسابيع</span>
+        <strong id="ccWeeksTotalInline" class="mr-2 text-base">{% if ro %}{% set _ws = namespace(v=0, n=0) %}{% for _r in cc_rows %}{% set _ws.v = _ws.v + (_r.weeks or (1 if not curriculum else 0)) %}{% set _ws.n = _ws.n + 1 %}{% endfor %}{% if _ws.n == 0 %}1{% else %}{{ _ws.v }}{% endif %}{% else %}0{% endif %}</strong>
+      </div>
+    </div>
+    {% endif %}
+  </section>
+
+  <!-- Signatures (print only) -->
+  <div class="px-6 py-6 mt-2 print-only">
+    <div class="grid grid-cols-2 gap-10 px-6">
+      <div class="text-center">
+        <p class="font-bold mb-8 text-black">أستاذ المادة</p>
+        <div class="border-b border-black w-full mb-2"></div>
+        <p class="text-sm text-slate-500">التوقيع</p>
+      </div>
+      <div class="text-center">
+        <p class="font-bold mb-8 text-black">رئيس القسم العلمي</p>
+        <div class="border-b border-black w-full mb-2"></div>
+        <p class="text-sm text-slate-500">التوقيع والختم</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="px-6 py-3 bg-slate-50 border-t border-slate-200 text-center text-xs text-slate-500">
+    كلية التقنية الهندسية زوارة — نظام إدارة المناهج والجداول
+  </div>
+</div>
+
+{% if doc_mode == 'edit' %}
+<script src="{{ url_for('static', filename='js/pages/teachers__course_content_doc.js') }}"></script>
+{% endif %}

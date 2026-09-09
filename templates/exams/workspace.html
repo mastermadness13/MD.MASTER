@@ -1,0 +1,227 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'exams.exams' %}
+{% set page_title = 'إدارة الامتحانات' %}
+
+{% block head_extra %}
+{% set print_orientation = 'A4 landscape' %}
+{% set print_margin = '10mm' %}
+{% include 'print/_embedded_styles.html' %}
+<style>
+  /* ── Exam matrix (design: days × semesters grid) ── */
+  .matrix-grid {
+    display: grid;
+    grid-template-columns: 120px repeat(var(--matrix-cols, 6), minmax(150px, 1fr));
+    border-top: 1px solid var(--color-outline-variant, #cfc2d3);
+    border-right: 1px solid var(--color-outline-variant, #cfc2d3);
+    background-color: #ffffff;
+  }
+  .matrix-header {
+    background-color: var(--color-surface-container-low, #f1f4f9);
+    font-weight: 700;
+    text-align: center;
+    padding: 12px 8px;
+    border-bottom: 2px solid var(--color-outline-variant, #cfc2d3);
+    border-left: 1px solid var(--color-outline-variant, #cfc2d3);
+    color: var(--color-on-surface, #181c20);
+    font-size: 15px;
+  }
+  .matrix-header.day-col { border-bottom-color: var(--color-primary, #320058); }
+  .matrix-cell {
+    padding: 6px;
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border-bottom: 1px solid var(--color-outline-variant, #cfc2d3);
+    border-left: 1px solid var(--color-outline-variant, #cfc2d3);
+    background-color: #ffffff;
+    transition: background-color .2s;
+  }
+  .matrix-cell:hover { background-color: var(--color-surface-container-low, #f1f4f9); }
+  .matrix-row-header {
+    background-color: var(--color-surface-container-low, #f1f4f9);
+    font-weight: 700;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    border-bottom: 1px solid var(--color-outline-variant, #cfc2d3);
+    border-left: 1px solid var(--color-outline-variant, #cfc2d3);
+    text-align: center;
+  }
+  .matrix-date-chip {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--color-on-surface-variant, #4c4452);
+    background-color: var(--color-surface-container, #ebeef3);
+    padding: 2px 8px;
+    border-radius: 6px;
+    margin-top: 4px;
+  }
+  /* exam card inside a cell */
+  .mx-card {
+    background: #fff;
+    border: 1px solid var(--color-outline-variant, #cfc2d3);
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 13px;
+    position: relative;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 1px 2px rgba(0,0,0,.05);
+    cursor: pointer;
+    transition: box-shadow .2s;
+  }
+  .mx-card:hover { box-shadow: 0 3px 8px rgba(0,0,0,.12); }
+  .mx-add {
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    border: 1px dashed var(--color-outline-variant, #cfc2d3);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-on-surface-variant, #4c4452);
+    transition: opacity .2s;
+  }
+  .matrix-cell:hover .mx-add { opacity: 1; }
+  .mx-add:hover { color: var(--color-primary, #320058); border-color: var(--color-primary, #320058); }
+  @media print {
+    .mx-add { display: none !important; }
+  }
+  .matrix-container::-webkit-scrollbar { height: 8px; width: 8px; }
+  .matrix-container::-webkit-scrollbar-track { background: var(--color-surface-container-low, #f1f4f9); border-radius: 4px; }
+  .matrix-container::-webkit-scrollbar-thumb { background: var(--color-outline-variant, #cfc2d3); border-radius: 4px; }
+
+  /* ── Inline print: compact full-width sheets that never split ── */
+  @media print {
+    #exam-print-area .a4-document {
+      padding: 6mm 10mm !important;
+      margin: 0 auto 6mm !important;
+      border: none !important;
+      box-shadow: none !important;
+      min-height: 0 !important;
+      page-break-after: always !important;
+      break-after: page !important;
+    }
+    #exam-print-area .a4-document:last-child {
+      page-break-after: auto !important;
+      break-after: auto !important;
+      margin-bottom: 0 !important;
+    }
+    #exam-print-area .exam-grid {
+      width: 100% !important;
+      table-layout: fixed !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
+    #exam-print-area .exam-grid th,
+    #exam-print-area .exam-grid td {
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+      overflow-wrap: break-word !important;
+      word-break: break-word !important;
+    }
+    #exam-print-area .exam-grid tr:nth-child(even) td {
+      background: transparent !important;
+    }
+    #exam-print-area .exam-grid tr:nth-child(even) td.exam-cell-written {
+      background: #e8f5e9 !important;
+      color: #1b5e20 !important;
+    }
+    #exam-print-area .exam-grid tr:nth-child(even) td.exam-cell-practical {
+      background: #e3f2fd !important;
+      color: #0d47a1 !important;
+    }
+    #exam-print-area .exam-badge-written,
+    #exam-print-area .exam-badge-practical,
+    #exam-print-area .exam-cell-written,
+    #exam-print-area .exam-cell-practical {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-[1400px] mx-auto print-hidden" id="exams-workspace" data-role="{{ role }}"
+     data-year="{{ period_year or '' }}" data-season="{{ season_word or '' }}">
+
+  <!-- Workspace header -->
+  <div class="mb-4">
+    {% if period_year or season_word %}
+    <span class="inline-block text-body-md font-bold text-primary bg-primary-fixed px-4 py-1 rounded-lg mb-3">
+      العام الدراسي {{ period_year }}{% if season_word %} / الفصل {{ season_word }}{% endif %}
+    </span>
+    {% endif %}
+    {% if role in ('exam', 'super_admin') %}
+    <div id="exam-period-editor"
+         class="flex flex-wrap items-center gap-2 mb-3 bg-primary-fixed/40 border border-outline-variant rounded-xl px-4 py-3 w-fit">
+      <span class="material-symbols-outlined text-[18px] text-primary">event</span>
+      <span class="font-bold text-body-md text-on-surface">فترة الامتحانات:</span>
+      <input type="date" id="period-start"
+             class="bg-surface border border-outline-variant rounded-lg px-3 py-1.5 text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+      <span class="text-on-surface-variant">—</span>
+      <input type="date" id="period-end"
+             class="bg-surface border border-outline-variant rounded-lg px-3 py-1.5 text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+      <button type="button" id="period-save"
+              class="flex items-center gap-1.5 bg-primary text-on-primary px-4 py-1.5 rounded-lg font-bold hover:bg-primary-container transition-colors shadow-sm">
+        <span class="material-symbols-outlined text-[18px]">save</span>
+        حفظ
+      </button>
+      <span id="period-hint" class="text-xs text-on-surface-variant"></span>
+    </div>
+    {% endif %}
+    <div class="flex flex-wrap justify-between items-start gap-3">
+      <div>
+        <h2 id="exam-matrix-title" class="text-headline-md font-bold text-primary mb-1">جدول الامتحانات</h2>
+        <p class="text-body-md text-on-surface-variant">إدارة وتنسيق الجداول الزمنية للاختبارات النهائية.</p>
+      </div>
+      <div class="flex gap-2 no-print">
+        <button type="button" id="ws-csv"
+                class="flex items-center gap-2 border border-outline text-on-surface px-4 py-2 rounded-lg font-bold hover:bg-surface-container-low transition-colors bg-surface-container-lowest">
+          <span class="material-symbols-outlined text-[20px]">download</span>
+          تصدير CSV
+        </button>
+        <button type="button" id="ws-print"
+                class="flex items-center gap-2 bg-primary text-on-primary px-4 py-2 rounded-lg font-bold hover:bg-primary-container transition-colors shadow-sm">
+          <span class="material-symbols-outlined text-[20px]">print</span>
+          طباعة
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Context switchers: departments + weeks -->
+  <div id="exam-switchers"
+       class="hidden flex-col md:flex-row justify-between gap-4 bg-surface-container-lowest p-4 rounded-xl border border-outline-variant mb-6 no-print">
+    <div id="exam-dept-tabs" class="flex gap-2 overflow-x-auto pb-1"></div>
+    <div id="exam-week-tabs"
+         class="flex gap-1 items-center bg-surface-container-low p-1.5 rounded-lg w-fit border border-outline-variant/50"></div>
+  </div>
+
+  <!-- The matrix -->
+  <div id="panel-schedule">
+    <div class="bg-surface-container-lowest rounded-xl p-lg ambient-shadow border border-outline-variant py-16 text-center">
+      <span class="material-symbols-outlined block text-[40px] text-gray-300 mb-2">schedule</span>
+      <p class="text-on-surface-variant">جارٍ تحميل الجدول…</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="print-only" id="exam-print-area"></div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/exams/api.js') }}"></script>
+<script src="{{ url_for('static', filename='js/exams/schedule.js') }}"></script>
+<script src="{{ url_for('static', filename='js/exams/workspace.js') }}"></script>
+{% endblock %}

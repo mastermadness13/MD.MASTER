@@ -1,0 +1,126 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge-success {
+  background: var(--success-faint);
+  color: var(--success-text);
+}
+
+.badge-error {
+  background: var(--error-faint);
+  color: var(--error-text);
+}
+
+.badge-warning {
+  background: var(--warning-faint);
+  color: var(--warning-text);
+}
+
+.badge-info {
+  background: var(--info-faint);
+  color: var(--info);
+}
+
+.badge-neutral {
+  background: var(--sidebar-hover-bg);
+  color: var(--text-secondary);
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1.5px solid var(--border);
+  background: var(--surface-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.filter-chip:hover {
+  background: var(--primary-faint);
+  border-color: var(--text-muted);
+}
+
+.filter-chip.active {
+  background: var(--primary-deep);
+  color: var(--text-on-primary);
+  border-color: var(--primary-deep);
+}
+
+.filter-chip.active:hover {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.filter-chip .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-left: 6px;
+}
+
+.day-chip {
+  min-width: 36px;
+  text-align: center;
+  background-color: transparent;
+  color: var(--text-on-primary);
+  border: none;
+  border-radius: var(--radius-full);
+  padding: 4px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  opacity: 0.7;
+  margin: 0;
+}
+
+.day-chip:hover {
+  opacity: 1;
+  background-color: rgba(255,255,255,0.2);
+}
+
+.day-chip.active {
+  opacity: 1;
+  background-color: var(--text-on-primary);
+  color: var(--primary-dark);
+}
+
+.daystochose {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  background-color: var(--primary-dark);
+  border-radius: var(--radius-full);
+  padding: 6px 16px;
+}
+
+.role-card.active {
+  border-color: var(--primary);
+  background-color: var(--primary-glow);
+}
+
+.role-card.active .check-icon {
+  display: block;
+}
+
+.facility-card-selected {
+  border-color: var(--primary-dark);
+  background-color: var(--primary-container);
+}
+

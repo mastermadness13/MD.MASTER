@@ -1,0 +1,159 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'upload' %}
+{% set page_title = 'المواد الدراسية' %}
+{% set materials = materials | default([]) %}
+{% set departments = departments | default([]) %}
+{% set form_error = form_error | default('') %}
+{% set file_types = {'syllabus': 'منهاج', 'notes': 'ملاحظات', 'exams': 'امتحانات', 'lecture': 'محاضرة', 'books': 'كتب', 'other': 'أخرى'} %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+
+  <!-- Page Header -->
+  <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <div class="flex items-center gap-3">
+      <span class="material-symbols-outlined text-primary text-3xl">upload_file</span>
+      <div>
+        <h1 class="text-2xl font-bold text-on-surface">المواد الدراسية</h1>
+        <p class="page-subtitle">مرفوعاتي وملفاتي الدراسية</p>
+      </div>
+    </div>
+  </div>
+
+  {% if form_error %}
+  <div class="mb-4 p-3.5 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm font-bold flex items-center gap-2">
+    <span class="material-symbols-outlined text-lg">error</span>
+    {{ form_error }}
+  </div>
+  {% endif %}
+
+  <!-- Upload Form -->
+  <div class="bg-white rounded-2xl shadow-sm border border-primary/10 p-5 mb-6">
+    <h2 class="font-bold text-primary flex items-center gap-2 mb-4">
+      <span class="material-symbols-outlined">add_circle</span>
+      رفع ملف جديد
+    </h2>
+    <form method="POST" action="{{ url_for('teacher_pages.teacher_upload') }}" enctype="multipart/form-data">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="md:col-span-2">
+          <label class="block text-xs font-bold text-on-surface-variant mb-1.5">عنوان الملف *</label>
+          <input type="text" name="title" required
+                 class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-on-surface-variant mb-1.5">النوع</label>
+          <select name="file_type"
+                  class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+            <option value="syllabus">منهاج</option>
+            <option value="notes">ملاحظات</option>
+            <option value="exams">امتحانات</option>
+            <option value="lecture">محاضرة</option>
+            <option value="books">كتب</option>
+            <option value="other">أخرى</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-on-surface-variant mb-1.5">الوصف</label>
+          <input type="text" name="description"
+                 class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+        </div>
+        <div class="md:col-span-2">
+          <label class="block text-xs font-bold text-on-surface-variant mb-1.5">الملف *</label>
+          <input type="file" name="file" required
+                 class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+          <p class="text-xs text-on-surface-variant mt-1.5 flex items-center gap-1">
+            <span class="material-symbols-outlined text-sm">info</span>
+            الحد الأقصى لحجم الملف: {{ max_upload_mb | default(16) }} ميجابايت
+          </p>
+          <p id="upload-size-error" class="hidden mt-1.5 text-xs font-bold text-red-700 flex items-center gap-1">
+            <span class="material-symbols-outlined text-sm">error</span>
+            حجم الملف أكبر من الحد المسموح ({{ max_upload_mb | default(16) }} ميجابايت)
+          </p>
+        </div>
+      </div>
+      <button type="submit"
+              class="mt-5 flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-5 py-2.5 rounded-lg text-sm font-bold transition shadow-sm">
+        <span class="material-symbols-outlined text-lg">upload</span>
+        رفع الملف
+      </button>
+    </form>
+  </div>
+
+  <!-- Materials List -->
+  <div class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
+    <div class="p-4 border-b border-primary/10 bg-surface-dim flex items-center justify-between">
+      <h2 class="font-bold text-primary flex items-center gap-2">
+        <span class="material-symbols-outlined">folder</span>
+        مرفوعاتي
+      </h2>
+      <span class="text-xs font-bold text-on-surface-variant">{{ materials | length }} ملف</span>
+    </div>
+    {% if materials %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-right border-collapse text-sm">
+        <thead>
+          <tr class="bg-surface-dim font-label-md text-label-md text-on-surface-variant">
+            <th class="px-4 py-3 border-b border-outline-variant font-bold">العنوان</th>
+            <th class="px-4 py-3 border-b border-outline-variant font-bold">النوع</th>
+            <th class="px-4 py-3 border-b border-outline-variant font-bold">الوصف</th>
+            <th class="px-4 py-3 border-b border-outline-variant font-bold">الحجم</th>
+            <th class="px-4 py-3 border-b border-outline-variant font-bold">تاريخ الرفع</th>
+            <th class="px-4 py-3 border-b border-outline-variant font-bold text-center w-24">الإجراءات</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in materials %}
+          <tr class="hover:bg-primary/5 transition-colors border-b border-outline-variant last:border-b-0">
+            <td class="px-4 py-3">
+              <div class="flex items-center gap-2.5">
+                <span class="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                  <span class="material-symbols-outlined text-lg">description</span>
+                </span>
+                <p class="font-bold text-on-surface">{{ m.title }}</p>
+              </div>
+            </td>
+            <td class="px-4 py-3">
+              <span class="inline-block px-2.5 py-1 rounded-full text-xs font-bold bg-primary/10 text-primary">
+                {{ file_types.get(m.file_type, m.file_type or 'أخرى') }}
+              </span>
+            </td>
+            <td class="px-4 py-3 text-on-surface-variant">{{ m.description or '—' }}</td>
+            <td class="px-4 py-3 text-on-surface-variant">{{ (m.file_size or 0) // 1024 }} ك.ب</td>
+            <td class="px-4 py-3 text-on-surface-variant">{{ (m.created_at or '—')[:16] }}</td>
+            <td class="px-4 py-3">
+              <div class="flex items-center justify-center gap-2">
+                <span class="text-xs font-bold text-on-surface-variant">{{ (m.download_count or 0) }} تحميل</span>
+                <form method="POST" action="{{ url_for('teacher_pages.teacher_upload_delete', material_id=m.id) }}" style="display:inline"
+                      onsubmit="return confirm('نقل هذا الملف إلى الأرشيف؟')">
+                  <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit"
+                          class="material-symbols-outlined text-on-surface-variant hover:text-red-600 hover:bg-red-50 transition-colors p-2 rounded-lg bg-transparent border-0 cursor-pointer" title="أرشفة">archive</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="py-12 text-center">
+      <span class="material-symbols-outlined text-5xl text-outline-variant block mb-2">folder_off</span>
+      <p class="text-sm text-on-surface-variant">لا توجد ملفات مرفوعة بعد</p>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+window.TEACHERS_UPLOAD_BOOT = {
+    maxUploadMb: {{ max_upload_mb | default(16) }}
+};
+</script>
+<script src="{{ url_for('static', filename='js/teachers_upload.js') }}"></script>
+
+{% endblock %}

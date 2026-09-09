@@ -1,0 +1,6 @@
+{% extends 'print/layouts/print.html' %}
+{% set print_title = 'طباعة الجدول الأسبوعي — ' ~ (payload.dept.name if payload.dept else '') %}
+
+{% block print_content %}
+{% include 'print/timetables/_department_content.html' %}
+{% endblock %}

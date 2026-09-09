@@ -1,0 +1,200 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'dashboard.dashboard' %}
+{% set page_title = 'لوحة التحكم' %}
+
+{% set stats = stats | default({}) %}
+{% set recent_activity = stats.get('recent_activity', []) | default([]) %}
+{% set action_labels = {'create': 'إضافة', 'update': 'تعديل', 'delete': 'حذف', 'restore': 'استعادة', 'assign': 'تخصيص', 'login': 'تسجيل دخول', 'logout': 'تسجيل خروج'} %}
+{% set op_badge_classes = {'create': 'create', 'update': 'update', 'delete': 'delete', 'restore': 'update', 'assign': 'update', 'login': 'login', 'logout': 'login'} %}
+{% set skip_keys = ['dashboard', 'profile', 'teachers_view', 'courses_view'] %}
+{% set quick_items = [] %}
+{% set seen_labels = [] %}
+{% for item in nav_items %}
+  {% if item.key not in skip_keys and item.label not in seen_labels and not item.get('teacher_only') %}
+    {% if seen_labels.append(item.label) or quick_items.append(item) or true %}{% endif %}
+  {% endif %}
+{% endfor %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="/static/css/features/super_admin_dashboard.css">
+{% endblock %}
+
+{% block content %}
+
+  <!-- Page Header -->
+  <div class="mb-xl no-print sa-header-fade" id="pageHeader">
+    <h2 class="font-headline-lg text-headline-lg text-on-surface mb-xs">مرحباً بك، {{ user.label or user.username }}</h2>
+    <p class="page-subtitle">نظرة عامة على أداء النظام والأنشطة الإدارية الآلية.</p>
+  </div>
+
+  <div class="sa-bento-grid">
+
+    <!-- Stat Card 1: Users -->
+    <div class="sa-stat-card sa-animate-in">
+      <div><div class="sa-stat-icon-wrap primary"><span class="material-symbols-outlined">group</span></div></div>
+      <div>
+        <p class="sa-stat-label">إجمالي المستخدمين</p>
+        <p class="sa-stat-value" data-count="{{ stats.get('users', 0) }}">0</p>
+        <span class="sa-stat-trend up"><span class="material-symbols-outlined" style="font-size:14px">trending_up</span>+12%</span>
+      </div>
+    </div>
+
+    <!-- Stat Card 2: Exams -->
+    <div class="sa-stat-card sa-animate-in">
+      <div><div class="sa-stat-icon-wrap primary"><span class="material-symbols-outlined">grading</span></div></div>
+      <div>
+        <p class="sa-stat-label">الامتحانات</p>
+        <p class="sa-stat-value" data-count="{{ stats.get('exams', 0) }}">0</p>
+        <span class="sa-stat-trend neutral"><span class="material-symbols-outlined" style="font-size:14px">schedule</span>{{ stats.get('upcoming_exams', 0) }} قادمة</span>
+      </div>
+    </div>
+
+    <!-- Stat Card 3: Faculty -->
+    <div class="sa-stat-card sa-animate-in">
+      <div><div class="sa-stat-icon-wrap secondary"><span class="material-symbols-outlined">school</span></div></div>
+      <div>
+        <p class="sa-stat-label">هيئة التدريس</p>
+        <p class="sa-stat-value" data-count="{{ stats.get('teachers', 0) }}">0</p>
+        <span class="sa-stat-trend up"><span class="material-symbols-outlined" style="font-size:14px">trending_up</span>+3 جدد</span>
+      </div>
+    </div>
+
+    <!-- Date Card -->
+    <div class="sa-date-card sa-animate-in" id="dateCard">
+      <div class="sa-date-card-top">
+        <div class="sa-date-card-icon">
+          <span class="material-symbols-outlined">calendar_today</span>
+        </div>
+        <div class="sa-date-card-label">اليوم</div>
+      </div>
+      <div class="sa-date-card-bottom">
+        <div class="sa-date-day-number" id="dayNumber"></div>
+        <div class="sa-date-day-name" id="dayName"></div>
+        <div class="sa-date-month" id="monthName"></div>
+        <div class="sa-date-year" id="yearName"></div>
+      </div>
+    </div>
+
+    <!-- Bar Chart: Course Distribution -->
+    <div class="sa-chart-card half sa-animate-in glass-card" style="overflow:hidden">
+      <div class="sa-chart-card-header">
+        <h3><span class="material-symbols-outlined">bar_chart</span>توزيع المقررات على الأقسام</h3>
+      </div>
+      <div class="sa-chart-card-body"><div class="sa-mini-chart" id="deptChart"></div></div>
+    </div>
+
+    <!-- Donut Chart: User Distribution -->
+    <div class="sa-chart-card half sa-animate-in glass-card" style="overflow:hidden">
+      <div class="sa-chart-card-header">
+        <h3><span class="material-symbols-outlined">pie_chart</span>توزيع المستخدمين</h3>
+      </div>
+      <div class="sa-chart-card-body">
+        <div class="sa-donut-container">
+          <div class="sa-donut-wrap">
+            <svg class="sa-donut-svg" viewBox="0 0 160 160" id="donutSvg"></svg>
+            <div style="position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center">
+              <span class="sa-donut-center-text">{{ stats.get('users', 0) }}</span>
+              <span class="sa-donut-center-label">مستخدم</span>
+            </div>
+          </div>
+          <div class="sa-donut-legend" id="donutLegend"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Access Mobile -->
+    <div class="sa-quick-access-card sa-animate-in glass-card" style="overflow:hidden">
+      <div class="sa-quick-access-header"><h3>الوصول السريع</h3></div>
+      <div class="sa-quick-access-grid" id="qaGridMobile">
+        {% for item in quick_items %}
+        <a href="{{ url_for(item.endpoint) }}" class="sa-qa-item">
+          <span class="material-symbols-outlined">{{ item.icon }}</span>
+          <span class="sa-qa-label">{{ item.label }}</span>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Quick Access Desktop -->
+    <div class="sa-desktop-quick-access sa-animate-in glass-card" style="overflow:hidden">
+      <div class="sa-chart-card-header"><h3><span class="material-symbols-outlined">rocket_launch</span>الوصول السريع</h3></div>
+      <div class="sa-dqa-grid">
+        {% for item in quick_items %}
+        <a href="{{ url_for(item.endpoint) }}" class="sa-qa-item">
+          <span class="material-symbols-outlined">{{ item.icon }}</span>
+          <span class="sa-qa-label">{{ item.label }}</span>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Upcoming Exams -->
+    <div class="sa-upcoming-card sa-animate-in glass-card" style="overflow:hidden">
+      <div class="sa-chart-card-header">
+        <h3><span class="material-symbols-outlined">event</span>الامتحانات القادمة</h3>
+      </div>
+      <div class="sa-upcoming-list" id="upcomingList"></div>
+    </div>
+
+    <!-- System Status -->
+    <div class="sa-status-card sa-animate-in glass-card" style="overflow:hidden">
+      <div class="sa-chart-card-header">
+        <h3><span class="material-symbols-outlined">monitoring</span>حالة النظام</h3>
+      </div>
+      <div class="sa-status-list" id="statusList"></div>
+    </div>
+
+    <!-- Activity Table -->
+    <div class="sa-activity-card sa-animate-in glass-card" style="overflow:hidden">
+      <div class="sa-activity-header">
+        <h3><span class="material-symbols-outlined">history</span>سجل النشاطات الإدارية الأخيرة</h3>
+        <div class="sa-activity-filter" id="activityFilter">
+          <button class="sa-filter-chip active" data-filter="all">الكل</button>
+          <button class="sa-filter-chip" data-filter="login">دخول</button>
+          <button class="sa-filter-chip" data-filter="create">إضافة</button>
+          <button class="sa-filter-chip" data-filter="delete">حذف</button>
+        </div>
+      </div>
+      <div class="sa-table-wrap">
+        <table class="sa-activity-table">
+          <thead><tr><th>المسؤول</th><th>نوع العملية</th><th>الهدف</th><th>التاريخ والوقت</th></tr></thead>
+          <tbody id="activityBody">
+            {% for r in recent_activity %}
+            <tr data-filter="{{ r.action }}">
+              <td>
+                <div class="sa-user-cell">
+                  <div class="sa-user-avatar sa">{{ (r.actor_username or '؟')[:1] }}</div>
+                  <span class="sa-user-name">{{ r.actor_username or '—' }}</span>
+                </div>
+              </td>
+              <td><span class="sa-op-badge {{ op_badge_classes.get(r.action, 'login') }}">{{ action_labels.get(r.action, r.action) }}</span></td>
+              <td class="sa-target-text">{{ r.message or '—' }}</td>
+              <td class="sa-date-text" dir="ltr">{{ r.created_at }}</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="4" style="text-align:center;padding:32px">
+                <div style="display:flex;flex-direction:column;align-items:center;color:var(--text-muted)">
+                  <span class="material-symbols-outlined" style="font-size:48px;margin-bottom:12px">history</span>
+                  <p style="font-size:16px;font-weight:500">لا توجد أحداث مسجلة بعد</p>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="sa-activity-footer">
+        <a href="{{ url_for('history.history_list') }}">
+          عرض كافة النشاطات
+          <span class="material-symbols-outlined">keyboard_double_arrow_left</span>
+        </a>
+      </div>
+    </div>
+
+  </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/pages/dashboard_super_admin.js') }}"></script>
+{% endblock %}

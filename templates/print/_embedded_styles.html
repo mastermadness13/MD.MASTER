@@ -1,0 +1,17 @@
+{% set print_orientation = print_orientation | default('A4 portrait') %}
+{% set print_margin = print_margin | default('12mm') %}
+<style>
+  .print-only { display: none; }
+  @media print {
+    .no-print { display: none !important; }
+    .print-hidden { display: none !important; }
+    .print-only { display: block !important; }
+    .sidebar, .sidebar-overlay, .app-header, #backToTop { display: none !important; }
+    .sidebar-content { margin-right: 0 !important; }
+    .main-content { height: auto; overflow: visible; padding-top: 0; }
+    .main-content-inner { padding: 0 !important; }
+    body { overflow: visible; background: #fff; }
+    .print-sheet { page-break-inside: avoid; }
+    @page { size: {{ print_orientation }}; margin: {{ print_margin }}; }
+  }
+</style>

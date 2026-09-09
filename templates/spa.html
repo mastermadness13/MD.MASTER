@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  {% include 'shared/components/theme_init.html' %}
+  <title>نظام الكلية — كلية التقنية الهندسية زوارة</title>
+  <link rel="icon" type="image/png" href="/static/image/logo.png">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300;400;500;600;700;800&family=Tajawal:wght@300;400;500;700;800&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="{{ url_for('static', filename='js/pages/spa.js') }}"></script>
+  <style>
+    body { font-family: 'Hanken Grotesk', 'Tajawal', sans-serif; }
+
+    .spa-icon-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 0.375rem; border-radius: 0.5rem; color: #4c4452;
+      background: transparent; border: none; cursor: pointer;
+      transition: background-color 0.15s ease;
+    }
+    .spa-icon-btn:hover { background: rgba(30, 73, 118, 0.08); }
+    .spa-icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .spa-modal-overlay {
+      position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5);
+    }
+    .spa-modal-card {
+      background: #fff; border-radius: 1rem; width: min(92vw, 640px);
+      max-height: 88vh; display: flex; flex-direction: column;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25); overflow: hidden;
+    }
+    .spa-modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 1.25rem; border-bottom: 1px solid #e0e3e8;
+    }
+    .spa-modal-title { font-weight: 700; color: #181c20; font-size: 1.05rem; }
+    .spa-modal-close {
+      border: none; background: transparent; font-size: 1.5rem; line-height: 1;
+      color: #a79db0; cursor: pointer; padding: 0 0.25rem;
+    }
+    .spa-modal-close:hover { color: #ef4444; }
+    .spa-modal-body { padding: 1.25rem; overflow-y: auto; }
+    .spa-modal-error {
+      background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca;
+      border-radius: 0.5rem; padding: 0.625rem 0.75rem; font-size: 0.85rem;
+      font-weight: 700; margin-bottom: 1rem;
+    }
+
+    .material-symbols-outlined { vertical-align: middle; }
+
+    [data-theme="dark"] body { background-color: #14101c; }
+    [data-theme="dark"] .spa-icon-btn { color: #deb7ff; }
+    [data-theme="dark"] .spa-icon-btn:hover { background: rgba(139, 92, 246, 0.15); }
+    [data-theme="dark"] .spa-modal-overlay { background: rgba(0, 0, 0, 0.6); }
+    [data-theme="dark"] .spa-modal-card { background: #241e31; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6); }
+    [data-theme="dark"] .spa-modal-header { border-bottom-color: #38304a; }
+    [data-theme="dark"] .spa-modal-title { color: #ece6f4; }
+    [data-theme="dark"] .spa-modal-close { color: #a298b8; }
+    [data-theme="dark"] .spa-modal-close:hover { color: #f87171; }
+    [data-theme="dark"] .spa-modal-error { background: rgba(248, 113, 113, 0.18); color: #fca5a5; border-color: rgba(248, 113, 113, 0.45); }
+  </style>
+</head>
+<body class="bg-surface min-h-screen">
+  <div id="app"></div>
+  <script src="{{ url_for('static', filename='js/spa/api.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/spa/modal.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/spa/users.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/spa/departments.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/spa/teachers.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/spa/courses.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/spa/rooms.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/spa/timetable.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/spa/exams.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/spa/history.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/spa/profile.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/spa/app.js') }}"></script>
+</body>
+</html>

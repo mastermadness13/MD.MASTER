@@ -1,0 +1,271 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'teachers' %}
+{% set page_title = 'إضافة عضو هيئة تدريس' %}
+{% set form = form | default({}) %}
+{% set departments = departments | default([]) %}
+{% set qualifications = qualifications | default([]) %}
+{% set ranks = ranks | default([]) %}
+{% set classifications = classifications | default([]) %}
+{% set specializations = specializations | default([]) %}
+{% set input_cls = 'w-full h-9 rounded-lg border border-outline-variant bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary text-sm px-3 transition-colors' %}
+{% set select_cls = 'w-full h-9 rounded-lg border border-outline-variant bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary text-sm px-3 transition-colors' %}
+{% set admin_tasks = admin_tasks | default([
+  'رئيس قسم',
+  'رئيس قسم البحث والتطوير',
+  'رئيس قسم الامتحانات',
+  'مدير مكتب أعضاء هيئة التدريس',
+  'مدير مكتب الشؤون العلمية',
+  'منسق القاعات',
+  'قسم البحث والتطوير',
+  'قسم الإدارة والامتحانات',
+  'رئيس قسم الدراسة والامتحانات',
+  'مكتب إدارة أعضاء هيئة التدريس',
+]) %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+
+  <!-- Page Header -->
+  <div class="flex items-center justify-between gap-4 mb-5">
+    <div class="flex items-center gap-3">
+      <a href="{{ url_for('teachers.teachers_list') }}"
+         class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-variant text-on-surface transition-colors no-underline"
+         aria-label="العودة إلى قائمة الأعضاء">
+        <span class="material-symbols-outlined">arrow_forward</span>
+      </a>
+      <div>
+        <h1 class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-on-surface">إضافة عضو هيئة تدريس</h1>
+        <p class="text-body-md text-on-surface-variant">إنشاء حساب دخول تلقائياً مع بيانات العضو</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="{{ url_for('teachers.teachers_list') }}"
+         class="px-6 py-2 rounded-lg border border-outline text-on-surface font-label-md text-label-md hover:bg-surface-variant transition-colors no-underline">
+        إلغاء
+      </a>
+      <button class="px-6 py-2 rounded-lg bg-primary text-on-primary font-label-md text-label-md shadow-md hover:bg-primary/90 transition-colors"
+              form="add-faculty-form" type="submit">
+        إضافة عضو هيئة تدريس
+      </button>
+    </div>
+  </div>
+
+  {% if form_error %}
+  <div class="mb-4 p-3.5 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm font-bold flex items-center gap-2">
+    <span class="material-symbols-outlined text-lg">error</span>
+    {{ form_error }}
+  </div>
+  {% endif %}
+
+  <form class="flex flex-col gap-5" id="add-faculty-form" method="post" action="{{ url_for('teachers.teachers_create') }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+    <!-- Card 1: Basic Data -->
+    <section class="rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-5 shadow-sm">
+      <h3 class="font-title-md text-title-md text-on-surface border-b border-outline-variant/20 pb-2 mb-4 flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary text-[20px]">person</span>
+        البيانات الأساسية والعامة
+      </h3>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
+        <div class="flex flex-col gap-1 lg:col-span-2">
+          <label class="font-label-md text-label-md text-on-surface-variant flex items-center gap-1">
+            الاسم الرباعي <span class="text-secondary">*</span>
+          </label>
+          <input class="{{ input_cls }}" placeholder="أدخل الاسم" type="text" name="name"
+                 value="{{ form.get('name', '') }}" required>
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="font-label-md text-label-md text-on-surface-variant flex items-center gap-1">
+            الرقم الكلية <span class="text-secondary">*</span>
+          </label>
+          <input class="{{ input_cls }}" placeholder="AC-12345" type="text" name="academic_number"
+                 value="{{ form.get('academic_number', '') }}" dir="ltr" required>
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="font-label-md text-label-md text-on-surface-variant">البريد الإلكتروني</label>
+          <input class="{{ input_cls }}" placeholder="email@example.com" type="email" name="email"
+                 value="{{ form.get('email', '') }}" dir="ltr">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="font-label-md text-label-md text-on-surface-variant flex items-center gap-1">
+            رقم الهاتف <span class="text-secondary">*</span>
+          </label>
+          <input class="{{ input_cls }}" placeholder="+218 9X XXX XXXX" type="tel" name="phone"
+                 value="{{ form.get('phone', '') }}" dir="ltr" required>
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="font-label-md text-label-md text-on-surface-variant">الرقم الوطني</label>
+          <input class="{{ input_cls }}" placeholder="أدخل الرقم الوطني" type="text" name="national_id"
+                 value="{{ form.get('national_id', '') }}">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="font-label-md text-label-md text-on-surface-variant">تاريخ التعاقد</label>
+          <input class="{{ input_cls }}" type="date" name="contract_date"
+                 value="{{ form.get('contract_date', '') }}">
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-4 border-t border-outline-variant/10 pt-3">
+        <div class="flex flex-col gap-1">
+          <label class="font-label-md text-label-md text-on-surface-variant">التخصص العلمي</label>
+          <select class="{{ select_cls }}" name="specialization_id" id="create_specialization">
+            <option value="">اختر التخصص (اختياري)</option>
+            {% for s in specializations %}
+            <option value="{{ s.id }}" data-dept="{{ s.department_id }}"
+                    {{ 'selected' if form.get('specialization_id')|string == s.id|string }}>{{ s.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="font-label-md text-label-md text-on-surface-variant">تاريخ أول محاضرة</label>
+          <input class="{{ input_cls }}" type="date" name="first_lecture_date"
+                 value="{{ form.get('first_lecture_date', '') }}">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="font-label-md text-label-md text-on-surface-variant">تاريخ مباشرة العمل</label>
+          <input class="{{ input_cls }}" type="date" name="work_start_date"
+                 value="{{ form.get('work_start_date', '') }}">
+        </div>
+      </div>
+
+      </section>
+
+    <!-- Card 2: Academic Rank -->
+    <section class="rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-5 shadow-sm">
+      <h3 class="font-title-md text-title-md text-on-surface border-b border-outline-variant/20 pb-2 mb-4 flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary text-[20px]">school</span>
+        المؤهل العلمي والدرجة
+      </h3>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div class="flex flex-col gap-1">
+          <label class="font-label-md text-label-md text-on-surface-variant flex items-center gap-1">
+            المؤهل <span class="text-secondary">*</span>
+          </label>
+          <select class="{{ select_cls }}" name="qualification_id" required>
+            <option value="">اختر المؤهل</option>
+            {% for q in qualifications %}
+            <option value="{{ q.id }}" {{ 'selected' if form.get('qualification_id')|string == q.id|string }}>{{ q.name_ar }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="font-label-md text-label-md text-on-surface-variant flex items-center gap-1">
+            الدرجة العلمية <span class="text-secondary">*</span>
+          </label>
+          <select class="{{ select_cls }}" name="rank_id" required>
+            <option value="">اختر الدرجة</option>
+            {% for r in ranks %}
+            <option value="{{ r.id }}" {{ 'selected' if form.get('rank_id')|string == r.id|string }}>{{ r.name_ar }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="font-label-md text-label-md text-on-surface-variant">التصنيف</label>
+          <select class="{{ select_cls }}" name="classification_id">
+            <option value="">اختر التصنيف</option>
+            {% for c in classifications %}
+            <option value="{{ c.id }}" {{ 'selected' if form.get('classification_id')|string == c.id|string }}>{{ c.name_ar }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- Card: Associated Departments -->
+    <section class="rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-5 shadow-sm">
+      <h3 class="font-title-md text-title-md text-on-surface border-b border-outline-variant/20 pb-2 mb-4 flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary text-[20px]">workspaces</span>
+        الأقسام المرتبطة
+      </h3>
+      <div>
+        <div class="flex flex-wrap gap-2">
+          {% for d in departments %}
+          <label class="flex items-center gap-2 cursor-pointer bg-surface-container-lowest border border-outline-variant/30 px-3 py-1 rounded-full hover:bg-surface-variant transition-colors">
+            <input class="text-primary focus:ring-primary border-outline-variant rounded-sm accent-primary"
+                   type="checkbox" name="department_ids[]" value="{{ d.id }}"
+                   {{ 'checked' if form.get('department_ids') and d.id|string in form.get('department_ids') }}>
+            <span class="font-body-md text-body-md">{{ d.name }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+
+    <!-- Card 2: Administrative Tasks -->
+    <section class="rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-5 shadow-sm">
+      <h3 class="font-title-md text-title-md text-on-surface border-b border-outline-variant/20 pb-2 mb-4 flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary text-[20px]">assignment_ind</span>
+        رابعاً: التكليف بمهام إدارية
+      </h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div class="flex flex-col gap-1">
+          <label class="font-label-md text-label-md text-on-surface-variant">نوع التكليف</label>
+          <select class="{{ select_cls }}" id="positionSelect" name="position">
+            <option value="">اختر نوع التكليف</option>
+            {% for task in admin_tasks %}
+            <option value="{{ task }}" {{ 'selected' if form.get('position') == task }}>{{ task }}</option>
+            {% endfor %}
+          </select>
+          <p class="text-xs text-on-surface-variant">اختيار تكليف إداري يمنح العضو دور الوصول إلى القسم المعني تلقائياً.</p>
+        </div>
+      </div>
+      <div class="mt-3 flex flex-col gap-1" id="headshipDeptWrap" {% if form.get('position') != 'رئيس قسم' %}style="display:none"{% endif %}>
+        <label class="font-label-md text-label-md text-on-surface-variant">القسم الذي يرأسه</label>
+        <select class="{{ select_cls }}" name="hod_department_id">
+          <option value="">اختر القسم الكلية</option>
+          {% for d in departments if d.get('type') == 'academic' %}
+          <option value="{{ d.id }}" {{ 'selected' if form.get('hod_department_id') == d.id }}>{{ d.name }}</option>
+          {% endfor %}
+        </select>
+        <p class="text-xs text-on-surface-variant">القسم العلمي الذي يرأسه العضو — يختلف عن الأقسام التي يدرّس فيها.</p>
+      </div>
+    </section>
+
+    <!-- Card 7: Decisions -->
+    <section class="rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-5 shadow-sm">
+      <div class="flex justify-between items-center border-b border-outline-variant/20 pb-2 mb-4">
+        <h3 class="font-title-md text-title-md text-on-surface flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary text-[20px]">gavel</span>
+          خامساً: (إجازة التفرغ العلمي - التفرغ الدراسي - الإيفاد بالداخل)
+        </h3>
+        <button class="text-primary hover:text-primary-container font-label-md flex items-center gap-1" type="button" onclick="addDecisionRow()">
+          <span class="material-symbols-outlined text-[16px]">add</span> إضافة قرار
+        </button>
+      </div>
+      <p class="text-xs text-on-surface-variant mb-3">إطار استرشادي — تُدار قرارات الأعضاء ونماذج التفرغ لاحقاً عبر نموذج معدل الأداء.</p>
+      <div class="flex flex-col gap-3" id="decisionsWrap">
+        <div class="decision-row grid grid-cols-1 md:grid-cols-4 gap-3 items-end border border-outline-variant/20 p-3 rounded-lg bg-surface-container-lowest">
+          <div class="flex flex-col gap-1">
+            <label class="font-label-md text-label-md text-on-surface-variant">نوع القرار</label>
+            <select class="{{ select_cls }}">
+              <option value="">اختر النوع</option>
+              <option>إجازة التفرغ العلمي</option>
+              <option>التفرغ الدراسي</option>
+              <option>الإيفاد بالداخل</option>
+            </select>
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="font-label-md text-label-md text-on-surface-variant">رقم القرار</label>
+            <input class="{{ input_cls }}" placeholder="مثال: 123/2024" type="text">
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="font-label-md text-label-md text-on-surface-variant">جهة الإصدار</label>
+            <input class="{{ input_cls }}" type="text">
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="font-label-md text-label-md text-on-surface-variant">تاريخ القرار</label>
+            <input class="{{ input_cls }}" type="date">
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </form>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/pages/teachers_create.js') }}"></script>
+{% endblock %}

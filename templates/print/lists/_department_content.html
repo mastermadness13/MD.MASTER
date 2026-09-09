@@ -1,0 +1,43 @@
+{% set departments = departments | default([]) %}
+<div class="bg-white rounded-2xl shadow-sm border border-outline-variant overflow-hidden print-sheet">
+  <div class="px-6 py-4 border-b-2 border-primary bg-surface-dim flex items-center justify-between">
+    <div>
+      <h1 class="text-lg font-bold text-primary m-0">كلية التقنية الهندسية زوارة</h1>
+      <p class="text-sm text-on-surface-variant mt-0.5">قائمة الأقسام</p>
+    </div>
+    <div class="text-left text-xs text-on-surface-variant">تاريخ الطباعة: {{ now().strftime('%Y/%m/%d %H:%M') }}</div>
+  </div>
+  <div class="p-4 overflow-x-auto">
+    <table class="w-full text-right border-collapse text-xs">
+      <thead>
+        <tr class="bg-primary-container">
+          <th class="px-3 py-2 text-right font-bold text-primary border-b border-outline-variant w-10">#</th>
+          <th class="px-3 py-2 text-right font-bold text-primary border-b border-outline-variant">اسم القسم</th>
+          <th class="px-3 py-2 text-right font-bold text-primary border-b border-outline-variant w-28">النوع</th>
+          <th class="px-3 py-2 text-right font-bold text-primary border-b border-outline-variant w-20">عدد الفصول</th>
+          <th class="px-3 py-2 text-right font-bold text-primary border-b border-outline-variant">الشعب</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in departments %}
+        <tr class="border-b border-outline-variant last:border-b-0">
+          <td class="px-3 py-2 text-on-surface-variant">{{ loop.index }}</td>
+          <td class="px-3 py-2 font-bold text-on-surface">{{ d.name }}</td>
+          <td class="px-3 py-2 text-on-surface-variant">{{ {'academic': 'كلية', 'general': 'عام', 'administrative': 'إداري'}.get(d.type, d.type or '—') }}</td>
+          <td class="px-3 py-2 text-on-surface">{{ d.semesters }}</td>
+          <td class="px-3 py-2 text-on-surface-variant">
+            {% if d.major_list %}{{ d.major_list | map(attribute='name') | join('، ') }}{% else %}—{% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="px-3 py-12 text-center text-on-surface-variant">لا توجد أقسام</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="px-6 py-3 bg-surface-dim border-t border-outline-variant text-center text-xs text-on-surface-variant">
+    عدد الأقسام: {{ departments|length }}
+  </div>
+</div>

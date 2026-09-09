@@ -1,0 +1,148 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'courses' %}
+{% set page_title = 'تعديل المقرر' %}
+{% set course = course | default({}) %}
+{% set departments = departments | default([]) %}
+{% set courses = courses | default([]) %}
+{% set prereq_ids = prereq_ids | default([]) %}
+{% set current_dept_ids = current_dept_ids | default([]) %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+
+  <!-- Page Header -->
+  <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <div class="flex items-center gap-3">
+      <span class="material-symbols-outlined text-primary text-3xl">edit_note</span>
+      <div>
+        <h1 class="text-2xl font-bold text-on-surface">تعديل المقرر</h1>
+        <p class="page-subtitle">{{ course.name }} ({{ course.code }})</p>
+      </div>
+    </div>
+    <a href="{{ url_for('courses.courses_list') }}"
+       class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm no-underline">
+      <span class="material-symbols-outlined text-lg">arrow_forward</span>
+      قائمة المقررات
+    </a>
+  </div>
+
+  {% if form_error %}
+  <div class="mb-4 p-3.5 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm font-bold flex items-center gap-2">
+    <span class="material-symbols-outlined text-lg">error</span>
+    {{ form_error }}
+  </div>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('courses.courses_edit', id=course.id) }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+    <div class="bg-white rounded-2xl shadow-sm border border-primary/10 p-5 mb-5">
+      <h2 class="font-bold text-primary flex items-center gap-2 mb-4">
+        <span class="material-symbols-outlined text-lg">menu_book</span>
+        بيانات المقرر
+      </h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-bold text-on-surface-variant mb-1.5">اسم المقرر *</label>
+          <input type="text" name="name" value="{{ course.name or '' }}" required
+                 class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-on-surface-variant mb-1.5">رمز المقرر *</label>
+          <input type="text" name="code" value="{{ course.code or '' }}" required dir="ltr"
+                 class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-on-surface-variant mb-1.5">الساعات النظرية</label>
+          <input type="number" name="theoretical_hours" min="0" value="{{ course.theoretical_hours or 0 }}"
+                 class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-on-surface-variant mb-1.5">الساعات العملية</label>
+          <input type="number" name="practical_hours" min="0" value="{{ course.practical_hours or 0 }}"
+                 class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-on-surface-variant mb-1.5">إجمالي الساعات</label>
+          <input type="number" name="total_hours" min="0" value="{{ course.total_hours or 0 }}"
+                 class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+        </div>
+        {% set icon_value = course.icon or '📖' %}
+        {% include 'courses/_icon_picker.html' %}
+        <div>
+          <label class="block text-xs font-bold text-on-surface-variant mb-1.5">السنة الدراسية</label>
+          <select name="year"
+                  class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+            {% for y in range(1, 5) %}
+            <option value="{{ y }}" {{ 'selected' if course.year == y }}>{{ y }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-on-surface-variant mb-1.5">الفصل</label>
+          <select name="semester"
+                  class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+            {% for s in range(1, 9) %}
+            <option value="{{ s }}" {{ 'selected' if course.semester == s }}>{{ s }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="md:col-span-2">
+          <label class="block text-xs font-bold text-on-surface-variant mb-1.5">ملاحظات</label>
+          <textarea name="notes" rows="2"
+                    class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">{{ course.notes or '' }}</textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-primary/10 p-5 mb-5">
+      <h2 class="font-bold text-primary flex items-center gap-2 mb-4">
+        <span class="material-symbols-outlined text-lg">domain</span>
+        الأقسام
+      </h2>
+      {% if departments %}
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+        {% for d in departments %}
+        <label class="flex items-center gap-2.5 bg-surface-container rounded-lg px-3 py-2.5 cursor-pointer hover:bg-primary/10 transition-colors">
+          <input type="checkbox" name="department_ids" value="{{ d.id }}"
+                 {{ 'checked' if d.id in current_dept_ids }} class="w-4 h-4 accent-primary">
+          <span class="text-sm font-bold text-on-surface">{{ d.name }}</span>
+        </label>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-on-surface-variant text-sm">لا توجد أقسام متاحة</p>
+      {% endif %}
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-primary/10 p-5 mb-5">
+      <h2 class="font-bold text-primary flex items-center gap-2 mb-4">
+        <span class="material-symbols-outlined text-lg">steps</span>
+        المتطلب السابق
+      </h2>
+      <select name="prerequisite_id"
+              class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+        <option value="">— بدون متطلب سابق —</option>
+        {% for c in courses %}
+        <option value="{{ c.id }}" {{ 'selected' if c.id in prereq_ids }}>{{ c.name }} ({{ c.code }})</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="flex items-center gap-3 mb-8">
+      <button type="submit"
+              class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-6 py-2.5 rounded-lg text-sm font-bold transition shadow-sm">
+        <span class="material-symbols-outlined text-lg">save</span>
+        حفظ التعديلات
+      </button>
+      <a href="{{ url_for('courses.courses_list') }}"
+         class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-5 py-2.5 rounded-lg text-sm font-bold transition shadow-sm no-underline">
+        إلغاء
+      </a>
+    </div>
+  </form>
+
+</div>
+{% endblock %}
+
+{% block scripts %}{% endblock %}
