@@ -66,3 +66,14 @@ Static audit (19 items flagged; N+1 × 7, hot endpoints × 8, PRG × 2, label-lo
 
 ### Phase 2.5 result
 PRG-001 fixed (suite had no failing teacher-edit tests). Overview: no correctness-critical N+1; hotspots concentrated in courses list, print-all timetable, dashboards. Query-count optimization deferred to Phase 7 (measured there).
+
+## Phase 3 — Business Logic / Timetable
+
+| ID | Issue | File:Line | Severity | Fix | Test | Status |
+|----|-------|-----------|----------|-----|------|--------|
+| TIM-001 | Module `create_entry`/`update_entry` called `svc.create_entry`/`svc.update_entry` — methods missing on `TimetableService` → **timetable saving broken in UI, API and tests** (AttributeError 500) | services/timetable_service.py:687,705 | Critical | implemented class `create_entry` (repo.create + teacher→dept auto-link + `_record_taught_course` + advisory conflict warnings), `update_entry` (repo.update + same side effects + warnings), `_link_teacher_department`, `_collect_conflict_warnings`, `get_last_conflict_warnings` (per-instance) | `test_timetable_conflict_warning.py` (12) + `test_hod_department_resolution.py` | fixed |
+| TIM-002 | HOD dept-scope tests failed due to same missing create path | tests/test_hod_department_resolution.py:213 | High | resolved by TIM-001 | `test_hod_can_create_entry_in_own_department` | fixed |
+| TIM-003 | Timetable department page template assertions (`current table editable badge/hint`) | tests/test_timetable_department_page.py | Medium | template rendering assertions → Phase 5 | — | deferred → Phase 5 |
+
+### Phase 3 result
+Full suite: **`127 passed / 2 failed`** (was 114/15). Remaining 2 failures are template-assertion items on the Phase 5 schedule (course-content admin status filters; timetable department-page editable badge/hint).

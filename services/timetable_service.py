@@ -78,8 +78,8 @@ def semester_names_from_db(db, codes) -> Dict[str, str]:
 def active_version_condition(alias: str = 't') -> str:
     """SQL fragment selecting only current/legacy timetable rows.
 
-    Rows are "current" when they carry no version (pre-archive legacy rows) or
-    when their version is the active one. Archived snapshots are excluded.
+    Rows are "current" when they carry no version (legacy rows) or
+    when their version is the active one. Other snapshots are excluded.
     """
     return (f"({alias}.version_id IS NULL OR {alias}.version_id IN "
             f"(SELECT id FROM timetable_versions WHERE status = 'active'))")
@@ -92,6 +92,7 @@ class TimetableService:
         self.db = db
         self._repo = timetable_repo
         self._sem_code_cache: Dict[tuple, str] = {}
+        self.last_conflict_warnings: List[str] = []
 
     def get_timetable_data(self, role: str, user_dept: int, selected_dept: int,
                            selected_semester: int,
@@ -275,25 +276,16 @@ class TimetableService:
         return self._ensure_version(dept_id, semester, sem_code)
 
     def _activate_version(self, dept_id: int, semester: int, version_id: int) -> None:
-        """Make a version the active (editable) one; archive every other active version."""
-        to_archive = [r[0] for r in self.db.execute(
-            'SELECT id FROM timetable_versions '
-            'WHERE department_id = ? AND semester = ? AND status = ? AND id != ?',
-            (dept_id, semester, 'active', version_id),
-        ).fetchall()]
-
+        """Make a version the active (editable) one; supersede others."""
         self.db.execute(
-            'UPDATE timetable_versions SET status = \'archived\' '
-            'WHERE department_id = ? AND semester = ? AND status = \'active\' AND id != ?',
+            "UPDATE timetable_versions SET status = 'superseded' "
+            "WHERE department_id = ? AND semester = ? AND status = 'active' AND id != ?",
             (dept_id, semester, version_id),
         )
         self.db.execute(
-            'UPDATE timetable_versions SET status = \'active\' WHERE id = ?',
+            "UPDATE timetable_versions SET status = 'active' WHERE id = ?",
             (version_id,),
         )
-
-        
-
         self.db.commit()
 
     def ensure_version_for_semester(self, dept_id: int, semester: int,
@@ -650,6 +642,114 @@ class TimetableService:
             self.db.commit()
         except Exception:
             logger.exception('Failed to record taught course (non-fatal)')
+
+    def _link_teacher_department(self, teacher_id, department_id) -> None:
+        """Auto-link a department into a teacher's departments on assignment."""
+        if not teacher_id or not department_id:
+            return
+        self.db.execute(
+            'INSERT OR IGNORE INTO teacher_departments (teacher_id, department_id) '
+            'VALUES (?, ?)',
+            (teacher_id, department_id),
+        )
+
+    def _collect_conflict_warnings(self, day, semester, period_code, teacher_id,
+                                   room_id, entry_id, start_time='', end_time='',
+                                   hours=0) -> List[str]:
+        """Advisory Arabic warnings for overlapping teacher/room bookings.
+
+        Saving is never blocked; these are informational only. Adjacent slots
+        (non-overlapping half-open times) must NOT warn.
+        """
+        warnings: List[str] = []
+        conflict_rows = self._repo.get_conflicting_entries(
+            'teacher', teacher_id, day, period_code, exclude_id=entry_id,
+            start_time=start_time, end_time=end_time, hours=hours,
+        )
+        for row in conflict_rows:
+            window = (row.get('start_time') and row.get('end_time')
+                      and f"من {row['start_time']} إلى {row['end_time']}" or '')
+            warnings.append(
+                f"المحاضر {row['teacher_name']} لديه حصة متعارضة يوم {row['day']} "
+                f"في {row['room_name'] or 'قاعة غير محددة'} {window}".strip()
+            )
+        conflict_rows = self._repo.get_conflicting_entries(
+            'room', room_id, day, period_code, exclude_id=entry_id,
+            start_time=start_time, end_time=end_time, hours=hours,
+        )
+        for row in conflict_rows:
+            window = (row.get('start_time') and row.get('end_time')
+                      and f"من {row['start_time']} إلى {row['end_time']}" or '')
+            warnings.append(
+                f"القاعة {row['room_name']} محجوزة في حصة متعارضة يوم {row['day']} "
+                f"— {row['course_name'] or ''} {window}".strip()
+            )
+        seen = set()
+        unique = []
+        for w in warnings:
+            if w not in seen:
+                seen.add(w)
+                unique.append(w)
+        return unique
+
+    def create_entry(self, day, semester, period_code, course_id, teacher_id,
+                     room_id, department_id, start_time='', end_time='',
+                     version_id=None, lecture_type='theory', hours=0):
+        """Insert a timetable entry, link teacher→department, record the taught
+        course, and collect advisory conflict warnings."""
+        entry_id = self._repo.create({
+            'day': day, 'semester': semester, 'period': period_code,
+            'course_id': course_id, 'teacher_id': teacher_id, 'room_id': room_id,
+            'department_id': department_id, 'start_time': start_time,
+            'end_time': end_time, 'lecture_type': lecture_type,
+            'hours': hours, 'version_id': version_id,
+        })
+        self._link_teacher_department(teacher_id, department_id)
+        self._record_taught_course(
+            teacher_id, course_id, department_id, semester, version_id,
+            day=day, start_time=start_time, end_time=end_time, period=period_code,
+            room_id=room_id, student_section='أ',
+            lecture_type=lecture_type, hours=hours, timetable_entry_id=entry_id,
+        )
+        self.last_conflict_warnings = self._collect_conflict_warnings(
+            day, semester, period_code, teacher_id, room_id, entry_id,
+            start_time, end_time, hours,
+        )
+        return entry_id
+
+    def update_entry(self, entry_id, day, semester, period_code, course_id,
+                     teacher_id, room_id, start_time='', end_time='',
+                     lecture_type='theory', hours=0):
+        """Update a timetable entry, re-link teacher→department, re-record the
+        taught course, and refresh advisory conflict warnings."""
+        existing = self._repo.find_by_id(entry_id)
+        if not existing:
+            return False
+        dept_id = existing.get('department_id')
+        ok = self._repo.update(entry_id, {
+            'day': day, 'semester': semester, 'period': period_code,
+            'course_id': course_id, 'teacher_id': teacher_id, 'room_id': room_id,
+            'start_time': start_time, 'end_time': end_time,
+            'lecture_type': lecture_type, 'hours': hours,
+        })
+        self._link_teacher_department(teacher_id, dept_id)
+        self._record_taught_course(
+            teacher_id, course_id, dept_id, semester, existing.get('version_id'),
+            day=day, start_time=start_time, end_time=end_time, period=period_code,
+            room_id=room_id, student_section='أ',
+            lecture_type=lecture_type, hours=hours, timetable_entry_id=entry_id,
+        )
+        self.last_conflict_warnings = self._collect_conflict_warnings(
+            day, semester, period_code, teacher_id, room_id, entry_id,
+            start_time, end_time, hours,
+        )
+        return ok
+
+    def get_last_conflict_warnings(self) -> List[str]:
+        """Return (and clear) this instance's advisory warnings."""
+        warnings = list(self.last_conflict_warnings)
+        self.last_conflict_warnings = []
+        return warnings
 
 def get_timetable_data(db, role, user_dept, selected_dept, selected_semester, selected_section=None):
     from database.repositories.timetable_repository import TimetableRepository
