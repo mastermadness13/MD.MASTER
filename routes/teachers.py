@@ -692,31 +692,10 @@ form_error='الرقم الكلية موجود مسبقاً لعضو آخر',
                 existing = db.execute(
                     'SELECT 1 FROM users WHERE username = ? AND id != ?',
                     (new_username, t['user_id'])
-                ).fetchone()
+).fetchone()
                 if existing:
-                    teacher_course_rows = db.execute(
-                        'SELECT course_id FROM timetable WHERE teacher_id = ? '
-                        'AND (version_id IS NULL OR version_id IN '
-                        '(SELECT id FROM timetable_versions WHERE status = \'active\'))', (id,)
-                    ).fetchall()
-                    teacher_course_ids = [r['course_id'] for r in teacher_course_rows]
-                    edit_research = fps.get_research_activities_for_semester(db, id)
-                    return render_template('teachers/edit.html',
-                                          teacher=form,
-                                          teacher_id=id,
-                                          teacher_dept_ids=[did for did in department_ids if did],
-                                          departments=departments, qualifications=qualifications,
-                                          ranks=ranks, classifications=classifications,
-                                          specializations=specializations,
-                                          teacher_course_ids=teacher_course_ids,
-form_error='اسم المستخدم موجود مسبقاً — تم تحديث بيانات العضو فقط',
-                                           grantable_roles=_GRANTABLE_ROLES,
-                                           extra_roles=form.get('extra_roles', []),
-                                           research_types=edit_research_types,
-                                           research=edit_research,
-                                           assignment_date=assignment_date,
-                                           admin_tasks=admin_tasks,
-                                           user=current_user())
+                    flash('اسم المستخدم موجود مسبقاً — تم تحديث بيانات العضو فقط', 'error')
+                    return redirect(url_for('teachers.teachers_edit', id=id))
             try:
                 teacher_service.update_teacher_credentials(db, id, new_username or None, new_password or None)
                 cred_changes = []
@@ -781,8 +760,7 @@ def teachers_reset_password(id):
 def teaching_record_print(id, semester_code):
     """Print-preview page for one academic year of a teacher's teaching record.
 
-    Replaces the removed ``teaching_archive_report`` as the per-year print
-    target. ``?print=1`` auto-triggers the browser print dialog on load.
+    ``?print=1`` auto-triggers the browser print dialog on load.
     """
     db = get_db()
     teacher = teacher_service.get_teacher(db, id)
@@ -849,10 +827,9 @@ def teaching_record_csv(id, semester_code):
 @login_required
 @permission_required('teachers.view')
 def teaching_record_report(id):
-    """A4 report page for one teaching period (the old archive-report style).
+    """A4 report page for one teaching period.
 
-    Replaces the removed ``teaching_archive_report`` as the target opened by
-    the «عرض» button in the أرشيف محاضر card. Filtered by ``semester_code``
+    Target opened by the «عرض» button. Filtered by ``semester_code``
     (primary) and optionally ``semester`` (int). ``?print=1`` auto-prints.
     """
     db = get_db()
@@ -867,7 +844,7 @@ def teaching_record_report(id):
     rec = teacher_service.get_teaching_record(db, id)
     years_data = rec.get('years_data') or []
 
-    # Pick the requested period, or auto-find it from أرشيف محاضر if no
+    # Pick the requested period, or auto-find it from سجل التدريس if no
     # filter is provided (defaults to the most recent period available).
     group = next((g for g in years_data
                   if (g.get('semester_code') or '') == semester_code), None)
@@ -1037,7 +1014,7 @@ def teachers_delete(id):
     except ProtectedAccountError:
         flash('هذا الحساب محمي ولا يمكن حذفه', 'error')
         return redirect_back('teachers.teachers_list')
-    flash('تم نقل عضو هيئة التدريس إلى الأرشيف', 'success')
+    flash('تم الحذف بنجاح', 'success')
     return redirect_back('teachers.teachers_list')
 
 
@@ -1045,7 +1022,7 @@ def teachers_delete(id):
 @login_required
 @permission_required('teachers.assign')
 def teacher_pool():
-    """Return all non-archived teachers NOT already in the current HOD's department."""
+    """Return teachers NOT already in the current HOD's department."""
     db = get_db()
     user_dept_id = session.get('hod_department_id') or session.get('department_id')
     if not user_dept_id:
@@ -1202,7 +1179,7 @@ def teachers_bulk_delete():
             skipped += 1
     if skipped:
         flash(f'تم تخطي {skipped} من الحسابات المحمية', 'error')
-    flash(f'تم نقل {len(ids) - skipped} من أعضاء هيئة التدريس إلى الأرشيف', 'success')
+    flash(f'تم الحذف بنجاح', 'success')
     return redirect_back('teachers.teachers_list')
 
 

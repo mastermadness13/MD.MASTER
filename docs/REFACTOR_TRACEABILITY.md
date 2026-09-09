@@ -48,3 +48,21 @@ Audit carried 194 findings. Baseline verified against current code, fixed item b
 
 ### Phase 2 result
 `117 passed / 16 failed` (+3 seed tests, +2 existing seed tests re-verified, suite re-run pending).
+
+## Phase 2.5 — Request / Data-flow Audit
+
+Static audit (19 items flagged; N+1 × 7, hot endpoints × 8, PRG × 2, label-lookups × 2).
+
+| ID | Issue | File:Line | Severity | Action | Status |
+|----|-------|-----------|----------|--------|--------|
+| PRG-001 | `teachers_edit` POST re-renders template after persisting on duplicate username (refresh re-submits) | routes/teachers.py:697-719 | High | replaced inline render with `flash(...)` + `redirect(url_for('teachers.teachers_edit', id=id))` (PRG) | fixed |
+| PRG-002 | `ensure_current_version` INSERT/commit during plain GET | services/timetable_service.py:258-275 | Medium | self-healing lazy-init (writes only when no version row exists); refactoring risks breaking timetable pages | deferred → Phase 7/8 |
+| PERF-001 | `/courses` (non-HOD) ~45-50 SQL per render | routes/courses.py:77 → course_service.build_dept_plans:613 | High | batch dept plans; measure in Phase 7 | open → Phase 7 |
+| PERF-002 | `/print/timetables/all` ~4-6 SQL × dept | services/timetable_service.py:488-509 | High | hoist `get_period_settings`; batch semester display names | open → Phase 7 |
+| PERF-003 | dashboards ~21-25 SQL/render (6-query weekly loop) | services/dashboard_service.py:366-379, routes/dashboard.py:52-76 | Medium | single weekly query + Python group | open → Phase 7 |
+| PERF-004 | teaching-record pages: per-year/per-semester label lookups | services/teacher_service.py:248-283 | Medium | batch via existing `semester_names_from_db` / `IN()` | open → Phase 7 |
+| PERF-005 | `build_teacher_weekly` 6-query per-day loop | services/timetable_service.py:783-801 | Medium | single query + group | open → Phase 7 |
+| VER-CLEAN | No N+1 in timetable_repository / departments bulk IN / teachers page batched IN | repositories/, routes/teachers.py:275-306 | — | verified clean | verified-resolved |
+
+### Phase 2.5 result
+PRG-001 fixed (suite had no failing teacher-edit tests). Overview: no correctness-critical N+1; hotspots concentrated in courses list, print-all timetable, dashboards. Query-count optimization deferred to Phase 7 (measured there).
