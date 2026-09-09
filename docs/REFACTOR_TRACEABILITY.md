@@ -44,7 +44,7 @@ Audit carried 194 findings. Baseline verified against current code, fixed item b
 | ARCH-002 | `ensure_schema` timing (schema mutation per request?) | wsgi.py:11, serve.py:19, flask_db.py | Medium | confirmed: runs once at startup via `init_db()`, not per-request | inspection | verified-resolved |
 | ARCH-003 | `serve.py` hardcodes `url_scheme='http'` → Secure cookies broken behind HTTPS | serve.py:37 | High | `WAITRESS_URL_SCHEME` env (default http) + optional `ProxyFix` behind `TRUST_PROXY_HEADERS=true` | inspection | fixed |
 | ARCH-004 | Legacy `teacher.*` accounts reset to `123456` when renamed | database/schema.py:1268 | Low | one-time normalization (only no-longer-matching rows); new accounts set explicit passwords | inspection | deferred → Phase 5/8 note |
-| AUTH-DEF | dashboard() lacks explicit `@login_required` | routes/dashboard.py:25 | Def | anonymous must keep landing on `public_site.index_page`; add header-aware guard in Phase 2b | — | open |
+| AUTH-DEF | dashboard() lacks explicit `@login_required` | routes/dashboard.py:29 | Def | manual `user_id in session` guard already redirects anonymous → `public_site.index_page`; replacing with `@login_required` would change landing (login page). Guard is behavior-preserving equivalent | inspection | verified-resolved |
 
 ### Phase 2 result
 `117 passed / 16 failed` (+3 seed tests, +2 existing seed tests re-verified, suite re-run pending).
