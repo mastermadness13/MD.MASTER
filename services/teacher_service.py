@@ -1,7 +1,9 @@
-﻿"""Teacher service — CRUD, credentials.
+"""Teacher service — CRUD, credentials.
 
 Uses ``TeacherRepository`` for data access.  Module-level functions are kept
 for backward compatibility with existing routes.
+
+/     /     >---- خدمة الأساتذة: عمليات الإضافة والتعديل والحذف وإدارة البيانات واعتمادات الدخول.
 """
 
 from __future__ import annotations
@@ -29,6 +31,7 @@ from utils.format import teaching_semester_label
 logger = logging.getLogger(__name__)
 
 
+# /     /     >---- توليد اسم مستخدم من اسم الأستاذ (أول حرف + نقطة + الكلمة الثانية)
 def _generate_username(name: str) -> str:
     parts = name.strip().split()
     if len(parts) >= 2:
@@ -38,12 +41,16 @@ def _generate_username(name: str) -> str:
     return re.sub(r'[^\w.]', '', base.lower())
 
 
+# /     /     >---- توليد كلمة مرور عشوائية مؤقتة
 def _generate_password() -> str:
     return secrets.token_urlsafe(8)
 
 
 class TeacherService:
-    """Class-based teacher service with repository injection."""
+    """Class-based teacher service with repository injection.
+
+    /     /     >---- الخدمة بشكل كلاس مع حقن المستودعات.
+    """
 
     def __init__(self, db=None, teacher_repo=None, user_repo=None,
                  timetable_repo=None, course_repo=None):
@@ -53,6 +60,7 @@ class TeacherService:
         self._timetable_repo = timetable_repo
         self._course_repo = course_repo
 
+    # /     /     >---- قائمة الأساتذة حسب الدور والبحث والفلترة
     def list_teachers(self, role, user_data, search, dept_filter, page=1):
         where, params, dept_filter = self._build_where(role, user_data, search, dept_filter)
         where_clause = ' AND '.join(where) if where else '1=1'
@@ -63,6 +71,7 @@ class TeacherService:
     def get_form_lookups(self) -> Dict[str, list]:
         return self._repo.get_form_lookups()
 
+    # /     /     >---- إنشاء أستاذ: منع تكرار الرقم الأكاديمي + ربطه بحساب مستخدم
     def create_teacher(self, data: Dict[str, Any], department_ids=None,
                        additional_roles=None) -> Dict[str, str]:
         from utils.text import normalize_academic_number, normalize_arabic_name
@@ -81,6 +90,7 @@ class TeacherService:
                     ')'
                 )
 
+        # /     /     >---- نطفّر تحذير للتشابه في الأسماء المعرّبة
         norm_name = normalize_arabic_name(data.get('name', ''))
         if norm_name:
             candidates = self._repo.find_by_name_normalized(norm_name)
@@ -100,6 +110,7 @@ class TeacherService:
             )
             self.db.commit()
 
+        # /     /     >---- إنشاء حساب الدخول تلقائياً مع اسم مستخدم وكلمة مرور مؤقتة
         username = _generate_username(data['name'])
         password = _generate_password()
         if self._user_repo and self._user_repo.username_exists(username):
@@ -134,6 +145,7 @@ class TeacherService:
     def update_teacher(self, teacher_id: int, data: Dict[str, Any]) -> None:
         self._repo.update(teacher_id, data)
 
+    # /     /     >---- الأدوار الممنوحة لحساب الأستاذ المرتبط
     def get_teacher_granted_roles(self, teacher_id: int) -> list:
         """Return the granted role set for a teacher's linked user account."""
         teacher = self._repo.find_by_id(teacher_id)
@@ -144,6 +156,7 @@ class TeacherService:
             return roles
         return [teacher.get('role') or 'teacher']
 
+    # /     /     >---- تحديث الأدوار الإضافية لحساب الأستاذ (أساسي teacher + إضافات)
     def set_teacher_extra_roles(self, teacher_id: int, additional_roles) -> None:
         """Refresh the linked user's granted roles (landing 'teacher' + extras)."""
         teacher = self._repo.find_by_id(teacher_id)
@@ -152,6 +165,7 @@ class TeacherService:
         granted = ['teacher'] + [r for r in (additional_roles or []) if r and r != 'teacher']
         self._user_repo.set_user_roles(teacher['user_id'], granted)
 
+    # /     /     >---- إعادة تعيين كلمة مرور الأستاذ وإرجاع الكلمة الجديدة
     def reset_teacher_password(self, teacher_id: int) -> Optional[str]:
         teacher = self._repo.find_by_id(teacher_id)
         if not teacher or not teacher.get('user_id'):
@@ -164,6 +178,7 @@ class TeacherService:
         self.db.commit()
         return new_password
 
+    # /     /     >---- تحديث اعتمادات الدخول (اسم مستخدم/كلمة مرور)
     def update_teacher_credentials(self, teacher_id: int, new_username=None,
                                    new_password=None) -> bool:
         teacher = self._repo.find_by_id(teacher_id)
@@ -182,6 +197,7 @@ class TeacherService:
         self.db.commit()
         return True
 
+    # /     /     >---- تفاصيل الأستاذ: الملف + المقررات + إحصائيات العبء
     def get_teacher_detail(self, teacher_id: int) -> Optional[Tuple]:
         t = self._repo.find_detail(teacher_id)
         if not t:
@@ -195,20 +211,12 @@ class TeacherService:
         }
         return t, courses, stats
 
+    # /     /     >---- اسم الفصل للعرض من تسمية المنهج الثابتة
     def _semester_label(self, department_id: Optional[int], sem: int) -> str:
-        """Semester display name from the academic record when available."""
-        if department_id is not None:
-            try:
-                row = self.db.execute(
-                    'SELECT name FROM semesters WHERE department_id = ? AND semester_number = ? AND is_active = 1 AND deleted_at IS NULL AND name IS NOT NULL AND name != "" LIMIT 1',
-                    (department_id, sem),
-                ).fetchone()
-                if row and row['name']:
-                    return row['name']
-            except Exception:
-                logger.debug('Failed to look up semester name for dept=%s sem=%s', department_id, sem)
+        """Fixed teaching-period display name for a semester number."""
         return teaching_semester_label(sem)
 
+    # /     /     >---- نافذة الوقت التقريبية المعروضة بجانب الفترة (مستوردة/خريف/ربيع)
     def _period_date_hint(self, code: str) -> str:
         """Approximate time window shown next to a teaching period."""
         if code == LEGACY_PERIOD_CODE:
@@ -231,6 +239,7 @@ class TeacherService:
             return 'فبراير {} – يونيو {}'.format(y, y)
         return ''
 
+    # /     /     >---- السجل التدريسي التاريخي مجمّعاً حسب السنة ← الفصل
     def get_teaching_record(self, teacher_id: int, year_filter: str = '',
                             semester_filter: int = None) -> Dict:
         """Build the historical teaching record grouped by year → semester."""
@@ -258,21 +267,7 @@ class TeacherService:
                     'total_hours': sem_total,
                     'course_count': len(entries),
                 })
-            display_name = ''
-            if sem_code != LEGACY_PERIOD_CODE:
-                try:
-                    row = self.db.execute(
-                        'SELECT name_ar FROM semesters WHERE code = ? LIMIT 1',
-                        (sem_code,),
-                    ).fetchone()
-                    if row and row['name_ar']:
-                        display_name = row['name_ar']
-                except Exception:
-                    logger.debug('Failed to look up semester display name for code=%s', sem_code)
-                if not display_name:
-                    display_name = period_label(sem_code)
-            else:
-                display_name = LEGACY_PERIOD_LABEL
+            display_name = LEGACY_PERIOD_LABEL if sem_code == LEGACY_PERIOD_CODE else period_label(sem_code)
             years_data.append({
                 'year': display_name,
                 'semester_code': sem_code,
@@ -316,6 +311,7 @@ class TeacherService:
             'missing_hours_count': sum(1 for r in rows if not r['hours']),
         }
 
+    # /     /     >---- سجل تدريسي مفلتر: أستاذ + فصّل + فترة (مجمّع حسب القسم)
     def get_teaching_record_filtered(self, teacher_id: int, semester: int,
                                      semester_code: str, semester_display: str = '',
                                      department_id: int = None) -> Dict:
@@ -349,6 +345,7 @@ class TeacherService:
             },
         }
 
+    # /     /     >---- حذف ناعم للأستاذ مع حماية حساباته المحمية
     def teacher_delete(self, teacher_id: int, history_callback=None) -> None:
         from core.exceptions import ProtectedAccountError
         from database.repositories.user_repository import UserRepository
@@ -376,6 +373,7 @@ class TeacherService:
         )
         self.db.commit()
 
+    # /     /     >---- حذف نهائي للأستاذ مع نفس الحماية
     def teacher_hard_delete(self, teacher_id: int) -> None:
         from core.exceptions import ProtectedAccountError
         row = self.db.execute(
@@ -394,7 +392,7 @@ class TeacherService:
         )
         self.db.commit()
 
-
+    # /     /     >---- بناء شروط القائمة: رئيس القسم يرى أساتذة قسمه فقط
     def _build_where(self, role, user_data, search, dept_filter):
         where = ['t.deleted_at IS NULL']
         params = []
@@ -413,6 +411,7 @@ class TeacherService:
         return where, params, dept_filter
 
 
+# /     /     >---- شروط القائمة (نسخة مستوى الوحدة)
 def teacher_where_clause(role, user_data, search, dept_filter):
     where = ['t.deleted_at IS NULL']
     params = []
@@ -430,6 +429,8 @@ def teacher_where_clause(role, user_data, search, dept_filter):
         params.extend([f'%{search}%'] * 3)
     return where, params, dept_filter
 
+
+# /     /     >---- دوال مستوى الوحدة المحافظة على التوافق مع المسارات القديمة
 
 def list_teachers(db, role, user_data, search, dept_filter, page):
     from utils.format import paginate
@@ -555,5 +556,3 @@ def teacher_restore(db, id):
 def teacher_hard_delete(db, id):
     from services.base_service import hard_delete
     hard_delete(db, 'teachers', id)
-
-

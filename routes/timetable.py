@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 
 from flask import Blueprint, session, request, render_template, redirect, url_for, flash, jsonify
 
@@ -91,7 +91,7 @@ def timetable():
 
     return render_template('timetable/combined.html', payload=payload, user=current_user(),
                            current_teacher_id=current_teacher_id,
-                           is_rd=(role in ('research_development', 'super_admin')))
+                           is_rd=(role == 'research_development'))
 
 
 @bp.route('/department')
@@ -121,6 +121,32 @@ def timetable_department_view():
     payload = timetable_service.get_department_view(db, dept_id, semester, version_id)
     payload['can_manage'] = can_manage
     payload['can_switch_department'] = not user_dept_id
+
+    forms, vocab, syllabi_files = public_service.get_course_content_files(db)
+    payload['form'] = {
+        cid: {'id': item['id'], 'url': url_for('public_library.course_file', file_id=item['id'])}
+        for cid, item in forms.items()
+    }
+    payload['vocab'] = {
+        cid: {
+            'id': item['id'],
+            'originalFilename': item['original_filename'],
+            'url': url_for('public_library.course_file', file_id=item['id']),
+        }
+        for cid, item in vocab.items()
+    }
+    syllabi = {}
+    for key, item in syllabi_files.items():
+        entry = {
+            'id': item['id'],
+            'url': url_for('public_library.course_file', file_id=item['id']),
+            'teacher_id': item.get('teacher_id'),
+            'course_id': item['course_id'],
+        }
+        syllabi[key] = entry
+        if item.get('teacher_id') is None:
+            syllabi['*:{}'.format(item['course_id'])] = entry
+    payload['syllabus'] = syllabi
     return render_template('timetable/department.html', payload=payload, user=user_data)
 
 
@@ -645,4 +671,52 @@ def teachers_schedule():
 @login_required
 @permission_required('timetable.view')
 def department_exam_view():
-    return render_template('timetable/department.html', user=current_user())
+    """Read-only department timetable view (exam/audit access)."""
+    user_data = current_user()
+    db = get_db()
+
+    user_dept_id = _user_dept()
+    dept_id = request.args.get('department_id', type=int)
+    if user_dept_id:
+        dept_id = user_dept_id
+
+    if not dept_id:
+        first = db.execute(
+            'SELECT id FROM departments WHERE hidden=0 AND deleted_at IS NULL ORDER BY name LIMIT 1'
+        ).fetchone()
+        if first:
+            dept_id = first['id']
+
+    semester = request.args.get('semester', type=int)
+    version_id = request.args.get('version_id', type=int)
+
+    payload = timetable_service.get_department_view(db, dept_id, semester, version_id)
+    payload['can_manage'] = False
+    payload['can_switch_department'] = not user_dept_id
+
+    forms, vocab, syllabi_files = public_service.get_course_content_files(db)
+    payload['form'] = {
+        cid: {'id': item['id'], 'url': url_for('public_library.course_file', file_id=item['id'])}
+        for cid, item in forms.items()
+    }
+    payload['vocab'] = {
+        cid: {
+            'id': item['id'],
+            'originalFilename': item['original_filename'],
+            'url': url_for('public_library.course_file', file_id=item['id']),
+        }
+        for cid, item in vocab.items()
+    }
+    syllabi = {}
+    for key, item in syllabi_files.items():
+        entry = {
+            'id': item['id'],
+            'url': url_for('public_library.course_file', file_id=item['id']),
+            'teacher_id': item.get('teacher_id'),
+            'course_id': item['course_id'],
+        }
+        syllabi[key] = entry
+        if item.get('teacher_id') is None:
+            syllabi['*:{}'.format(item['course_id'])] = entry
+    payload['syllabus'] = syllabi
+    return render_template('timetable/department.html', payload=payload, user=user_data)

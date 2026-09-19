@@ -1,7 +1,9 @@
-﻿"""Course service — CRUD, department mappings, prerequisites.
+"""Course service — CRUD, department mappings, prerequisites.
 
 Uses ``CourseRepository`` for data access.  Module-level functions are kept
 for backward compatibility with existing routes.
+
+/     /     >---- خدمة المقررات: عمليات الإضافة والتعديل والحذف وربط الأقسام والمتطلبات.
 """
 
 from __future__ import annotations
@@ -17,12 +19,16 @@ logger = logging.getLogger(__name__)
 
 
 class CourseService:
-    """Class-based course service with repository injection."""
+    """Class-based course service with repository injection.
+
+    /     /     >---- الخدمة بشكل كلاس مع حقن المستودع.
+    """
 
     def __init__(self, db, course_repo):
         self.db = db
         self._repo = course_repo
 
+    # /     /     >---- قائمة المقررات: مع فلترة حسب القسم ورئيس القسم
     def list_courses(self, role: str, user_data: dict, search: str,
                      dept_filter: str, page: int = 1) -> tuple:
         where = ['c.deleted_at IS NULL']
@@ -58,6 +64,7 @@ class CourseService:
     def get_create_form_data(self) -> Dict[str, Any]:
         return self._repo.get_create_form_data()
 
+    # /     /     >---- إنشاء مقرر مع أقسامه ومتطلباته
     def create_course(self, data: Dict[str, Any], department_ids: list,
                       prerequisite_id: int = None) -> int:
         course_id = self._repo.create(data)
@@ -76,6 +83,7 @@ class CourseService:
         data['course_dept_map'] = course_dept_map
         return data
 
+    # /     /     >---- تحديث المقرر مع أقسامه ومتطلباته
     def update_course(self, course_id: int, data: Dict[str, Any],
                       department_ids: list, prerequisite_id: int = None) -> None:
         self._repo.update(course_id, data)
@@ -97,8 +105,7 @@ class CourseService:
         self._repo.delete(course_id)
 
 
-
-# ── Backward-compatible module-level API ──────────────────────────────────
+# /     /     >---- دوال مستوى الوحدة المحافظة على التوافق مع المسارات القديمة
 
 def list_courses(db, role, user_data, search, dept_filter, page):
     from database.repositories.course_repository import CourseRepository
@@ -122,8 +129,9 @@ def get_course_dept_placement_mapping(db, course_ids):
     return CourseRepository(db).get_dept_placement_mapping(course_ids)
 
 
-# ── HOD department study-plan tables ──────────────────────────────────────
+# /     /     >---- جداول خطة الدراسة الخاصة برئيس القسم
 
+# /     /     >---- عناوين الفصول الدراسية
 SEMESTER_TITLES = {
     1: 'الفصل الأول',
     2: 'الفصل الثاني',
@@ -135,10 +143,10 @@ SEMESTER_TITLES = {
     8: 'الفصل الثامن',
 }
 
-# Non-general departments start their plan at semester 2; the semester is
-# derived from the course year (year 1 → semester 2, ..., year 6 → semester 7).
+# /     /     >---- الأقسام غير العامة تبدؤ من الفصل الثاني (السنة → الفصل)
 _YEAR_TO_SEMESTER = {1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7}
 
+# /     /     >---- شرط الجدول الفعّال: نأخدو صفوفه النشطة فقط
 _ACTIVE_TIMETABLE_WHERE = (
     'tt.deleted_at IS NULL '
     "AND (tt.version_id IS NULL OR tt.version_id IN "
@@ -146,6 +154,7 @@ _ACTIVE_TIMETABLE_WHERE = (
 )
 
 
+# /     /     >---- خريطة course_id لأسماء الأساتذة اللي يدرّسوه هذا الفصل
 def get_course_teachers_map(db, course_ids: Optional[List[int]] = None) -> Dict[int, List[str]]:
     """Map course_id -> names of teachers currently teaching it.
 
@@ -183,6 +192,7 @@ def get_course_teachers_map(db, course_ids: Optional[List[int]] = None) -> Dict[
     return mapping
 
 
+# /     /     >---- خريطة course_id لملخص تسليمات نماذج المحتوى
 def get_course_submissions_map(db, course_ids: Optional[List[int]] = None,
                                teacher_id: Optional[int] = None) -> Dict[int, Dict[str, Any]]:
     """Map course_id -> summary of its course-content form submissions.
@@ -223,6 +233,7 @@ def get_course_submissions_map(db, course_ids: Optional[List[int]] = None,
     return mapping
 
 
+# /     /     >---- ترفّع بيانات المقررات بالأساتذة وحالة النموذج (استعلامان)
 def attach_course_related_data(db, courses: List[Dict[str, Any]],
                                teacher_id: Optional[int] = None) -> List[Dict[str, Any]]:
     """Enrich course dicts with teachers + content-form status (two queries).
@@ -243,6 +254,7 @@ def attach_course_related_data(db, courses: List[Dict[str, Any]],
     return courses
 
 
+# /     /     >---- مجموع وحدات المقرر (مع خياري من الساعات النظرية+العملية)
 def _course_units(course: Dict[str, Any]) -> int:
     """Total course units, falling back to theoretical + practical hours."""
     return (course.get('total_hours') or 0) \
@@ -250,6 +262,7 @@ def _course_units(course: Dict[str, Any]) -> int:
             + (course.get('practical_hours') or 0))
 
 
+# /     /     >---- تجميع مقررات القسم (المملوكة + المعتمدة) في جداول فصول
 def get_department_course_tables(db, dept_id: Optional[int]):
     """Group a department's own + signed courses into semester tables.
 
@@ -306,9 +319,7 @@ def get_department_course_tables(db, dept_id: Optional[int]):
     is_general = (dept.get('semesters') or 0) <= 1
     tables = {}
     for c in courses:
-        # Per-department semester (course_departments.semester) is the source
-        # of truth for this department; fall back to the course's global
-        # semester, then derive from year for older data.
+        # /     /     >---- فصل القسم (course_departments.semester) هو المرجع لهذا القسم
         if is_general:
             sem = 1
         else:
@@ -358,6 +369,7 @@ def get_department_course_tables(db, dept_id: Optional[int]):
     }
 
 
+# /     /     >---- نقل مقرر داخل فصول نفس القسم (يرفض التنقل بين الأقسام)
 def move_course_to_semester(db, course_id: int, dept_id: int,
                             semester: int):
     """Move a course into a given semester table of the SAME department.
@@ -403,16 +415,14 @@ def move_course_to_semester(db, course_id: int, dept_id: int,
             (target_semester, row['cd_id']),
         )
     else:
-        # Owner department (courses.department_id = dept_id) without a
-        # course_departments row: add one so per-department state is recorded.
+        # /     /     >---- قسم مالك بدون صف في course_departments: نضيف صف لتسجيل الحالة
         db.execute(
             'INSERT INTO course_departments (course_id, department_id, semester) '
             'VALUES (?, ?, ?)',
             (course_id, dept_id, target_semester),
         )
 
-    # Sync the global semester when this is the primary (first checked)
-    # department, which mirrors what the front-end treats as primary.
+    # /     /     >---- نزامن الفصل العام لما يكون القسم هو الأساسي
     primary = db.execute(
         'SELECT cd.department_id FROM course_departments cd '
         'WHERE cd.course_id = ? ORDER BY cd.id LIMIT 1',
@@ -426,6 +436,7 @@ def move_course_to_semester(db, course_id: int, dept_id: int,
     return True, 'تم نقل المادة بنجاح'
 
 
+# /     /     >---- مزامنة سنة المقرر من فصول الجدول الفعلي
 def sync_courses_from_timetable(db, dept_id: int):
     """Sync courses.year to match timetable semesters for a department.
 
@@ -495,8 +506,6 @@ def sync_courses_from_timetable(db, dept_id: int):
         if course['year'] != new_year:
             db.execute('UPDATE courses SET year = ? WHERE id = ?', (new_year, cid))
             synced += 1
-        else:
-            pass  # already correct, no change needed
 
     db.commit()
 
@@ -565,9 +574,9 @@ def course_hard_delete(db, id):
     hard_delete(db, 'courses', id)
 
 
+# /     /     >---- بيانات صفحة قائمة الإدارة (منقولة من routes/courses.py)
 
-# ── Management list page payload (moved from routes/courses.py) ─────────────
-
+# /     /     >---- خريطة كلمة القسم ← أيقونة Material
 DEPARTMENT_ICON_MAP = [
     ('عام', 'school'),
     ('حاسوب', 'computer'),
@@ -581,6 +590,7 @@ DEPARTMENT_ICON_MAP = [
 ]
 
 
+# /     /     >---- أيقونة قسم حسب الكلمة المفتاحية في الاسم
 def _dept_icon(name):
     """Material Symbol icon name for a department, matched by keyword."""
     if not name:
@@ -591,6 +601,7 @@ def _dept_icon(name):
     return 'account_balance'
 
 
+# /     /     >---- إرفاق الأيقونة والمجموعات لبيانات خطة القسم
 def dept_plan_with_icon(data):
     """Attach an icon and totals to a department plan payload."""
     dept = dict(data.get('department') or {})
@@ -604,6 +615,7 @@ def dept_plan_with_icon(data):
     }
 
 
+# /     /     >---- بناء خطة الدراسة لكل الأقسام الظاهرة
 def build_dept_plans(db):
     """Build a per-department study-plan structure for all visible departments."""
     depts = db.execute(
@@ -617,6 +629,7 @@ def build_dept_plans(db):
     return plans
 
 
+# /     /     >---- القائمة المسطحة للمقررات مع خيارات المتطلبات
 def build_list_payload(db):
     """Flat course list for the management view + prerequisite lookup options.
 

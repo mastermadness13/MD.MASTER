@@ -31,23 +31,31 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_db import init_db, bootstrap_defaults
 from app import create_app
 
+# /     /     >---- نهيئ قاعدة البيانات والبيانات الأساسية
 init_db()
 bootstrap_defaults()
+# /     /     >---- نصنع التطبيق
 app = create_app()
 
+# /     /     >---- إذا السيرفر وراء بروكسي (مثل Nginx)، نضبط الهيدرز
 if os.environ.get('TRUST_PROXY_HEADERS', '').strip().lower() in ('1', 'true', 'yes'):
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
+# ─────────────────────────────────────────────
 
+# /     /     >---- الدالة الرئيسية اللي تشغل سيرفر الإنتاج
 def main():
+    # /     /     >---- نقرأ المعاملات من السطر الأوامر
     parser = argparse.ArgumentParser(description='ROPEY production server')
     parser.add_argument('--host', default=os.environ.get('WAITRESS_HOST', '0.0.0.0'))
     parser.add_argument('--port', type=int, default=int(os.environ.get('WAITRESS_PORT', '5000')))
     parser.add_argument('--threads', type=int, default=int(os.environ.get('WAITRESS_THREADS', '4')))
     args = parser.parse_args()
 
+    # /     /     >---- نوع البروتوكول (HTTP أو HTTPS)
     url_scheme = os.environ.get('WAITRESS_URL_SCHEME', 'http')
     print(f'Starting ROPEY on http://{args.host}:{args.port} ({args.threads} threads)')
+    # /     /     >---- نشغّل السيرفر
     serve(
         app,
         host=args.host,
@@ -57,6 +65,8 @@ def main():
         ident='ROPEY',
     )
 
+# ─────────────────────────────────────────────
 
+# /     /     >---- نقطة الدخول
 if __name__ == '__main__':
     main()

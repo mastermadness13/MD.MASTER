@@ -2,6 +2,8 @@
 
 Uses ``TimetableRepository`` for data access.  Module-level functions are kept
 for backward compatibility with existing routes.
+
+/     /     >---- خدمة الجدول الدراسي: بيانات الجدول والإضافة والتعديل والحذف وفحص التوفر.
 """
 
 from __future__ import annotations
@@ -14,20 +16,17 @@ from utils.format import semester_code_next, semester_display_name
 
 logger = logging.getLogger(__name__)
 
+# /     /     >---- أيام الأسبوع بالعربي من السبت إلى الخميس
 DAYS = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس']
 
 # Semester numbers for courses whose year is known but semester column is NULL.
+# /     /     >---- رقم الفصل للمقرر اللي سنة الحديث معلومة لكن عمود الفصل فاضي
 YEAR_TO_SEMESTER = {1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7}
 
 
+# /     /     >---- الفصل الدراسي النشط حالياً (محسوب من تاريخ اليوم)
 def current_active_semester(db) -> dict:
-    """Return the currently active named semester from the semesters table."""
-    row = db.execute(
-        'SELECT id, code, season, year, name_ar, name_en FROM semesters '
-        'WHERE is_active = 1 AND deleted_at IS NULL LIMIT 1'
-    ).fetchone()
-    if row:
-        return dict(row)
+    """Return the currently active named semester, computed from today's date."""
     from datetime import date
     today = date.today()
     season = 'fall' if today.month >= 9 else 'spring'
@@ -40,53 +39,46 @@ def current_active_semester(db) -> dict:
     }
 
 
+# /     /     >---- كود الفصل الدراسي النشط حالياً
 def current_semester_code(db) -> str:
     """Return the code of the currently active named semester."""
     sem = current_active_semester(db)
     return sem['code'] if sem else 'fall_2026'
 
 
+# /     /     >---- الاسم العربي للفصل (من رمز الفصل مباشرة)
 def semester_display_name_from_db(db, code: str) -> str:
-    """Look up the Arabic display name for a semester code from the database."""
+    """Return the Arabic display name for a semester code."""
     if not code:
         return ''
-    row = db.execute(
-        'SELECT name_ar FROM semesters WHERE code = ? LIMIT 1', (code,)
-    ).fetchone()
-    if row and row['name_ar']:
-        return row['name_ar']
     return semester_display_name(code)
 
 
+# /     /     >---- الأسماء العربية لمجموعة أكواد
 def semester_names_from_db(db, codes) -> Dict[str, str]:
-    """Arabic display names for a collection of semester codes (single query)."""
+    """Arabic display names for a collection of semester codes."""
     codes = [c for c in set(codes) if c]
-    if not codes:
-        return {}
-    placeholders = ','.join('?' * len(codes))
-    rows = db.execute(
-        f'SELECT code, name_ar FROM semesters WHERE code IN ({placeholders})',
-        codes,
-    ).fetchall()
-    out = {r['code']: r['name_ar'] for r in rows if r['name_ar']}
-    for code in codes:
-        if code not in out:
-            out[code] = semester_display_name(code)
-    return out
+    return {code: semester_display_name(code) for code in codes}
 
 
+# /     /     >---- شرط SQL يكيّد على صفوف الجدول الحالية أو الموروثة فقط
 def active_version_condition(alias: str = 't') -> str:
     """SQL fragment selecting only current/legacy timetable rows.
 
     Rows are "current" when they carry no version (legacy rows) or
     when their version is the active one. Other snapshots are excluded.
+
+    /     /     >---- الصفوف الحالية هي اللي ما معاهاش نسخة (موروثة) أو نُسختها النشطة.
     """
     return (f"({alias}.version_id IS NULL OR {alias}.version_id IN "
             f"(SELECT id FROM timetable_versions WHERE status = 'active'))")
 
 
 class TimetableService:
-    """Class-based timetable service with repository injection."""
+    """Class-based timetable service with repository injection.
+
+    /     /     >---- الخدمة بشكل كلاس مع حقن مستودع الجدول.
+    """
 
     def __init__(self, db, timetable_repo):
         self.db = db
@@ -94,6 +86,7 @@ class TimetableService:
         self._sem_code_cache: Dict[tuple, str] = {}
         self.last_conflict_warnings: List[str] = []
 
+    # /     /     >---- بيانات الجدول: المصادر والمقررات والأساتذة والقاعات والفلاتر
     def get_timetable_data(self, role: str, user_dept: int, selected_dept: int,
                            selected_semester: int,
                            selected_section: str = None) -> Dict[str, Any]:
@@ -104,6 +97,7 @@ class TimetableService:
 
         effective_dept = selected_dept or user_dept
 
+        # /     /     >---- معلومات القسم: عدد الفصول ووجود الأقسام الفرعية
         if effective_dept:
             row = self.db.execute(
                 'SELECT name, semesters, has_sections FROM departments WHERE id=?',
@@ -118,6 +112,7 @@ class TimetableService:
         if not available_semesters:
             available_semesters = [1]
 
+        # /     /     >---- تثبيت الفصل إذا كان القسم بفصل وحدة
         semester_fixed = len(available_semesters) == 1
         if semester_fixed:
             selected_semester = available_semesters[0]
@@ -133,10 +128,12 @@ class TimetableService:
             ).fetchall()
             available_sections = [m['name'] for m in majors]
 
+        # /     /     >---- تثبيت الشعبة إذا كان للقسم شعبة وحدة فقط
         section_fixed = len(available_sections) == 1
         if section_fixed:
             selected_section = available_sections[0]
 
+        # /     /     >---- شروط التصفية: الفصل + القسم + الشعبة + النسخة النشطة
         conditions = ['t.semester = ?']
         params.append(selected_semester)
         if role in ('teacher', 'head_of_department') and user_dept:
@@ -180,12 +177,14 @@ class TimetableService:
             'section_fixed': section_fixed,
         }
 
+    # /     /     >---- الفصول المتاحة للقسم حسب عدد سنوات الدراسة
     def available_semesters_for(self, dept: Dict[str, Any]) -> List[int]:
         total = dept.get('semesters') or 1
         if total <= 1:
             return [1]
         return list(range(2, min(total, 8) + 1))
 
+    # /     /     >---- هل توجد نسخة جاهزة لهذا الفصل؟
     def _version_exists(self, dept_id: int, semester: int, semester_code: str) -> bool:
         row = self.db.execute(
             'SELECT 1 FROM timetable_versions '
@@ -194,6 +193,7 @@ class TimetableService:
         ).fetchone()
         return row is not None
 
+    # /     /     >---- التأكد من وجود نسخة وإلا إنشاؤها (تعامل مع سباق الكتابة)
     def _ensure_version(self, dept_id: int, semester: int, semester_code: str) -> int:
         row = self.db.execute(
             'SELECT id FROM timetable_versions '
@@ -220,6 +220,7 @@ class TimetableService:
                 return row['id']
             raise
 
+    # /     /     >---- كود الفصل للنسخة النشطة (الأحدث يفوز + حفظ ذاكر في الطلب نفسه)
     def _current_semester_code_for(self, dept_id: int, semester: int) -> str:
         """Named semester code of the active version for a department + semester.
 
@@ -256,6 +257,7 @@ class TimetableService:
         self._sem_code_cache[key] = code
         return code
 
+    # /     /     >---- ضمان نسخة نشطة للعرض: إرجاعها أو تفعيل/إنشاء واحدة
     def ensure_current_version(self, dept_id: int, semester: int) -> int:
         """Return the active version for a department+semester, creating or
         activating one so newly saved lectures are always visible.
@@ -275,6 +277,7 @@ class TimetableService:
             return row['id']
         return self._ensure_version(dept_id, semester, sem_code)
 
+    # /     /     >---- تفعيل نسخة معينة وتجاوز أي نسخة نشطة أخرى
     def _activate_version(self, dept_id: int, semester: int, version_id: int) -> None:
         """Make a version the active (editable) one; supersede others."""
         self.db.execute(
@@ -288,6 +291,7 @@ class TimetableService:
         )
         self.db.commit()
 
+    # /     /     >---- إنشاء/إرجاع نسخة ونقل صفوف مصدر وتفعيل اختياري
     def ensure_version_for_semester(self, dept_id: int, semester: int,
                                     semester_code: str,
                                     source_version_id: int = None,
@@ -305,6 +309,7 @@ class TimetableService:
             )
             self.db.commit()
 
+            # /     /     >---- تسجيل المواد المُدرَّسة للصفوف المنسوخة
             copied = self.db.execute(
                 'SELECT id, day, course_id, teacher_id, department_id, semester, '
                 '       start_time, end_time, period, room_id, student_section, '
@@ -328,6 +333,7 @@ class TimetableService:
             self._activate_version(dept_id, semester, new_version_id)
         return new_version_id
 
+    # /     /     >---- فتح أول فصل فارغ بعد الحالي كنسخة نشطة جديدة
     def create_version_for_next_semester(self, dept_id: int, semester: int,
                                          source_version_id: int = None) -> tuple:
         """Open the first empty semester after the current one as the new active version."""
@@ -344,6 +350,7 @@ class TimetableService:
         version_id = self.ensure_version_for_semester(dept_id, semester, next_code, source_version_id)
         return version_id, next_code
 
+    # /     /     >---- عرض جدول القسم: فئات فارغة + سجلات + إصدارات قديمة (قفل عند غير النشط)
     def get_department_view(self, dept_id: int, semester: int = None,
                             version_id: int = None) -> Dict[str, Any]:
         all_depts = [dict(r) for r in self.db.execute(
@@ -381,6 +388,7 @@ class TimetableService:
         academic = self._active_semester_row()
         academic_label = academic.get('name_ar') if academic else (current_name or current_code)
 
+        # /     /     >---- عند اختيار نسخة قديمة: العرض للقراءة فقط ومقفول
         viewing_version_id = current_version_id
         viewing_code = current_code
         viewing_name = current_name
@@ -402,6 +410,7 @@ class TimetableService:
             dept_id, semester, viewing_version_id, include_legacy=not locked
         )
 
+        # /     /     >---- قائمة النسخ السابقة المحفوظة مع عدد السجلات والاسم العربي
         versions = [dict(r) for r in self.db.execute(
             'SELECT v.id, v.semester_code, v.updated_at, '
             '(SELECT COUNT(*) FROM timetable t WHERE t.version_id = v.id) AS cnt '
@@ -417,6 +426,7 @@ class TimetableService:
             v['semester_name_ar'] = name_map.get(v.get('semester_code', ''), '')
         versions = [v for v in versions if v['cnt'] > 0]
 
+        # /     /     >---- تواريخ الفصل الأكاديمي والامتحانات للعرض
         sem_start_date, sem_end_date, ex_start, ex_end = '', '', '', ''
         if academic:
             sem_start_date = academic.get('start_date') or ''
@@ -452,6 +462,7 @@ class TimetableService:
             'active_academic_label': academic_label,
         }
 
+    # /     /     >---- معرف النسخة النشطة للقراءة فقط (ما ينشئ نسخة جديدة)
     def _active_version_id(self, dept_id: int, semester: int) -> Optional[int]:
         """Read-only lookup of the active version id (never creates one)."""
         row = self.db.execute(
@@ -461,15 +472,34 @@ class TimetableService:
         ).fetchone()
         return row['id'] if row else None
 
+    # /     /     >---- صف الفصل النشط أكاديمياً (محسوب) مع حقول التواريخ
     def _active_semester_row(self) -> Optional[Dict[str, Any]]:
-        """The single active (is_active=1) semester row, including date fields."""
-        row = self.db.execute(
-            'SELECT id, code, season, year, name_ar, name_en, '
-            'start_date, end_date, exam_start_date, exam_end_date '
-            'FROM semesters WHERE is_active = 1 AND deleted_at IS NULL LIMIT 1'
-        ).fetchone()
-        return dict(row) if row else None
+        """The computed active semester row, including default date fields."""
+        from datetime import date
+        today = date.today()
+        season = 'fall' if today.month >= 9 else 'spring'
+        year = today.year if today.month >= 9 else today.year
+        code = f'{season}_{year}'
+        name_ar = f'{"خريف" if season == "fall" else "ربيع"} {year}'
+        name_en = f'{"Fall" if season == "fall" else "Spring"} {year}'
+        if season == 'fall':
+            start_date = f'{year}-09-01'
+            end_date = f'{year + 1}-01-31'
+            exam_start_date = f'{year + 1}-01-10'
+            exam_end_date = f'{year + 1}-01-25'
+        else:
+            start_date = f'{year}-02-15'
+            end_date = f'{year}-06-30'
+            exam_start_date = f'{year}-06-01'
+            exam_end_date = f'{year}-06-20'
+        return {
+            'id': None, 'code': code, 'season': season, 'year': year,
+            'name_ar': name_ar, 'name_en': name_en, 'is_active': 1,
+            'start_date': start_date, 'end_date': end_date,
+            'exam_start_date': exam_start_date, 'exam_end_date': exam_end_date,
+        }
 
+    # /     /     >---- عرض موحّد للقراءة فقط لكل أقسام الجدول
     def get_combined_timetable_view(self, role: str, user_dept: int = None,
                                     selected_semester: int = None) -> Dict[str, Any]:
         """Combined read-only view of every department's timetable."""
@@ -516,6 +546,7 @@ class TimetableService:
             'academic_label': (current_active_semester(self.db).get('name_ar')),
         }
 
+    # /     /     >---- قائمة المقررات مع أقسامها وترتيبها (سنة أو فصل)
     def _build_course_payload(self) -> List[Dict[str, Any]]:
         rows = self.db.execute(
             'SELECT c.id, c.code, c.name, c.year, c.semester, '
@@ -554,6 +585,7 @@ class TimetableService:
             })
         return courses
 
+    # /     /     >---- الأزواج (أستاذ، مقرر) للتحقق السريع في الواجهة
     def _build_teacher_courses(self) -> List[Dict[str, Any]]:
         rows = self.db.execute(
             'SELECT t.teacher_id, c.code FROM timetable t '
@@ -572,6 +604,7 @@ class TimetableService:
             out.append({'teacherId': r['teacher_id'], 'code': r['code']})
         return out
 
+    # /     /     >---- بيانات نموذج إضافة حصة: قاعة/مقررات/أساتذة حسب القسم
     def get_create_form_data(self, dept_id: int, day: str, semester: int,
                              period_code: str, user_dept: int) -> tuple:
         dept_name = None
@@ -593,6 +626,7 @@ class TimetableService:
             self._repo.list_all_rooms_with_code(),
         )
 
+    # /     /     >---- حفظ سجل تدريس: أفضل جهد ولا يكسر حفظ الجدول أبداً
     def _record_taught_course(self, teacher_id, course_id, department_id,
                               semester, version_id=None,
                               day='', start_time='', end_time='', period='',
@@ -603,6 +637,8 @@ class TimetableService:
 
         Best-effort: never breaks the timetable save that triggered it.
         Uses INSERT OR REPLACE so edits update the existing assignment.
+
+        /     /     >---- INSERT OR REPLACE حتى التعديل يشتغل على نفس السجل.
         """
         try:
             if not teacher_id or not course_id:
@@ -621,6 +657,7 @@ class TimetableService:
                 except Exception:
                     logger.debug('Failed to resolve semester code for dept=%s sem=%s', department_id, semester)
                     code = ''
+            # /     /     >---- حساب الساعات من وقت البداية/النهاية إذا فاضية
             if not hours and start_time and end_time:
                 try:
                     s_parts = start_time.split(':')
@@ -643,6 +680,7 @@ class TimetableService:
         except Exception:
             logger.exception('Failed to record taught course (non-fatal)')
 
+    # /     /     >---- ربط الأستاذ بالقسم تلقائياً عند الإسناد
     def _link_teacher_department(self, teacher_id, department_id) -> None:
         """Auto-link a department into a teacher's departments on assignment."""
         if not teacher_id or not department_id:
@@ -653,6 +691,7 @@ class TimetableService:
             (teacher_id, department_id),
         )
 
+    # /     /     >---- تحذيرات تعارض (إرشادية فقط) لأستاذ/قاعة في نفس الفترة
     def _collect_conflict_warnings(self, day, semester, period_code, teacher_id,
                                    room_id, entry_id, start_time='', end_time='',
                                    hours=0) -> List[str]:
@@ -660,6 +699,8 @@ class TimetableService:
 
         Saving is never blocked; these are informational only. Adjacent slots
         (non-overlapping half-open times) must NOT warn.
+
+        /     /     >---- الحفظ لازم ما يتحجبش، التنبيهات معلومة فقط والجوار يتم تجاهله.
         """
         warnings: List[str] = []
         conflict_rows = self._repo.get_conflicting_entries(
@@ -692,6 +733,7 @@ class TimetableService:
                 unique.append(w)
         return unique
 
+    # /     /     >---- إضافة حصة جديدة مع الربط والتسجيل والتحذيرات
     def create_entry(self, day, semester, period_code, course_id, teacher_id,
                      room_id, department_id, start_time='', end_time='',
                      version_id=None, lecture_type='theory', hours=0):
@@ -717,6 +759,7 @@ class TimetableService:
         )
         return entry_id
 
+    # /     /     >---- تعديل حصة مع إعادة الربط والتسجيل والتحذيرات
     def update_entry(self, entry_id, day, semester, period_code, course_id,
                      teacher_id, room_id, start_time='', end_time='',
                      lecture_type='theory', hours=0):
@@ -745,11 +788,19 @@ class TimetableService:
         )
         return ok
 
+    def delete_entry(self, entry_id) -> bool:
+        """Delete a timetable entry. Returns True if a row was removed."""
+        return self._repo.delete(entry_id)
+
     def get_last_conflict_warnings(self) -> List[str]:
         """Return (and clear) this instance's advisory warnings."""
         warnings = list(self.last_conflict_warnings)
         self.last_conflict_warnings = []
         return warnings
+
+
+# /     /     >---- دوال مستوى الوحدة للتوافق مع المسارات القديمة
+
 
 def get_timetable_data(db, role, user_dept, selected_dept, selected_semester, selected_section=None):
     from database.repositories.timetable_repository import TimetableRepository
@@ -777,6 +828,7 @@ def get_create_form_data(db, dept_id, day, semester, period_code, user_dept):
 
 # Conflict-warning storage is context-local so concurrent requests (threaded
 # dev server / multiple workers) never read another request's warnings.
+# /     /     >---- تخزين التحذيرات في سياق الطلب حتى الطلبات المتوازية ما تخلط بيناتها
 _warnings_context: contextvars.ContextVar = contextvars.ContextVar(
     'timetable_conflict_warnings', default=[]
 )
@@ -835,9 +887,11 @@ def create_version_for_next_semester(db, dept_id, semester, source_version_id=No
 
 
 # Keep old name as alias for backward compatibility
+# /     /     >---- الاسم القديم كاسم اختصاري للتوافق
 create_version_for_next_year = create_version_for_next_semester
 
 
+# /     /     >---- إنشاء نسخة لكود موسم/سنة صريح مع منع التكرار
 def create_version_for_semester_code(db, dept_id, semester, semester_code,
                                      source_version_id=None):
     """Create a timetable version for an explicit season+year code.
@@ -846,6 +900,8 @@ def create_version_for_semester_code(db, dept_id, semester, semester_code,
     when a version for the same code already exists for this department+
     semester — the caller must block the duplicate and ask for a different
     term/year.
+
+    /     /     >---- إذا النسخة موجودة نرجع None والمتصل يمنع التكرار.
     """
     from database.repositories.timetable_repository import TimetableRepository
     svc = TimetableService(db, TimetableRepository(db))
@@ -870,6 +926,7 @@ def get_version(db, version_id):
     return dict(row) if row else None
 
 
+# /     /     >---- القاعات المتاحة في فترة معينة
 def get_available_rooms(db, day, semester, period_code, exclude_id, start_time='', end_time='', hours=0):
     from database.repositories.timetable_repository import TimetableRepository
     return TimetableRepository(db).get_only_available_resources(
@@ -877,6 +934,7 @@ def get_available_rooms(db, day, semester, period_code, exclude_id, start_time='
     )
 
 
+# /     /     >---- الأساتذة المتاحين في فترة معينة
 def get_available_teachers(db, day, semester, period_code, exclude_id, start_time='', end_time='', hours=0):
     from database.repositories.timetable_repository import TimetableRepository
     return TimetableRepository(db).get_only_available_resources(
@@ -884,6 +942,7 @@ def get_available_teachers(db, day, semester, period_code, exclude_id, start_tim
     )
 
 
+# /     /     >---- جدول أسبوعي لأستاذ معيّن: {اليوم: [الحصص]}
 def build_teacher_weekly(db, teacher_id, days_order=None):
     """Build {day: [entries]} for a teacher's weekly schedule."""
     if days_order is None:

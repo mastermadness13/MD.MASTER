@@ -9,6 +9,7 @@ from services.search import highlight_text
 bp = Blueprint('history', __name__, url_prefix='/history')
 
 
+# /     /     >---- قائمة سجل العمليات مع بحث وترقيم صفحات (AJAX / عادي)
 @bp.route('')
 @login_required
 @permission_required('history.view')
@@ -29,6 +30,7 @@ def history_list():
                           user=current_user())
 
 
+# /     /     >---- تفاصيل سجل عملية واحد
 @bp.route('/<int:id>')
 @login_required
 @permission_required('history.view')

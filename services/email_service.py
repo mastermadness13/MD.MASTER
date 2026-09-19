@@ -6,6 +6,7 @@ from config import Config
 logger = logging.getLogger(__name__)
 
 
+# /     /     >---- إرسال بريد إعادة تعيين كلمة المرور للمستخدم
 def send_reset_email(to_email: str, reset_url: str) -> bool:
     try:
         subject = 'إعادة تعيين كلمة المرور - كلية التقنية الهندسية زوارة'
@@ -19,11 +20,13 @@ def send_reset_email(to_email: str, reset_url: str) -> bool:
             'فريق الدعم الفني - كلية التقنية الهندسية زوارة'
         )
 
+        # /     /     >---- تجهيز الرسالة بتنسيق نص بسيط وترميز عربي
         msg = MIMEText(body, _charset='utf-8')
         msg['Subject'] = subject
         msg['From'] = Config.MAIL_DEFAULT_SENDER
         msg['To'] = to_email
 
+        # /     /     >---- الاتصال بخادم البريد مع تشفير TLS وتسجيل الدخول
         with smtplib.SMTP(Config.MAIL_SERVER, Config.MAIL_PORT, timeout=10) as server:
             server.starttls()
             server.login(Config.MAIL_USERNAME, Config.MAIL_PASSWORD)

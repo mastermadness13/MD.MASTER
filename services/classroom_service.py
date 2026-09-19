@@ -1,7 +1,9 @@
-﻿"""Classroom (room) service — CRUD and lookups.
+"""Classroom (room) service — CRUD and lookups.
 
 Uses ``RoomRepository`` for data access.  Module-level functions are kept
 for backward compatibility with existing routes.
+
+/     /     >---- خدمة القاعات: عمليات الإضافة والتعديل والحذف والاستعلام.
 """
 
 from __future__ import annotations
@@ -12,8 +14,7 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
-# Natural ordering: halls first then labs, each sorted naturally
-# (قاعة 1, قاعة 2, ... قاعة 10) instead of lexicographic order.
+# /     /     >---- ترتيب طبيعي: القاعات أولاً ثم المعامل، وكل مجموعة بالترتيب الطبيعي
 NATURAL_ROOM_ORDER = (
     "CASE WHEN COALESCE(rt.css_class,'') = 'lab' THEN 1 ELSE 0 END, "
     'length(r.name), r.name'
@@ -21,12 +22,16 @@ NATURAL_ROOM_ORDER = (
 
 
 class ClassroomService:
-    """Class-based classroom service with repository injection."""
+    """Class-based classroom service with repository injection.
+
+    /     /     >---- الخدمة بشكل كلاس مع حقن المستودع.
+    """
 
     def __init__(self, db, room_repo):
         self.db = db
         self._repo = room_repo
 
+    # /     /     >---- قائمة القاعات مع البحث وفلترة القسم
     def list_rooms(self, search: str, dept_filter: str, page: int = 1) -> tuple:
         where = ['r.deleted_at IS NULL']
         params: list = []
@@ -44,6 +49,7 @@ class ClassroomService:
     def get_create_lookups(self) -> Dict[str, list]:
         return self._repo.get_create_lookups()
 
+    # /     /     >---- إنشاء قاعة أو عدّة قاعات بكمية معينة مع توليد الأسماء تلقائياً
     def create_room(self, data: Dict[str, Any]) -> int:
         quantity = data.get('quantity', 1) or 1
         if quantity < 1:
@@ -51,18 +57,10 @@ class ClassroomService:
         base_name = (data.get('name') or '').strip()
 
         if quantity == 1:
-            # Keep the exact typed name for a single room (e.g. «مسرح»,
-            # «قاعة العرض»), matching the original behaviour.
+            # /     /     >---- قاعة وحدة: نحتفظ بالاسم المدخل كما هو (مثل «مسرح»)
             names = [base_name]
         else:
-            # If the given base name already ends with a number (e.g.
-            # «قاعة 6»), continue that exact sequence («قاعة 6»,
-            # «قاعة 7», ...), skipping any already-occupied numbers (so
-            # «معمل إلكترونيات 2» when it exists yields 3, 4, ...).
-            # Otherwise treat the whole name as a prefix and start from the
-            # next available number (e.g. «قاعة» with «قاعة 14» present →
-            # 15, 16, ...). Names without a trailing number (e.g. «قاعة
-            # العرض», «معمل الكلية») are ignored when computing the number.
+            # /     /     >---- إذا الاسم ينتهي برقم، نكمّل الترقيم من القاعات الموجودة
             prefix_match = re.match(r'^(.*?\D)(\d+)$', base_name)
             if prefix_match:
                 text_part = prefix_match.group(1).rstrip()
@@ -82,6 +80,7 @@ class ClassroomService:
                     given_number = max(given_number, max(numbers) + 1)
                 names = [f'{text_part} {given_number + i}' for i in range(quantity)]
             else:
+                # /     /     >---- الاسم بدون رقم: نبدا من أول رقم متاح بعد الموجود
                 prefix = re.escape(base_name)
                 pattern = re.compile(rf'^{prefix}\s*(\d+)$')
                 existing = self.db.execute(
@@ -95,7 +94,7 @@ class ClassroomService:
                         numbers.append(int(m.group(1)))
                 next_number = max(numbers) + 1 if numbers else 1
                 names = [f'{base_name} {next_number + i}' for i in range(quantity)]
-        # Prevent duplicate room names among active rooms.
+        # /     /     >---- نمنع تكرار أسماء القاعات الفعّالة
         placeholders = ','.join('?' * len(names))
         dup = self.db.execute(
             f'SELECT name FROM rooms WHERE deleted_at IS NULL '
@@ -139,8 +138,7 @@ class ClassroomService:
         self._repo.delete(room_id)
 
 
-
-# ── Backward-compatible module-level API ──────────────────────────────────
+# /     /     >---- دوال مستوى الوحدة المحافظة على التوافق مع المسارات القديمة
 
 def list_rooms(db, search, dept_filter, page):
     from utils.format import paginate
@@ -211,4 +209,3 @@ def room_restore(db, id):
 def room_hard_delete(db, id):
     from services.base_service import hard_delete
     hard_delete(db, 'rooms', id)
-

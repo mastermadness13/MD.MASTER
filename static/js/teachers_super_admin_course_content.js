@@ -6,11 +6,11 @@
   var esc = H.esc || function (s) { return String(s == null ? '' : s); };
   var COURSES = BOOT.courses || [];
   var SYLLABUS_BY_COURSE = BOOT.syllabusByCourse || {};
+  var FORM_BY_COURSE = BOOT.formByCourse || {};
+  var selectedIds = {};
 
-  // Build department list from all visible departments (server-provided) merged with course dept_names
   var deptNames = [];
   (BOOT.departmentNames || []).forEach(function (n) { deptNames.push(n); });
-  // Add any dept names found only on courses
   COURSES.forEach(function (c) {
     (c.dept_names || []).forEach(function (d) {
       if (deptNames.indexOf(d) === -1) deptNames.push(d);
@@ -18,12 +18,154 @@
   });
   var departments = deptNames.filter(Boolean).map(function (name) { return { name: name }; });
 
-  // Semester labels
   function semLabel(s) {
     var n = parseInt(s, 10);
     if (!n) return '—';
     var ord = ['الأول','الثاني','الثالث','الرابع','الخامس','السادس','السابع','الثامن'];
     return ord[n - 1] || ('الفصل ' + n);
+  }
+
+  function hoursBadge(c) {
+    var total = c.total_hours || ((c.theoretical_hours || 0) + (c.practical_hours || 0));
+    var th = c.theoretical_hours || 0;
+    var ph = c.practical_hours || 0;
+    var detail = th + ' نظري · ' + ph + ' عملي';
+    return '<div class="text-center"><span class="font-bold text-text-primary text-sm">' + total + '</span><div class="cc-hours-detail">' + detail + '</div></div>';
+  }
+
+  function materialCell(c) {
+    return '<div class="font-bold text-on-surface text-sm">' + esc(c.name) + '</div>' +
+      '<div class="font-mono text-xs text-on-surface-variant mt-0.5" dir="ltr">' + esc(c.code) + '</div>';
+  }
+
+  function deptCell(c) {
+    if (!c.dept_names || !c.dept_names.length) return '<span class="text-xs text-text-faint">—</span>';
+    return '<div class="flex flex-wrap gap-1">' + c.dept_names.map(function (d) {
+      return '<span class="text-xs font-semibold text-text-secondary">' + esc(d) + '</span>';
+    }).join('<span class="text-text-faint mx-0.5">·</span>') + '</div>';
+  }
+
+  function formStatusBadge(c) {
+    return H.formStatusBadge ? H.formStatusBadge(c.form_status) : '';
+  }
+
+  function teachersCell(c) {
+    return H.teachersCell ? H.teachersCell(c.teachers) : '';
+  }
+
+  var openDropdown = null;
+
+  function closeAllDropdowns() {
+    document.querySelectorAll('.cc-actions-menu.open').forEach(function (m) { m.classList.remove('open'); });
+    openDropdown = null;
+  }
+
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('.cc-actions-dropdown')) closeAllDropdowns();
+  });
+
+  function actionsCell(c) {
+    var syl = SYLLABUS_BY_COURSE[c.id];
+    var form = FORM_BY_COURSE[c.id];
+    var formEditUrl = c.latest_form_submission_id
+      ? '/teacher/super-admin/course-content/create?course_id=' + c.id + '&submission_id=' + c.latest_form_submission_id
+      : '/teacher/super-admin/course-content/create?course_id=' + c.id;
+    var sylHref = (syl && syl.id)
+      ? '/teacher/super-admin/course-content/course-file/' + syl.id + '?download=1'
+      : formEditUrl;
+
+    var items = '';
+    if (form && form.id) {
+      items += '<a href="/course-file/' + form.id + '?download=1"><span class="material-symbols-outlined text-base">description</span>تحميل المقرر</a>';
+    }
+    if (syl && syl.id) {
+      items += '<a href="' + sylHref + '"><span class="material-symbols-outlined text-base">download</span>تحميل المنهج</a>';
+    }
+    items += '<button type="button" onclick="ccPreparePrint(this)" data-cid="' + c.id + '" data-sid="' + (c.latest_form_submission_id || '') + '"><span class="material-symbols-outlined text-base">print</span>طباعة المقرر</button>';
+    items += '<a href="' + formEditUrl + '"><span class="material-symbols-outlined text-base">edit</span>إنشاء/تعديل المقرر</a>';
+
+    var uid = 'cc-drop-' + c.id;
+    return '<div class="cc-actions-dropdown">' +
+      '<button type="button" onclick="ccToggleDropdown(\'' + uid + '\', event)" class="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border bg-white hover:bg-primary-faint text-primary text-xs font-bold transition-all cursor-pointer">' +
+        '<span class="material-symbols-outlined text-base">more_vert</span>الإجراءات' +
+      '</button>' +
+      '<div id="' + uid + '" class="cc-actions-menu">' + items + '</div>' +
+    '</div>';
+  }
+
+  window.ccToggleDropdown = function (id, e) {
+    e.stopPropagation();
+    var menu = document.getElementById(id);
+    if (!menu) return;
+    var isOpen = menu.classList.contains('open');
+    closeAllDropdowns();
+    if (!isOpen) menu.classList.add('open');
+  };
+
+  function ccPreparePrint(btn) {
+    var sid = btn.getAttribute('data-sid');
+    if (!sid) return;
+    var frame = document.getElementById('ccPrintFrame');
+    if (!frame) {
+      frame = document.createElement('iframe');
+      frame.id = 'ccPrintFrame';
+      frame.setAttribute('aria-hidden', 'true');
+      frame.style.cssText = 'position:absolute;left:-9999px;top:0;width:1200px;height:1000px;border:0;';
+      frame.onload = function () {
+        var win = frame.contentWindow;
+        if (win) { win.focus(); win.print(); }
+        window.setTimeout(function () { if (frame.parentNode) frame.parentNode.removeChild(frame); }, 1000);
+      };
+      document.body.appendChild(frame);
+    }
+    frame.src = '/teacher/super-admin/course-content/' + sid + '?print=1';
+  }
+  window.ccPreparePrint = ccPreparePrint;
+
+  // ============ BULK SELECT ============
+  function updateBulkUI() {
+    var keys = Object.keys(selectedIds);
+    var count = keys.length;
+    var headerBtn = document.getElementById('courseHeaderDeleteBtn');
+    if (headerBtn) headerBtn.style.display = count > 0 ? 'inline' : 'none';
+    document.querySelectorAll('.cc-row-cb').forEach(function (cb) {
+      cb.closest('tr').classList.toggle('bg-primary/5', !!selectedIds[cb.value]);
+    });
+  }
+
+  function toggleSelect(id) {
+    if (selectedIds[id]) delete selectedIds[id]; else selectedIds[id] = true;
+    updateBulkUI();
+  }
+  window.ccToggleSelect = toggleSelect;
+
+  function toggleSelectAll() {
+    var all = listRows();
+    var allSelected = all.every(function (c) { return selectedIds[c.id]; });
+    if (allSelected) { selectedIds = {}; } else { all.forEach(function (c) { selectedIds[c.id] = true; }); }
+    renderList();
+    updateBulkUI();
+  }
+
+  function bulkDelete() {
+    var ids = Object.keys(selectedIds);
+    if (!ids.length) return;
+    if (!confirm('هل تريد حذف ' + ids.length + ' مقرر محدد؟')) return;
+    var csrf = BOOT.csrfToken || '';
+    fetch('/teacher/super-admin/course-content/bulk-delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': csrf },
+      body: 'course_ids=' + ids.join(',') + '&_csrf_token=' + encodeURIComponent(csrf)
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      if (d && d.success) {
+        COURSES = COURSES.filter(function (c) { return !selectedIds[c.id]; });
+        selectedIds = {};
+        renderList();
+        updateBulkUI();
+      } else {
+        alert(d && d.error ? d.error : 'حدث خطأ أثناء الحذف');
+      }
+    }).catch(function () { alert('حدث خطأ أثناء الحذف'); });
   }
 
   // ============ LIST VIEW ============
@@ -46,70 +188,6 @@
     });
   }
 
-  function formStatusBadge(c) {
-    return H.formStatusBadge ? H.formStatusBadge(c.form_status) : '';
-  }
-
-  function teachersCell(c) {
-    return H.teachersCell ? H.teachersCell(c.teachers) : '';
-  }
-
-  function deptBadges(c) {
-    return H.deptBadges ? H.deptBadges(c.dept_names) : '';
-  }
-
-  function prereqBadges(c) {
-    return H.prereqBadges ? H.prereqBadges(c.prereqs) : '';
-  }
-
-  function actionsCell(c) {
-    var syl = SYLLABUS_BY_COURSE[c.id];
-    var formEditUrl = c.latest_form_submission_id
-      ? '/teacher/super-admin/course-content/create?course_id=' + c.id + '&amp;submission_id=' + c.latest_form_submission_id
-      : '/teacher/super-admin/course-content/create?course_id=' + c.id;
-    var sylHref = (syl && syl.id)
-      ? '/teacher/super-admin/course-content/course-file/' + syl.id + '?download=1'
-      : formEditUrl;
-    function actBtn(href, icon, title) {
-      return '<a href="' + href + '" class="w-7 h-7 inline-flex items-center justify-center rounded-lg hover:bg-primary-faint text-primary transition-all" title="' + title + '">' +
-        '<span class="material-symbols-outlined text-base">' + icon + '</span></a>';
-    }
-    function printBtn(title) {
-      return '<button type="button" onclick="ccPreparePrint(this)" class="w-7 h-7 inline-flex items-center justify-center rounded-lg hover:bg-primary-faint text-primary transition-all" title="' + title + '" data-cid="' + c.id + '" data-sid="' + (c.latest_form_submission_id || '') + '">' +
-        '<span class="material-symbols-outlined text-base">print</span></button>';
-    }
-    return '<div class="flex items-center justify-center gap-1">' +
-      actBtn(sylHref, 'download', 'تحميل المنهج') +
-      printBtn('طباعة المقرر') +
-      actBtn(formEditUrl, 'edit', 'تعديل المقرر') +
-    '</div>';
-  }
-
-  function ccPreparePrint(btn) {
-    var sid = btn.getAttribute('data-sid');
-    if (!sid) return;
-    var frame = document.getElementById('ccPrintFrame');
-    if (!frame) {
-      frame = document.createElement('iframe');
-      frame.id = 'ccPrintFrame';
-      frame.setAttribute('aria-hidden', 'true');
-      frame.style.cssText = 'position:absolute;left:-9999px;top:0;width:1200px;height:1000px;border:0;';
-      frame.onload = function () {
-        var win = frame.contentWindow;
-        if (win) {
-          win.focus();
-          win.print();
-        }
-        window.setTimeout(function () {
-          if (frame.parentNode) frame.parentNode.removeChild(frame);
-        }, 1000);
-      };
-      document.body.appendChild(frame);
-    }
-    frame.src = '/teacher/super-admin/course-content/' + sid + '?print=1';
-  }
-  window.ccPreparePrint = ccPreparePrint;
-
   function renderList() {
     var tbody = document.getElementById('ccCourseTableBody');
     var rows = listRows().slice();
@@ -118,27 +196,22 @@
       var sb = SYLLABUS_BY_COURSE[b.id] ? 1 : 0;
       return sb - sa;
     });
-    document.getElementById('ccCourseCount').textContent = rows.length;
+    document.getElementById('ccCourseCount').textContent = BOOT.total || rows.length;
     if (!rows.length) {
-      tbody.innerHTML = '<tr><td colspan="13" class="px-4 py-12 text-center"><div class="flex flex-col items-center gap-2"><span class="material-symbols-outlined text-4xl text-text-faint">search_off</span><p class="text-text-muted text-sm">لا توجد مقررات مطابقة</p></div></td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" class="px-4 py-12 text-center"><div class="flex flex-col items-center gap-2"><span class="material-symbols-outlined text-4xl text-text-faint">search_off</span><p class="text-text-muted text-sm">لا توجد مقررات مطابقة</p></div></td></tr>';
       return;
     }
     tbody.innerHTML = rows.map(function (c, i) {
-      var total = c.total_hours || ((c.theoretical_hours || 0) + (c.practical_hours || 0));
       return '<tr class="hover:bg-surface-hover transition-colors">' +
-        '<td class="px-3 py-2 text-center text-text-muted text-xs font-semibold">' + (i + 1) + '</td>' +
-        '<td class="px-3 py-2"><a href="/teacher/super-admin/course-content/course/' + c.id + '" class="font-mono text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20 no-underline hover:bg-primary/20 transition-all">' + esc(c.code) + '</a></td>' +
-        '<td class="px-3 py-2"><span class="font-medium text-text-primary text-sm">' + esc(c.name) + '</span></td>' +
-        '<td class="px-3 py-2">' + deptBadges(c) + '</td>' +
-        '<td class="px-3 py-2 text-center text-xs font-semibold text-text-secondary">' + semLabel(c.semester) + '</td>' +
+        '<td class="px-2 py-2 text-center"><input type="checkbox" value="' + c.id + '" class="cc-row-cb rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" onchange="ccToggleSelect(' + c.id + ')"' + (selectedIds[c.id] ? ' checked' : '') + '></td>' +
+        '<td class="px-2 py-2 text-center text-text-muted text-xs font-semibold">' + (i + 1) + '</td>' +
+        '<td class="px-3 py-2">' + materialCell(c) + '</td>' +
+        '<td class="px-3 py-2">' + deptCell(c) + '</td>' +
+        '<td class="px-2 py-2 text-center text-xs font-semibold text-text-secondary">' + semLabel(c.semester) + '</td>' +
         '<td class="px-3 py-2">' + teachersCell(c) + '</td>' +
-        '<td class="px-3 py-2 text-center whitespace-nowrap">' + formStatusBadge(c) + '</td>' +
-        '<td class="px-3 py-2 text-center text-text-secondary text-sm">' + (c.theoretical_hours || 0) + '</td>' +
-        '<td class="px-3 py-2 text-center text-text-secondary text-sm">' + (c.practical_hours || 0) + '</td>' +
-        '<td class="px-3 py-2 text-center font-bold text-text-primary text-sm">' + total + '</td>' +
-        '<td class="px-3 py-2 text-center"><span class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-primary-faint text-primary text-[11px] font-bold">' + total + '</span></td>' +
-        '<td class="px-3 py-2 text-center whitespace-nowrap">' + prereqBadges(c) + '</td>' +
-        '<td class="px-3 py-2">' + actionsCell(c) + '</td>' +
+        '<td class="px-2 py-2 text-center whitespace-nowrap">' + formStatusBadge(c) + '</td>' +
+        '<td class="px-2 py-2">' + hoursBadge(c) + '</td>' +
+        '<td class="px-2 py-2">' + actionsCell(c) + '</td>' +
       '</tr>';
     }).join('');
   }
@@ -198,6 +271,42 @@
     }
   }
 
+  function planActionsCell(c) {
+    var syl = SYLLABUS_BY_COURSE[c.id];
+    var form = FORM_BY_COURSE[c.id];
+    var formEditUrl = c.latest_form_submission_id
+      ? '/teacher/super-admin/course-content/create?course_id=' + c.id + '&submission_id=' + c.latest_form_submission_id
+      : '/teacher/super-admin/course-content/create?course_id=' + c.id;
+    var sylHref = (syl && syl.id)
+      ? '/teacher/super-admin/course-content/course-file/' + syl.id + '?download=1'
+      : formEditUrl;
+
+    var items = '';
+    if (form && form.id) {
+      items += '<a href="/course-file/' + form.id + '?download=1"><span class="material-symbols-outlined text-base">description</span>تحميل المقرر</a>';
+    }
+    if (syl && syl.id) {
+      items += '<a href="' + sylHref + '"><span class="material-symbols-outlined text-base">download</span>تحميل المنهج</a>';
+    }
+    items += '<button type="button" onclick="ccPreparePrint(this)" data-cid="' + c.id + '" data-sid="' + (c.latest_form_submission_id || '') + '"><span class="material-symbols-outlined text-base">print</span>طباعة المقرر</button>';
+    items += '<a href="' + formEditUrl + '"><span class="material-symbols-outlined text-base">edit</span>إنشاء/تعديل المقرر</a>';
+
+    var uid = 'ccp-drop-' + c.id;
+    return '<div class="cc-actions-dropdown">' +
+      '<button type="button" onclick="ccToggleDropdown(\'' + uid + '\', event)" class="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border bg-white hover:bg-primary-faint text-primary text-xs font-bold transition-all cursor-pointer">' +
+        '<span class="material-symbols-outlined text-base">more_vert</span>الإجراءات' +
+      '</button>' +
+      '<div id="' + uid + '" class="cc-actions-menu">' + items + '</div>' +
+    '</div>';
+  }
+
+  function planDeptCell(c) {
+    if (!c.dept_names || !c.dept_names.length) return '<span class="text-xs text-text-faint">—</span>';
+    return c.dept_names.map(function (d) {
+      return '<span class="text-xs font-semibold text-text-secondary">' + esc(d) + '</span>';
+    }).join('<span class="text-text-faint mx-0.5">·</span>');
+  }
+
   function renderPlan() {
     var container = document.getElementById('ccPlanTablesContainer');
     container.innerHTML = '';
@@ -253,15 +362,13 @@
       var rows = list.map(function (c) {
         var total = c.total_hours || ((c.theoretical_hours || 0) + (c.practical_hours || 0));
         return '<tr class="hover:bg-surface-hover transition-colors">' +
-          '<td class="px-3 py-2 text-center text-text-muted text-xs font-semibold">' + esc(c.code) + '</td>' +
-          '<td class="px-3 py-2"><span class="font-medium text-text-primary text-sm">' + esc(c.name) + '</span></td>' +
+          '<td class="px-3 py-2">' + materialCell(c) + '</td>' +
+          '<td class="px-3 py-2">' + planDeptCell(c) + '</td>' +
+          '<td class="px-2 py-2 text-center text-xs font-semibold text-text-secondary">' + semLabel(c.semester) + '</td>' +
           '<td class="px-3 py-2">' + teachersCell(c) + '</td>' +
-          '<td class="px-3 py-2 text-center text-text-secondary text-sm">' + (c.theoretical_hours || 0) + '</td>' +
-          '<td class="px-3 py-2 text-center text-text-secondary text-sm">' + (c.practical_hours || 0) + '</td>' +
-          '<td class="px-3 py-2 text-center font-bold text-text-secondary text-sm">' + total + '</td>' +
-          '<td class="px-3 py-2 text-center"><span class="inline-flex items-center justify-center w-6 h-6 rounded-md bg-primary-faint text-primary text-[11px] font-bold">' + total + '</span></td>' +
-          '<td class="px-3 py-2 text-center whitespace-nowrap">' + formStatusBadge(c) + '</td>' +
-          '<td class="no-print px-3 py-2 text-center whitespace-nowrap">' + actionsCell(c) + '</td>' +
+          '<td class="px-2 py-2 text-center whitespace-nowrap">' + formStatusBadge(c) + '</td>' +
+          '<td class="px-2 py-2">' + hoursBadge(c) + '</td>' +
+          '<td class="no-print px-2 py-2">' + planActionsCell(c) + '</td>' +
         '</tr>';
       }).join('');
       html += '<div class="bg-white rounded-xl border border-border shadow-sm overflow-hidden print-sheet">' +
@@ -273,17 +380,15 @@
           '</div>' +
           '<span class="text-xs font-bold text-primary bg-primary-faint px-2.5 py-1 rounded-full whitespace-nowrap">' + units + ' ساعة</span>' +
         '</div>' +
-        '<div class="overflow-x-auto"><table class="w-full min-w-[900px]">' +
+        '<div class="overflow-x-auto"><table class="w-full min-w-[750px]">' +
           '<thead class="bg-surface-zebra"><tr>' +
-            '<th class="px-3 py-2 text-right font-semibold text-text-secondary text-xs">رقم المادة</th>' +
-            '<th class="px-3 py-2 text-right font-semibold text-text-secondary text-xs">اسم المادة</th>' +
+            '<th class="px-3 py-2 text-right font-semibold text-text-secondary text-xs">المادة</th>' +
+            '<th class="px-3 py-2 text-right font-semibold text-text-secondary text-xs">القسم</th>' +
+            '<th class="px-2 py-2 text-center font-semibold text-text-secondary text-xs">الفصل</th>' +
             '<th class="px-3 py-2 text-right font-semibold text-text-secondary text-xs">المدرّس</th>' +
-            '<th class="px-3 py-2 text-center font-semibold text-text-secondary text-xs">نظري</th>' +
-            '<th class="px-3 py-2 text-center font-semibold text-text-secondary text-xs">عملي</th>' +
-            '<th class="px-3 py-2 text-center font-semibold text-text-secondary text-xs">الساعات</th>' +
-            '<th class="px-3 py-2 text-center font-semibold text-text-secondary text-xs">الوحدات</th>' +
-            '<th class="px-3 py-2 text-center font-semibold text-text-secondary text-xs">حالة النموذج</th>' +
-            '<th class="no-print px-3 py-2 text-center font-semibold text-text-secondary text-xs">إجراءات</th>' +
+            '<th class="px-2 py-2 text-center font-semibold text-text-secondary text-xs">النموذج</th>' +
+            '<th class="px-2 py-2 text-center font-semibold text-text-secondary text-xs">الساعات</th>' +
+            '<th class="no-print px-2 py-2 text-center font-semibold text-text-secondary text-xs">الإجراءات</th>' +
           '</tr></thead>' +
           '<tbody class="divide-y divide-border-subtle">' + rows + '</tbody>' +
         '</table></div>' +
@@ -310,7 +415,10 @@
     if (isList) {
       renderList();
     } else {
-      if (!ccCurrentDept && departments.length) ccCurrentDept = departments[0].name;
+      if (!ccCurrentDept && departments.length) {
+        var defaultDept = departments.filter(function (d) { return d.name.indexOf('بحث') !== -1 || d.name.indexOf('تطوير') !== -1; });
+        ccCurrentDept = defaultDept.length ? defaultDept[0].name : departments[0].name;
+      }
       document.getElementById('ccPlanDeptSelect').value = ccCurrentDept || '';
       renderDeptGrid(departments.filter(function (d) { return !planSearchQuery() || d.name.indexOf(planSearchQuery()) !== -1; }));
       renderPlan();
@@ -335,6 +443,11 @@
     document.getElementById('ccPlanDeptSelect').addEventListener('change', function () {
       ccSelectDept(this.value, false);
     });
+
+    var selectAllCb = document.getElementById('courseSelectAll');
+    if (selectAllCb) selectAllCb.addEventListener('change', toggleSelectAll);
+    var headerDelBtn = document.getElementById('courseHeaderDeleteBtn');
+    if (headerDelBtn) headerDelBtn.addEventListener('click', bulkDelete);
 
     window.ccSwitchView = ccSwitchView;
     renderList();

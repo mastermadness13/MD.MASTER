@@ -5,7 +5,9 @@
               function fire() {
                 messages.forEach(function (m) {
                   if (window.showNotification) {
-                    var type = m[0] === 'error' ? 'error' : (m[0] === 'success' ? 'success' : 'info');
+                    var type = m[0] === 'error' ? 'error'
+                      : (m[0] === 'success' ? 'success'
+                      : (m[0] === 'warning' ? 'warning' : 'info'));
                     window.showNotification(String(m[1]), type, 4500);
                   }
                 });

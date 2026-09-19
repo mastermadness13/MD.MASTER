@@ -24,19 +24,6 @@
     </div>
   </div>
 
-  {% if active_semester and active_semester.start_date %}
-  <div class="mb-4 flex items-center gap-3 px-4 py-3 rounded-lg bg-primary/5 border border-primary/20 text-sm">
-    <span class="material-symbols-outlined text-primary text-lg">calendar_month</span>
-    <span class="font-bold text-primary">{{ active_semester.name_ar }}</span>
-    <span class="text-on-surface-variant">—</span>
-    <span class="text-on-surface">{{ active_semester.start_date }} إلى {{ active_semester.end_date }}</span>
-    {% if active_semester.exam_start_date %}
-    <span class="text-on-surface-variant">|</span>
-    <span class="text-on-surface-variant">امتحانات: {{ active_semester.exam_start_date }} — {{ active_semester.exam_end_date }}</span>
-    {% endif %}
-  </div>
-  {% endif %}
-
   {% if form_error %}
   <div class="mb-4 flex items-center gap-2 px-4 py-3 rounded-lg text-sm bg-error-container text-error">
     <span class="material-symbols-outlined shrink-0 text-[18px]">error</span>

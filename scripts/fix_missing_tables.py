@@ -13,7 +13,7 @@ checks = [
     'faculty_workload_rules', 'faculty_research_activities',
     'faculty_admin_assignments', 'faculty_leaves',
     'research_activity_types', 'admin_assignment_types',
-    'academic_ranks', 'semesters',
+    'academic_ranks',
 ]
 for t in checks:
     print(f'  {t}: {"EXISTS" if t in tables else "MISSING"}')

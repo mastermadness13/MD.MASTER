@@ -1,0 +1,51 @@
+{% set up_file_types = up_file_types | default({'syllabus': 'منهاج', 'notes': 'ملاحظات', 'exams': 'امتحانات', 'lecture': 'محاضرة', 'books': 'كتب', 'other': 'أخرى'}) %}
+{% set up_materials = up_materials | default([]) %}
+
+{% if up_materials %}
+<div class="overflow-x-auto">
+  <table class="w-full text-right border-collapse text-sm">
+    <thead>
+      <tr class="bg-surface-dim font-label-md text-label-md text-on-surface-variant">
+        <th class="px-4 py-3 border-b border-outline-variant font-bold">العنوان</th>
+        <th class="px-4 py-3 border-b border-outline-variant font-bold">النوع</th>
+        <th class="px-4 py-3 border-b border-outline-variant font-bold">الوصف</th>
+        <th class="px-4 py-3 border-b border-outline-variant font-bold">الحجم</th>
+        <th class="px-4 py-3 border-b border-outline-variant font-bold">تاريخ الرفع</th>
+        <th class="px-4 py-3 border-b border-outline-variant font-bold text-center w-24">الإجراءات</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in up_materials %}
+      <tr class="hover:bg-primary/5 transition-colors border-b border-outline-variant last:border-b-0">
+        <td class="px-4 py-3">
+          <div class="flex items-center gap-2.5">
+            <span class="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <span class="material-symbols-outlined text-lg">description</span>
+            </span>
+            <p class="font-bold text-on-surface">{{ m.title }}</p>
+          </div>
+        </td>
+        <td class="px-4 py-3">
+          <span class="inline-block px-2.5 py-1 rounded-full text-xs font-bold bg-primary/10 text-primary">
+            {{ up_file_types.get(m.file_type, m.file_type or 'أخرى') }}
+          </span>
+        </td>
+        <td class="px-4 py-3 text-on-surface-variant">{{ m.description or '—' }}</td>
+        <td class="px-4 py-3 text-on-surface-variant">{{ (m.file_size or 0) // 1024 }} ك.ب</td>
+        <td class="px-4 py-3 text-on-surface-variant">{{ (m.created_at or '—')[:16] }}</td>
+        <td class="px-4 py-3">
+          <div class="flex items-center justify-center gap-2">
+            <span class="text-xs font-bold text-on-surface-variant">{{ (m.download_count or 0) }} تحميل</span>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="py-12 text-center">
+  <span class="material-symbols-outlined text-5xl text-outline-variant block mb-2">folder_off</span>
+  <p class="text-sm text-on-surface-variant">لا توجد ملفات مرفوعة بعد</p>
+</div>
+{% endif %}

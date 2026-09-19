@@ -1,4 +1,4 @@
-﻿from flask import (Blueprint, session, request, render_template,
+from flask import (Blueprint, session, request, render_template,
                    redirect, url_for, flash, jsonify)
 from utils.redirects import redirect_back
 

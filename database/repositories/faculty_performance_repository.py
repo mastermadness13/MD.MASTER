@@ -1,10 +1,11 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
 from database.repositories.base_repository import BaseRepository
 
 
+# /     /     >---- نحسب تاريخي بداية ونهاية الفصل الدراسي المختار
 def semester_bounds(academic_year: str, semester: int):
     """(start_date, end_date) covering the chosen term.
 
@@ -12,12 +13,15 @@ def semester_bounds(academic_year: str, semester: int):
     legacy YYYY-YYYY academic-year format.
     """
     code = (academic_year or '').strip()
+    # /     /     >---- صيغة الفصل الأول fall_2026: سبتمبر لديسمبر
     if code.startswith('fall_'):
         y = code[len('fall_'):]
         return f'{y}-09-01', f'{y}-12-31'
+    # /     /     >---- صيغة الفصل الثاني spring_2027: جانفي لجوان
     if code.startswith('spring_'):
         y = code[len('spring_'):]
         return f'{y}-01-01', f'{y}-06-30'
+    # /     /     >---- الصيغة القديمة YYYY-YYYY
     parts = code.split('-')
     if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
         start_year, end_year = parts[0], parts[1]
@@ -28,11 +32,11 @@ def semester_bounds(academic_year: str, semester: int):
     return f'{end_year}-01-01', f'{end_year}-06-30'
 
 
+# /     /     >---- مستودع أداء هيئة التدريس — التقارير والملفات الإدارية
 class FacultyPerformanceRepository(BaseRepository):
     table = 'teachers'
 
-    # ── Teacher Profile ──────────────────────────────────────────
-
+    # /     /     >---- الملف الشخصي للأستاذ (كل البيانات الأساسية)
     def get_teacher_profile(self, teacher_id: int) -> Optional[Dict[str, Any]]:
         row = self.db.execute(
             '''SELECT t.id, t.name, t.email, t.phone, t.academic_number, t.national_id,
@@ -56,13 +60,13 @@ class FacultyPerformanceRepository(BaseRepository):
         ).fetchone()
         return dict(row) if row else None
 
-    # ── Timetable Entries (from teacher_taught_courses) ────────────
-
+    # /     /     >---- الحصص الأسبوعية للأستاذ من سجل الإسناد التدريسي
     def get_timetable_entries(
         self, teacher_id: int, department_ids, semester_code: str
     ) -> List[Dict[str, Any]]:
         """Entries of a teacher (across all given departments) for the selected
         semester_code, read from the teaching-assignment ledger."""
+        # /     /     >---- ننظف المعرفات ونرجع فاضي لو ما فيش أقسام
         ids = [int(d) for d in (department_ids or []) if d]
         if not ids:
             return []
@@ -89,8 +93,7 @@ class FacultyPerformanceRepository(BaseRepository):
             [teacher_id] + ids + [semester_code],
         ).fetchall()]
 
-    # ── Course-level report (محضر مقرر) ───────────────────────────
-
+    # /     /     >---- محضر المقرر — بيانات المقرر نفسه
     def get_course_by_id(self, course_id: int) -> Optional[Dict[str, Any]]:
         row = self.db.execute(
             '''SELECT c.id, c.name, c.code, c.year,
@@ -103,6 +106,7 @@ class FacultyPerformanceRepository(BaseRepository):
         ).fetchone()
         return dict(row) if row else None
 
+    # /     /     >---- كل إسنادات مقرر واحد لكل الأساتذة
     def get_course_teaching_entries(
         self, course_id: int, semester_code: str,
         department_id: int = None,
@@ -111,6 +115,7 @@ class FacultyPerformanceRepository(BaseRepository):
         given semester_code, read from the teaching-assignment ledger."""
         extra = ''
         params: list = [course_id, semester_code]
+        # /     /     >---- فلتر اختياري بالقسم
         if department_id:
             extra = ' AND ttc.department_id = ?'
             params.append(department_id)
@@ -141,8 +146,7 @@ class FacultyPerformanceRepository(BaseRepository):
             params,
         ).fetchall()]
 
-    # ── Workload Rules ───────────────────────────────────────────
-
+    # /     /     >---- قواعد العبء التدريسي حسب الرتبة والسنة
     def get_workload_rules(self, rank_id: int, academic_year: str) -> List[Dict[str, Any]]:
         rows = self.db.execute(
             '''SELECT category, min_hours, max_hours
@@ -152,8 +156,7 @@ class FacultyPerformanceRepository(BaseRepository):
         ).fetchall()
         return [dict(r) for r in rows]
 
-    # ── Research Activities ──────────────────────────────────────
-
+    # /     /     >---- النشاطات البحثية للأستاذ
     def get_research_activities(
         self, teacher_id: int, academic_year: str, semester: int
     ) -> List[Dict[str, Any]]:
@@ -167,6 +170,7 @@ class FacultyPerformanceRepository(BaseRepository):
         ).fetchall()
         return [dict(r) for r in rows]
 
+    # /     /     >---- نحفظ النشاطات البحثية (نمسح القديم ونكتب الجديد)
     def upsert_research_activities(
         self, teacher_id: int, academic_year: str, semester: int,
         activities: List[Dict[str, Any]],
@@ -180,6 +184,7 @@ class FacultyPerformanceRepository(BaseRepository):
             activity_type = act.get('activity_type', '').strip()
             hours = int(act.get('hours', 0) or 0)
             notes = act.get('notes', '')
+            # /     /     >---- نتجاهل السطور الفاضية
             if not activity_type:
                 continue
             self.db.execute(
@@ -190,8 +195,7 @@ class FacultyPerformanceRepository(BaseRepository):
             )
         self.db.commit()
 
-    # ── Admin Assignments ────────────────────────────────────────
-
+    # /     /     >---- المهام الإدارية للأستاذ (مع حساب ساعات مستعملة)
     def get_admin_assignments(
         self, teacher_id: int, academic_year: str, semester: int
     ) -> List[Dict[str, Any]]:
@@ -207,21 +211,26 @@ class FacultyPerformanceRepository(BaseRepository):
         result = []
         for r in rows:
             d = dict(r)
+            # /     /     >---- الساعات المستعملة = التلقائية + اليدوية
             d['hours_used'] = (d.get('auto_hours') or 0) + (d.get('manual_hours') or 0)
             result.append(d)
         return result
 
+    # /     /     >---- نشوف إذا المهمة الإدارية فعّالة في الفصل الحالي
     def is_assignment_active_for_semester(
         self, start_date: str, end_date: Optional[str],
         academic_year: str, semester: int,
     ) -> bool:
         sem_start, sem_end = semester_bounds(academic_year, semester)
+        # /     /     >---- تبدأ بعد نهاية الفصل؟ مش فعّالة
         if start_date > sem_end:
             return False
+        # /     /     >---- تنتهي قبل بداية الفصل؟ مش فعّالة
         if end_date and end_date < sem_start:
             return False
         return True
 
+    # /     /     >---- نحفظ المهام الإدارية (نمسح القديم ونكتب الجديد)
     def upsert_admin_assignments(
         self, teacher_id: int, assignments: List[Dict[str, Any]]
     ) -> None:
@@ -239,6 +248,7 @@ class FacultyPerformanceRepository(BaseRepository):
             notes = a.get('notes', '')
             academic_year = a.get('academic_year', '')
             sem = int(a.get('semester', 0) or 0)
+            # /     /     >---- نتجاهل السطور الناقصة (بدون اسم أو تاريخ بداية)
             if not task_name or not start_date:
                 continue
             self.db.execute(
@@ -253,6 +263,7 @@ class FacultyPerformanceRepository(BaseRepository):
             )
         self.db.commit()
 
+    # /     /     >---- نجيب مهمة إدارية وحدة (للمفاتيح الخاصة بنظام الدوام)
     def get_single_admin_assignment(
         self, teacher_id: int, task_name: str, academic_year: str, semester: int,
     ) -> Optional[Dict[str, Any]]:
@@ -267,6 +278,7 @@ class FacultyPerformanceRepository(BaseRepository):
         ).fetchone()
         return dict(row) if row else None
 
+    # /     /     >---- نضيف/نحدّث مهمة إدارية واحدة (أبسلت)
     def upsert_single_admin_assignment(
         self, teacher_id: int, task_name: str, assignment_date: str,
         academic_year: str, semester: int,
@@ -275,6 +287,7 @@ class FacultyPerformanceRepository(BaseRepository):
             return
         existing = self.get_single_admin_assignment(
             teacher_id, task_name, academic_year, semester)
+        # /     /     >---- موجودة؟ نحدّث التاريخ، وإلا ننشئها
         if existing:
             self.db.execute(
                 'UPDATE faculty_admin_assignments SET assignment_date = ? WHERE id = ?',
@@ -291,6 +304,7 @@ class FacultyPerformanceRepository(BaseRepository):
             )
         self.db.commit()
 
+    # /     /     >---- نحذف مهمة إدارية واحدة
     def delete_single_admin_assignment(
         self, teacher_id: int, task_name: str, academic_year: str, semester: int,
     ) -> None:
@@ -302,8 +316,7 @@ class FacultyPerformanceRepository(BaseRepository):
         )
         self.db.commit()
 
-    # ── Leaves ───────────────────────────────────────────────────
-
+    # /     /     >---- الإجازات (اللجان) الخاصة بالأستاذ
     def get_leaves(
         self, teacher_id: int, academic_year: str, semester: int
     ) -> List[Dict[str, Any]]:
@@ -316,17 +329,21 @@ class FacultyPerformanceRepository(BaseRepository):
         ).fetchall()
         return [dict(r) for r in rows]
 
+    # /     /     >---- نشوف إذا الإجازة ضمن فترة الفصل الحالي
     def is_leave_active_for_semester(
         self, start_date: str, end_date: Optional[str],
         academic_year: str, semester: int,
     ) -> bool:
         sem_start, sem_end = semester_bounds(academic_year, semester)
+        # /     /     >---- تبدأ بعد نهاية الفصل؟ مش فعّالة
         if start_date > sem_end:
             return False
+        # /     /     >---- تنتهي قبل بداية الفصل؟ مش فعّالة
         if end_date and end_date < sem_start:
             return False
         return True
 
+    # /     /     >---- نحفظ الإجازات (نمسح القديم ونكتب الجديد)
     def upsert_leaves(
         self, teacher_id: int, leaves: List[Dict[str, Any]]
     ) -> None:
@@ -343,6 +360,7 @@ class FacultyPerformanceRepository(BaseRepository):
             end_date = lv.get('end_date') or None
             hours = int(lv.get('hours', 0) or 0)
             notes = lv.get('notes', '')
+            # /     /     >---- نتجاهل السطور الناقصة
             if not leave_type or not start_date:
                 continue
             self.db.execute(
@@ -355,14 +373,14 @@ class FacultyPerformanceRepository(BaseRepository):
             )
         self.db.commit()
 
-    # ── Dropdowns ────────────────────────────────────────────────
-
+    # /     /     >---- الأقسام الأكاديمية (للنماذج)
     def list_academic_departments(self) -> List[Dict[str, Any]]:
         rows = self.db.execute(
             'SELECT id, name FROM departments WHERE type = \'academic\' AND deleted_at IS NULL ORDER BY name'
         ).fetchall()
         return [dict(r) for r in rows]
 
+    # /     /     >---- أعضاء هيئة التدريس حسب القسم
     def list_teachers_by_department(self, department_id: int) -> List[Dict[str, Any]]:
         rows = self.db.execute(
             '''SELECT id, name, academic_number
@@ -372,6 +390,7 @@ class FacultyPerformanceRepository(BaseRepository):
         ).fetchall()
         return [dict(r) for r in rows]
 
+    # /     /     >---- ملخص كل الأعضاء النشطين (لقوائم المكاتب)
     def list_members_summary(self) -> List[Dict[str, Any]]:
         """All active teaching members with display fields (office member lists)."""
         rows = self.db.execute(
@@ -387,6 +406,7 @@ class FacultyPerformanceRepository(BaseRepository):
         ).fetchall()
         return [dict(r) for r in rows]
 
+    # /     /     >---- السنوات الأكاديمية المتاحة (من النسخ الفعّالة)
     def list_academic_years(self) -> List[str]:
         rows = self.db.execute(
             '''SELECT DISTINCT semester_code FROM timetable_versions
@@ -398,10 +418,12 @@ class FacultyPerformanceRepository(BaseRepository):
             code = r[0]
             if code and code not in years:
                 years.append(code)
+        # /     /     >---- افتراضياً لو ما فيش أي سنة
         if not years:
             years = ['2025-2026']
         return years
 
+    # /     /     >---- قسم الأستاذ
     def get_teacher_department(self, teacher_id: int) -> Optional[int]:
         row = self.db.execute(
             'SELECT department_id FROM teachers WHERE id = ? AND deleted_at IS NULL',
@@ -409,14 +431,14 @@ class FacultyPerformanceRepository(BaseRepository):
         ).fetchone()
         return row[0] if row else None
 
-    # ── Lookup Tables ────────────────────────────────────────────
-
+    # /     /     >---- أنواع النشاطات البحثية المعتمدة
     def list_research_activity_types(self) -> List[Dict[str, Any]]:
         rows = self.db.execute(
             'SELECT id, name FROM research_activity_types WHERE is_active = 1 ORDER BY sort_order, id'
         ).fetchall()
         return [dict(r) for r in rows]
 
+    # /     /     >---- أنواع المهام الإدارية المعتمدة
     def list_admin_assignment_types(self) -> List[Dict[str, Any]]:
         rows = self.db.execute(
             'SELECT id, name, default_hours FROM admin_assignment_types WHERE is_active = 1 ORDER BY sort_order, id'

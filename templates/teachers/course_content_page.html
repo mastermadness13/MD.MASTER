@@ -19,13 +19,9 @@
 {% set status_colors = {'draft': 'bg-surface-dim text-on-surface-variant', 'published': 'bg-green-100 text-green-700', 'approved': 'bg-green-100 text-green-700'} %}
 
 {% block head_extra %}
-{% if is_admin_list %}
-<style>
-  .cc-dept-card { transition: all 0.2s ease; }
-  .cc-dept-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(50,0,88,0.12); }
-  .cc-dept-card.active { border-color: #320058; background: #f1dbff; box-shadow: 0 2px 10px rgba(50,0,88,0.18); }
-</style>
-{% endif %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=cairo:wght@400;600;700;800&family=inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 {% endblock %}
 
 {% block content %}
@@ -64,45 +60,15 @@
         </p>
       </div>
     </div>
-    {% if teacher %}
-    <div class="flex items-center gap-2">
-      <a href="{{ url_for('faculty_performance.preview', teacher_id=teacher.id) }}"
-         class="inline-flex items-center gap-1.5 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-3 py-2 rounded-lg text-xs font-bold transition no-underline">
-        <span class="material-symbols-outlined text-base">description</span>
-        عرض نموذج الأداء
-      </a>
-    </div>
-    {% endif %}
   </div>
   {% elif is_form %}
-  <div class="flex flex-wrap items-center justify-between gap-4 mb-6 no-print">
-    <div class="flex items-center gap-3">
-      <span class="material-symbols-outlined text-primary text-3xl">send</span>
-      <div>
-        <h1 class="text-2xl font-bold text-on-surface">{% if edit_submission_id %}تعديل نموذج المقرر{% else %}إنشاء نموذج المقرر{% endif %}</h1>
-        <p class="page-subtitle">{% if doc.course_name %}نموذج مقرر «{{ doc.course_name }}»{% else %}اختر المقرر ثم عبّئ بيانات النموذج{% endif %}</p>
-      </div>
-    </div>
-    <div class="flex items-center gap-2">
-      <button type="button" onclick="window.print()"
-              class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm cursor-pointer">
-        <span class="material-symbols-outlined text-lg">print</span>
-        طباعة
-      </button>
-      <a href="{{ url_for('teacher_pages.super_admin_course_content_list') }}"
-         class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm no-underline">
-        <span class="material-symbols-outlined text-lg">arrow_forward</span>
-        العودة
-      </a>
-    </div>
-  </div>
   {% else %}
-  <div class="flex flex-wrap items-center justify-between gap-4 mb-6 no-print">
+  <div class="flex flex-wrap items-center justify-between gap-4 mb-6 no-point">
     <div class="flex items-center gap-3">
       <span class="material-symbols-outlined text-primary text-3xl">description</span>
       <div>
         <h1 class="text-2xl font-bold text-on-surface">{% if is_readonly %}عرض نموذج المقرر من إعداد البحث والتطوير{% else %}{{ submission.course_name or page_title }}{% endif %}</h1>
-        <p class="page-subtitle">{% if is_readonly %}{{ submission.course_code or '' }}{% if submission.dept_name %} · {{ submission.dept_name }}{% endif %}{% else %}{{ submission.course_code or '' }}{% if submission.dept_name %} · {{ submission.dept_name }}{% endif %}{% endif %}</p>
+        <p class="page-subtitle">{% if is_form %}{{ doc.course_name or '' }}{% if doc.course_code %} ({{ doc.course_code }}){% endif %}{% elif is_readonly %}{{ submission.course_code or '' }}{% if submission.dept_name %} · {{ submission.dept_name }}{% endif %}{% else %}{{ submission.course_code or '' }}{% if submission.dept_name %} · {{ submission.dept_name }}{% endif %}{% endif %}</p>
       </div>
     </div>
     <div class="flex items-center gap-2">
@@ -134,93 +100,115 @@
   {% endif %}
 
   {% if course_rows %}
-  <div class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
+  <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant/50 p-5 sm:p-6 shadow-sm">
+    <div class="flex items-center justify-between border-b border-outline-variant/40 pb-3 mb-5">
+      <div class="flex items-center gap-2">
+        <span class="w-7 h-7 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center">
+          <span class="material-symbols-outlined text-base">auto_stories</span>
+        </span>
+        <h3 class="text-base font-bold text-on-surface">المقررات الدراسية المسندة</h3>
+      </div>
+      <span class="text-xs font-bold text-on-surface-variant bg-surface px-2.5 py-1 rounded-lg">{{ course_rows | length }} مقرر</span>
+    </div>
+
     <div class="overflow-x-auto">
-      <table class="w-full text-sm">
+      <table class="w-full text-right border-collapse">
         <thead>
-          <tr class="bg-surface-container text-right text-xs font-bold text-on-surface-variant border-b border-outline-variant">
-            <th class="px-4 py-3">المقرر</th>
-            <th class="px-4 py-3">القسم</th>
-            <th class="px-4 py-3">الفصل</th>
-            <th class="px-4 py-3">المنهاج</th>
-            <th class="px-4 py-3">نموذج R&amp;D</th>
-          </tr>
+          <tr class="border-b border-outline-variant/40 text-on-surface-variant text-xs">
+            <th class="py-2 px-3">الكود</th>
+            <th class="py-2 px-3">اسم المقرر</th>
+            <th class="py-2 px-3 text-center">نظري</th>
+            <th class="py-2 px-3 text-center">عملي</th>
+            <th class="py-2 px-3 text-center">الساعات</th>
+            <th class="py-2 px-3">المنهاج</th>
+            <th class="py-2 px-3">المقرر (R&amp;D)</th>
+          </to>
         </thead>
-        <tbody class="divide-y divide-outline-variant/60">
+        <tbody class="divide-y divide-outline-variant/30 text-sm">
           {% for c in course_rows %}
           <tr class="align-top hover:bg-surface-container/40 transition-colors">
-            <td class="px-4 py-4">
+            <td class="py-3 px-3 font-mono text-primary">{{ c.course_code or '—' }}</td>
+            <td class="py-3 px-3">
               <div class="font-bold text-on-surface">{{ c.course_name or '—' }}</div>
-              {% if c.course_code %}
-              <div dir="ltr" class="text-xs font-mono font-bold text-primary mt-0.5 text-right">{{ c.course_code }}</div>
+              {% if c.dept_name and c.dept_name != '—' %}
+              <div class="text-[11px] font-bold text-on-surface-variant mt-0.5">{{ c.dept_name }}</div>
               {% endif %}
               {% if c.review_note %}
               <div class="text-[11px] font-bold text-on-surface-variant mt-0.5">{{ c.review_note }}</div>
               {% endif %}
             </td>
-            <td class="px-4 py-4 text-on-surface-variant font-bold">{{ c.dept_name }}</td>
-            <td class="px-4 py-4 text-on-surface-variant font-bold whitespace-nowrap">{{ c.semester_display or '—' }}</td>
-            <td class="px-4 py-4">
-              <div class="mb-2">
-                {% if c.has_upload %}
-                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-green-100 text-green-700">
-                  <span class="material-symbols-outlined text-sm">verified</span>
-                  تم الرفع
-                </span>
-                {% else %}
-                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-surface-dim text-on-surface-variant">
-                  <span class="material-symbols-outlined text-sm">upload_file</span>
-                  لم يُرفع
-                </span>
-                {% endif %}
-              </div>
-              <div class="flex flex-wrap items-center gap-2">
-                {% if c.has_upload %}
-                <a href="{{ c.view_pdf_url }}" target="_blank" rel="noopener"
-                   class="inline-flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 text-primary px-3 py-2 rounded-lg text-xs font-bold transition no-underline">
-                  <span class="material-symbols-outlined text-base">visibility</span>
-                  عرض PDF
-                </a>
-                <button type="button"
-                        class="inline-flex items-center gap-1.5 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-3 py-2 rounded-lg text-xs font-bold transition cursor-pointer"
-                        data-open-upload
-                        data-mode="{{ c.upload_kind }}"
-                        data-course-id="{{ c.course_id }}"
-                        data-submission-id="{{ c.submission_id or '' }}"
-                        data-course-name="{{ c.course_name or '' }}"
-                        data-course-code="{{ c.course_code or '' }}"
-                        data-dept="{{ c.dept_name or '' }}"
-                        data-semester="{{ c.semester_display or '' }}">
-                  <span class="material-symbols-outlined text-base">swap_vert</span>
-                  استبدال المنهاج
-                </button>
-                {% else %}
-                <button type="button"
-                        class="inline-flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-on-primary px-4 py-2 rounded-lg text-xs font-bold transition shadow-sm cursor-pointer"
-                        data-open-upload
-                        data-mode="{{ c.upload_kind }}"
-                        data-course-id="{{ c.course_id }}"
-                        data-submission-id="{{ c.submission_id or '' }}"
-                        data-course-name="{{ c.course_name or '' }}"
-                        data-course-code="{{ c.course_code or '' }}"
-                        data-dept="{{ c.dept_name or '' }}"
-                        data-semester="{{ c.semester_display or '' }}">
-                  <span class="material-symbols-outlined text-base">upload_file</span>
-                  رفع المنهاج
-                </button>
-                {% endif %}
+            <td class="py-3 px-3 text-center text-on-surface-variant">{{ c.theoretical_hours or '—' }}</td>
+            <td class="py-3 px-3 text-center text-on-surface-variant">{{ c.practical_hours or '—' }}</td>
+            <td class="py-3 px-3 text-center font-bold text-on-surface">{{ c.total_hours or '—' }}</td>
+            <td class="py-3 px-3">
+              <div class="flex flex-col gap-2">
+                <div class="mb-1">
+                  {% if c.has_upload %}
+                  <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-green-100 text-green-700">
+                    <span class="material-symbols-outlined text-sm">verified</span>
+                    تم رفع المنهج
+                  </span>
+                  {% else %}
+                  <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-red-50 text-red-600">
+                    <span class="material-symbols-outlined text-sm">warning</span>
+                    لم يُرفع المنهج
+                  </span>
+                  {% endif %}
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                  {% if c.syllabus_download_url %}
+                  <a href="{{ c.syllabus_download_url }}" target="_blank" rel="noopener"
+                     class="inline-flex items-center gap-1.5 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-3 py-2 rounded-lg text-xs font-bold transition no-underline">
+                    <span class="material-symbols-outlined text-base">download</span>
+                    تحميل المنهج
+                  </a>
+                  {% endif %}
+                  <button type="button" data-open-upload data-mode="syllabus"
+                          data-course-id="{{ c.course_id }}"
+                          data-submission-id="{{ c.submission_id or '' }}"
+                          data-course-name="{{ c.course_name or '' }}"
+                          data-course-code="{{ c.course_code or '' }}"
+                          data-dept="{{ c.dept_name or '' }}"
+                          data-semester="{{ c.semester_display or '' }}"
+                          class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition cursor-pointer {% if c.has_upload %}bg-white hover:bg-primary/10 text-primary border border-primary/30{% else %}bg-primary hover:bg-primary/90 text-on-primary shadow-sm{% endif %}">
+                    <span class="material-symbols-outlined text-base">{{ 'swap_vert' if c.has_upload else 'upload_file' }}</span>
+                    {{ 'استبدال' if c.has_upload else 'رفع المنهج' }}
+                  </button>
+                </div>
               </div>
             </td>
-            <td class="px-4 py-4">
-              {% if c.rnd_form_url %}
-              <a href="{{ c.rnd_form_url }}" target="_blank" rel="noopener"
-                 class="inline-flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 text-primary px-3 py-2 rounded-lg text-xs font-bold transition no-underline">
-                <span class="material-symbols-outlined text-base">description</span>
-                عرض نموذج R&amp;D
-              </a>
-              {% else %}
-              <span class="text-on-surface-variant font-bold">—</span>
-              {% endif %}
+            <td class="py-3 px-3">
+              <div class="flex flex-col gap-2">
+                <div class="mb-1">
+                  {% if c.form_download_url or c.rnd_form_url %}
+                  <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-green-100 text-green-700">
+                    <span class="material-symbols-outlined text-sm">verified</span>
+                    نموذج المقرر موجود
+                  </span>
+                  {% else %}
+                  <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-red-50 text-red-600">
+                    <span class="material-symbols-outlined text-sm">warning</span>
+                    لا يوجد نموذج مقرر
+                  </span>
+                  {% endif %}
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                  {% if c.form_download_url %}
+                  <a href="{{ c.form_download_url }}" target="_blank" rel="noopener"
+                     class="inline-flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 text-primary px-3 py-2 rounded-lg text-xs font-bold transition no-underline">
+                    <span class="material-symbols-outlined text-base">description</span>
+                    تحميل المقرر
+                  </a>
+                  {% endif %}
+                  {% if c.rnd_form_url %}
+                  <a href="{{ c.rnd_form_url }}" target="_blank" rel="noopener"
+                     class="inline-flex items-center gap-1.5 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-3 py-2 rounded-lg text-xs font-bold transition no-underline">
+                    <span class="material-symbols-outlined text-base">visibility</span>
+                    عرض نموذج R&amp;D
+                  </a>
+                  {% endif %}
+                </div>
+              </div>
             </td>
           </tr>
           {% endfor %}
@@ -229,14 +217,15 @@
     </div>
   </div>
   {% else %}
-  <div class="bg-white rounded-2xl shadow-sm border border-primary/10 py-16 text-center">
-    <span class="material-symbols-outlined text-6xl text-outline-variant block mb-3">school</span>
-    <h3 class="text-on-surface font-bold mb-1">لا توجد مقررات مكلف بها حالياً</h3>
-    <p class="text-on-surface-variant text-sm">ستظهر المقررات المسندة إليك هنا بعد اعتماد الجدول الدراسي.</p>
+  <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant/50 p-8 sm:p-10 shadow-sm text-center">
+    <div class="w-14 h-14 mx-auto mb-3 rounded-2xl bg-surface-container-lowest border border-outline-variant/60 flex items-center justify-center text-on-surface-variant/60">
+      <span class="material-symbols-outlined text-3xl">menu_book</span>
+    </div>
+    <h4 class="text-base font-bold text-on-surface">لا توجد مقررات مكلف بها حالياً</h4>
+    <p class="text-sm text-on-surface-variant mt-1">ستظهر المقررات المسندة إليك هنا بعد اعتماد الجدول الدراسي.</p>
   </div>
   {% endif %}
 
-  {% include 'teachers/_upload_modal.html' %}
   {% endif %}
 
   {% if is_admin_list %}
@@ -282,28 +271,54 @@
         </div>
       </div>
       <div class="overflow-x-auto">
-        <table class="w-full min-w-[900px] text-sm">
+        <table class="w-full min-w-[820px] text-sm">
           <thead class="bg-surface-zebra">
             <tr>
-              <th class="px-3 py-2.5 text-center font-semibold text-text-secondary text-xs w-10">ت</th>
-              <th class="px-3 py-2.5 text-right font-semibold text-text-secondary text-xs">رمز المادة</th>
-              <th class="px-3 py-2.5 text-right font-semibold text-text-secondary text-xs">اسم المادة</th>
-              <th class="px-3 py-2.5 text-right font-semibold text-text-secondary text-xs">القسم</th>
-              <th class="px-3 py-2.5 text-center font-semibold text-text-secondary text-xs">الفصل</th>
-              <th class="px-3 py-2.5 text-right font-semibold text-text-secondary text-xs">المدرّس</th>
-              <th class="px-3 py-2.5 text-center font-semibold text-text-secondary text-xs">حالة النموذج</th>
-              <th class="px-3 py-2.5 text-center font-semibold text-text-secondary text-xs">نظري</th>
-              <th class="px-3 py-2.5 text-center font-semibold text-text-secondary text-xs">عملي</th>
-              <th class="px-3 py-2.5 text-center font-semibold text-text-secondary text-xs">الساعات</th>
-              <th class="px-3 py-2.5 text-center font-semibold text-text-secondary text-xs">الوحدات</th>
-              <th class="px-3 py-2.5 text-center font-semibold text-text-secondary text-xs">الاعتمادية</th>
-              <th class="px-3 py-2.5 text-center font-semibold text-text-secondary text-xs">إجراءات</th>
-            </tr>
+              <th class="px-2 py-2 text-center font-semibold text-text-secondary text-xs w-10">
+                <div class="flex items-center justify-center gap-1">
+                  <input type="checkbox" id="courseSelectAll" class="rounded border-outline-variant text-primary focus:ring-primary cursor-pointer" title="تحديد الكل">
+                  <button type="button" id="courseheaderdeletebtn" class="material-symbols-outlined text-red-600 hover:text-red-700 transition-colors bg-transparent border-0 cursor-pointer" style="display:none" title="حذف المحدد">delete</button>
+                </div>
+              </th>
+              <th class="px-2 py-2 text-center font-semibold text-text-secondary text-xs w-10">ت</th>
+              <th class="px-3 py-2 text-right font-semibold text-text-secondary text-xs">المادة</th>
+              <th class="px-3 py-2 text-right font-semibold text-text-secondary text-xs">القسم</th>
+              <th class="px-2 py-2 text-center font-semibold text-text-secondary text-xs">الفصل</th>
+              <th class="px-3 py-2 text-right font-semibold text-text-secondary text-xs">المدرّس</th>
+              <th class="px-2 py-2 text-center font-semibold text-text-secondary text-xs">النموذج</th>
+              <th class="px-2 py-2 text-center font-semibold text-text-secondary text-xs">الساعات</th>
+              <th class="px-2 py-2 text-center font-semibold text-text-secondary text-xs">الإجراءات</th>
+            </to>
           </thead>
           <tbody id="ccCourseTableBody" class="divide-y divide-border-subtle"></tbody>
         </table>
       </div>
     </div>
+
+    {% set _total_pages = (total / per_page) | round(0, 'ceil') | int if total else 1 %}
+    {% if _total_pages > 1 %}
+    <div class="search-pagination flex flex-wrap items-center justify-between gap-4 mt-5 no-point">
+      <span class="text-xs font-bold text-on-surface-variant">عرض {{ ((page - 1) * per_page) + 1 }} إلى {{ [page * per_page, total] | min }} من {{ total }}</span>
+      <div class="flex flex-wrap gap-2">
+        {% if page > 1 %}
+        <a href="{{ url_for('teacher_pages.super_admin_course_content_list', page=page - 1, search=search, department=dept_filter, semester=sem_filter, status=status_filter) }}"
+           class="px-3 py-2 rounded-lg border border-outline-variant bg-white hover:bg-primary/10 text-on-surface text-sm font-bold transition no-underline">السابق</a>
+        {% endif %}
+        {% for p in range(1, _total_pages + 1) %}
+        {% if p == page %}
+        <span class="px-3 py-2 rounded-lg bg-primary text-on-primary text-sm font-bold">{{ p }}</span>
+        {% elif p >= page - 2 and p <= page + 2 %}
+        <a href="{{ url_for('teacher_pages.super_admin_course_content_list', page=p, search=search, department=dept_filter, semester=sem_filter, status=status_filter) }}"
+           class="px-3 py-2 rounded-lg border border-outline-variant bg-white hover:bg-primary/10 text-on-surface text-sm font-bold transition no-underline">{{ p }}</a>
+        {% endif %}
+        {% endfor %}
+        {% if page * per_page < total %}
+        <a href="{{ url_for('teacher_pages.super_admin_course_content_list', page=page + 1, search=search, department=dept_filter, semester=sem_filter, status=status_filter) }}"
+           class="px-3 py-2 rounded-lg border border-outline-variant bg-white hover:bg-primary/10 text-on-surface text-sm font-bold transition no-underline">التالي</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
   </div>
 
   <!-- ============ PLAN VIEW ============ -->
@@ -365,33 +380,6 @@
   {% endif %}
 
   {% if is_form %}
-  <div class="mb-4 p-4 rounded-lg bg-primary/5 border border-primary/15 text-sm no-print">
-    <p class="font-bold text-primary flex items-center gap-2">
-      <span class="material-symbols-outlined text-lg">edit_note</span>
-      تعبئة نموذج المقرر
-    </p>
-    <p class="text-on-surface-variant mt-1">
-      تعبئة بيانات النموذج والمنهاج ثم حفظه كمسودة أو نشره مباشرة ليصبح متاحاً للمستخدمين. بيانات المقرر (الاسم، الرمز، القسم) مثبتة من قاعدة البيانات.
-    </p>
-  </div>
-
-  {% if courses %}
-  <div class="mb-5 bg-white rounded-2xl shadow-sm border-2 border-primary/20 p-5 no-print">
-    <div class="flex items-center gap-2 mb-2">
-      <span class="material-symbols-outlined text-primary text-xl">menu_book</span>
-      <h3 class="font-bold text-on-surface">اختر المقرر</h3>
-    </div>
-    <p class="text-sm text-on-surface-variant mb-3">اختر المقرر الذي تريد إعداد نموذجه — سيتم تعبئة بيانات المقرر تلقائياً.</p>
-    <select id="ccCourseSelect"
-            class="w-full bg-white border border-outline-variant rounded-lg px-3 py-3 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
-      <option value="">— اختر المقرر —</option>
-      {% for c in courses %}
-      <option value="{{ c.id }}">{{ c.name }} — {{ c.code }}{% if c.department_name %} — {{ c.department_name }}{% endif %}</option>
-      {% endfor %}
-    </select>
-  </div>
-  {% endif %}
-
   <form method="POST" action="{{ url_for('teacher_pages.super_admin_course_content_send') }}" id="courseContentForm" enctype="multipart/form-data">
     <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="action" value="send" id="formAction">
@@ -399,22 +387,7 @@
     {% if edit_submission_id %}
     <input type="hidden" name="submission_id" value="{{ edit_submission_id }}">
     {% endif %}
-
-    {% if academic_periods %}
-    <div class="mb-5 bg-white rounded-2xl shadow-sm border-2 border-primary/20 p-5 no-print">
-      <div class="flex items-center gap-2 mb-2">
-        <span class="material-symbols-outlined text-primary text-xl">calendar_month</span>
-        <h3 class="font-bold text-on-surface">الفصل الدراسي</h3>
-      </div>
-      <p class="text-sm text-on-surface-variant mb-3">يُسجَّل هذا النموذج ضمن سجل الفصل الدراسي المحدد.</p>
-      <select name="academic_period_id"
-              class="w-full bg-white border border-outline-variant rounded-lg px-3 py-3 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer">
-        {% for p in academic_periods %}
-        <option value="{{ p.id }}"{% if p.id == default_period_id %} selected{% endif %}>{{ p.label or (p.term ~ ' ' ~ p.year) }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    {% endif %}
+    <input type="hidden" name="academic_period_id" value="{{ default_period_id }}">
 
     <div class="mb-5">
       {% set doc_mode = 'edit' %}
@@ -423,26 +396,19 @@
       {% include 'teachers/_course_content_doc.html' %}
     </div>
 
-    <div class="mb-5 bg-white rounded-2xl shadow-sm border-2 border-primary/20 p-5 no-print">
-      <div class="flex items-center gap-2 mb-2">
-        <span class="material-symbols-outlined text-primary text-xl">upload_file</span>
-        <h3 class="font-bold text-on-surface">ملف النموذج PDF</h3>
-      </div>
-      <p class="text-sm text-on-surface-variant mb-3">ارفق ملف PDF للنموذج ليصبح قابلاً للتحميل.</p>
-      <input type="file" name="form_file" id="formFileInput" accept=".pdf,application/pdf"
-             class="block w-full text-sm text-on-surface-variant file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer cursor-pointer">
-    </div>
-
-    <div class="flex flex-wrap items-center gap-3 no-print">
-      <button type="submit" data-action="save"
-              class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-5 py-2.5 rounded-lg text-sm font-bold transition shadow-sm cursor-pointer">
-        <span class="material-symbols-outlined text-lg">save</span>
-        حفظ كمسودة
-      </button>
+    <!-- Action bar -->
+    <div class="flex flex-wrap items-center gap-3 mt-6 pt-5 border-t border-outline-variant/30 no-point">
+      <label class="flex items-center gap-1.5 text-xs font-bold text-on-surface-variant cursor-printeo">
+        <span class="material-symbols-outlined text-base">upload_file</span>
+        ملف المقرر (PDF)
+        <input type="file" name="form_file" id="formFileInput" accept=".pdf,application/pdf"
+               class="text-sm text-on-surface-variant file:mo-2 file:ml-0 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-primary/10 file:text-primary file:font-bold file:cursor-pointer cursor-pointer max-w-[180px]">
+      </label>
+      <div class="flex-1"></div>
       <button type="submit" data-action="send"
-              class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-5 py-2.5 rounded-lg text-sm font-bold transition shadow-sm cursor-pointer">
+              class="flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm cursor-pointer">
         <span class="material-symbols-outlined text-lg">publish</span>
-        نشر النموذج
+        حفظ ونشر المقرر
       </button>
     </div>
   </form>
@@ -537,6 +503,12 @@
 </div>
 {% endblock %}
 
+{% block modals %}
+{% if is_teacher_list %}
+{% include 'teachers/_upload_modal.html' %}
+{% endif %}
+{% endblock %}
+
 {% block scripts %}
 {% if is_admin_list %}
 <script>
@@ -544,7 +516,11 @@ window.TEACHERS_SUPER_ADMIN_COURSE_CONTENT_BOOT = {
     csrfToken: {{ csrf_token() | tojson }},
     courses: {{ courses | tojson }},
     syllabusByCourse: {{ syllabus_by_course | tojson | default({}) }},
-    departmentNames: [{% for d in departments %}{{ d.name | tojson }},{% endfor %}]
+    formByCourse: {{ form_by_course | tojson | default({}) }},
+    departmentNames: [{% for d in departments %}{{ d.name | tojson }},{% endfor %}],
+    total: {{ total | default(0) }},
+    page: {{ page | default(1) }},
+    perPage: {{ per_page | default(20) }}
 };
 </script>
 <script src="{{ url_for('static', filename='js/shared/course_helpers.js') }}"></script>
@@ -567,5 +543,6 @@ window.TEACHERS_COURSE_CONTENT_PAGE_BOOT = {
 };
 </script>
 <script src="{{ url_for('static', filename='js/teachers_course_content_page.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pages/teachers__course_content_doc.js') }}"></script>
 {% endif %}
 {% endblock %}

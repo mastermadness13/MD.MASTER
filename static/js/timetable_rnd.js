@@ -9,7 +9,6 @@
   var availableSemesters = P.available_semesters || [];
   var entries = P.entries || [];
   var vocabMap = P.vocab || {};
-  var syllabiMap = P.syllabus || {};
   var formMap = P.form || {};
 
   var csrfToken = BOOT.csrfToken || '';
@@ -92,7 +91,6 @@
             var timeStr = startStr && endStr ? startStr + ' ← ' + endStr : (startStr || entryTime(e));
             var formFile = formMap[e.course_id] || {};
             var formEditUrl = '/teacher/super-admin/course-content/create?course_id=' + e.course_id + (formFile.submission_id ? '&amp;submission_id=' + formFile.submission_id : '');
-            var syllabusFile = syllabiMap[e.teacher_id + ':' + e.course_id] || syllabiMap['*:' + e.course_id] || {};
             html += '<div class="bg-primary-container rounded-lg p-3 shadow-md text-[11px]">' +
               '<h3 class="font-bold text-on-surface mb-1.5 text-xs">📘 مقرر: ' + esc(e.course_name || '—') + '</h3>' +
               '<div class="flex items-center gap-1.5 text-primary font-bold mb-1">' +
@@ -101,10 +99,12 @@
               '<div class="flex items-center gap-1.5 text-on-surface-variant mb-1"><span class="material-symbols-outlined text-[14px]">person</span> ' + esc(cleanTeacher(e.teacher_name)) + '</div>' +
               '<div class="flex items-center gap-1.5 text-on-surface-variant mb-1"><span class="material-symbols-outlined text-[14px]">meeting_room</span> ' + esc(e.room_name || '—') + '</div>' +
               '<div class="flex items-center gap-1.5 text-on-surface-variant mb-2"><span class="material-symbols-outlined text-[14px]">schedule</span> ' + esc(typeLabel(e.lecture_type)) + (durationLabel(e) ? ' · ' + esc(durationLabel(e)) : '') + '</div>' +
+              '<div class="text-[10px] mb-1.5 font-bold">' +
+                '<span class="' + (formFile.url ? 'text-green-600' : 'text-red-400') + '">● مقرر</span> ' +
+              '</div>' +
               '<div class="flex flex-wrap gap-1.5">' +
-                  '<a href="' + formEditUrl + '" target="_blank" rel="noopener" class="bg-emerald-700 text-white px-2 py-0.5 rounded text-[10px] font-bold">' + (formFile.url ? '📝 تعديل المقرر' : '📝 إعداد المقرر') + '</a>' +
-                (formFile.url ? '<a href="' + formFile.url + (formFile.url.indexOf('?') >= 0 ? '&' : '?') + 'download=1" target="_blank" rel="noopener" class="bg-primary text-white px-2 py-0.5 rounded text-[10px] font-bold">📄 تحميل المقرر</a>' : '<button disabled class="bg-gray-300 text-gray-600 px-2 py-0.5 rounded text-[10px] font-bold">📄 تحميل المقرر</button>') +
-                (syllabusFile.url ? '<a href="' + syllabusFile.url + (syllabusFile.url.indexOf('?') >= 0 ? '&' : '?') + 'download=1" target="_blank" rel="noopener" class="bg-primary text-white px-2 py-0.5 rounded text-[10px] font-bold">⬇️ تحميل المنهج</a>' : '<button disabled class="bg-gray-300 text-gray-600 px-2 py-0.5 rounded text-[10px] font-bold">⬇️ تحميل المنهج</button>') +
+                  '<a href="' + formEditUrl + '" target="_blank" rel="noopener" class="bg-emerald-700 text-white px-2 py-0.5 rounded text-[10px] font-bold">📝 إنشاء/تعديل المقرر</a>' +
+                (formFile.url ? '<a href="' + formFile.url + (formFile.url.indexOf('?') >= 0 ? '&' : '?') + 'download=1" class="bg-primary text-white px-2 py-0.5 rounded text-[10px] font-bold">📄 تحميل المقرر</a>' : '<button disabled class="bg-gray-300 text-gray-600 px-2 py-0.5 rounded text-[10px] font-bold">📄 تحميل المقرر</button>') +
               '</div>' +
               '</div>';
           });
@@ -120,6 +120,50 @@
     });
     tbody.innerHTML = html;
     renderBadge();
+    renderMobileGrid();
+  }
+
+  // ── Mobile card list (phones <1024px, read-only) ──────────
+  function renderMobileGrid() {
+    var wrap = document.getElementById('mobileGrid');
+    if (!wrap) return;
+    if (!entries.length) {
+      wrap.innerHTML = '<div class="tt-mempty"><span class="material-symbols-outlined">calendar_today</span>لا توجد حصص مجدولة في هذا الجدول</div>';
+      return;
+    }
+    var html = '';
+    days.forEach(function (day) {
+      var list = [];
+      entries.forEach(function (e) { if (e.day === day) list.push(e); });
+      if (!list.length) return;
+      html += '<div class="tt-mday">' +
+        '<div class="tt-mday-head"><span class="material-symbols-outlined">today</span><span>' + esc(day) + '</span><span class="tt-mday-count">' + list.length + ' محاضرة</span></div>' +
+        '<div class="tt-mday-body">';
+      list.forEach(function (e) {
+        var startStr = e.start_time ? fmtTime12(e.start_time) : '';
+        var endStr = e.end_time ? fmtTime12(e.end_time) : '';
+        var timeStr = startStr && endStr ? startStr + ' ← ' + endStr : (startStr || entryTime(e));
+        var formFile = formMap[e.course_id] || {};
+        var formEditUrl = '/teacher/super-admin/course-content/create?course_id=' + e.course_id + (formFile.submission_id ? '&amp;submission_id=' + formFile.submission_id : '');
+        html += '<div class="tt-mcard">' +
+          '<div class="tt-mcard-title">' +
+            '<span>' + esc(e.course_name || '—') + '</span>' +
+            (e.course_code ? '<span class="code">(' + esc(e.course_code) + ')</span>' : '') +
+            '<span class="tt-mday-count" style="margin-inline-start:auto"><span class="' + (formFile.url ? 'text-green-600' : 'text-red-400') + '">● مقرر</span></span>' +
+          '</div>' +
+          '<div class="tt-mrow tt-mtime"><span class="material-symbols-outlined">schedule</span><span dir="ltr">' + esc(timeStr) + '</span>' + (durationLabel(e) ? '<span>· ' + esc(durationLabel(e)) + '</span>' : '') + '</div>' +
+          '<div class="tt-mrow"><span class="material-symbols-outlined">person</span>' + esc(cleanTeacher(e.teacher_name)) + '</div>' +
+          '<div class="tt-mrow"><span class="material-symbols-outlined">meeting_room</span>' + esc(e.room_name || '—') + '</div>' +
+          '<div class="tt-mrow"><span class="material-symbols-outlined">category</span>' + esc(typeLabel(e.lecture_type)) + '</div>' +
+          '<div class="tt-actions">' +
+            '<a class="tt-chip tt-chip-soft" href="' + formEditUrl + '" target="_blank" rel="noopener"><span class="material-symbols-outlined">description</span> إنشاء/تعديل المقرر</a>' +
+            (formFile.url ? '<a class="tt-chip tt-chip-primary" href="' + formFile.url + (formFile.url.indexOf('?') >= 0 ? '&' : '?') + 'download=1"><span class="material-symbols-outlined">description</span> تحميل المقرر</a>' : '<button class="tt-chip tt-chip-primary" disabled><span class="material-symbols-outlined">description</span> لا يوجد مقرر</button>') +
+          '</div>' +
+        '</div>';
+      });
+      html += '</div></div>';
+    });
+    wrap.innerHTML = html;
   }
 
   function renderBadge() {
@@ -151,6 +195,8 @@
 
   if (!P.dept) {
     document.getElementById('gridBody').innerHTML = '<tr><td colspan="' + Math.max(2, periods.length + 1) + '" class="py-16 text-center text-on-surface-variant">لا توجد أقسام متاحة</td></tr>';
+    var mw = document.getElementById('mobileGrid');
+    if (mw) mw.innerHTML = '<div class="tt-mempty"><span class="material-symbols-outlined">domain</span>لا توجد أقسام لعرض جداولها</div>';
     document.getElementById('departmentFilters').innerHTML =
       '<div class="col-span-full py-10 text-center text-on-surface-variant text-sm">لا توجد أقسام لعرض جداولها</div>';
     document.getElementById('semesterStep').classList.add('hidden');

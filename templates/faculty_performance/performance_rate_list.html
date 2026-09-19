@@ -1,0 +1,106 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'faculty_performance_rate' %}
+{% set page_title = 'قائمة معدل الأداء' %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="page-header-info">
+      <span class="material-symbols-outlined page-header-icon">monitoring</span>
+      <div>
+        <h1 class="page-title">قائمة معدل الأداء</h1>
+        <p class="page-subtitle">ملخص ساعات أعضاء هيئة التدريس وفق نموذج معدل الأداء الموحد</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Members Table -->
+  <div class="page-card overflow-hidden overflow-x-auto">
+    <table class="w-full text-right border-collapse text-sm min-w-[760px]">
+      <thead>
+        <tr class="bg-surface-dim font-bold text-on-surface-variant">
+          <th class="px-4 py-3 border-b border-outline-variant w-14">#</th>
+          <th class="px-4 py-3 border-b border-outline-variant">العضو</th>
+          <th class="px-4 py-3 border-b border-outline-variant">القسم</th>
+          <th class="px-4 py-3 border-b border-outline-variant text-center">الأساسي</th>
+          <th class="px-4 py-3 border-b border-outline-variant text-center">الإضافي</th>
+          <th class="px-4 py-3 border-b border-outline-variant text-center">البحثي</th>
+          <th class="px-4 py-3 border-b border-outline-variant text-center">الإداري</th>
+          <th class="px-4 py-3 border-b border-outline-variant text-center">الإجازات</th>
+          <th class="px-4 py-3 border-b border-outline-variant text-center">الإجمالي</th>
+          <th class="px-4 py-3 border-b border-outline-variant text-center">إجراء</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if rows %}
+        {% for m in rows %}
+        <tr class="hover:bg-primary/5 transition-colors border-b border-outline-variant last:border-b-0">
+          <td class="px-4 py-3 text-on-surface-variant">{{ loop.index }}</td>
+          <td class="px-4 py-3 font-bold text-on-surface">
+            {{ teacher_display_name(m.name, m.rank_name, m.qual_name) }}
+            {% if m.academic_number %}
+            <span class="block text-xs text-on-surface-variant font-normal" dir="ltr">{{ m.academic_number }}</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3 text-on-surface">{{ m.dept_name or '—' }}</td>
+          <td class="px-4 py-3 text-center font-bold" dir="ltr">{{ m.basic_total }}</td>
+          <td class="px-4 py-3 text-center font-bold" dir="ltr">{{ m.additional_total }}</td>
+          <td class="px-4 py-3 text-center font-bold" dir="ltr">{{ m.research_total }}</td>
+          <td class="px-4 py-3 text-center font-bold" dir="ltr">{{ m.admin_total }}</td>
+          <td class="px-4 py-3 text-center font-bold" dir="ltr">{{ m.leaves_total }}</td>
+          <td class="px-4 py-3 text-center font-bold text-primary" dir="ltr">{{ m.grand_total }}</td>
+          <td class="px-4 py-3">
+            <div class="flex items-center justify-center gap-2">
+              <a href="{{ url_for('faculty_performance.preview', teacher_id=m.id, year=academic_year, semester=semester) }}"
+                 class="flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-on-primary px-3 py-2 rounded-lg text-xs font-bold transition shadow-sm no-underline">
+                <span class="material-symbols-outlined text-base">assignment</span>
+                التقرير
+              </a>
+              {% if has_permission('faculty_performance.print') %}
+              <a href="{{ url_for('faculty_performance.print_form', teacher_id=m.id, year=academic_year, semester=semester) }}"
+                 target="_blank"
+                 class="flex items-center gap-1.5 bg-surface-container hover:bg-surface-container-high border border-outline-variant px-3 py-2 rounded-lg text-xs font-bold transition no-underline"
+                 title="طباعة نموذج معدل الأداء">
+                <span class="material-symbols-outlined text-base">print</span>
+              </a>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr>
+          <td colspan="10" class="px-4 py-14 text-center">
+            <span class="material-symbols-outlined text-6xl text-outline-variant block mb-3">school</span>
+            <h3 class="text-on-surface font-bold mb-1">لا يوجد أعضاء</h3>
+            <p class="text-on-surface-variant text-sm">لم يتم إدخال أي عضو هيئة تدريس بعد</p>
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+      {% if rows %}
+      <tfoot>
+        <tr class="bg-primary/5 font-bold">
+          <td colspan="2" class="px-4 py-3 text-primary">الإجمالي الكلي</td>
+          <td class="px-4 py-3"></td>
+          <td class="px-4 py-3 text-center" dir="ltr">{{ totals.basic_total }}</td>
+          <td class="px-4 py-3 text-center" dir="ltr">{{ totals.additional_total }}</td>
+          <td class="px-4 py-3 text-center" dir="ltr">{{ totals.research_total }}</td>
+          <td class="px-4 py-3 text-center" dir="ltr">{{ totals.admin_total }}</td>
+          <td class="px-4 py-3 text-center" dir="ltr">{{ totals.leaves_total }}</td>
+          <td class="px-4 py-3 text-center text-primary" dir="ltr">{{ totals.grand_total }}</td>
+          <td class="px-4 py-3"></td>
+        </tr>
+      </tfoot>
+      {% endif %}
+    </table>
+  </div>
+
+  <p class="mt-3 text-xs text-on-surface-variant">
+    {{ academic_year_label }} — {{ semester_label }} · الأرقام حسب نموذج معدل الأداء الموحد (4-10 ساعات)
+  </p>
+
+</div>
+{% endblock %}

@@ -6,6 +6,7 @@ from security import csrf_required, login_required, permission_required
 from security import current_user
 bp = Blueprint('profile', __name__, url_prefix='/profile')
 
+# /     /     >---- مسؤوليات كل دور تُعرض في صفحة الملف الشخصي
 _ROLE_RESPONSIBILITIES = {
     'research_development': [
         ('menu_book', 'إدارة المقررات الدراسية'),
@@ -43,6 +44,7 @@ _ROLE_RESPONSIBILITIES = {
 }
 
 
+# /     /     >---- قسم البحث والتطوير الإداري أو لا شيء إن لم يوجد
 def _resolve_rnd_department(db):
     """Return the R&D department row, or None if not found."""
     return db.execute(
@@ -51,6 +53,7 @@ def _resolve_rnd_department(db):
     ).fetchone()
 
 
+# /     /     >---- صفحة الملف الشخصي: تحديث الحساب أو بيانات قسم البحث والتطوير
 @bp.route('', methods=['GET', 'POST'])
 @login_required
 @permission_required('profile.view')
@@ -74,12 +77,14 @@ def profile():
     return _render_profile(db, is_rnd)
 
 
+# /     /     >---- تحديث بيانات الحساب (اسم مستخدم/بريد/اسم/هاتف)
 def _handle_account_update(db, is_rnd):
     username = request.form.get('username', '').strip()
     email = request.form.get('email', '').strip()
     label = request.form.get('label', '').strip()
     phone = request.form.get('phone', '').strip()
 
+    # /     /     >---- تحقق من اسم المستخدم: مطلوب وطول كافٍ وعدم التكرار
     if not username:
         return _render_profile(db, is_rnd,
                                form_error='اسم المستخدم مطلوب')
@@ -102,6 +107,7 @@ def _handle_account_update(db, is_rnd):
             (username, email, label, phone, session['user_id'])
         )
         role = session.get('role', '')
+        # /     /     >---- مزامنة الهاتف مع سجل الأستاذ إن كان الدور أستاذاً
         if role == 'teacher':
             db.execute(
                 'UPDATE teachers SET phone = ? WHERE user_id = ?',
@@ -119,6 +125,7 @@ def _handle_account_update(db, is_rnd):
     return redirect(url_for('profile.profile'))
 
 
+# /     /     >---- تحديث بيانات قسم البحث والتطوير (يعرض/اختصار/وصف)
 def _handle_department_update(db):
     display_name = request.form.get('dept_display_name', '').strip()
     abbreviation = request.form.get('dept_abbreviation', '').strip()
@@ -144,6 +151,7 @@ def _handle_department_update(db):
     return redirect(url_for('profile.profile'))
 
 
+# /     /     >---- تجهيز بيانات صفحة الملف: حساب + ملف أستاذ + قسم + مسؤوليات
 def _render_profile(db, is_rnd, form_error=None):
     user = db.execute(
         'SELECT u.*, d.name AS department_name FROM users u '

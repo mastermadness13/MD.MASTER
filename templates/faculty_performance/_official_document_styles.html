@@ -1,0 +1,57 @@
+{# Official-document shared CSS. Scoped under .official-doc so the same
+   partial renders identically inside base.html (interface preview) and the
+   standalone A4 print layout. Used by _print_document.html + preview/report. #}
+<style>
+  .official-doc {
+    font-family: 'Times New Roman', 'Traditional Arabic', 'Simplified Arabic', 'Tahoma', Arial, sans-serif;
+    color: #000;
+    line-height: 1.4;
+    direction: rtl;
+  }
+  .official-doc .header-title {
+    text-align: center;
+    font-weight: bold;
+    font-size: 14pt;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #000;
+  }
+  .official-doc .section-title {
+    font-weight: bold;
+    font-size: 11pt;
+    margin-top: 12px;
+    margin-bottom: 6px;
+    padding: 4px 0;
+    border-bottom: 1px solid #333;
+  }
+  .official-doc table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 10px;
+    direction: rtl;
+  }
+  .official-doc table, .official-doc th, .official-doc td {
+    border: 1px solid #000;
+  }
+  .official-doc th, .official-doc td {
+    padding: 5px 8px;
+    text-align: center;
+    font-size: 10pt;
+    vertical-align: middle;
+  }
+  .official-doc th {
+    background-color: #d9d9d9;
+    font-weight: bold;
+    font-size: 10pt;
+  }
+  .official-doc td {
+    font-size: 10pt;
+  }
+  .official-doc .text-right {
+    text-align: right;
+  }
+  .official-doc .bg-gray {
+    background-color: #e6e6e6;
+    font-weight: bold;
+  }
+</style>

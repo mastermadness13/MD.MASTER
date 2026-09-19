@@ -1,7 +1,9 @@
-﻿"""Department service — CRUD, majors management.
+"""Department service — CRUD, majors management.
 
 Uses ``DepartmentRepository`` for data access.  Module-level functions are kept
 for backward compatibility with existing routes.
+
+/     /     >---- خدمة الأقسام: عمليات الإضافة والتعديل والحذف وإدارة التخصصات.
 """
 
 from __future__ import annotations
@@ -13,12 +15,16 @@ logger = logging.getLogger(__name__)
 
 
 class DepartmentService:
-    """Class-based department service with repository injection."""
+    """Class-based department service with repository injection.
+
+    /     /     >---- الخدمة بشكل كلاس مع حقن المستودع.
+    """
 
     def __init__(self, db, department_repo):
         self.db = db
         self._repo = department_repo
 
+    # /     /     >---- قائمة الأقسام الظاهرة مع تخصصاتها
     def list_departments(self) -> List[Dict[str, Any]]:
         return self._repo.list_visible_with_majors()
 
@@ -31,6 +37,7 @@ class DepartmentService:
     def list_administrative_departments(self) -> List[Dict[str, Any]]:
         return self._repo.list_administrative()
 
+    # /     /     >---- هل يوجد قسم بنفس الاسم
     def department_exists_by_name(self, name: str) -> bool:
         return self._repo.find_by_name(name) is not None
 
@@ -54,7 +61,6 @@ class DepartmentService:
     def department_hard_delete(self, dept_id: int) -> None:
         self._repo.delete(dept_id)
 
-
     def add_major(self, department_id: int, name: str) -> None:
         self._repo.add_major(department_id, name)
 
@@ -62,7 +68,7 @@ class DepartmentService:
         self._repo.delete_major(major_id, department_id)
 
 
-# ── Backward-compatible module-level API ──────────────────────────────────
+# /     /     >---- دوال مستوى الوحدة المحافظة على التوافق مع المسارات القديمة
 
 def list_departments(db):
     from database.repositories.department_repository import DepartmentRepository
@@ -116,7 +122,6 @@ def department_restore(db, id):
 def department_hard_delete(db, id):
     from services.base_service import hard_delete
     hard_delete(db, 'departments', id)
-
 
 
 def list_academic_departments(db):

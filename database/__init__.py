@@ -7,6 +7,9 @@ Seeding (``bootstrap_defaults``) lives in ``scripts/seed.py`` and is
 called via ``flask_db.bootstrap_defaults()``, not from this package.
 """
 
+# /     /     >---- الحزمة الأساسية لقاعدة البيانات: الاتصال، المخطط، السجل، المستودعات
+
+# ── استيراد الدوال الأساسية ─────────────────────────────────────
 from database.connection import connect
 from database.schema import ensure_schema
 from database.history import add_history

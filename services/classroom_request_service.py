@@ -2,6 +2,8 @@
 
 Uses ``ClassroomRequestRepository`` for data access.  Module-level functions
 are kept for backward compatibility with existing routes.
+
+/     /     >---- خدمة طلبات تغيير القاعة: إدارة سير العمل (إنشاء، موافقة، رفض، إلغاء).
 """
 
 from __future__ import annotations
@@ -15,12 +17,16 @@ logger = logging.getLogger(__name__)
 
 
 class ClassroomRequestService:
-    """Class-based classroom request service with repository injection."""
+    """Class-based classroom request service with repository injection.
+
+    /     /     >---- الخدمة بشكل كلاس مع حقن المستودع.
+    """
 
     def __init__(self, db, classroom_request_repo):
         self.db = db
         self._repo = classroom_request_repo
 
+    # /     /     >---- إنشاء طلب تغيير قاعة وتسجيله في سجل العمليات
     def create_request(self, teacher_id: int, user_id: int, department_id: int,
                        schedule_id: int, current_room_id: int,
                        requested_room_id: int, reason: str) -> int:
@@ -46,6 +52,7 @@ class ClassroomRequestService:
     def get_by_id(self, request_id: int) -> Optional[Dict]:
         return self._repo.find_by_id(request_id)
 
+    # /     /     >---- موافقة الراتب: نحدّث قاعة الجدول فعليةً للقاعة المطلوبة
     def approve_request(self, request_id: int, reviewed_by: int,
                         hod_comment: str = '') -> Optional[Dict]:
         self._repo.approve(request_id, reviewed_by, hod_comment)
@@ -59,6 +66,7 @@ class ClassroomRequestService:
         )
         return req
 
+    # /     /     >---- رفض الطلب مع تعليق رئيس القسم
     def reject_request(self, request_id: int, reviewed_by: int,
                        hod_comment: str = '') -> None:
         self._repo.reject(request_id, reviewed_by, hod_comment)
@@ -67,6 +75,7 @@ class ClassroomRequestService:
             'تم رفض طلب تغيير قاعة', None, f'reason={hod_comment}',
         )
 
+    # /     /     >---- إلغاء الطلب: للطالب نفسه فقط وحالة Pending فقط
     def cancel_request(self, request_id: int, user_id: int) -> bool:
         req = self._repo.find_simple(request_id)
         if not req or req['user_id'] != user_id:
@@ -76,6 +85,7 @@ class ClassroomRequestService:
         self._repo.cancel(request_id)
         return True
 
+    # /     /     >---- هل القاعة متاحة في نفس موعد الجدول
     def check_room_available(self, room_id: int, schedule_id: int) -> bool:
         return self._repo.check_room_available(room_id, schedule_id)
 
@@ -92,7 +102,7 @@ class ClassroomRequestService:
         return self._repo.list_all_rooms()
 
 
-# ── Backward-compatible module-level API ──────────────────────────────────
+# /     /     >---- دوال مستوى الوحدة المحافظة على التوافق مع المسارات القديمة
 
 def create_request(db, teacher_id, user_id, department_id, schedule_id, current_room_id, requested_room_id, reason):
     from database.repositories.classroom_request_repository import ClassroomRequestRepository

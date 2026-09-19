@@ -1,4 +1,4 @@
-from flask import Blueprint, session, request, render_template, redirect, url_for, flash
+from flask import Blueprint, session, request, render_template, redirect, url_for, flash, jsonify
 
 from flask_db import get_db
 from security import current_user, csrf_required, get_granted_roles
@@ -9,6 +9,7 @@ from utils.redirects import redirect_back
 bp = Blueprint('dashboard', __name__)
 
 
+# /     /     >---- تبديل واجهة الدور (مع دعم AJAX وفحص الأدوار الممنوحة)
 @bp.route('/switch-role', methods=['POST'])
 @csrf_required
 def switch_role():
@@ -16,14 +17,23 @@ def switch_role():
         return redirect(url_for('auth.login'))
     requested = request.form.get('role', '').strip()
     granted = set(get_granted_roles())
+    is_ajax = (
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        or request.headers.get('Accept') == 'application/json'
+    )
     if requested in granted:
         session['role'] = requested
+        if is_ajax:
+            return jsonify({'ok': True, 'message': 'تم تغيير الواجهة'})
         flash('تم تغيير الواجهة', 'success')
     else:
+        if is_ajax:
+            return jsonify({'ok': False, 'message': 'ليس لديك هذا الدور'}), 403
         flash('ليس لديك هذا الدور', 'error')
     return redirect_back(fallback_endpoint='dashboard.dashboard')
 
 
+# /     /     >---- الرئيسية: تحويل حسب الدور ثم تحميل قوالب وإحصائيات كل دور
 @bp.route('/')
 def dashboard():
     if 'user_id' not in session:
@@ -31,6 +41,7 @@ def dashboard():
 
     role = session.get('role', '')
 
+    # /     /     >---- أدوار خاصة تُحوَّل مباشرة لصفحاتها المقررة
     if role == 'exam':
         return redirect(url_for('exams.exams'))
 
@@ -39,6 +50,7 @@ def dashboard():
 
     show = request.args.get('show', 5, type=int)
 
+    # /     /     >---- قالب اللوحة حسب الدور (الافتراضي للأساتذة)
     role_templates = {
         'super_admin': 'dashboard/super_admin.html',
         'research_development': 'dashboard/rnd.html',
@@ -51,6 +63,7 @@ def dashboard():
 
     stats = get_dashboard_stats(role, show)
 
+    # /     /     >---- بيانات خاصة لكل دور إن لزمت الصفحة
     faculty_data = {}
     if role == 'faculty_affairs':
         db = get_db()

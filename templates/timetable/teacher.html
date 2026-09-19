@@ -17,12 +17,7 @@
     body { overflow: visible; }
   }
 
-  /* Day accordion */
-  .day-acc-header { cursor: pointer; user-select: none; }
-  .day-acc-chevron { transition: transform .25s ease; }
-  .day-acc-collapsed .day-acc-chevron { transform: rotate(-90deg); }
-  .day-acc-collapsed .day-acc-body { display: none; }
-  .day-accordion { transition: background-color .3s ease; }
+  
 </style>
 {% set print_orientation = 'A4 landscape' %}
 {% set print_margin = '10mm' %}
@@ -61,10 +56,7 @@
     {% endfor %}
   </div>
 
-  {% set any_entries = false %}
-  {% for day in days_order %}
-    {% if weekly_schedule.get(day) %}{% set any_entries = true %}{% endif %}
-  {% endfor %}
+  {% set any_entries = (weekly_schedule.values() | select() | list | length > 0) %}
 
   {% if any_entries %}
   <div class="space-y-5">
@@ -85,7 +77,7 @@
       </div>
       <div class="day-acc-body">
         {% if entries %}
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto hidden lg:block">
           <table class="w-full text-right border-collapse text-sm">
             <thead>
               <tr class="bg-primary-container">
@@ -120,6 +112,8 @@
                   {% set frm = content_maps.form.get(e.course_id) if content_maps else none %}
                   {% set has_own_syllabus = syk and syk.teacher_id and syk.teacher_id == current_teacher_id %}
                   <div class="flex flex-wrap items-center gap-1.5">
+                    <span class="{% if frm and frm.url %}text-green-600{% else %}text-red-400{% endif %} text-[10px] font-bold">● مقرر</span>
+                    <span class="{% if syk and syk.url %}text-green-600{% else %}text-red-400{% endif %} text-[10px] font-bold">● منهاج</span>
                     <form action="{{ url_for('teacher_pages.teacher_syllabus_upload') }}" method="POST" enctype="multipart/form-data" class="inline-flex items-center gap-1">
                       <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                       <input type="hidden" name="course_id" value="{{ e.course_id }}">
@@ -163,6 +157,60 @@
         <div class="py-8 text-center text-on-surface-variant">
           <span class="material-symbols-outlined text-4xl text-outline-variant block mb-1">event_busy</span>
           <p class="text-sm">لا توجد محاضرات في هذا اليوم</p>
+        </div>
+        {% endif %}
+
+        <!-- Mobile cards (phones <1024px) -->
+        {% if entries %}
+        <div class="lg:hidden p-3 pt-0">
+          <div class="tt-mday-body">
+            {% for e in entries %}
+            {% set syk = (content_maps.syllabus.get(e.teacher_id ~ ':' ~ e.course_id) if content_maps else none) or (content_maps.syllabus.get('*:' ~ e.course_id) if content_maps else none) %}
+            {% set frm = content_maps.form.get(e.course_id) if content_maps else none %}
+            {% set has_own_syllabus = syk and syk.teacher_id and syk.teacher_id == current_teacher_id %}
+            <div class="tt-mcard">
+              <div class="tt-mcard-title">
+                <span class="w-2 h-2 rounded-full shrink-0" style="background-color: {{ dept_colors.get(e.department_name, '#4CAF50') }}"></span>
+                <span>{{ e.course_name }}</span>
+                {% if e.course_code %}<span class="code">({{ e.course_code }})</span>{% endif %}
+                <span class="tt-mday-count" style="margin-inline-start:auto">
+                  <span class="{% if frm and frm.url %}text-green-600{% else %}text-red-400{% endif %}">● مقرر</span>
+                  <span class="{% if syk and syk.url %}text-green-600{% else %}text-red-400{% endif %} ms-1">● منهاج</span>
+                </span>
+              </div>
+              <div class="tt-mrow tt-mtime">
+                <span class="material-symbols-outlined">schedule</span>
+                <span dir="ltr">{{ format_time12(e.start_time) or '—' }}{% if e.end_time %} ← {{ format_time12(e.end_time) }}{% endif %}</span>
+              </div>
+              <div class="tt-mrow"><span class="material-symbols-outlined">menu_book</span> الفصل {{ e.semester or '—' }}{% if e.year %} (س{{ e.year }}){% endif %}</div>
+              <div class="tt-mrow"><span class="material-symbols-outlined">domain</span> {{ e.department_name or '—' }}</div>
+              <div class="tt-mrow"><span class="material-symbols-outlined">meeting_room</span> {{ e.room_name or '—' }}{% if e.room_capacity %} · السعة {{ e.room_capacity }}{% endif %}</div>
+              <div class="tt-actions">
+                <form action="{{ url_for('teacher_pages.teacher_syllabus_upload') }}" method="POST" enctype="multipart/form-data" class="m-0 inline-flex">
+                  <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                  <input type="hidden" name="course_id" value="{{ e.course_id }}">
+                  <label class="tt-chip tt-chip-soft cursor-pointer">
+                    <input type="file" name="file" accept=".pdf" onchange="this.form.submit()" class="hidden">
+                    <span class="material-symbols-outlined">upload_file</span>
+                    {% if has_own_syllabus %}تحديد المنهج{% else %}رفع المنهج{% endif %}
+                  </label>
+                </form>
+                {% if syk and syk.url %}
+                <a class="tt-chip tt-chip-primary" href="{{ syk.url }}{% if '?' in syk.url %}&amp;{% else %}?{% endif %}download=1"><span class="material-symbols-outlined">download</span> تحميل المنهج</a>
+                {% endif %}
+                {% if frm and frm.url %}
+                <a class="tt-chip tt-chip-primary" href="{{ frm.url }}{% if '?' in frm.url %}&amp;{% else %}?{% endif %}download=1"><span class="material-symbols-outlined">description</span> تحميل المقرر</a>
+                {% endif %}
+                {% if has_own_syllabus %}
+                <form action="{{ url_for('teacher_pages.teacher_syllabus_delete', tf_id=syk.id) }}" method="POST" onsubmit="return confirm('حذف ملف المنهج هذا؟');" class="m-0 inline-flex">
+                  <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="tt-chip tt-chip-danger"><span class="material-symbols-outlined">delete</span> حذف</button>
+                </form>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
         </div>
         {% endif %}
       </div>

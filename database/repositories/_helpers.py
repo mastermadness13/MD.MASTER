@@ -8,7 +8,9 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+# ─────────────────────────────────────────────
 
+# /     /     >---- دالة الترقيم: تجيب النتائج قسم قسم مع العدد الكلي
 def paginate(db, base_query: str, params: Sequence = (),
              page: int = 1, per_page: int = 20) -> Tuple[List[Dict], int, int, int]:
     """Run a paginated query.  Returns ``(rows, total, page, per_page)``.
@@ -16,7 +18,7 @@ def paginate(db, base_query: str, params: Sequence = (),
     ``base_query`` should **not** include ``ORDER BY`` with ``LIMIT``;
     the helper appends them automatically.
     """
-    # Split off ORDER BY if present so we can wrap for counting.
+    # /     /     >---- نشيل ORDER BY إذا موجود عشان نعرف نعد
     if 'ORDER BY' in base_query.upper():
         cut = base_query.upper().index('ORDER BY')
         count_part = base_query[:cut]
@@ -25,9 +27,11 @@ def paginate(db, base_query: str, params: Sequence = (),
         count_part = base_query
         order_part = ''
 
+    # /     /     >---- نحسب العدد الكلي
     count_sql = f'SELECT COUNT(*) FROM ({count_part}) AS _cnt'
     total = db.execute(count_sql, params or []).fetchone()[0]
 
+    # /     /     >---- نجيب الصفوف مع LIMIT و OFFSET
     offset = (page - 1) * per_page
     rows_sql = f'{count_part} {order_part} LIMIT ? OFFSET ?'.strip()
     rows = db.execute(
@@ -35,7 +39,9 @@ def paginate(db, base_query: str, params: Sequence = (),
     ).fetchall()
     return [dict(r) for r in rows], total, page, per_page
 
+# ─────────────────────────────────────────────
 
+# /     /     >---- نبني جملة WHERE محمية من المعاملات (بدون SQL Injection)
 def build_where(conditions: Dict[str, Any],
                 allowlist: Optional[Sequence[str]] = None) -> Tuple[str, List[Any]]:
     """Build a parameterised ``WHERE`` clause from a dict of column → value.
@@ -46,8 +52,10 @@ def build_where(conditions: Dict[str, Any],
     clauses: List[str] = []
     params: List[Any] = []
     for key, value in conditions.items():
+        # /     /     >---- إذا فيش allowlist و المفتاح مو موجود نتخطاه
         if allowlist is not None and key not in allowlist:
             continue
+        # /     /     >---- القيم الفارغة نتخطاها
         if value is None:
             continue
         clauses.append(f'{key} = ?')
@@ -56,16 +64,20 @@ def build_where(conditions: Dict[str, Any],
         return '', []
     return ' WHERE ' + ' AND '.join(clauses), params
 
+# ─────────────────────────────────────────────
 
+# /     /     >---- نبني جملة ORDER BY آمنة (اسم العمود يُفحص)
 def build_order(column: str = 'id', direction: str = 'ASC') -> str:
     """Build an ``ORDER BY`` clause with a whitelisted column name.
 
     Falls back to ``id ASC`` for anything that is not a bare identifier, so
     user input can never inject SQL.
     """
+    # /     /     >---- نتحقق من الاتجاه (ASC/DESC فقط)
     direction = (direction or 'ASC').upper()
     if direction not in ('ASC', 'DESC'):
         direction = 'ASC'
+    # /     /     >---- نتحقق أن اسم العمود آمن (حروف وأرقام ونقاط وشرطات سفلية)
     if not column or not column.replace('_', '').replace('.', '').isalnum():
         column = 'id'
     return f'ORDER BY {column} {direction}'

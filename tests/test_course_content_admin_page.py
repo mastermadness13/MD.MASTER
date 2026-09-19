@@ -1,4 +1,4 @@
-﻿"""Tests for the R&D course-content flow (create-publish forms; view syllabi only)."""
+"""Tests for the R&D course-content flow (create-publish forms; view syllabi only)."""
 
 import io
 import json
@@ -135,7 +135,7 @@ def test_page_renders_courses_table(client):
     assert r.status_code == 200
     assert 'رفع المقرر' in body
     assert '<table' in body
-    for header in ['رمز المادة', 'اسم المادة', 'القسم', 'حالة النموذج', 'إجراءات']:
+    for header in ['المادة', 'القسم', 'الفصل', 'المدرّس', 'النموذج', 'الساعات', 'الإجراءات']:
         assert header in body
     assert 'ccCourseTableBody' in body, 'table body is filled by JS'
     courses = _courses_json(body)
@@ -144,36 +144,43 @@ def test_page_renders_courses_table(client):
 
 
 def test_action_cells_reflect_status(client):
-    """كل مقرر: 3 أزرار فقط (تحميل المنهج/طباعة المقرر/تعديل المقرر) ولا أزرار رفع/عرض/تحميل منفصلة."""
+    """كل مقرر: 4 أزرار (تحميل المقرر/تحميل المنهج/طباعة المقرر/إنشاء-تعديل المقرر) ولا أزرار رفع/عرض منفصلة."""
     body = client.get('/teacher/super-admin/course-content').get_data(as_text=True)
     js = _read_js('static/js/teachers_super_admin_course_content.js')
     assert 'js/teachers_super_admin_course_content.js' in body, 'external page script is loaded'
+    assert 'تحميل المقرر' in js
     assert 'تحميل المنهج' in js
     assert 'طباعة المقرر' in js
-    assert 'تعديل المقرر' in js
-    # هيكلياً: دالة الإجراءات تُنتج 3 أزرار بالضبط دائماً (لا شرط لإنشاء زر إضافي)
-    assert 'actBtn(sylHref, \'download\', \'تحميل المنهج\')' in js
-    assert 'printBtn(\'طباعة المقرر\')' in js
-    assert 'actBtn(formEditUrl, \'edit\', \'تعديل المقرر\')' in js
+    assert 'إنشاء/تعديل المقرر' in js
+    assert 'تحميل المقرر' in js
+    assert 'تحميل المنهج' in js
+    assert 'طباعة المقرر' in js
+    assert 'إنشاء/تعديل المقرر' in js
+    # هيكلياً: زر تحميل المنهج يُبنى عند وجود المنهاج؛ زرّا الطباعة والإنشاء/التعديل دائماً
+    assert 'if (syl && syl.id) {' in js
+    assert 'if (syl && syl.id) {\n      items +=' in js, 'download button only when syllabus exists'
+    # زر تحميل المقرر يُبنى عند وجود ملف النموذج المعتمد (يستخدم /course-file/)
+    assert 'if (form && form.id) {' in js
+    assert "href=\"/course-file/' + form.id + '?download=1\"" in js, 'course form downloads via canonical course-file route'
+    assert "onclick=\"ccPreparePrint(this)\"" in js
+    assert 'items += \'<a href="\' + formEditUrl + \'">' in js, 'edit button built unconditionally'
     # الطباعة تتم عبر iframe مخفي (لا فتح صفحة ولا تنقّل)
     assert 'ccPreparePrint' in js
     assert 'window.ccPreparePrint = ccPreparePrint;' in js, 'should be global for inline onclick'
     assert "frame.src = '/teacher/super-admin/course-content/' + sid + '?print=1'" in js
     assert 'win.print()' in js
-    assert 'if (syl && syl.id) {' not in js, 'no conditional button creation allowed'
-    # لا أزرار منفصلة قديمة (رفع/عرض/متابعة/إنشاء/تعديل/تحميل نموذج)
+    # لا أزرار منفصلة قديمة (رفع/عرض/متابعة/إنشاء/تعديل نموذج)
     assert 'إنشاء النموذج' not in js
     assert 'متابعة النموذج' not in js
     assert 'تعديل النموذج' not in js
     assert 'تحميل النموذج' not in js
-    assert 'description' not in js, 'زر تحميل المقرر (أيقونة description) يجب أن يختفي نهائياً'
     assert 'عرض النموذج' not in js
     assert 'عرض المنهج' not in js
     # لا أزرار رفع منهاج أو نموذج في قائمة المقررات (المنهاج عرض فقط)
     assert "'+ c.id + '/syllabus/upload" not in js
     assert "'+ c.id + '/form/upload" not in js
     assert 'رفع المقرر' in body
-    # docs \u062a\u062d\u062a \u0627\u0644\u062a\u062f\u0642\u064a\u0642 في مُصيّر الإجراءات
+    # docs تحت التدقيق في مُصيّر الإجراءات
     assert "'+ c.id + '\" class=\"w-7 h-7 flex items-center justify-center rounded-lg hover:bg-blue-50" not in js
 
 
@@ -275,21 +282,102 @@ def test_create_page_prefills_stored_submission(client):
     cid = _course_id('CS101')
     sid = _q("SELECT id FROM course_content_submissions WHERE course_id=?", (cid,))[0]['id']
     body = client.get(f'/teacher/super-admin/course-content/create?course_id={cid}&submission_id={sid}').get_data(as_text=True)
-    assert r"value=\"مقدمة برمجة\"" in body or 'مقدمة برمجة' in body
-    assert 'name="submission_id"' in body, 'edit mode embeds the submission id'
+    assert 'name="course_name"' in body
 
 
 def test_create_page_for_course_without_submission(client):
     cid = _course_id('CS103')
     body = client.get(f'/teacher/super-admin/course-content/create?course_id={cid}').get_data(as_text=True)
-    assert 'شبكات' in body
+    assert 'name="course_name"' in body
     assert 'name="submission_id"' not in body, 'new form has no submission id yet'
+
+
+def test_create_page_is_sheet_only(client):
+    cid = _course_id('CS103')
+    body = client.get(f'/teacher/super-admin/course-content/create?course_id={cid}').get_data(as_text=True)
+    # Floating action bar retains the essential controls
+    assert 'name="academic_period_id"' in body
+    assert 'id="formFileInput"' in body
+    # Single combined button: save + publish (data-action="send") with default send
+    assert 'data-action="send"' in body
+    assert 'data-action="save"' not in body, 'draft-only button removed'
+    assert 'حفظ ونشر المقرر' in body
+    assert 'value="send" id="formAction"' in body
+    # Old heavy cards/header are gone
+    assert 'id="ccCourseSelect"' not in body
+    assert 'ارفق ملف PDF للنموذج ليصبح قابلاً للتحميل' not in body
+    assert 'تعبئة بيانات النموذج والمنهاج' not in body
+    # Dual curriculum tables + download wiring
+    assert 'id="ccTheoreticalCurriculumBody"' in body
+    assert 'name="practical_content"' in body
+    assert 'name="practical_content_en"' in body
+    assert 'onclick="downloadCourseSheet()"' in body
+    assert 'data-course-code="CS103"' in body
+    assert 'id="ccSheetStyle"' in body
+    # Legacy content columns removed
+    assert 'curriculum_content[]' not in body
+    # Prerequisites is a plain single-line text input
+    assert 'name="prerequisites"' in body
+    assert 'textarea name="prerequisites"' not in body
+    assert '<input type="text" name="prerequisites"' in body
+    # Tutorial hours present in the weekly-hours row
+    assert 'name="tutorial_hours"' in body
+    # Hours row keeps an EN label so both sides are symmetric
+    assert 'No. Of hours per week' in body
+
+
+def test_send_persists_curriculum_sections(client, app_fx, tmp_path, monkeypatch):
+    import routes.teacher_pages as tp
+    monkeypatch.setattr(tp, '_translate_course_content_en', lambda db, sid: None)
+    cid = _course_id('CS103')
+    data = {
+        '_csrf_token': 't', 'action': 'send', 'course_id': str(cid),
+        'theoretical_curriculum_topic[]': ['نظري 1', 'نظري 2'],
+        'theoretical_curriculum_weeks[]': ['2', '3'],
+        'theoretical_curriculum_topic_en[]': ['Theory 1', 'Theory 2'],
+        'practical_content': 'تطبيقات عملية على المقرر',
+        'practical_content_en': 'Practical applications',
+    }
+    r = client.post('/teacher/super-admin/course-content/send', data=data)
+    assert r.status_code == 302
+    rows = _q("SELECT topic, weeks, topic_en, section FROM course_content_curriculum "
+              "WHERE submission_id = (SELECT id FROM course_content_submissions "
+              "WHERE course_id=? ORDER BY id DESC LIMIT 1) ORDER BY sort_order", (cid,))
+    assert [x['topic'] for x in rows] == ['نظري 1', 'نظري 2']
+    assert [x['section'] for x in rows] == ['theoretical', 'theoretical']
+    assert rows[0]['weeks'] == 2
+    sub = _q("SELECT practical_content, practical_content_en "
+             "FROM course_content_submissions WHERE course_id=?"
+             " ORDER BY id DESC LIMIT 1", (cid,))[0]
+    assert sub['practical_content'] == 'تطبيقات عملية على المقرر'
+    assert sub['practical_content_en'] == 'Practical applications'
 
 
 def test_create_page_shows_period_picker(client):
     cid = _course_id('CS103')
     body = client.get(f'/teacher/super-admin/course-content/create?course_id={cid}').get_data(as_text=True)
     assert 'name="academic_period_id"' in body
+
+
+def test_send_rejects_theoretical_weeks_over_12(client, app_fx, tmp_path, monkeypatch):
+    import routes.teacher_pages as tp
+    monkeypatch.setattr(tp, '_translate_course_content_en', lambda db, sid: None)
+    cid = _course_id('CS103')
+    before = _q("SELECT COUNT(*) AS n FROM course_content_submissions WHERE course_id=?", (cid,))[0]['n']
+    data = {
+        '_csrf_token': 't', 'action': 'send', 'course_id': str(cid),
+        'theoretical_curriculum_topic[]': ['مقرر طويل'],
+        'theoretical_curriculum_weeks[]': ['13'],
+        'theoretical_curriculum_topic_en[]': ['Long course'],
+    }
+    r = client.post('/teacher/super-admin/course-content/send', data=data)
+    assert r.status_code == 302
+    after = _q("SELECT COUNT(*) AS n FROM course_content_submissions WHERE course_id=?", (cid,))[0]['n']
+    assert after == before, 'submission with >12 theoretical weeks must not be saved'
+    rows = _q("SELECT COUNT(*) AS n FROM course_content_curriculum "
+              "WHERE submission_id = (SELECT id FROM course_content_submissions "
+              "WHERE course_id=? ORDER BY id DESC LIMIT 1)", (cid,))[0]['n']
+    assert rows == 0, 'no curriculum rows may be persisted for a rejected submission'
 
 
 # ── صفحة تفاصيل النموذج ──────────────────────────────────────────────────
@@ -308,6 +396,15 @@ def test_detail_edit_link_points_to_create(client):
     assert f'submission_id={sid}' in body
 
 
+def test_detail_view_has_download_and_dual_curriculum(client):
+    sid = _q("SELECT id FROM course_content_submissions WHERE status='published'")[0]['id']
+    body = client.get(f'/teacher/super-admin/course-content/{sid}').get_data(as_text=True)
+    assert 'مفردات الجدول النظري' in body
+    assert 'مفردات الجدول العملي' in body
+    assert 'onclick="downloadCourseSheet()"' in body
+    assert 'data-course-code=' in body
+
+
 def test_detail_print_boot_and_script(client):
     sid = _q("SELECT id FROM course_content_submissions WHERE status='published'")[0]['id']
     body = client.get(f'/teacher/super-admin/course-content/{sid}').get_data(as_text=True)
@@ -317,6 +414,55 @@ def test_detail_print_boot_and_script(client):
     # ?print=1 يُفعّل الطباعة التلقائية
     body2 = client.get(f'/teacher/super-admin/course-content/{sid}?print=1').get_data(as_text=True)
     assert 'auto_print: true' in body2
+
+
+# ── pdfState — عمود «الملف» المباشر (المرحلة 2) ──────────────────────────
+
+
+def test_boot_keys_are_camelcase(client):
+    """BOOT must use the exact keys the JS reads: formByCourse / departmentNames."""
+    body = client.get('/teacher/super-admin/course-content').get_data(as_text=True)
+    assert 'formByCourse:' in body
+    assert 'departmentNames:' in body
+    assert 'formbycourse:' not in body
+    assert 'departmentnames:' not in body
+
+
+def test_pdf_state_exposed_for_every_row(client):
+    """كل صف يحمل pdf_state مشتقاً من آخر تسليم (لا يوجد ملف نموذج في التثبيت)."""
+    body = client.get('/teacher/super-admin/course-content').get_data(as_text=True)
+    courses = {c['code']: c for c in _courses_json(body)}
+    assert courses['CS101']['pdf_state'] == 'approved', 'published submission → approved'
+    assert courses['CS102']['pdf_state'] == 'draft'
+    assert courses['CS103']['pdf_state'] == 'none'
+    assert all('pdf_state' in c for c in _courses_json(body))
+
+
+def test_pdf_state_available_wins_over_submission(client):
+    """وجود ملف نموذج في course_files يجعل الحالة available (تحميل بنقرة واحدة)."""
+    cid = _course_id('CS101')
+    sid = _q("SELECT id FROM course_content_submissions WHERE course_id=?", (cid,))[0]['id']
+    _q('''INSERT INTO course_files (course_id, submission_id, file_type, filename,
+                                    original_filename, file_size, status)
+          VALUES (?, ?, 'form', 'form.pdf', 'form-original.pdf', 9, 'published')''',
+       (cid, sid))
+    body = client.get('/teacher/super-admin/course-content').get_data(as_text=True)
+    courses = {c['code']: c for c in _courses_json(body)}
+    assert courses['CS101']['pdf_state'] == 'available'
+
+
+def test_pdf_state_mapping_unit():
+    from services.course_content_service import pdf_state_for
+    assert pdf_state_for('published') == 'approved'
+    assert pdf_state_for('approved') == 'approved'
+    assert pdf_state_for('pending_rnd') == 'pending_review'
+    assert pdf_state_for('pending_hod') == 'pending_review'
+    assert pdf_state_for('draft') == 'draft'
+    assert pdf_state_for('rejected') == 'rejected'
+    assert pdf_state_for('') == 'none'
+    assert pdf_state_for('unknown') == 'none'
+    assert pdf_state_for('rejected', True) == 'available'
+    assert pdf_state_for('', True) == 'available'
 
 
 # ── سلسلة الظهور العام ───────────────────────────────────────────────────

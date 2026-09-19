@@ -416,10 +416,7 @@
         </div>
       </div>
 
-      <h2 class="sec-title"><i class="fa-solid fa-book-open"></i> المواد والملفات</h2>
-      <div id="crLibOutput"></div>
-
-      <h2 class="sec-title" style="margin-top:32px"><i class="fa-solid fa-graduation-cap"></i> الخطة الدراسية</h2>
+      <h2 class="sec-title"><i class="fa-solid fa-book-open"></i> المواد والخطة الدراسية</h2>
       <div id="crOutput"></div>
     </section>
 
@@ -795,9 +792,11 @@
     /* ============ LIBRARY (merged into courses view) ============ */
     var LIB = { q: '', status: '' };
 
-    function libHasForm(c) { return !!c.formFile; }
-    function libHasPdf(c) { return (c.syllabusFiles || []).length > 0; }
-    function libFiltered() {
+    /* ============ COURSES (study plans + files) ============ */
+    var CR = { dept: null, sem: '' };
+    var LIB = { q: '', status: '' };
+
+    function crFiltered() {
       return D.courses.filter(function (c) {
         if (CR.dept && String(c.departmentId) !== String(CR.dept)) return false;
         if (CR.sem && +c.semester !== +CR.sem) return false;
@@ -811,105 +810,41 @@
         }
         return true;
       }).sort(function (a, b) {
-        var na = String(a.name || ''), nb = String(b.name || '');
-        if (na !== nb) return na.localeCompare(nb, 'ar');
+        if ((a.semester || 0) !== (b.semester || 0)) return (a.semester || 0) - (b.semester || 0);
         return String(a.code || '').localeCompare(String(b.code || ''), 'ar');
       });
     }
-    function libFileBtn(file, cls, icon, label, title, extra) {
+    function crFileBtn(file, cls, icon, label, title, extra) {
       var href = file.url + (file.url.indexOf('?') >= 0 ? '&' : '?') + 'download=1';
       return '<a class="course-btn ' + cls + '" href="' + href + '" target="_blank" rel="noopener"' +
         (title ? ' title="' + esc(title) + '"' : '') + '><span class="material-symbols-outlined">' + icon + '</span>' + esc(label) +
         (extra || '') + '</a>';
     }
-    function libFilePills(c) {
+    function crFilePills(c) {
       var out = '';
       var pdfs = c.syllabusFiles || [];
       pdfs.forEach(function (f) {
         if (!f.url) return;
-        out += libFileBtn(f, '', 'download', 'المنهج',
+        out += crFileBtn(f, '', 'download', 'المنهج',
           'المنهج' + (f.teacherName ? ' — ' + f.teacherName : ''),
           (pdfs.length > 1 && f.teacherName) ? ' <small style="opacity:.7;font-size:.64rem">' + esc(f.teacherName) + '</small>' : '');
       });
       if (c.vocabFile && c.vocabFile.url) {
-        out += libFileBtn(c.vocabFile, '', 'description', 'المفردات', 'مفردات المقرر', null);
+        out += crFileBtn(c.vocabFile, '', 'description', 'المفردات', 'مفردات المقرر', null);
       }
       if (c.formFile && c.formFile.url) {
-        out += libFileBtn(c.formFile, '', 'menu_book', 'المقرر', 'وصف المقرر (النموذج)', null);
+        out += crFileBtn(c.formFile, '', 'menu_book', 'المقرر', 'وصف المقرر (النموذج)', null);
       }
       if (!out) out = '<span style="font-size:.75rem;color:var(--ink3);font-weight:600">لا توجد ملفات منشورة</span>';
       return out;
     }
 
-    function libRender() {
-      var list = libFiltered();
-      var wrap = $('#crLibOutput');
-      if (!list.length) {
-        wrap.innerHTML = '<div class="empty-sm"><span class="material-symbols-outlined">search_off</span>لا توجد مقررات مطابقة للفلاتر.</div>';
-        return;
-      }
-      wrap.innerHTML = '<div class="course-list">' + list.map(function (c) {
-        var deptObj = deptById(c.departmentId);
-        var dn = c.departmentName || (deptObj ? deptObj.name : '');
-        var semStr = c.semester ? semLabel(c.semester) : '';
-        var isRequired = c.is_required !== false;
-        return '<div class="course-card">' +
-          '<div class="course-card-header">' +
-            '<span class="course-name">' + esc(c.name || '—') + '</span>' +
-            (c.code ? '<span class="course-code">' + esc(c.code) + '</span>' : '') +
-          '</div>' +
-          '<div class="course-meta">' +
-            (c.teacherName ? '<span><span class="material-symbols-outlined">person</span>' + esc(c.teacherName) + '</span>' : '') +
-            (c.roomName ? '<span><span class="material-symbols-outlined">meeting_room</span>' + esc(c.roomName) + '</span>' : '') +
-            (c.totalHours ? '<span><span class="material-symbols-outlined">schedule</span>' + esc(c.totalHours) + ' ساعات</span>' : '') +
-            (semStr ? '<span><span class="material-symbols-outlined">layers</span>' + esc(semStr) + '</span>' : '') +
-          '</div>' +
-          '<div class="course-actions">' +
-            libFilePills(c) +
-          '</div>' +
-        '</div>';
-      }).join('') + '</div>';
-    }
-
-    function libRenderGroups() {
-      var el = $('#libStatus');
-      var opts = [
-        { v: '', l: 'الكل' },
-        { v: 'required', l: 'في الجدول' },
-        { v: 'elective', l: 'خارج الجدول' }
-      ];
-      $$('button', el).forEach(function (b) { b.remove(); });
-      opts.forEach(function (o) {
-        var b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'chip' + (LIB.status === o.v ? ' active' : '');
-        b.textContent = o.l;
-        b.addEventListener('click', function () { LIB.status = o.v; libRenderGroups(); libRender(); });
-        el.appendChild(b);
-      });
-    }
-
-    /* ============ COURSES (study plans) ============ */
-    var CR = { dept: null, sem: '' };
-
     function crRender() {
       var out = $('#crOutput');
-      if (!CR.dept || !deptById(CR.dept)) {
-        out.innerHTML = '<div class="empty-sm"><span class="material-symbols-outlined">menu_book</span>اختر قسمًا لعرض خطته الدراسية.</div>';
-        return;
-      }
-      var dept = deptById(CR.dept);
-      var courses = D.courses.filter(function (c) {
-        if (String(c.departmentId) !== String(CR.dept)) return false;
-        if (CR.sem && +c.semester !== +CR.sem) return false;
-        return true;
-      }).sort(function (a, b) {
-        if ((a.semester || 0) !== (b.semester || 0)) return (a.semester || 0) - (b.semester || 0);
-        return String(a.code || '').localeCompare(String(b.code || ''), 'ar');
-      });
+      var courses = crFiltered();
 
       if (!courses.length) {
-        out.innerHTML = '<div class="empty-sm"><span class="material-symbols-outlined">menu_book</span>لا توجد مقررات مسجلة لهذا القسم.</div>';
+        out.innerHTML = '<div class="empty-sm"><span class="material-symbols-outlined">menu_book</span>لا توجد مقررات مطابقة.</div>';
         return;
       }
 
@@ -941,20 +876,13 @@
             '<tbody>' +
             semCourses.map(function (c) {
               var inTt = !!c.inTimetable;
-              var syl = (c.syllabusFiles || []).find(function (f) { return f && f.url; }) || null;
-              var form = (c.formFile && c.formFile.url) ? c.formFile : null;
-              var voc = (c.vocabFile && c.vocabFile.url) ? c.vocabFile : null;
               return '<tr>' +
                 '<td><span class="status-badge ' + (inTt ? 'elective' : 'required') + '">' + (inTt ? 'في الجدول' : 'خارج الجدول') + '</span></td>' +
                 '<td style="font-weight:600">' + esc(c.name || '—') + '</td>' +
                 '<td style="direction:ltr;text-align:right;font-size:.78rem;color:var(--ink2)">' + esc(c.code || '—') + '</td>' +
                 '<td>' + (c.totalHours || '—') + '</td>' +
                 '<td style="font-size:.78rem">' + esc(c.teacherName || '—') + '</td>' +
-                '<td><div class="file-btns">' +
-                  fileBtn(form, 'تحميل المقرر', 'menu_book') +
-                  fileBtn(syl, 'تحميل المنهج', 'download') +
-                  fileBtn(voc, 'تحميل المفردات', 'description') +
-                '</div></td>' +
+                '<td><div class="file-btns">' + crFilePills(c) + '</div></td>' +
               '</tr>';
             }).join('') +
             '</tbody>' +
@@ -970,7 +898,25 @@
         return { value: d.id, label: d.name, html: '<span class="material-symbols-outlined">' + esc(d.icon || 'domain') + '</span>' + esc(d.name) };
       }), CR.dept, function (v) {
         CR.dept = v; CR.sem = '';
-        crRenderFilters(); crRender(); libRender();
+        crRenderFilters(); crRender();
+      });
+    }
+
+    function crRenderStatusChips() {
+      var el = $('#libStatus');
+      var opts = [
+        { v: '', l: 'الكل' },
+        { v: 'required', l: 'في الجدول' },
+        { v: 'elective', l: 'خارج الجدول' }
+      ];
+      $$('button', el).forEach(function (b) { b.remove(); });
+      opts.forEach(function (o) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'chip' + (LIB.status === o.v ? ' active' : '');
+        b.textContent = o.l;
+        b.addEventListener('click', function () { LIB.status = o.v; crRenderStatusChips(); crRender(); });
+        el.appendChild(b);
       });
     }
 
@@ -987,10 +933,9 @@
         }
         $('#crToolbar').hidden = false;
         crRenderFilters();
-        libRenderGroups();
-        $('#libSearch').addEventListener('input', Utils.debounce(function () { LIB.q = this.value.trim(); libRender(); }, 250));
+        crRenderStatusChips();
+        $('#libSearch').addEventListener('input', Utils.debounce(function () { LIB.q = this.value.trim(); crRender(); }, 250));
         crRender();
-        libRender();
       } catch (err) {
         $('#crOutput').innerHTML = '<div class="error-state">تعذر تحميل البيانات.</div>';
         console.error(err);

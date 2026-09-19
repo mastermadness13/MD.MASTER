@@ -1,0 +1,72 @@
+{# Shared "pick a member" list used by member_reports and leaves_index.
+   Expected context:
+   - members: list of summary rows (id, name, academic_number, email,
+     dept_name, rank_name, qual_name)
+   - member_action: {'endpoint': url_for endpoint accepting teacher_id,
+                     'label': button text, 'icon': material symbol} #}
+
+<!-- Client-side live filter -->
+<div class="relative mb-4">
+  <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">search</span>
+  <input type="text" id="memberSearch" placeholder="ابحث بالاسم أو الرقم الكلية..."
+         class="w-full bg-white border border-outline-variant rounded-lg pr-10 pl-4 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+</div>
+
+<!-- All Members List -->
+<div class="page-card overflow-hidden">
+  <div class="px-4 py-3 border-b border-primary/10 bg-surface-dim flex flex-wrap items-center justify-between gap-2">
+    <h3 class="font-bold text-primary flex items-center gap-2">
+      <span class="material-symbols-outlined">group</span>
+      أعضاء هيئة التدريس
+    </h3>
+    <span id="memberCount" class="text-xs font-bold text-on-surface-variant bg-white/70 px-3 py-1 rounded-full">{{ members | length }} عضو</span>
+  </div>
+  {% if members %}
+  <ul class="divide-y divide-outline-variant">
+    {% for t in members %}
+    <li class="member-item flex items-center gap-3 px-4 py-3 hover:bg-primary/5 transition-colors"
+        data-search="{{ t.name or '' }} {{ t.academic_number or '' }} {{ t.email or '' }}">
+      <span class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0">{{ t.name[:1] }}</span>
+      <div class="flex-1 min-w-0">
+        {% set t_display_name = teacher_display_name(t.name, t.rank_name, t.qual_name) %}
+        <p class="font-bold text-on-surface truncate">{{ t_display_name }}</p>
+        <p class="text-xs text-on-surface-variant truncate">
+          {% if t.academic_number %}<span dir="ltr">{{ t.academic_number }}</span> · {% endif %}
+          {{ t.dept_name or '—' }}
+        </p>
+        {% if member_action.endpoint == 'faculty_performance.leaves_manage' %}
+        <span class="member-leaves-summary text-xs font-bold text-on-surface-variant block mt-0.5"
+              data-teacher-id="{{ t.id }}"></span>
+        {% endif %}
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <a href="{{ url_for('teachers.teacher_detail', id=t.id) }}"
+           class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors no-underline" title="الملف التفصيلي">person</a>
+        {% if member_action.endpoint == 'faculty_performance.leaves_manage' %}
+        <button type="button" data-leave-manage
+                data-teacher-id="{{ t.id }}"
+                data-teacher-name="{{ t.name }}"
+                class="flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-on-primary px-3.5 py-2 rounded-lg text-xs font-bold transition shadow-sm no-underline cursor-pointer">
+          <span class="material-symbols-outlined text-base">{{ member_action.icon }}</span>
+          {{ member_action.label }}
+        </button>
+        {% else %}
+        <a href="{{ url_for(member_action.endpoint, teacher_id=t.id) }}"
+           class="flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-on-primary px-3.5 py-2 rounded-lg text-xs font-bold transition shadow-sm no-underline">
+          <span class="material-symbols-outlined text-base">{{ member_action.icon }}</span>
+          {{ member_action.label }}
+        </a>
+        {% endif %}
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <div class="py-12 text-center">
+    <span class="material-symbols-outlined text-5xl text-outline-variant block mb-2">school</span>
+    <p class="text-sm text-on-surface-variant">لا يوجد أعضاء هيئة تدريس بعد</p>
+  </div>
+  {% endif %}
+</div>
+
+<script src="{{ url_for('static', filename='js/shared/member_search.js') }}"></script>

@@ -133,14 +133,14 @@
     var cc = COURSE_CONTENT[c.id] || {};
     var html = '';
     if (cc.form) {
-      html += '<a href="/library/file/' + cc.form.id + '?download=1" class="w-7 h-7 inline-flex items-center justify-center rounded-lg hover:bg-primary-faint text-primary transition-all" title="تحميل المقرر"><span class="material-symbols-outlined text-base">description</span></a>';
+      html += '<a href="/course-file/' + cc.form.id + '?download=1" class="w-7 h-7 inline-flex items-center justify-center rounded-lg hover:bg-primary-faint text-primary transition-all" data-tip="تحميل المقرر" aria-label="تحميل المقرر"><span class="material-symbols-outlined text-base">description</span></a>';
     }
     if (cc.syllabus) {
-      html += '<a href="/teacher-file/' + cc.syllabus.id + '?download=1" class="w-7 h-7 inline-flex items-center justify-center rounded-lg hover:bg-primary-faint text-primary transition-all" title="تحميل المنهج"><span class="material-symbols-outlined text-base">download</span></a>';
+      html += '<a href="/course-file/' + cc.syllabus.id + '?download=1" class="w-7 h-7 inline-flex items-center justify-center rounded-lg hover:bg-primary-faint text-primary transition-all" data-tip="تحميل المنهج" aria-label="تحميل المنهج"><span class="material-symbols-outlined text-base">download</span></a>';
     }
     if (IS_RD) {
       var href = cc.form ? '/teacher/super-admin/course-content/' + cc.form.id : '/teacher/super-admin/course-content/create?course_id=' + c.id;
-      html += '<a href="' + href + '" class="w-7 h-7 inline-flex items-center justify-center rounded-lg hover:bg-primary-faint text-primary transition-all" title="تحديث المقرر"><span class="material-symbols-outlined text-base">upload_file</span></a>';
+      html += '<a href="' + href + '" class="w-7 h-7 inline-flex items-center justify-center rounded-lg hover:bg-primary-faint text-primary transition-all" data-tip="إنشاء/تعديل المقرر" aria-label="إنشاء/تعديل المقرر"><span class="material-symbols-outlined text-base">upload_file</span></a>';
     }
     return html;
   }
@@ -201,6 +201,98 @@
     return H && H.teachersCell ? H.teachersCell(c.teachers) : '';
   }
 
+  // ===== NEW: Compact table helpers =====
+  var _openClDrop = null;
+  function clCloseAllDropdowns() {
+    document.querySelectorAll('.cl-actions-menu.open').forEach(function (m) { m.classList.remove('open'); });
+    _openClDrop = null;
+  }
+  document.addEventListener('click', function (e) { if (!e.target.closest('.cl-actions-dropdown')) clCloseAllDropdowns(); });
+
+  window.clToggleDropdown = function (id, e) {
+    e.stopPropagation();
+    var menu = document.getElementById(id);
+    if (!menu) return;
+    var isOpen = menu.classList.contains('open');
+    clCloseAllDropdowns();
+    if (!isOpen) menu.classList.add('open');
+  };
+
+  function clMaterialCell(c) {
+    return '<div class="font-bold text-on-surface text-sm">' + esc(c.name) + '</div>' +
+      '<div class="font-mono text-xs text-on-surface-variant mt-0.5" dir="ltr">' + esc(c.code) + '</div>';
+  }
+
+  function clDeptCell(r) {
+    if (!r.depts || !r.depts.length) return '<span class="text-xs text-text-faint">—</span>';
+    return r.depts.map(function (d) {
+      return '<span class="text-xs font-semibold text-text-secondary">' + esc(d.deptName || '') + '</span>';
+    }).join('<span class="text-text-faint mx-0.5">·</span>');
+  }
+
+  function clDeptSemCell(r) {
+    if (!r.depts || !r.depts.length) return '<span class="text-text-faint">—</span>';
+    return r.depts.map(function (de) {
+      return '<span class="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-bold">' + esc(de.deptName || '') + ' — ف' + (de.semester || 1) + '</span>';
+    }).join(' ');
+  }
+
+  function clHoursBadge(c) {
+    var h = courseHours(c);
+    return '<div class="text-center"><span class="font-bold text-text-primary text-sm">' + h.hours + '</span><div class="cl-hours-detail">' + h.theory + ' نظري · ' + h.practical + ' عملي</div></div>';
+  }
+
+  function clPlanHoursBadge(c) {
+    var h = courseHours(c);
+    return '<div class="text-center"><span class="font-bold text-text-secondary text-sm">' + h.hours + '</span><div class="cl-hours-detail">' + h.theory + ' نظري · ' + h.practical + ' عملي</div></div>';
+  }
+
+  function clActionsDropdown(deptId, tableIdx, courseIdx, c) {
+    var uid = 'cld-' + c.id + '-' + deptId;
+    var items = '';
+    items += '<button onclick="openDetails(' + deptId + ',' + tableIdx + ',' + courseIdx + ')"><span class="material-symbols-outlined text-base">visibility</span>عرض التفاصيل</button>';
+    var cc = COURSE_CONTENT[c.id] || {};
+    if (cc.form) items += '<a href="/course-file/' + cc.form.id + '?download=1"><span class="material-symbols-outlined text-base">description</span>تحميل المقرر</a>';
+    if (cc.syllabus) items += '<a href="/course-file/' + cc.syllabus.id + '?download=1"><span class="material-symbols-outlined text-base">download</span>تحميل المنهج</a>';
+    if (IS_RD) {
+      var href = cc.form ? '/teacher/super-admin/course-content/' + cc.form.id : '/teacher/super-admin/course-content/create?course_id=' + c.id;
+      items += '<a href="' + href + '"><span class="material-symbols-outlined text-base">upload_file</span>إنشاء/تعديل المقرر</a>';
+    }
+    if (CAN_MANAGE) {
+      items += '<button onclick="openEditModal(' + deptId + ',' + tableIdx + ',' + courseIdx + ')"><span class="material-symbols-outlined text-base">edit</span>تعديل المادة</button>';
+      items += '<button class="cl-danger" onclick="deleteCourse(' + deptId + ',' + tableIdx + ',' + courseIdx + ')"><span class="material-symbols-outlined text-base">delete</span>حذف المادة</button>';
+    }
+    return '<div class="cl-actions-dropdown">' +
+      '<button type="button" onclick="clToggleDropdown(\'' + uid + '\', event)" class="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border bg-white hover:bg-primary-faint text-primary text-xs font-bold transition-all cursor-pointer">' +
+        '<span class="material-symbols-outlined text-base">more_vert</span>الإجراءات' +
+      '</button>' +
+      '<div id="' + uid + '" class="cl-actions-menu">' + items + '</div>' +
+    '</div>';
+  }
+
+  function clPlanActionsDropdown(deptId, tableIdx, courseIdx, c) {
+    var uid = 'clpd-' + c.id + '-' + deptId;
+    var items = '';
+    items += '<button onclick="openDetails(' + deptId + ',' + tableIdx + ',' + courseIdx + ')"><span class="material-symbols-outlined text-base">visibility</span>عرض التفاصيل</button>';
+    var cc = COURSE_CONTENT[c.id] || {};
+    if (cc.form) items += '<a href="/course-file/' + cc.form.id + '?download=1"><span class="material-symbols-outlined text-base">description</span>تحميل المقرر</a>';
+    if (cc.syllabus) items += '<a href="/course-file/' + cc.syllabus.id + '?download=1"><span class="material-symbols-outlined text-base">download</span>تحميل المنهج</a>';
+    if (IS_RD) {
+      var href = cc.form ? '/teacher/super-admin/course-content/' + cc.form.id : '/teacher/super-admin/course-content/create?course_id=' + c.id;
+      items += '<a href="' + href + '"><span class="material-symbols-outlined text-base">upload_file</span>إنشاء/تعديل المقرر</a>';
+    }
+    if (CAN_MANAGE) {
+      items += '<button onclick="openEditModal(' + deptId + ',' + tableIdx + ',' + courseIdx + ')"><span class="material-symbols-outlined text-base">edit</span>تعديل المادة</button>';
+      items += '<button class="cl-danger" onclick="deleteCourse(' + deptId + ',' + tableIdx + ',' + courseIdx + ')"><span class="material-symbols-outlined text-base">delete</span>حذف المادة</button>';
+    }
+    return '<div class="cl-actions-dropdown">' +
+      '<button type="button" onclick="clToggleDropdown(\'' + uid + '\', event)" class="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border bg-white hover:bg-primary-faint text-primary text-xs font-bold transition-all cursor-pointer">' +
+        '<span class="material-symbols-outlined text-base">more_vert</span>الإجراءات' +
+      '</button>' +
+      '<div id="' + uid + '" class="cl-actions-menu">' + items + '</div>' +
+    '</div>';
+  }
+
   function renderList() {
     var tbody = document.getElementById('courseTableBody');
     var rows = filteredFlat();
@@ -215,38 +307,21 @@
     var page = rows.slice(start, end);
 
     if (page.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="' + (CAN_MANAGE ? 14 : 13) + '" class="px-4 py-12 text-center"><div class="flex flex-col items-center gap-2"><span class="material-symbols-outlined text-4xl text-text-faint">search_off</span><p class="text-text-muted text-sm">لا توجد مقررات مطابقة للبحث</p></div></td></tr>';
+      tbody.innerHTML = '<tr><td colspan="' + (CAN_MANAGE ? 8 : 7) + '" class="px-4 py-12 text-center"><div class="flex flex-col items-center gap-2"><span class="material-symbols-outlined text-4xl text-text-faint">search_off</span><p class="text-text-muted text-sm">لا توجد مقررات مطابقة للبحث</p></div></td></tr>';
     } else {
       var html = '';
       page.forEach(function (r, i) {
         var c = r.course;
-        var h = courseHours(c);
         var first = r.depts[0];
-        var actions = '<button onclick="openDetails(' + first.deptId + ',' + first.tableIdx + ',' + first.courseIdx + ')" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-blue-50 text-blue-600 transition-all" title="عرض التفاصيل"><span class="material-symbols-outlined text-lg">visibility</span></button>';
-        actions += contentBtns(c);
-        if (CAN_MANAGE) {
-          actions += '<button onclick="openEditModal(' + first.deptId + ',' + first.tableIdx + ',' + first.courseIdx + ')" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-amber-50 text-amber-600 transition-all" title="تعديل المادة"><span class="material-symbols-outlined text-lg">edit</span></button>' +
-            '<button onclick="deleteCourse(' + first.deptId + ',' + first.tableIdx + ',' + first.courseIdx + ')" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 text-red-600 transition-all" title="حذف المادة"><span class="material-symbols-outlined text-lg">delete</span></button>';
-        }
-        var deptsHtml = r.depts.map(deptBadge).join(' ');
-        var deptSemHtml = r.depts.map(function (de) {
-          return '<span class="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-bold">' + esc(de.deptName || '') + ' — ف' + (de.semester || 1) + '</span>';
-        }).join(' ');
         html += '<tr class="hover:bg-surface-hover transition-colors">' +
-          (CAN_MANAGE ? '<td class="px-3 py-2 text-center"><input type="checkbox" class="course-delete-cb rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" value="' + c.id + '" onchange="onCourseDeleteCheck()" /></td>' : '') +
-          '<td class="px-3 py-2 text-center text-text-muted text-xs font-semibold">' + (start + i + 1) + '</td>' +
-          '<td class="px-3 py-2">' + courseCodeLink(c) + '</td>' +
-          '<td class="px-3 py-2"><div class="flex items-center gap-2">' + courseIcon(c) + '<span class="font-medium text-text-primary text-sm">' + esc(c.name) + '</span></div></td>' +
-          '<td class="px-3 py-2"><div class="flex flex-wrap gap-1">' + deptsHtml + '</div></td>' +
-          '<td class="px-3 py-2"><div class="flex flex-wrap gap-1">' + (deptSemHtml || '<span class="text-text-faint">—</span>') + '</td>' +
+          (CAN_MANAGE ? '<td class="px-2 py-2 text-center"><input type="checkbox" class="course-delete-cb rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" value="' + c.id + '" onchange="onCourseDeleteCheck()" /></td>' : '') +
+          '<td class="px-2 py-2 text-center text-text-muted text-xs font-semibold">' + (start + i + 1) + '</td>' +
+          '<td class="px-3 py-2">' + clMaterialCell(c) + '</td>' +
+          '<td class="px-2 py-2 w-56 min-w-[170px] max-w-[280px]"><div class="flex flex-wrap gap-1 min-w-0">' + clDeptSemCell(r) + '</div></td>' +
           '<td class="px-3 py-2">' + teachersCell(c) + '</td>' +
-          '<td class="px-3 py-2 text-center whitespace-nowrap">' + formStatusBadge(c.form_status) + '</td>' +
-          '<td class="px-3 py-2 text-center text-text-secondary text-sm">' + h.theory + '</td>' +
-          '<td class="px-3 py-2 text-center text-text-secondary text-sm">' + h.practical + '</td>' +
-          '<td class="px-3 py-2 text-center font-bold text-text-primary text-sm">' + h.hours + '</td>' +
-          '<td class="px-3 py-2 text-center"><span class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-primary-faint text-primary text-[11px] font-bold">' + (c.units || 0) + '</span></td>' +
-          '<td class="px-3 py-2 text-center whitespace-nowrap">' + prereqBadges(c) + '</td>' +
-          '<td class="px-3 py-2"><div class="flex items-center justify-center gap-1 no-print">' + actions + '</div></td>' +
+          '<td class="px-2 py-2 text-center whitespace-nowrap">' + formStatusBadge(c.form_status) + '</td>' +
+          '<td class="px-2 py-2">' + clHoursBadge(c) + '</td>' +
+          '<td class="px-2 py-2">' + clActionsDropdown(first.deptId, first.tableIdx, first.courseIdx, c) + '</td>' +
         '</tr>';
       });
       tbody.innerHTML = html;
@@ -348,31 +423,16 @@
     var rows = '';
     t.courses.forEach(function (c, i) {
       var h = courseHours(c);
-      var actions = '<button onclick="openDetails(' + dept.id + ',' + tableIdx + ',' + i + ')" class="w-7 h-7 rounded-lg hover:bg-primary-faint text-text-muted hover:text-primary inline-flex items-center justify-center transition-all" title="عرض التفاصيل">' +
-        '<span class="material-symbols-outlined text-base">visibility</span></button>';
-      actions += contentBtns(c);
-      if (CAN_MANAGE) {
-        actions += '<button onclick="openEditModal(' + dept.id + ',' + tableIdx + ',' + i + ')" class="w-7 h-7 rounded-lg hover:bg-primary-faint text-text-muted hover:text-primary inline-flex items-center justify-center transition-all" title="تعديل المادة">' +
-          '<span class="material-symbols-outlined text-base">edit</span></button>' +
-          '<button onclick="deleteCourse(' + dept.id + ',' + tableIdx + ',' + i + ')" class="w-7 h-7 rounded-lg hover:bg-red-50 text-text-muted hover:text-red-600 inline-flex items-center justify-center transition-all" title="حذف المادة">' +
-          '<span class="material-symbols-outlined text-base">delete</span></button>';
-      }
       var dragAttrs = CAN_MANAGE
         ? ' draggable="true" data-course-id="' + c.id + '" data-dept-id="' + dept.id + '" data-semester="' + t.semester + '" ondragstart="dragStartCourse(event)" ondragend="dragEndCourse(event)"'
         : '';
       rows += '<tr class="course-row hover:bg-surface-hover transition-colors' + (CAN_MANAGE ? ' cursor-grab' : '') + '"' + dragAttrs + '>' +
         (CAN_MANAGE ? '<td class="px-3 py-2 text-center"><input type="checkbox" class="ws-course-cb rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" data-course-id="' + c.id + '" data-dept-id="' + dept.id + '" data-semester="' + t.semester + '" onchange="onCourseCheck()" /></td>' : '') +
-        '<td class="px-3 py-2 text-center text-text-muted text-xs font-semibold">' + (i + 1) + '</td>' +
-        '<td class="px-3 py-2"><span class="font-mono font-bold text-primary text-xs">' + esc(c.code) + '</span></td>' +
-        '<td class="px-3 py-2"><div class="flex items-center gap-2">' + courseIcon(c) + '<span class="font-medium text-text-primary text-sm">' + esc(c.name) + '</span></div></td>' +
-        '<td class="px-3 py-2 text-center text-text-secondary text-sm">' + h.theory + '</td>' +
-        '<td class="px-3 py-2 text-center text-text-secondary text-sm">' + h.practical + '</td>' +
-        '<td class="px-3 py-2 text-center font-bold text-text-secondary text-sm">' + h.hours + '</td>' +
-        '<td class="px-3 py-2 text-center"><span class="inline-flex items-center justify-center w-6 h-6 rounded-md bg-primary-faint text-primary text-[11px] font-bold">' + (c.units || 0) + '</span></td>' +
+        '<td class="px-3 py-2">' + clMaterialCell(c) + '</td>' +
+        '<td class="px-3 py-2 text-center text-xs font-semibold text-text-secondary">' + (c.requires || '—') + '</td>' +
         '<td class="px-3 py-2">' + teachersCell(c) + '</td>' +
-        '<td class="px-3 py-2 text-center whitespace-nowrap">' + formStatusBadge(c.form_status) + '</td>' +
-        '<td class="px-3 py-2 text-center whitespace-nowrap">' + prereqBadges(c) + '</td>' +
-        '<td class="no-print px-3 py-2 text-center whitespace-nowrap">' + actions + '</td>' +
+        '<td class="px-2 py-2">' + clPlanHoursBadge(c) + '</td>' +
+        '<td class="no-print px-2 py-2">' + clPlanActionsDropdown(dept.id, tableIdx, i, c) + '</td>' +
       '</tr>';
     });
     var addBtn = CAN_MANAGE
@@ -397,21 +457,15 @@
         '</div>' +
       '</div>' +
       '<div class="overflow-x-auto">' +
-      '<table class="w-full min-w-[760px]">' +
+      '<table class="w-full min-w-[700px]">' +
         '<thead class="bg-surface-zebra">' +
           '<tr>' +
             (CAN_MANAGE ? '<th class="px-3 py-2 text-center font-semibold text-text-secondary text-xs w-10"><div class="flex items-center justify-center gap-1"><input type="checkbox" class="ws-select-all rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" data-dept-id="' + dept.id + '" data-semester="' + t.semester + '" onchange="toggleSelectAll(this)" /><button type="button" class="ws-header-delete material-symbols-outlined text-red-600 hover:text-red-700 transition-colors bg-transparent border-0 cursor-pointer" data-dept-id="' + dept.id + '" data-semester="' + t.semester + '" style="display:none" title="حذف المحدد">delete</button></div></th>' : '') +
-            '<th class="px-3 py-2 text-center font-semibold text-text-secondary text-xs w-10">ت</th>' +
-            '<th class="px-3 py-2 text-right font-semibold text-text-secondary text-xs">رقم المادة</th>' +
-            '<th class="px-3 py-2 text-right font-semibold text-text-secondary text-xs">اسم المادة</th>' +
-            '<th class="px-3 py-2 text-center font-semibold text-text-secondary text-xs">نظري</th>' +
-            '<th class="px-3 py-2 text-center font-semibold text-text-secondary text-xs">عملي</th>' +
-            '<th class="px-3 py-2 text-center font-semibold text-text-secondary text-xs">الساعات</th>' +
-            '<th class="px-3 py-2 text-center font-semibold text-text-secondary text-xs">الوحدات</th>' +
+            '<th class="px-3 py-2 text-right font-semibold text-text-secondary text-xs">المادة</th>' +
+            '<th class="px-2 py-2 text-center font-semibold text-text-secondary text-xs">المتطلب</th>' +
             '<th class="px-3 py-2 text-right font-semibold text-text-secondary text-xs">المدرّس</th>' +
-            '<th class="px-3 py-2 text-center font-semibold text-text-secondary text-xs">حالة النموذج</th>' +
-            '<th class="px-3 py-2 text-center font-semibold text-text-secondary text-xs">الاعتمادية</th>' +
-            '<th class="no-print px-3 py-2 text-center font-semibold text-text-secondary text-xs">إجراءات</th>' +
+            '<th class="px-2 py-2 text-center font-semibold text-text-secondary text-xs">الساعات</th>' +
+            '<th class="no-print px-2 py-2 text-center font-semibold text-text-secondary text-xs">إجراءات</th>' +
           '</tr>' +
         '</thead>' +
         '<tbody class="divide-y divide-border-subtle">' + rows + '</tbody>' +
@@ -632,6 +686,7 @@
 
   function fillPrereqOptions() {
     var sel = document.getElementById('mPrereq');
+    if (!sel) return;
     sel.innerHTML = '<option value="">بدون متطلب سابق</option>';
     PREREQ_OPTIONS.forEach(function (o) {
       var opt = document.createElement('option');
@@ -927,12 +982,12 @@
       prereqHtml;
 
     document.getElementById('drawerOverlay').classList.remove('hidden');
-    document.getElementById('drawerPanel').classList.remove('translate-x-full');
+    document.getElementById('drawerPanel').classList.add('open');
   }
 
   function closeDrawer() {
     document.getElementById('drawerOverlay').classList.add('hidden');
-    document.getElementById('drawerPanel').classList.add('translate-x-full');
+    document.getElementById('drawerPanel').classList.remove('open');
   }
 
   document.addEventListener('keydown', function (e) {
@@ -1287,7 +1342,8 @@
   window.executeCourseBulkDelete = executeCourseBulkDelete;
   window.executePlanBulkDelete = executePlanBulkDelete;
 
-  // ===== EVENTS =====
+  // ===== EVENTS + INIT (view) =====
+  // عرض القائمة والخطة لا يعتمد على المودال: أي فشل فيه لا يوقف عرض الجدول.
   try {
     document.getElementById('listSearch').addEventListener('input', function () { currentPage = 1; renderList(); });
     document.getElementById('listDeptFilter').addEventListener('change', function () { currentPage = 1; renderList(); });
@@ -1315,9 +1371,6 @@
 
     // ===== INIT =====
     fillSelects();
-    fillPrereqOptions();
-    document.getElementById('mTheory').addEventListener('input', syncUnitsFromHours);
-    document.getElementById('mPractical').addEventListener('input', syncUnitsFromHours);
     if (departments.length) {
       currentDeptId = departments[0].id;
       document.getElementById('planDeptSelect').value = currentDeptId;
@@ -1326,6 +1379,18 @@
     switchView(activeView);
   } catch (e) {
     window.__listInitError = String(e && e.message ? e.message : e);
+  }
+
+  // ===== INIT (modal) =====
+  // إعداد المودال مستقل عن عرض القائمة حتى لا يعطّله أي خطأ في ترتيب العناصر.
+  try {
+    fillPrereqOptions();
+    var mTheory = document.getElementById('mTheory');
+    var mPractical = document.getElementById('mPractical');
+    if (mTheory) mTheory.addEventListener('input', syncUnitsFromHours);
+    if (mPractical) mPractical.addEventListener('input', syncUnitsFromHours);
+  } catch (e) {
+    window.__modalInitError = String(e && e.message ? e.message : e);
   }
 
   // يبدأ Tom Select بعد تحميل سكربت CDN في base.html

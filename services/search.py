@@ -18,6 +18,8 @@ Usage in routes::
     )
     where, params = build_search_query(config, search='phy', filters={'department_id': 42})
     rows, total, page, per_page = paginate(query, params, page)
+
+/     /     >---- خدمة البحث الموحدة: توليد استعلامات LIKE للبحث الجزئي مع الشروط.
 """
 
 from __future__ import annotations
@@ -28,7 +30,10 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 @dataclass
 class SearchConfig:
-    """Declarative search configuration for a list view."""
+    """Declarative search configuration for a list view.
+
+    /     /     >---- إعدادات بحث صريحة لصفحة قائمة.
+    """
 
     # Required
     table: str                              # e.g. 'courses c' or 'students s'
@@ -46,10 +51,8 @@ class SearchConfig:
     # Extra SELECT columns beyond the main table.*
     select_extra: List[str] = field(default_factory=list)
 
-    # Pre-built filter map: filter_name -> (column, params_value)
-    # Built dynamically per-request via build_search_query
 
-
+# /     /     >---- فلتر مسجّل: يربط متغير الطلب بعمود SQL
 class SearchFilter:
     """Named filter that maps a request param to a WHERE condition."""
 
@@ -65,6 +68,7 @@ class SearchFilter:
         self.param_value = param_value
 
 
+# /     /     >---- بناء استعلام SELECT كامل (JOINs + WHERE + ORDER BY) جاهز للترقيم
 def build_search_query(
     config: SearchConfig,
     search: str = '',
@@ -82,17 +86,17 @@ def build_search_query(
     where: List[str] = []
     params: List[Any] = []
 
-    # Soft delete
+    # /     /     >---- شرط الحذف الناعم
     if config.soft_delete:
         where.append(config.soft_delete)
 
-    # Search — OR'd across all search_columns
+    # /     /     >---- البحث: مطابقة OR على كل أعمدة البحث
     if search and config.search_columns:
         conditions = ' OR '.join(f'{col} LIKE ?' for col in config.search_columns)
         where.append(f'({conditions})')
         params.extend([f'%{search}%'] * len(config.search_columns))
 
-    # Extra where
+    # /     /     >---- شروط إضافية من المستدعي
     if extra_where:
         where.extend(extra_where)
     if extra_params:
@@ -100,7 +104,7 @@ def build_search_query(
 
     where_clause = ' AND '.join(where) if where else '1=1'
 
-    # SELECT — extract alias from table if present (e.g. 'courses c' -> 'c')
+    # /     /     >---- استخراج الاسم المستعار من الجدول ('courses c' → 'c')
     table_parts = config.table.strip().split()
     alias = table_parts[-1] if len(table_parts) > 1 else table_parts[0]
     cols = f'{alias}.*'
@@ -108,13 +112,13 @@ def build_search_query(
         cols += ', ' + ', '.join(config.select_extra)
     select_keyword = 'SELECT DISTINCT' if config.distinct else 'SELECT'
 
-    # JOINs
+    # /     /     >---- تجميع وصلات الجداول
     join_sql = ' '.join(j[0] for j in config.joins) if config.joins else ''
 
-    # Base query
+    # /     /     >---- الاستعلام الأساسي
     query = f'{select_keyword} {cols} FROM {config.table} {join_sql} WHERE {where_clause}'
 
-    # ORDER BY
+    # /     /     >---- الترتيب (افتراضي أو مخصص)
     ord = order or config.default_order
     if ord:
         query += f' ORDER BY {ord}'
@@ -122,6 +126,7 @@ def build_search_query(
     return query, params
 
 
+# /     /     >---- استعلام بحث الأساتذة مع ربط القسم (أساسي أو من جدول الأقسام)
 def build_teacher_search(
     search: str = '',
     dept_filter: str = '',
@@ -136,22 +141,21 @@ def build_teacher_search(
         soft_delete='t.deleted_at IS NULL',
         joins=[
             ('LEFT JOIN departments d ON t.department_id = d.id',),
+            ('LEFT JOIN departments hd ON t.hod_department_id = hd.id',),
             ('LEFT JOIN users u ON t.user_id = u.id',),
             ('LEFT JOIN qualifications q ON t.qualification_id = q.id',),
             ('LEFT JOIN academic_ranks r ON t.rank_id = r.id',),
         ],
-        select_extra=['d.name as dept_name', 'u.username as username', 'u.supervisor_admin_dept',
+        select_extra=['d.name as dept_name', 'hd.name as hod_dept_name', 'u.username as username', 'u.supervisor_admin_dept',
                       'q.name_ar as qual_name', 'r.name_ar as rank_name'],
         distinct=False,
     )
     extra_where = []
     extra_params = []
 
-    # Department filter
+    # /     /     >---- فلتر القسم: العمود الأساسي أو جدول الأقسام المتعددة
     effective_dept = str(user_dept_id) if user_dept_id else dept_filter
     if effective_dept:
-        # Teacher may belong to many departments (primary column OR the
-        # teacher_departments many-to-many table).
         extra_where.append(
             '(t.department_id = ? OR EXISTS ('
             'SELECT 1 FROM teacher_departments tdx '
@@ -164,6 +168,7 @@ def build_teacher_search(
     return query, params, effective_dept
 
 
+# /     /     >---- استعلام بحث المقررات مع فلتر القسم
 def build_course_search(
     search: str = '',
     dept_filter: str = '',
@@ -200,6 +205,7 @@ def build_course_search(
     return query, params, effective_dept
 
 
+# /     /     >---- استعلام بحث القاعات مع أسمائها المعرّبة ومعلوماتها
 def build_room_search(
     search: str = '',
     dept_filter: str = '',
@@ -243,6 +249,7 @@ def build_room_search(
     return query, params, dept_filter
 
 
+# /     /     >---- استعلام بحث المستخدمين
 def build_user_search(
     search: str = '',
     page: int = 1,
@@ -263,6 +270,7 @@ def build_user_search(
     return query, params
 
 
+# /     /     >---- استعلام بحث الأقسام
 def build_department_search(
     search: str = '',
     page: int = 1,
@@ -279,6 +287,7 @@ def build_department_search(
     return query, params
 
 
+# /     /     >---- تعليم كلمات البحث بتظليل HTML آمن (للاستخدام في القوالب)
 def highlight_text(text: str, search: str) -> str:
     """HTML-highlight search terms in text (for template use).
 

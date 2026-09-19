@@ -22,9 +22,15 @@
     var container = ensureContainer();
 
     var el = document.createElement('div');
-    var bg = type === 'success' ? 'bg-primary-container border-primary-fixed' : 'bg-surface border-primary';
-    var text = type === 'success' ? 'text-on-primary-container' : 'text-on-surface';
-    var icon = type === 'success' ? 'waving_hand' : (type === 'error' ? 'error' : 'info');
+    var bg = type === 'success' ? 'bg-primary-container border-primary-fixed'
+      : type === 'warning' ? 'bg-warning-faint border-warning-border'
+      : type === 'error' ? 'bg-error-container border-error'
+      : 'bg-surface border-primary';
+    var text = type === 'success' ? 'text-on-primary-container'
+      : type === 'warning' ? 'text-warning-text'
+      : type === 'error' ? 'text-error'
+      : 'text-on-surface';
+    var icon = type === 'success' ? 'waving_hand' : (type === 'error' ? 'error' : (type === 'warning' ? 'warning' : 'info'));
 
     el.className = 'notification pointer-events-auto flex items-center justify-between ' + bg + ' border-l-4 p-4 rounded-lg shadow-lg';
     el.innerHTML =

@@ -22,9 +22,8 @@ from flask import flash, redirect, session, url_for
 from core.constants import NAV_ITEMS, ROLE_LABELS, ROLE_PERMISSIONS
 from utils.redirects import redirect_back
 
-# Fixed landing-role priority (highest first).  After login the user lands on
-# their highest-priority granted role, and can switch among granted roles
-# in-app.  An empty/unknown role is treated as 'teacher'.
+# /     /     >---- ترتيب الأدوار (الأعلى أولاً). بعد تسجيل الدخول الطالب
+# /     /     >---- ينزل على أعلى دور عنده، ويقدر يبدل بين الأدوار داخل التطبيق
 ROLE_PRIORITY = [
     'super_admin',
     'research_development',
@@ -34,9 +33,12 @@ ROLE_PRIORITY = [
     'teacher',
 ]
 
+# /     /     >---- مجموعة كل الأدوار المعروفة
 ALL_ROLES_SET = frozenset(ROLE_PRIORITY)
 
+# ─────────────────────────────────────────────
 
+# /     /     >---- نحول حجة الدور إلى قائمة أدوار صحيحة (نشيل المجهولة)
 def _normalize_roles(role) -> list:
     """Coerce a role argument into a list of role strings.
 
@@ -49,9 +51,12 @@ def _normalize_roles(role) -> list:
         roles = [role]
     else:
         roles = list(role)
+    # /     /     >---- نصفي الأدوار اللي فيش منها في النظام
     return [r for r in roles if r in ALL_ROLES_SET]
 
+# ─────────────────────────────────────────────
 
+# /     /     >---- نرجع كل الأدوار اللي المستخدم مخول بيهن في هذي الجلسة
 def get_granted_roles() -> list:
     """Return the authenticated user's full role set for this session.
 
@@ -59,12 +64,16 @@ def get_granted_roles() -> list:
     back to the single ``session['role']`` for legacy/partial sessions so an
     already-logged-in user is never locked out.
     """
+    # /     /     >---- نفضّل القائمة الكاملة من الجلسة
     roles = session.get('roles')
     if isinstance(roles, list) and roles:
         return [r for r in roles if r in ALL_ROLES_SET] or [str(session.get('role', 'teacher')) or 'teacher']
+    # /     /     >---- خلاف ذلك نرجع الدور الوحيد القديم
     return [str(session.get('role', 'teacher')) or 'teacher']
 
+# ─────────────────────────────────────────────
 
+# /     /     >---- نرجع الدور(الأدوار) اللي المستخدم شغال فيه الحين
 def get_active_roles() -> list:
     """Return the role(s) the user is *currently operating under*.
 
@@ -73,13 +82,17 @@ def get_active_roles() -> list:
     now (nav, permissions) is scoped to it.  Falls back to the full granted
     set only when the active role is unknown so nobody is locked out.
     """
+    # /     /     >---- الدور النشط موجود في الجلسة
     active = session.get('role')
     roles = _normalize_roles([active] if active else '')
     if roles:
         return roles
+    # /     /     >---- إذا ما عرفناه نرجع كل الأدوار
     return get_granted_roles()
 
+# ─────────────────────────────────────────────
 
+# /     /     >---- نرجع أعلى دور في الأولوية بين القائمة
 def highest_priority_role(roles) -> str:
     """Return the highest-priority role among *roles* ('' when none)."""
     clean = _normalize_roles(roles)
@@ -88,7 +101,9 @@ def highest_priority_role(roles) -> str:
             return r
     return ''
 
+# ─────────────────────────────────────────────
 
+# /     /     >---- نجمع كل الصلاحيات من كل أدوار المستخدم
 def get_user_permissions(role, department_id=None) -> set:
     """Return the set of permission strings for a role or roles.
 
@@ -101,17 +116,23 @@ def get_user_permissions(role, department_id=None) -> set:
         perms |= ROLE_PERMISSIONS.get(r, set())
     return perms
 
+# ─────────────────────────────────────────────
 
+# /     /     >---- نتأكد إذا المستخدم عنده صلاحية معينة
 def has_permission(role, permission: str | None, department_id=None) -> bool:
     """Check whether a role (or list of roles) holds a specific permission."""
+    # /     /     >---- إذا مافي صلاحية مطلوبة نسمح
     if permission is None:
         return True
     return permission in get_user_permissions(role, department_id)
 
+# ─────────────────────────────────────────────
 
+# /     /     >---- ديكوريتور: يشترط تسجيل الدخول للصفحة
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        # /     /     >---- إذا ما فيه مستخدم في الجلسة نوجهه لصفحة الدخول
         if 'user_id' not in session:
             flash('يرجى تسجيل الدخول أولاً', 'error')
             return redirect(url_for('auth.login'))
@@ -119,7 +140,9 @@ def login_required(f):
 
     return decorated_function
 
+# ─────────────────────────────────────────────
 
+# /     /     >---- ديكوريتور: يشترط صلاحية معينة للصفحة
 def permission_required(permission):
     """Check that the logged-in user holds the given permission.
 
@@ -130,8 +153,10 @@ def permission_required(permission):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
+            # /     /     >---- أول شي يتأكد من تسجيل الدخول
             if 'user_id' not in session:
                 return redirect(url_for('auth.login'))
+            # /     /     >---- نجمع كل أدوار المستخدم ونتأكد من الصلاحية
             roles = get_granted_roles()
             dept_id = session.get('department_id')
             if not has_permission(roles, permission, dept_id):
@@ -143,7 +168,9 @@ def permission_required(permission):
 
     return decorator
 
+# ─────────────────────────────────────────────
 
+# /     /     >---- ديكوريتور: يحصر الصفحة على أدوار محددة بالضبط
 def role_required(*roles):
     """Gate a route by the user's fixed role, not by a permission.
 
@@ -154,8 +181,10 @@ def role_required(*roles):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
+            # /     /     >---- يتأكد من تسجيل الدخول
             if 'user_id' not in session:
                 return redirect(url_for('auth.login'))
+            # /     /     >---- يتأكد الدور النشط موجود في الأدوار المسموحة
             if session.get('role', '') not in roles:
                 flash('ليس لديك صلاحية للوصول إلى هذه الصفحة', 'error')
                 return redirect(url_for('dashboard.dashboard'))
@@ -165,7 +194,9 @@ def role_required(*roles):
 
     return decorator
 
+# ─────────────────────────────────────────────
 
+# /     /     >---- ديكوريتور: يقبل أي دور من القائمة (أي واحد يكفي)
 def any_role_required(*roles):
     """Gate a route by requiring at least one of the given roles.
 
@@ -180,6 +211,7 @@ def any_role_required(*roles):
         def decorated_function(*args, **kwargs):
             if 'user_id' not in session:
                 return redirect(url_for('auth.login'))
+            # /     /     >---- نشوف إذا أي دور من أدوار المستخدم في القائمة
             granted = set(get_granted_roles())
             if not granted.intersection(roles):
                 flash('ليس لديك صلاحية للوصول إلى هذه الصفحة', 'error')
@@ -190,7 +222,9 @@ def any_role_required(*roles):
 
     return decorator
 
+# ─────────────────────────────────────────────
 
+# /     /     >---- نرجع قائمة عناصر التنقل اللي تظهر لدور معين
 def get_nav_items(role, department_id=None) -> list:
     """Return the ordered list of navigation items visible to a role.
 
@@ -204,21 +238,27 @@ def get_nav_items(role, department_id=None) -> list:
     roles = _normalize_roles(role)
     perms = get_user_permissions(roles, department_id)
 
+    # /     /     >---- عشان نتفادى تكرار العناصر
     seen_endpoints = set()
     seen_active_keys = set()
     items = []
     for item in NAV_ITEMS:
+        # /     /     >---- إذا العنصر خاص بالمدرسين والمستخدم مش مدرس نتخطى
         if item.get('teacher_only') and 'teacher' not in roles:
             continue
+        # /     /     >---- نتأكد من الصلاحية
         perm = item.get('permission')
         if perm is not None and perm not in perms:
             continue
+        # /     /     >---- نتأكد من فلتر الدور
         role_filter = item.get('role_filter')
         if role_filter and role_filter not in roles:
             continue
+        # /     /     >---- نتأكد ما هو مستثنى لدور معين
         exclude_roles = item.get('exclude_roles') or []
         if any(r in exclude_roles for r in roles):
             continue
+        # /     /     >---- نتجنب التكرار في نفس النقطة
         ep = item['endpoint']
         if ep in seen_endpoints and not role_filter:
             continue
@@ -232,7 +272,9 @@ def get_nav_items(role, department_id=None) -> list:
         items.append(item)
     return items
 
+# ─────────────────────────────────────────────
 
+# /     /     >---- نرجع رابط الرسائل في الهيدر حسب الدور
 def get_header_messages_url(role) -> str | None:
     """Return the messages endpoint for the header, or None.
 
@@ -241,13 +283,17 @@ def get_header_messages_url(role) -> str | None:
     ``teacher``.
     """
     roles = _normalize_roles(role)
+    # /     /     >---- رئيس القسم أولاً
     if 'head_of_department' in roles:
         return 'hod_pages.hod_messages'
+    # /     /     >---- وبعدين المدرس
     if 'teacher' in roles:
         return 'teacher_pages.teacher_messages'
     return None
 
+# ─────────────────────────────────────────────
 
+# /     /     >---- مساعد القوالب (Jinja): يضيف دوال التنقل في كل الصفحات
 def inject_navigation() -> dict:
     """Jinja context processor — makes nav helpers available in every template.
 

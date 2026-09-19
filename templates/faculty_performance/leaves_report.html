@@ -1,257 +1,144 @@
-<!DOCTYPE html>
-{% set r = report %}{% set fd = report %}<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نموذج معدل الأداء الموحد — {{ r.teacher.name }}</title>
-    <style>
-        @page {
-            size: A4 portrait;
-            margin: 15mm;
-        }
+{% extends 'faculty_performance/_print_document.html' %}
+{% set r = report %}
+{% set fd = report %}
 
-        * {
-            box-sizing: border-box;
-            font-family: 'Traditional Arabic', 'Times New Roman', Arial, sans-serif;
-        }
+{% block doc_title %}نموذج معدل الأداء الموحد — {{ r.teacher.name }}{% endblock %}
 
-        body {
-            background-color: #f0f0f0;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-        }
+{% block back_link %}
+<a class="back-btn no-print" href="{{ url_for('faculty_performance.leaves_manage', teacher_id=r.teacher['id']) }}">العودة</a>
+{% endblock %}
 
-        .document-page {
-            background: #ffffff;
-            width: 210mm;
-            min-height: 297mm;
-            padding: 15mm;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
-            color: #000;
-        }
+{% block doc_body %}
+<div class="official-doc">
 
-        .header-title {
-            text-align: center;
-            font-weight: bold;
-            font-size: 16pt;
-            margin-bottom: 12px;
-        }
+    <!-- العنوان الرئيسي -->
+    <div class="header-title">
+        نموذج معدل الأداء الموحد لعضو هيئة تدريس قار خاص بنظامي (الفصل - السنة)
+    </div>
 
-        .section-title {
-            font-weight: bold;
-            font-size: 11pt;
-            margin-top: 10px;
-            margin-bottom: 4px;
-        }
+    {% if r.header %}
+    <!-- بيانات المؤسسة -->
+    <table style="width: 45%; margin: 0 auto 10px auto;">
+        <tr>
+            <td style="width: 40%; font-weight: bold;">اسم المؤسسة</td>
+            <td>{{ r.header.org_name }}</td>
+        </tr>
+        <tr>
+            <td style="font-weight: bold;">المعهد أو الكلية</td>
+            <td>{{ r.header.college_name }}</td>
+        </tr>
+    </table>
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 8px;
-            direction: rtl;
-        }
+    <!-- البيانات العامة -->
+    <table>
+        <tr>
+            <td class="bg-gray" style="width: 12%;">الاسم</td>
+            <td style="width: 21%;">{{ r.header.teacher_name }}</td>
+            <td class="bg-gray" style="width: 12%;">القسم</td>
+            <td style="width: 21%;">{{ r.header.department or 'غير محدد' }}</td>
+            <td class="bg-gray" style="width: 12%;">الشعبة</td>
+            <td style="width: 22%;">{{ r.header.section or '' }}</td>
+        </tr>
+        <tr>
+            <td class="bg-gray">المؤهل العلمي</td>
+            <td>{{ r.header.qualification }}</td>
+            <td class="bg-gray">الرقم الكلية</td>
+            <td>{{ r.header.academic_number }}</td>
+            <td class="bg-gray">الرقم الوطني</td>
+            <td>{{ r.header.national_id }}</td>
+        </tr>
+        <tr>
+            <td class="bg-gray">العام الجامعي</td>
+            <td>{{ r.header.academic_year_label }}</td>
+            <td class="bg-gray">التخصص</td>
+            <td>{{ r.header.specialization }}</td>
+            <td class="bg-gray">الدرجة العلمية</td>
+            <td>{{ r.header.rank }}</td>
+        </tr>
+        <tr>
+            <td class="bg-gray">تاريخ أول محاضرة</td>
+            <td>{{ r.header.first_lecture_date or '' }}</td>
+            <td class="bg-gray">الفصل الدراسي</td>
+            <td>{{ r.header.semester_label }}</td>
+            <td class="bg-gray">تاريخ مباشرة العمل</td>
+            <td>{{ r.header.work_start_date or r.header.contract_date or '' }}</td>
+        </tr>
+    </table>
+    {% else %}
+    <table style="width: 60%; margin: 0 auto 10px auto;">
+        <tr>
+            <td class="bg-gray" style="width: 30%; font-weight: bold;">اسم المؤسسة</td>
+            <td>{{ r.college_name }}</td>
+        </tr>
+        <tr>
+            <td class="bg-gray" style="font-weight: bold;">الاسم</td>
+            <td>{{ r.teacher.name }}</td>
+        </tr>
+        <tr>
+            <td class="bg-gray" style="font-weight: bold;">القسم</td>
+            <td>{{ r.teacher.dept_name or 'غير محدد' }}</td>
+        </tr>
+    </table>
+    {% endif %}
 
-        table, th, td {
-            border: 1px solid #000;
-        }
-
-        th, td {
-            padding: 4px 6px;
-            text-align: center;
-            font-size: 10pt;
-        }
-
-        th {
-            background-color: #f2f2f2;
-            font-weight: bold;
-        }
-
-        .text-right { text-align: right; }
-        .bg-gray { background-color: #e6e6e6; }
-
-        @media print {
-            body { background-color: #fff; padding: 0; }
-            .document-page { box-shadow: none; width: 100%; padding: 0; }
-            .no-print { display: none; }
-        }
-
-        .print-btn {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            padding: 10px 20px;
-            background-color: #0078d4;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            z-index: 1000;
-        }
-
-        .back-btn {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 10px 20px;
-            background-color: #666;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            z-index: 1000;
-            text-decoration: none;
-        }
-
-        @media screen and (max-width: 860px) {
-            .print-btn, .back-btn { position: static; display: inline-block; margin: 0 0 12px 8px; }
-        }
-    </style>
-</head>
-<body>
-
-    <button class="print-btn no-print" onclick="window.print()">طباعة النموذج</button>
-    <a class="back-btn no-print" href="{{ url_for('faculty_performance.leaves_manage', teacher_id=r.teacher['id']) }}">العودة</a>
-
-    <div class="document-page">
-
-        <!-- العنوان الرئيسي -->
-        <div class="header-title">
-            نموذج معدل الأداء الموحد لعضو هيئة تدريس قار خاص بنظامي (الفصل - السنة)
-        </div>
-
-        {% if r.header %}
-        <!-- بيانات المؤسسة -->
-        <table style="width: 45%; margin: 0 auto 10px auto;">
+    <!-- أولاً: جدول الساعات التدريسية الأساسية -->
+    <div class="section-title">أولاً : جدول الساعات التدريسية الأساسية (10-4 ساعات حسب الدرجة العلمية - ساعات نظرية أو عملية)</div>
+    <table>
+        <thead>
             <tr>
-                <td style="width: 40%; font-weight: bold;">اسم المؤسسة</td>
-                <td>{{ r.header.org_name }}</td>
+                <th rowspan="2" style="width: 4%;">ت</th>
+                <th rowspan="2" style="width: 22%;">أسم المقرر</th>
+                <th rowspan="2" style="width: 10%;">رمز المقرر</th>
+                <th rowspan="2" style="width: 8%;">نظري/عملي</th>
+                <th rowspan="2" style="width: 12%;">مرحلة المقرر</th>
+                <th rowspan="2" style="width: 12%;">القسم</th>
+                <th rowspan="2" style="width: 8%;">رقم المجموعة</th>
+                <th rowspan="2" style="width: 8%;">عدد الطلبة</th>
+                <th colspan="3">الجدول الدراسي</th>
+                <th rowspan="2" style="width: 8%;">عدد الساعات</th>
             </tr>
             <tr>
-                <td style="font-weight: bold;">المعهد أو الكلية</td>
-                <td>{{ r.header.college_name }}</td>
+                <th>اليوم</th>
+                <th>من</th>
+                <th>إلى</th>
             </tr>
-        </table>
-
-        <!-- البيانات العامة -->
-        <table>
+        </thead>
+        <tbody>
+            {% set ns = namespace(total=0) %}
+            {% for e in r.courses %}
             <tr>
-                <td class="bg-gray" style="width: 12%;">الاسم</td>
-                <td style="width: 21%;">{{ r.header.teacher_name }}</td>
-                <td class="bg-gray" style="width: 12%;">القسم</td>
-                <td style="width: 21%;">{{ r.header.department or 'غير محدد' }}</td>
-                <td class="bg-gray" style="width: 12%;">الشعبة</td>
-                <td style="width: 22%;">{{ r.header.section or '' }}</td>
+                <td>{{ e.index }}</td>
+                <td>{{ e.course_name }}</td>
+                <td>{{ e.course_code }}</td>
+                <td>{{ e.lecture_type }}</td>
+                <td>{{ e.course_phase }}</td>
+                <td>{{ e.department }}</td>
+                <td>{{ e.group_number }}</td>
+                <td>{{ e.student_count or '' }}</td>
+                <td>{{ e.day }}</td>
+                <td>{{ e.start_time }}</td>
+                <td>{{ e.end_time }}</td>
+                <td>{{ e.hours }}</td>
             </tr>
+            {% if e.hours is number %}{% set ns.total = ns.total + e.hours %}{% endif %}
+            {% endfor %}
+            {% if (r.courses | length) < 6 %}
+            {% for i in range(6 - (r.courses | length)) %}
             <tr>
-                <td class="bg-gray">المؤهل العلمي</td>
-                <td>{{ r.header.qualification }}</td>
-                <td class="bg-gray">الرقم الكلية</td>
-                <td>{{ r.header.academic_number }}</td>
-                <td class="bg-gray">الرقم الوطني</td>
-                <td>{{ r.header.national_id }}</td>
+                <td>{{ (r.courses | length) + loop.index }}</td>
+                <td colspan="10"></td>
+                <td></td>
             </tr>
+            {% endfor %}
+            {% endif %}
             <tr>
-                <td class="bg-gray">العام الجامعي</td>
-                <td>{{ r.header.academic_year_label }}</td>
-                <td class="bg-gray">التخصص</td>
-                <td>{{ r.header.specialization }}</td>
-                <td class="bg-gray">الدرجة العلمية</td>
-                <td>{{ r.header.rank }}</td>
+                <td colspan="11" class="text-right bg-gray" style="font-weight: bold; padding-right: 15px;">إجمالي عدد الساعات الأساسية</td>
+                <td>{{ ns.total }}</td>
             </tr>
-            <tr>
-                <td class="bg-gray">تاريخ أول محاضرة</td>
-                <td>{{ r.header.first_lecture_date or '' }}</td>
-                <td class="bg-gray">الفصل الدراسي</td>
-                <td>{{ r.header.semester_label }}</td>
-                <td class="bg-gray">تاريخ مباشرة العمل</td>
-                <td>{{ r.header.work_start_date or r.header.contract_date or '' }}</td>
-            </tr>
-        </table>
-        {% else %}
-        <table style="width: 60%; margin: 0 auto 10px auto;">
-            <tr>
-                <td class="bg-gray" style="width: 30%; font-weight: bold;">اسم المؤسسة</td>
-                <td>{{ r.college_name }}</td>
-            </tr>
-            <tr>
-                <td class="bg-gray" style="font-weight: bold;">الاسم</td>
-                <td>{{ r.teacher.name }}</td>
-            </tr>
-            <tr>
-                <td class="bg-gray" style="font-weight: bold;">القسم</td>
-                <td>{{ r.teacher.dept_name or 'غير محدد' }}</td>
-            </tr>
-        </table>
-        {% endif %}
-
-        <!-- أولاً: جدول الساعات التدريسية الأساسية -->
-        <div class="section-title">أولاً : جدول الساعات التدريسية الأساسية (10-4 ساعات حسب الدرجة العلمية - ساعات نظرية أو عملية)</div>
-        <table>
-            <thead>
-                <tr>
-                    <th rowspan="2" style="width: 4%;">ت</th>
-                    <th rowspan="2" style="width: 22%;">أسم المقرر</th>
-                    <th rowspan="2" style="width: 10%;">رمز المقرر</th>
-                    <th rowspan="2" style="width: 8%;">نظري/عملي</th>
-                    <th rowspan="2" style="width: 12%;">مرحلة المقرر</th>
-                    <th rowspan="2" style="width: 12%;">القسم</th>
-                    <th rowspan="2" style="width: 8%;">رقم المجموعة</th>
-                    <th rowspan="2" style="width: 8%;">عدد الطلبة</th>
-                    <th colspan="3">الجدول الدراسي</th>
-                    <th rowspan="2" style="width: 8%;">عدد الساعات</th>
-                </tr>
-                <tr>
-                    <th>اليوم</th>
-                    <th>من</th>
-                    <th>إلى</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% set ns = namespace(total=0) %}
-                {% for e in r.courses %}
-                <tr>
-                    <td>{{ e.index }}</td>
-                    <td>{{ e.course_name }}</td>
-                    <td>{{ e.course_code }}</td>
-                    <td>{{ e.lecture_type }}</td>
-                    <td>{{ e.course_phase }}</td>
-                    <td>{{ e.department }}</td>
-                    <td>{{ e.group_number }}</td>
-                    <td>{{ e.student_count or '' }}</td>
-                    <td>{{ e.day }}</td>
-                    <td>{{ e.start_time }}</td>
-                    <td>{{ e.end_time }}</td>
-                    <td>{{ e.hours }}</td>
-                </tr>
-                {% if e.hours is number %}{% set ns.total = ns.total + e.hours %}{% endif %}
-                {% endfor %}
-                {% if (r.courses | length) < 6 %}
-                {% for i in range(6 - (r.courses | length)) %}
-                <tr>
-                    <td>{{ (r.courses | length) + loop.index }}</td>
-                    <td colspan="10"></td>
-                    <td></td>
-                </tr>
-                {% endfor %}
-                {% endif %}
-                <tr>
-                    <td colspan="11" class="text-right bg-gray" style="font-weight: bold; padding-right: 15px;">إجمالي عدد الساعات الأساسية</td>
-                    <td>{{ ns.total }}</td>
-                </tr>
-            </tbody>
-        </table>
+        </tbody>
+    </table>
 
 {% include 'faculty_performance/_official_sections.html' %}
 
-    </div>
-
-<script src="{{ url_for('static', filename='js/shared/doc_page_fit.js') }}"></script>
-
-</body>
-</html>
+</div>
+{% endblock %}

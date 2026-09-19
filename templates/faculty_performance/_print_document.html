@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block doc_title %}نموذج معدل الأداء الموحد{% endblock %}</title>
+    {% include 'faculty_performance/_official_document_styles.html' %}
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 20mm 15mm;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #e8e8e8;
+            margin: 0;
+            padding: 20px;
+            font-family: 'Times New Roman', 'Traditional Arabic', 'Simplified Arabic', 'Tahoma', Arial, sans-serif;
+        }
+
+        .document-page {
+            background: #ffffff;
+            width: 210mm;
+            min-height: 297mm;
+            padding: 25mm 20mm;
+            margin: 0 auto;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        @media print {
+            body {
+                background-color: #fff;
+                padding: 0;
+                margin: 0;
+            }
+            .document-page {
+                box-shadow: none;
+                width: 100%;
+                padding: 0;
+                margin: 0;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+
+        .print-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 12px 24px;
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+            z-index: 1000;
+            transition: background-color 0.2s;
+        }
+
+        .print-btn:hover {
+            background-color: #1d4ed8;
+        }
+
+        .back-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            background-color: #4b5563;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+            z-index: 1000;
+            text-decoration: none;
+            transition: background-color 0.2s;
+        }
+
+        .back-btn:hover {
+            background-color: #374151;
+        }
+
+        @media screen and (max-width: 860px) {
+            .print-btn, .back-btn {
+                position: static;
+                display: inline-block;
+                margin: 0 0 12px 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <button class="print-btn no-print" onclick="window.print()">طباعة النموذج</button>
+    {% block back_link %}{% endblock %}
+
+    <div class="document-page">
+        {% block doc_body %}{% endblock %}
+    </div>
+
+    <script src="{{ url_for('static', filename='js/shared/doc_page_fit.js') }}"></script>
+
+</body>
+</html>

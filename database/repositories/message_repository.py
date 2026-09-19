@@ -4,16 +4,18 @@ from typing import Any, Dict, List, Optional
 
 from database.repositories.base_repository import BaseRepository
 
-
+# /     /     >---- مستودع الرسائل والطلبات — المواضيع المرتبطة بالتواصل
 class MessageRepository(BaseRepository):
     table = 'teacher_requests'
 
+    # /     /     >---- نحدّث حالة الحضور في جدول الحضور
     def update_faculty_attendance(self, attendance_id: int, status: str) -> None:
         self.db.execute(
             'UPDATE faculty_attendance SET status=? WHERE id=?', (status, attendance_id)
         )
         self.db.commit()
 
+    # /     /     >---- نضيف رد على رسالة
     def add_message_reply(self, message_id: int, sender_id: int, reply_text: str) -> None:
         self.db.execute(
             'INSERT INTO message_replies (message_id, sender_id, reply_text) VALUES (?, ?, ?)',
@@ -21,6 +23,7 @@ class MessageRepository(BaseRepository):
         )
         self.db.commit()
 
+    # /     /     >---- نعلّم رسالة كمحلولة
     def resolve_message(self, message_id: int, resolved_by: int) -> None:
         self.db.execute(
             "UPDATE teacher_messages SET status=?, resolved_at=CURRENT_TIMESTAMP, resolved_by=? WHERE id=?",
@@ -28,6 +31,7 @@ class MessageRepository(BaseRepository):
         )
         self.db.commit()
 
+    # /     /     >---- نحدّث حالة طلب (بعد المراجعة من المدير)
     def update_request(self, request_id: int, status: str, reviewed_by: int,
                        admin_reply: str) -> None:
         self.db.execute(
@@ -37,6 +41,7 @@ class MessageRepository(BaseRepository):
         )
         self.db.commit()
 
+    # /     /     >---- نجيب طلبات قسم معين مع اسم المدرس
     def list_requests_for_dept(self, department_id: int) -> List[Dict[str, Any]]:
         return [dict(r) for r in self.db.execute(
             '''SELECT r.*, t.name as teacher_name, u.username as sender_name
@@ -48,6 +53,7 @@ class MessageRepository(BaseRepository):
             (department_id,),
         ).fetchall()]
 
+    # /     /     >---- نجيب طلبات المستخدم نفسه
     def list_user_requests(self, user_id: int) -> List[Dict[str, Any]]:
         return [dict(r) for r in self.db.execute(
             '''SELECT r.*, u.username as reviewer_name
@@ -58,6 +64,7 @@ class MessageRepository(BaseRepository):
             (user_id,),
         ).fetchall()]
 
+    # /     /     >---- نصنع طلب جديد ونرجع معرّفه
     def create_request(self, teacher_id: int, user_id: int, department_id: int,
                        request_type: str, subject: str, message: str) -> int:
         self.db.execute(
@@ -68,6 +75,7 @@ class MessageRepository(BaseRepository):
         self.db.commit()
         return self.db.execute('SELECT last_insert_rowid()').fetchone()[0]
 
+    # /     /     >---- نجيب طلب واحد بالمعرف
     def find_request(self, request_id: int) -> Optional[Dict[str, Any]]:
         row = self.db.execute(
             'SELECT * FROM teacher_requests WHERE id = ?', (request_id,)

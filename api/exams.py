@@ -536,11 +536,23 @@ def api_exam_period_publish():
 @api_permission_required('exams.period')
 def api_exam_semester_period():
     db = get_db()
-    row = db.execute(
-        'SELECT id, name_ar, season, year, exam_start_date, exam_end_date '
-        'FROM semesters WHERE is_active = 1 LIMIT 1'
-    ).fetchone()
-    return ok({'semester': dict(row) if row else None})
+    from datetime import date
+    today = date.today()
+    season = 'fall' if today.month >= 9 else 'spring'
+    year = today.year
+    code = f'{season}_{year}'
+    from utils.format import semester_display_name
+    settings = exam_service.get_exam_period(db)
+    sem = {
+        'id': None,
+        'code': code,
+        'season': season,
+        'year': year,
+        'name_ar': semester_display_name(code),
+        'exam_start_date': settings.get('exam_start_date') or '',
+        'exam_end_date': settings.get('exam_end_date') or '',
+    }
+    return ok({'semester': sem})
 
 
 @bp.route('/semester-period', methods=['PUT'])
@@ -552,18 +564,23 @@ def api_exam_semester_period_save():
     exam_start = (data.get('exam_start_date') or '').strip()
     exam_end = (data.get('exam_end_date') or '').strip()
 
-    row = db.execute(
-        'SELECT id, season, year FROM semesters WHERE is_active = 1 LIMIT 1'
-    ).fetchone()
-    if not row:
-        return err('لا يوجد فصل دراسي نشط', 422)
     if exam_start and exam_end and exam_start > exam_end:
         return err('تاريخ النهاية يجب أن يكون بعد تاريخ البداية', 422)
 
-    db.execute(
-        'UPDATE semesters SET exam_start_date = ?, exam_end_date = ? WHERE id = ?',
-        (exam_start, exam_end, row['id']),
-    )
+    existing = db.execute('SELECT id FROM exam_settings LIMIT 1').fetchone()
+    if existing:
+        db.execute(
+            'UPDATE exam_settings SET exam_start_date = ?, exam_end_date = ?, '
+            'updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+            (exam_start, exam_end, existing['id']),
+        )
+    else:
+        db.execute(
+            "INSERT INTO exam_settings "
+            "(exam_start_date, exam_end_date, exam_start_time, exam_end_time) "
+            "VALUES (?, ?, '09:00', '17:00')",
+            (exam_start, exam_end),
+        )
     db.commit()
     return ok({'saved': True})
 

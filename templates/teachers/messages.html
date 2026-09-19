@@ -4,6 +4,7 @@
 {% set requests = requests | default([]) %}
 {% set form = form | default({}) %}
 {% set form_error = form_error | default('') %}
+{% set hod_name = hod_name | default('') %}
 {% set type_labels = {'objection': 'اعتراض', 'request': 'طلب', 'suggestion': 'اقتراح', 'general': 'عام'} %}
 
 {% block content %}
@@ -17,6 +18,18 @@
       <p class="page-subtitle">إرسال رسائل واعتراضات إلى رئيس القسم</p>
     </div>
   </div>
+
+  {% if hod_name %}
+  <div class="mb-4 flex items-center gap-2 bg-primary/5 border border-primary/20 text-primary px-4 py-3 rounded-xl text-sm font-bold">
+    <span class="material-symbols-outlined text-lg">domain</span>
+    ستُرسل رسالتك إلى رئيس القسم: {{ hod_name }}
+  </div>
+  {% else %}
+  <div class="mb-4 flex items-center gap-2 bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-xl text-sm font-bold">
+    <span class="material-symbols-outlined text-lg">warning</span>
+    لم يُعيَّن رئيس لقسمك بعد — ستُعالج رسالتك من الإدارة.
+  </div>
+  {% endif %}
 
   {% if form_error %}
   <div class="mb-4 p-3.5 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm font-bold flex items-center gap-2">

@@ -1,0 +1,108 @@
+{# Course official performance form body. Shared by the in-app view
+   (report_course.html, inside base.html) and the standalone A4 print page
+   (print_course.html). Expects `fd` = get_course_report_data(...). #}
+<div class="official-doc">
+
+    <!-- العنوان الرئيسي -->
+    <div class="header-title">
+        محضر معدل الأداء الموحد لمقرر: {{ fd.course.name }}{% if fd.course.code %} ({{ fd.course.code }}){% endif %}<br>
+        <span style="font-size: 12pt;">خاص بنظامي (الفصل - السنة)</span>
+    </div>
+
+    <!-- بيانات المؤسسة -->
+    <table style="width: 45%; margin: 0 auto 10px auto;">
+        <tr>
+            <td style="width: 40%; font-weight: bold;">اسم المؤسسة</td>
+            <td>{{ fd.header.org_name }}</td>
+        </tr>
+        <tr>
+            <td style="font-weight: bold;">المعهد أو الكلية</td>
+            <td>{{ fd.header.college_name }}</td>
+        </tr>
+    </table>
+
+    <!-- بيانات المقرر -->
+    <table>
+        <tr>
+            <td class="bg-gray" style="width: 12%;">اسم المقرر</td>
+            <td style="width: 21%;">{{ fd.course.name }}</td>
+            <td class="bg-gray" style="width: 12%;">رمز المقرر</td>
+            <td style="width: 21%;">{{ fd.course.code }}</td>
+            <td class="bg-gray" style="width: 12%;">القسم</td>
+            <td style="width: 22%;">{{ fd.course.department or 'غير محدد' }}</td>
+        </tr>
+        <tr>
+            <td class="bg-gray">المرحلة</td>
+            <td>{{ fd.course.phase or '' }}</td>
+            <td class="bg-gray">العام الجامعي</td>
+            <td>{{ fd.header.academic_year_label }}</td>
+            <td class="bg-gray">الفصل الدراسي</td>
+            <td>{{ fd.header.semester_label }}</td>
+        </tr>
+        <tr>
+            <td class="bg-gray">الشعبة</td>
+            <td></td>
+            <td class="bg-gray">نوع المقرر</td>
+            <td>{{ fd.course.type_label }}</td>
+            <td class="bg-gray">الساعات المعتمدة</td>
+            <td>{{ fd.course.credit_hours }}</td>
+        </tr>
+        <tr>
+            <td class="bg-gray">تاريخ أول محاضرة</td>
+            <td>{{ fd.header.term_start_date or '' }}</td>
+            <td class="bg-gray">تاريخ بداية الفصل</td>
+            <td>{{ fd.header.term_start_date or '' }}</td>
+            <td class="bg-gray">عدد الطلبة</td>
+            <td></td>
+        </tr>
+    </table>
+
+    <!-- أولاً: جدول الساعات التدريسية الأساسية للمقرر -->
+    <div class="section-title">أولاً : جدول الساعات التدريسية الأساسية للمقرر</div>
+    <table>
+        <thead>
+            <tr>
+                <th rowspan="2" style="width: 4%;">ت</th>
+                <th rowspan="2" style="width: 18%;">عضو هيئة التدريس</th>
+                <th rowspan="2" style="width: 9%;">الدرجة العلمية</th>
+                <th rowspan="2" style="width: 7%;">نظري/عملي</th>
+                <th rowspan="2" style="width: 10%;">مرحلة المقرر</th>
+                <th rowspan="2" style="width: 10%;">القسم</th>
+                <th rowspan="2" style="width: 7%;">رقم المجموعة</th>
+                <th rowspan="2" style="width: 7%;">عدد الطلبة</th>
+                <th colspan="3">الجدول الدراسي</th>
+                <th rowspan="2" style="width: 7%;">عدد الساعات</th>
+            </tr>
+            <tr>
+                <th>اليوم</th>
+                <th>من</th>
+                <th>إلى</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for e in fd.entries %}
+            <tr>
+                <td>{{ e.index }}</td>
+                <td>{{ e.teacher_name }}</td>
+                <td>{{ e.teacher_rank }}</td>
+                <td>{{ e.lecture_type }}</td>
+                <td>{{ e.course_phase }}</td>
+                <td>{{ e.department }}</td>
+                <td>{{ e.group_number }}</td>
+                <td>{{ e.student_count or '' }}</td>
+                <td>{{ e.day }}</td>
+                <td>{{ e.start_time }}</td>
+                <td>{{ e.end_time }}</td>
+                <td>{{ e.hours }}</td>
+            </tr>
+            {% endfor %}
+            <tr>
+                <td colspan="11" class="text-right bg-gray" style="font-weight: bold; padding-right: 15px;">إجمالي عدد ساعات المقرر</td>
+                <td></td>
+            </tr>
+        </tbody>
+    </table>
+
+{% include 'faculty_performance/_official_sections.html' %}
+
+</div>

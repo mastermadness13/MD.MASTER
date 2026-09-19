@@ -1,111 +1,153 @@
 (function () {
-  var body = document.getElementById('ccCurriculumBody');
-  if (body) {
-    var rows = body.querySelectorAll('tr');
-    if (rows.length === 1 && !rows[0].querySelector('input[name="curriculum_topic[]"]').value) {
-      rows[0].querySelector('input[name="curriculum_weeks[]"]').value = 1;
+  var WEEKS_LIMIT = 12;
+
+  function initCurriculumSection(bodyId, addBtnId, totalInlineId, prefix, onTotal) {
+    var body = document.getElementById(bodyId);
+    if (!body) return;
+    var addBtn = document.getElementById(addBtnId);
+    var totalOut = document.getElementById(totalInlineId);
+
+    function rowInputs(tr, name) {
+      return tr.querySelector('[name="' + prefix + '_' + name + '[]"]');
     }
-    var addBtn = document.getElementById('ccAddCurriculumRow');
-    var autoToggle = document.getElementById('ccAutoAddToggle');
 
     function createRow() {
       var tr = document.createElement('tr');
       tr.innerHTML =
-        '<td class="align-top text-center font-bold text-black"></td>' +
-        '<td class="align-top"><input type="text" name="curriculum_topic[]" placeholder="الموضوع"></td>' +
-        '<td class="align-top"><input type="text" name="curriculum_content[]" placeholder="المحتوى"></td>' +
-        '<td class="align-top"><input type="number" name="curriculum_weeks[]" min="1" value="1"></td>' +
-        '<td class="align-top"><input type="text" name="curriculum_topic_en[]" dir="ltr" placeholder="Topic (EN)"></td>' +
-        '<td class="align-top"><input type="text" name="curriculum_content_en[]" dir="ltr" placeholder="Content (EN)"></td>' +
-        '<td class="align-top text-center"><button type="button" class="cc-curriculum-remove material-symbols-outlined text-red-500 hover:text-red-600 bg-transparent border-0 cursor-pointer" title="حذف">delete</button></td>';
+        '<td class="align-middle text-center font-bold text-black row-index"></td>' +
+        '<td class="align-middle"><textarea name="' + prefix + '_curriculum_topic[]" rows="2" placeholder="الموضوع"></textarea></td>' +
+        '<td class="align-middle"><input type="number" name="' + prefix + '_curriculum_weeks[]" min="1" value="1" class="text-center font-semibold week-input"></td>' +
+        '<td class="align-middle"><textarea name="' + prefix + '_curriculum_topic_en[]" rows="2" dir="ltr" placeholder="Topic (EN)" class="font-[Inter] text-sm"></textarea></td>' +
+        '<td class="align-middle text-center"><button type="button" class="cc-curriculum-remove text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-1 rounded font-bold cursor-pointer text-xs" title="حذف الصف" aria-label="حذف الصف">✕</button></td>';
       attachRowHandlers(tr);
       return tr;
     }
 
     function attachRowHandlers(tr) {
-      var inputs = tr.querySelectorAll('input[name="curriculum_topic[]"], input[name="curriculum_topic_en[]"], input[name="curriculum_weeks[]"], input[name="curriculum_content[]"], input[name="curriculum_content_en[]"]');
+      var inputs = tr.querySelectorAll('input[name^="' + prefix + '_curriculum_"], textarea[name^="' + prefix + '_curriculum_"]');
       inputs.forEach(function (inp) {
         inp.addEventListener('input', onCurriculumInput);
         inp.addEventListener('focus', onCurriculumFocus);
       });
       var rem = tr.querySelector('.cc-curriculum-remove');
-      if (rem) rem.addEventListener('click', function (e) { 
-        if (body.querySelectorAll('tr').length <= 1) return; 
-        e.target.closest('tr').remove();
+      if (rem) {
+        rem.addEventListener('click', function (e) {
+          if (body.querySelectorAll('tr').length <= 1) return;
+          var row = e.target.closest('tr');
+          if (row) row.remove();
+          renumberRows();
+          recalc();
+        });
+      }
+    }
+
+    function isRowEmpty(tr) {
+      var t = rowInputs(tr, 'curriculum_topic');
+      var w = rowInputs(tr, 'curriculum_weeks');
+      return !((t && t.value && t.value.trim()) || (w && w.value && w.value.trim()));
+    }
+
+    function maybeAddRow() {
+      var rows = body.querySelectorAll('tr');
+      var last = rows[rows.length - 1];
+      if (last && !isRowEmpty(last)) {
+        body.appendChild(createRow());
         renumberRows();
-        recalcCurriculumWeeks();
-      });
+      }
+      recalc();
     }
 
     function onCurriculumInput(e) {
       var tr = e.target.closest('tr');
-      // if auto-add enabled and this is last row and it has content, append a blank row
       var rows = body.querySelectorAll('tr');
       var last = rows[rows.length - 1];
-      if (autoToggle && autoToggle.checked && tr === last) {
-        if (!isRowEmpty(last)) {
-          body.appendChild(createRow());
-          renumberRows();
-          recalcCurriculumWeeks();
-        }
+      if (tr === last && !isRowEmpty(last)) {
+        body.appendChild(createRow());
+        renumberRows();
       }
-      recalcCurriculumWeeks();
+      recalc();
     }
 
     function onCurriculumFocus(e) {
       var tr = e.target.closest('tr');
       var rows = body.querySelectorAll('tr');
       var last = rows[rows.length - 1];
-      if (autoToggle && autoToggle.checked && tr === last) {
-        if (!isRowEmpty(last)) {
-          body.appendChild(createRow());
-          renumberRows();
-          recalcCurriculumWeeks();
-        }
+      if (tr === last && !isRowEmpty(last)) {
+        body.appendChild(createRow());
+        renumberRows();
+        recalc();
       }
-      // don't force recalc here — input handler covers value changes
-    }
-
-    function isRowEmpty(tr) {
-      var t = tr.querySelector('input[name="curriculum_topic[]"]');
-      var w = tr.querySelector('input[name="curriculum_weeks[]"]');
-      var c = tr.querySelector('input[name="curriculum_content[]"]');
-      return !( (t && t.value && t.value.trim()) || (w && w.value && w.value.trim()) || (c && c.value && c.value.trim()) );
     }
 
     function renumberRows() {
       var i = 1;
       body.querySelectorAll('tr').forEach(function (tr) {
         var cell = tr.querySelector('td:first-child');
-        if (cell) cell.textContent = i;
+        if (cell) {
+          cell.textContent = i;
+          var idx = tr.querySelector('.row-index');
+          if (idx && idx !== cell) idx.textContent = i;
+        }
         i++;
       });
     }
 
-    if (addBtn) addBtn.addEventListener('click', function(){ body.appendChild(createRow()); renumberRows(); });
+    function recalc() {
+      var sum = 0;
+      body.querySelectorAll('tr').forEach(function (tr) {
+        if (isRowEmpty(tr)) return;
+        var w = rowInputs(tr, 'curriculum_weeks');
+        sum += parseInt(w && w.value || 0, 10) || 0;
+      });
+      if (totalOut) {
+        totalOut.textContent = sum;
+        totalOut.classList.toggle('weeks-warning', sum > WEEKS_LIMIT);
+      }
+      if (onTotal) onTotal(sum);
+      return sum;
+    }
 
-    // initialize existing rows handlers
-    body.querySelectorAll('tr').forEach(function (tr) { attachRowHandlers(tr); });
+    if (addBtn) addBtn.addEventListener('click', function () { body.appendChild(createRow()); renumberRows(); });
+
+    body.querySelectorAll('tr').forEach(attachRowHandlers);
     renumberRows();
-    recalcCurriculumWeeks();
+    recalc();
   }
 
-  function recalcCurriculumWeeks() {
-    var sum = 0;
-    var els = document.querySelectorAll('input[name="curriculum_weeks[]"]');
-    els.forEach(function (el) { sum += parseInt(el.value || 0, 10) || 0; });
-    var out = document.getElementById('ccWeeksTotal');
-    if (out) out.textContent = sum;
-    var out2 = document.getElementById('ccWeeksTotalInline');
-    if (out2) out2.textContent = sum;
-    // highlight & shift when total exceeds 12 weeks
-    var over = sum > 12;
-    if (out) out.classList.toggle('weeks-warning', over);
-    if (out2) out2.classList.toggle('weeks-warning', over);
+  // First empty row for a fresh sheet: keep weeks at 1
+  var theoreticalBody = document.getElementById('ccTheoreticalCurriculumBody');
+  if (theoreticalBody) {
+    var rows = theoreticalBody.querySelectorAll('tr');
+    var topicInput = rows[0].querySelector('[name$="curriculum_topic[]"]');
+    if (rows.length === 1 && topicInput && !topicInput.value) {
+      var weeks = rows[0].querySelector('input[name$="curriculum_weeks[]"]');
+      if (weeks) weeks.value = 1;
+    }
   }
 
-  // Hour inputs: sum theory + practical into total
-  var hourInputs = ['theory_hours', 'practical_hours'];
+  var theoreticalWeeksTotal = 0;
+  initCurriculumSection('ccTheoreticalCurriculumBody', 'ccAddTheoreticalRow', 'ccTheoreticalWeeksTotal', 'theoretical', function (sum) {
+    theoreticalWeeksTotal = sum;
+  });
+
+  // Block submission when total theoretical weeks exceed the limit (12).
+  var courseContentFormEl = document.getElementById('courseContentForm');
+  if (courseContentFormEl) {
+    courseContentFormEl.addEventListener('submit', function (e) {
+      if (theoreticalWeeksTotal > WEEKS_LIMIT) {
+        e.preventDefault();
+        var msg = 'إجمالي الأسابيع النظرية (' + theoreticalWeeksTotal + ') يتجاوز الحد المسموح (' + WEEKS_LIMIT + ') — لا يمكن الحفظ أو النشر.';
+        if (window.showNotification) {
+          window.showNotification(msg, 'error', 6000);
+        } else {
+          alert(msg);
+        }
+      }
+    });
+  }
+
+  // Hour inputs: sum theory + practical + tutorial into hidden total_hours
+  var hourInputs = ['theory_hours', 'practical_hours', 'tutorial_hours'];
   function recalcHours() {
     var total = 0;
     hourInputs.forEach(function (name) {
@@ -115,12 +157,11 @@
     var t = document.querySelector('[name="total_hours"]');
     if (t) t.value = total;
 
-    // sync mirrors for common fields
-    ['theory_hours','practical_hours','total_hours','credits','semester'].forEach(function(name){
+    ['theory_hours', 'practical_hours', 'tutorial_hours', 'total_hours', 'credits', 'semester'].forEach(function (name) {
       var main = document.querySelector('[name="' + name + '"]');
       if (!main) return;
       var mirrors = document.querySelectorAll('[data-mirror="' + name + '"]');
-      mirrors.forEach(function(m){ m.value = main.value; });
+      mirrors.forEach(function (m) { m.value = main.value; });
     });
   }
 
@@ -136,21 +177,39 @@
       addListeners(main, function () {
         var mirrors = document.querySelectorAll('[data-mirror="' + name + '"]');
         mirrors.forEach(function (m) { m.value = main.value; });
-        if (hourInputs.indexOf(name) !== -1 || name === 'total_hours') recalcHours();
+        if (hourInputs.indexOf(name) !== -1) recalcHours();
       });
     }
     var mirrors = document.querySelectorAll('[data-mirror="' + name + '"]');
     mirrors.forEach(function (m) {
       addListeners(m, function () {
-        var main = document.querySelector('[name="' + name + '"]');
-        if (main) main.value = m.value;
-        if (hourInputs.indexOf(name) !== -1 || name === 'total_hours') recalcHours();
+        var target = document.querySelector('[name="' + name + '"]');
+        if (target) target.value = m.value;
+        if (hourInputs.indexOf(name) !== -1) recalcHours();
       });
     });
   }
 
-  ['theory_hours','practical_hours','total_hours','credits','semester'].forEach(wireSync);
+  ['theory_hours', 'practical_hours', 'tutorial_hours', 'total_hours', 'credits', 'semester'].forEach(wireSync);
   recalcHours();
+
+  // Force English (Latin) digits everywhere in the sheet, including any
+  // Arabic-Indic/Persian digits a user may type.
+  function toLatinDigits(v) {
+    return String(v || '')
+      .replace(/[\u0660-\u0669]/g, function (d) { return String.fromCharCode(d.charCodeAt(0) - 0x0660 + 0x30); })
+      .replace(/[\u06F0-\u06F9]/g, function (d) { return String.fromCharCode(d.charCodeAt(0) - 0x06F0 + 0x30); });
+  }
+  document.addEventListener('input', function (e) {
+    var el = e.target;
+    if (el && el.matches && el.matches('input[type="number"]')) {
+      var latin = toLatinDigits(el.value);
+      if (latin !== el.value) {
+        el.value = latin;
+        recalcHours();
+      }
+    }
+  });
 
   // Enter-key navigation: move to next empty input (or next) on Enter
   var form = document.getElementById('courseContentForm');
@@ -163,7 +222,7 @@
       if (e.key !== 'Enter') return;
       var active = document.activeElement;
       if (!form.contains(active)) return;
-      if (active.tagName === 'TEXTAREA') return; // allow newline
+      if (active.tagName === 'TEXTAREA') return;
       e.preventDefault();
       var inputs = inputsInOrder();
       var idx = inputs.indexOf(active);
@@ -186,3 +245,59 @@
   }
 
 })();
+
+window.downloadCourseSheet = function () {
+  var sheet = document.querySelector('.cc-sheet');
+  if (!sheet) return;
+
+  var clone = sheet.cloneNode(true);
+  clone.querySelectorAll('.no-print').forEach(function (el) { el.remove(); });
+  clone.querySelectorAll('input, textarea, select').forEach(function (el) {
+    if (el.type === 'hidden') { el.remove(); return; }
+    if (el.disabled || el.readOnly) {
+      el.removeAttribute('disabled');
+      el.removeAttribute('readonly');
+    }
+    var span = document.createElement('span');
+    if (el.tagName === 'SELECT') {
+      var selOpt = el.options[el.selectedIndex];
+      span.textContent = (selOpt && selOpt.textContent && selOpt.textContent.trim()) ? selOpt.textContent : '';
+    } else {
+      span.textContent = el.value || el.placeholder || '';
+    }
+    if (el.getAttribute('dir')) span.setAttribute('dir', el.getAttribute('dir'));
+    span.style.fontWeight = '600';
+    el.parentNode.replaceChild(span, el);
+  });
+
+  var sheetStyle = document.getElementById('ccSheetStyle');
+  var css = sheetStyle ? sheetStyle.textContent : '';
+
+  var codeEl = document.querySelector('.cc-sheet');
+  var courseCode = (codeEl && codeEl.getAttribute('data-course-code')) || 'course';
+  var title = 'مفردات مقرر ' + courseCode;
+
+  var html =
+    '<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">' +
+    '<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+    '<title>' + title + '</title>' +
+    '<link rel="preconnect" href="https://fonts.googleapis.com">' +
+    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
+    '<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">' +
+    '<script src="https://cdn.tailwindcss.com"><\/script>' +
+    '<style>' + css + '</style>' +
+    '</head><body class="bg-slate-100 p-4 sm:p-8">' + clone.outerHTML + '</body></html>';
+
+  var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'course-' + courseCode + '.html';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+
+  if (window.showNotification) {
+    window.showNotification('تم تجهيز ملف المقرر للتحميل', 'success', 4000);
+  }
+};

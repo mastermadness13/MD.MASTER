@@ -434,8 +434,11 @@ CREATE TABLE IF NOT EXISTS course_content_submissions (
     prerequisites TEXT DEFAULT '',
     textbooks TEXT DEFAULT '',
     notes TEXT DEFAULT '',
+    practical_content TEXT DEFAULT '',
+    practical_content_en TEXT DEFAULT '',
     study_type TEXT DEFAULT '',
     section_id TEXT DEFAULT '',
+    teacher_name TEXT DEFAULT '',
     filename TEXT DEFAULT '',
     original_filename TEXT DEFAULT '',
     file_size INTEGER DEFAULT 0,
@@ -455,7 +458,8 @@ CREATE TABLE IF NOT EXISTS course_content_curriculum (
     topic TEXT NOT NULL,
     weeks INTEGER DEFAULT 1,
     content TEXT DEFAULT '',
-    sort_order INTEGER DEFAULT 0
+    sort_order INTEGER DEFAULT 0,
+    section TEXT DEFAULT 'theoretical'
 );
 
 CREATE INDEX IF NOT EXISTS idx_course_content_submissions_teacher ON course_content_submissions(teacher_id);
@@ -463,6 +467,19 @@ CREATE INDEX IF NOT EXISTS idx_course_content_submissions_dept ON course_content
 CREATE INDEX IF NOT EXISTS idx_course_content_submissions_course ON course_content_submissions(course_id);
 CREATE INDEX IF NOT EXISTS idx_course_content_submissions_status ON course_content_submissions(status);
 CREATE INDEX IF NOT EXISTS idx_course_content_curriculum_submission ON course_content_curriculum(submission_id);
+
+CREATE TABLE IF NOT EXISTS course_content_transitions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    submission_id INTEGER NOT NULL
+        REFERENCES course_content_submissions(id) ON DELETE CASCADE,
+    from_status TEXT NOT NULL,
+    to_status TEXT NOT NULL,
+    action TEXT NOT NULL,
+    actor_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_course_content_transitions_submission ON course_content_transitions(submission_id);
 
 CREATE TABLE IF NOT EXISTS course_vocabulary (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

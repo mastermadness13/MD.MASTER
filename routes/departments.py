@@ -1,4 +1,4 @@
-﻿from flask import (Blueprint, session, request, render_template,
+from flask import (Blueprint, session, request, render_template,
                    redirect, url_for, flash)
 from utils.redirects import redirect_back
 
@@ -14,6 +14,7 @@ from services.search import build_department_search, highlight_text
 bp = Blueprint('departments', __name__, url_prefix='/departments')
 
 
+# /     /     >---- قائمة الأقسام مع بحث وترقيم (عادي / AJAX)
 @bp.route('')
 @login_required
 @permission_required('departments.view')
@@ -28,6 +29,7 @@ def departments_list():
     departments = department_service.list_departments(db)
 
     # Filter by search if applied
+    # /     /     >---- تصفية بالبحث في الأسماء إذا طُبّق
     if search and departments:
         departments = [d for d in departments if search.lower() in d['name'].lower()]
 
@@ -44,6 +46,7 @@ def departments_list():
                           search=search, user=current_user(), form={})
 
 
+# /     /     >---- إنشاء قسم: التحقق من الاسم والفرد قبل الحفظ
 @bp.route('/create', methods=['GET', 'POST'])
 @login_required
 @permission_required('departments.manage')
@@ -64,6 +67,7 @@ def departments_create():
                               search='', form=form,
                               user=current_user())
     db = get_db()
+    # /     /     >---- منع تكرار اسم القسم
     if department_service.department_exists_by_name(db, name):
         departments = department_service.list_departments(db)
         return render_template('departments/list.html', departments=departments,
@@ -76,6 +80,7 @@ def departments_create():
     return redirect(url_for('departments.departments_list'))
 
 
+# /     /     >---- حذف ناعم مع تسجيل في سجل العمليات
 @bp.route('/delete/<int:id>', methods=['POST'])
 @login_required
 @permission_required('departments.manage')
@@ -99,6 +104,7 @@ def departments_restore(id):
     return redirect_back('departments.departments_list')
 
 
+# /     /     >---- حذف نهائي مع معالجة أخطاء الارتباط بسجلات أخرى
 @bp.route('/delete-permanent/<int:id>', methods=['POST'])
 @login_required
 @permission_required('departments.manage')
@@ -116,6 +122,7 @@ def departments_delete_permanent(id):
     return redirect_back('departments.departments_list')
 
 
+# /     /     >---- حذف نهائي جماعي مع عدّ ما تم حذفه فعلياً
 @bp.route('/bulk-delete-permanent', methods=['POST'])
 @login_required
 @permission_required('departments.manage')
@@ -138,4 +145,3 @@ def departments_bulk_permanent_delete():
     else:
         flash('لا يمكن حذف الأقسام المحددة لأنها مرتبطة بسجلات أخرى.', 'error')
     return redirect_back('departments.departments_list')
-

@@ -1,4 +1,4 @@
-﻿from flask import (Blueprint, session, request, render_template,
+from flask import (Blueprint, session, request, render_template,
                    redirect, url_for, flash, jsonify, current_app, abort)
 from utils.redirects import redirect_back
 from datetime import date
@@ -13,6 +13,7 @@ from security import current_user
 from utils.format import paginate
 from services import teacher_service
 from services import course_service
+from services import hod_resolution
 from services.search import build_teacher_search, highlight_text
 from services import faculty_performance_service as fps
 
@@ -50,6 +51,7 @@ def _roles_from_position(position: str) -> set:
 
 
 _DEFAULT_ADMIN_TASKS = [
+    'عضو تدريس',
     'رئيس قسم',
     'رئيس قسم البحث والتطوير',
     'رئيس قسم الامتحانات',
@@ -98,47 +100,66 @@ def _can_hod_view_teacher(db, teacher_id) -> bool:
     ).fetchone())
 
 
-def _hod_department_available(db, department_id, exclude_teacher_id=None,
-                              exclude_user_id=None) -> bool:
-    """True when the academic department has no head yet, across both paths.
-
-    Covers teachers whose headship lives in ``teachers.hod_department_id`` and
-    direct HOD accounts stored in ``users.role`` / ``users.department_id``.
-    """
-    params_t = [department_id]
-    sql_t = ('SELECT 1 FROM teachers WHERE hod_department_id = ? '
-             'AND deleted_at IS NULL')
-    if exclude_teacher_id is not None:
-        sql_t += ' AND id != ?'
-        params_t.append(exclude_teacher_id)
-    if db.execute(sql_t, params_t).fetchone():
-        return False
-    params_u = ['head_of_department', department_id]
-    sql_u = ('SELECT 1 FROM users WHERE role = ? AND department_id = ?')
-    if exclude_user_id is not None:
-        sql_u += ' AND id != ?'
-        params_u.append(exclude_user_id)
-    if db.execute(sql_u, params_u).fetchone():
-        return False
-    return True
+def _headship_occupant(db, department_id, exclude_teacher_id=None,
+                       exclude_user_id=None):
+    """The current head of a department, unless it is the member being edited."""
+    if not department_id:
+        return None
+    hod = hod_resolution.get_current_hod(db, department_id)
+    if not hod:
+        return None
+    if exclude_teacher_id is not None and hod.get('teacher_id') == exclude_teacher_id:
+        return None
+    if exclude_user_id is not None and hod.get('user_id') == exclude_user_id:
+        return None
+    return hod
 
 
 def _validate_headship(db, hod_department_id, exclude_teacher_id=None,
-                       exclude_user_id=None):
-    """Validate the headed department chosen for a 'رئيس قسم' task."""
+                       exclude_user_id=None, confirmed=False):
+    """Validate the headed department chosen for a 'رئيس قسم' task.
+
+    Returns ``(error, occupant_name)``.  When the department already has a
+    head (other than the current member) and ``confirmed`` is False, an
+    actionable message asks for a confirmation instead of hard-blocking.
+    """
     if not hod_department_id:
-        return 'يرجى اختيار القسم العلمي الذي يرأسه'
+        return 'يرجى اختيار القسم العلمي الذي يرأسه', None
     row = db.execute(
         'SELECT type FROM departments WHERE id = ?', (hod_department_id,)
     ).fetchone()
     if not row or row['type'] != 'academic':
-        return 'القسم المرؤوس يجب أن يكون قسماً كلياً'
-    if not _hod_department_available(
-            db, hod_department_id,
-            exclude_teacher_id=exclude_teacher_id,
-            exclude_user_id=exclude_user_id):
-        return 'هذا القسم لديه رئيس قسم بالفعل'
-    return None
+        return 'القسم المرؤوس يجب أن يكون قسماً كلياً', None
+    occupant = _headship_occupant(db, hod_department_id,
+                                  exclude_teacher_id=exclude_teacher_id,
+                                  exclude_user_id=exclude_user_id)
+    if occupant:
+        if not confirmed:
+            return (f'القسم يترأسه حالياً: {occupant["name"]} — '
+                    f'فعّل خيار "تأكيد استبدال الرئيس" للمتابعة', occupant['name'])
+        return None, occupant['name']
+    return None, None
+
+
+def _clear_previous_head(db, department_id, exclude_teacher_id=None):
+    """Release the department from its previous head(s) during a replacement.
+
+    Deliberately leaves the change uncommitted: it is committed together with
+    the teacher create/update so a later validation failure never leaves the
+    department without a head.
+    """
+    if exclude_teacher_id is not None:
+        db.execute(
+            'UPDATE teachers SET hod_department_id = NULL '
+            'WHERE hod_department_id = ? AND deleted_at IS NULL AND id != ?',
+            (department_id, exclude_teacher_id),
+        )
+    else:
+        db.execute(
+            'UPDATE teachers SET hod_department_id = NULL '
+            'WHERE hod_department_id = ? AND deleted_at IS NULL',
+            (department_id,),
+        )
 
 
 def _store_teacher_photo(teacher_id: int, file_storage) -> str:
@@ -350,6 +371,8 @@ def teachers_create():
     db = get_db()
     departments, qualifications, ranks, classifications, _courses, specializations = teacher_service.get_form_lookups(db)
     admin_tasks = _admin_task_names(db)
+    department_hods = hod_resolution.department_hod_map(db)
+    confirmed_replace = request.form.get('confirm_replace_hod') == '1' if request.method == 'POST' else False
     if request.method == 'POST':
         name = request.form.get('name', '').strip()
         department_ids = [_safe_fk(v) for v in request.form.getlist('department_ids[]') if _safe_fk(v)]
@@ -389,30 +412,39 @@ def teachers_create():
                                   departments=departments, qualifications=qualifications,
                                   ranks=ranks, classifications=classifications,
                                   specializations=specializations,
+                                  department_hods=department_hods,
+                                  confirm_replace=confirmed_replace,
 form=form, form_error='الاسم مطلوب',
                                    grantable_roles=_GRANTABLE_ROLES,
                                    admin_tasks=admin_tasks,
                                    user=current_user())
         if 'head_of_department' in effective_roles:
-            headship_error = _validate_headship(
+            headship_error, _conflict_name = _validate_headship(
                 db, hod_department_id,
                 exclude_user_id=session.get('user_id'),
+                confirmed=confirmed_replace,
             )
             if headship_error:
                 return render_template('teachers/create.html',
                                       departments=departments, qualifications=qualifications,
                                       ranks=ranks, classifications=classifications,
                                       specializations=specializations,
+                                      department_hods=department_hods,
+                                      confirm_replace=confirmed_replace,
 form=form, form_error=headship_error,
                                        grantable_roles=_GRANTABLE_ROLES,
                                        admin_tasks=admin_tasks,
                                        user=current_user())
+            if confirmed_replace:
+                _clear_previous_head(db, hod_department_id)
         spec_error = _validate_specialization(db, form, department_ids)
         if spec_error:
             return render_template('teachers/create.html',
                                   departments=departments, qualifications=qualifications,
                                   ranks=ranks, classifications=classifications,
                                   specializations=specializations,
+                                  department_hods=department_hods,
+                                  confirm_replace=confirmed_replace,
 form=form, form_error=spec_error,
                                    grantable_roles=_GRANTABLE_ROLES,
                                    admin_tasks=admin_tasks,
@@ -425,6 +457,8 @@ form=form, form_error=spec_error,
                                   departments=departments, qualifications=qualifications,
                                   ranks=ranks, classifications=classifications,
                                   specializations=specializations,
+                                  department_hods=department_hods,
+                                  confirm_replace=confirmed_replace,
                                   form=form, form_error=('الرقم الكلية مستخدم مسبقاً' if 'academic_number' in str(exc)
 else str(exc)),
                                    grantable_roles=_GRANTABLE_ROLES,
@@ -442,6 +476,7 @@ else str(exc)),
                           departments=departments, qualifications=qualifications,
                           ranks=ranks, classifications=classifications,
                           specializations=specializations,
+                          department_hods=department_hods,
 form={}, form_error=None,
                            grantable_roles=_GRANTABLE_ROLES,
                            admin_tasks=admin_tasks,
@@ -460,6 +495,8 @@ def teachers_edit(id):
         return redirect(url_for('teachers.teachers_list'))
     departments, qualifications, ranks, classifications, _courses, specializations = teacher_service.get_form_lookups(db)
     admin_tasks = _admin_task_names(db)
+    department_hods = hod_resolution.department_hod_map(db)
+    confirmed_replace = request.form.get('confirm_replace_hod') == '1' if request.method == 'POST' else False
     teacher_dept_rows = db.execute(
         'SELECT department_id FROM teacher_departments WHERE teacher_id = ?', (id,)
     ).fetchall()
@@ -530,6 +567,8 @@ def teachers_edit(id):
                                   ranks=ranks, classifications=classifications,
                                   specializations=specializations,
                                   teacher_course_ids=[],
+                                  department_hods=department_hods,
+                                  confirm_replace=confirmed_replace,
 form_error=photo_error,
                                    grantable_roles=_GRANTABLE_ROLES,
                                    extra_roles=form.get('extra_roles', []),
@@ -547,6 +586,8 @@ form_error=photo_error,
                                   ranks=ranks, classifications=classifications,
                                   specializations=specializations,
                                   teacher_course_ids=[],
+                                  department_hods=department_hods,
+                                  confirm_replace=confirmed_replace,
 form_error='الاسم مطلوب',
                                    grantable_roles=_GRANTABLE_ROLES,
                                    extra_roles=form.get('extra_roles', []),
@@ -556,10 +597,11 @@ form_error='الاسم مطلوب',
                                    admin_tasks=admin_tasks,
                                    user=current_user())
         if 'head_of_department' in effective_roles:
-            headship_error = _validate_headship(
+            headship_error, _conflict_name = _validate_headship(
                 db, hod_department_id,
                 exclude_teacher_id=id,
                 exclude_user_id=session.get('user_id'),
+                confirmed=confirmed_replace,
             )
             if headship_error:
                 return render_template('teachers/edit.html',
@@ -570,6 +612,8 @@ form_error='الاسم مطلوب',
                                       ranks=ranks, classifications=classifications,
                                       specializations=specializations,
                                       teacher_course_ids=[],
+                                      department_hods=department_hods,
+                                      confirm_replace=confirmed_replace,
 form_error=headship_error,
                                        grantable_roles=_GRANTABLE_ROLES,
                                        extra_roles=form.get('extra_roles', []),
@@ -578,6 +622,8 @@ form_error=headship_error,
                                        assignment_date=assignment_date,
                                        admin_tasks=admin_tasks,
                                        user=current_user())
+            if confirmed_replace:
+                _clear_previous_head(db, hod_department_id, exclude_teacher_id=id)
         spec_error = _validate_specialization(db, form, department_ids)
         if spec_error:
             return render_template('teachers/edit.html',
@@ -588,6 +634,8 @@ form_error=headship_error,
                                   ranks=ranks, classifications=classifications,
                                   specializations=specializations,
                                   teacher_course_ids=[],
+                                  department_hods=department_hods,
+                                  confirm_replace=confirmed_replace,
 form_error=spec_error,
                                    grantable_roles=_GRANTABLE_ROLES,
                                    extra_roles=form.get('extra_roles', []),
@@ -613,6 +661,8 @@ form_error=spec_error,
                                           ranks=ranks, classifications=classifications,
                                           specializations=specializations,
                                           teacher_course_ids=[],
+                                          department_hods=department_hods,
+                                          confirm_replace=confirmed_replace,
 form_error='الرقم الكلية موجود مسبقاً لعضو آخر',
                                            grantable_roles=_GRANTABLE_ROLES,
                                            extra_roles=form.get('extra_roles', []),
@@ -724,6 +774,8 @@ form_error='الرقم الكلية موجود مسبقاً لعضو آخر',
                           departments=departments, qualifications=qualifications,
                           ranks=ranks, classifications=classifications,
                           specializations=specializations,
+                          department_hods=department_hods,
+                          confirm_replace=False,
                           teacher_course_ids=teacher_course_ids,
                           grantable_roles=_GRANTABLE_ROLES,
                           extra_roles=extra_roles,
@@ -897,12 +949,7 @@ def teacher_detail(id):
         if sems and sems[0].get('number'):
             perf_semester = sems[0]['number']
     if not perf_year:
-        active = db.execute(
-            "SELECT code FROM semesters WHERE is_active = 1 "
-            "AND deleted_at IS NULL ORDER BY id LIMIT 1",
-        ).fetchone()
-        if active:
-            perf_year = active['code']
+        perf_year = fps.get_active_semester(db)['academic_year']
 
     # Soft account state + extra roles + linked departments for the detail cards.
     active_row = db.execute(

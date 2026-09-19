@@ -4,22 +4,25 @@ from typing import Any, Dict, List, Optional
 
 from database.repositories.base_repository import BaseRepository
 
-
+# /     /     >---- مستودع المقررات الدراسية
 class CourseRepository(BaseRepository):
     table = 'courses'
 
+    # /     /     >---- نجيب مقرر بالمعرف
     def find_by_id(self, course_id: int) -> Optional[Dict[str, Any]]:
         row = self.db.execute(
             'SELECT * FROM courses WHERE id = ?', (course_id,)
         ).fetchone()
         return dict(row) if row else None
 
+    # /     /     >---- نجيب اسم المقرر فقط
     def find_by_name(self, course_id: int) -> Optional[str]:
         row = self.db.execute(
             'SELECT name FROM courses WHERE id = ?', (course_id,)
         ).fetchone()
         return row['name'] if row else None
 
+    # /     /     >---- نجيب المقررات مع الشروط والترقيم
     def list_courses(self, where_clause: str, params: list,
                      dept_filter_clause: str = '',
                      page: int = 1, per_page: int = 20) -> tuple:
@@ -29,11 +32,13 @@ class CourseRepository(BaseRepository):
         )
         return self.paginate(base, params, page, per_page)
 
+    # /     /     >---- الأقسام المظهرة
     def list_visible_departments(self) -> List[Dict[str, Any]]:
         return [dict(r) for r in self.db.execute(
             'SELECT * FROM departments WHERE hidden = 0 AND deleted_at IS NULL ORDER BY name'
         ).fetchall()]
 
+    # /     /     >---- نصنع مقرر جديد ونرجع معرّفه
     def create(self, data: Dict[str, Any]) -> int:
         self.db.execute(
             'INSERT INTO courses (code, name, theoretical_hours, practical_hours, '
@@ -45,6 +50,7 @@ class CourseRepository(BaseRepository):
         self.db.commit()
         return self.db.execute('SELECT last_insert_rowid()').fetchone()[0]
 
+    # /     /     >---- نحدّث بيانات المقرر
     def update(self, course_id: int, data: Dict[str, Any]) -> None:
         self.db.execute(
             'UPDATE courses SET code=?, name=?, theoretical_hours=?, '
@@ -56,17 +62,20 @@ class CourseRepository(BaseRepository):
         )
         self.db.commit()
 
+    # /     /     >---- تفاصيل المقرر كاملة: المقرر + الأقسام + المتطلبات
     def get_detail(self, course_id: int) -> Optional[Dict[str, Any]]:
         c = self.db.execute(
             'SELECT * FROM courses WHERE id = ?', (course_id,)
         ).fetchone()
         if not c:
             return None
+        # /     /     >---- الأقسام المرتبطة بالمقرر
         departments = self.db.execute(
             'SELECT d.id, d.name FROM course_departments cd '
             'JOIN departments d ON cd.department_id = d.id '
             'WHERE cd.course_id = ?', (course_id,)
         ).fetchall()
+        # /     /     >---- المتطلبات السابقة للمقرر
         prerequisites = self.db.execute(
             'SELECT p.id, p.code, p.name FROM course_prerequisites cp '
             'JOIN courses p ON cp.prerequisite_id = p.id '
@@ -78,16 +87,20 @@ class CourseRepository(BaseRepository):
             'prerequisites': [dict(p) for p in prerequisites],
         }
 
+    # /     /     >---- بيانات نموذج التعديل (الأقسام، المقررات، المتطلبات الحالية)
     def get_edit_form_data(self, course_id: int) -> Dict[str, Any]:
         departments = self.list_visible_departments()
+        # /     /     >---- كل المقررات إلا الحالي (لاختيار المتطلبات)
         courses = [dict(r) for r in self.db.execute(
             'SELECT id, code, name FROM courses WHERE deleted_at IS NULL AND id != ? ORDER BY name',
             (course_id,),
         ).fetchall()]
+        # /     /     >---- معرفات المتطلبات الحالية
         prereq_ids = [r['prerequisite_id'] for r in self.db.execute(
             'SELECT prerequisite_id FROM course_prerequisites WHERE course_id = ?',
             (course_id,),
         ).fetchall()]
+        # /     /     >---- معرفات الأقسام المرتبطة حالياً
         current_dept_ids = [r['department_id'] for r in self.db.execute(
             'SELECT department_id FROM course_departments WHERE course_id = ?',
             (course_id,),
@@ -99,6 +112,7 @@ class CourseRepository(BaseRepository):
             'current_dept_ids': current_dept_ids,
         }
 
+    # /     /     >---- خريطة المقرر ← أسماء أقسامه
     def get_dept_mapping(self, course_ids: list) -> Dict[int, List[str]]:
         mapping: Dict[int, List[str]] = {}
         if not course_ids:
@@ -114,6 +128,7 @@ class CourseRepository(BaseRepository):
             mapping.setdefault(r['course_id'], []).append(r['name'])
         return mapping
 
+    # /     /     >---- خريطة المقرر ← معرفات أقسامه
     def get_dept_id_mapping(self, course_ids: list) -> Dict[int, List[int]]:
         mapping: Dict[int, List[int]] = {}
         if not course_ids:
@@ -128,6 +143,7 @@ class CourseRepository(BaseRepository):
             mapping.setdefault(r['course_id'], []).append(r['department_id'])
         return mapping
 
+    # /     /     >---- خريطة المقرر ← {القسم: الفصل الدراسي}
     def get_dept_placement_mapping(self, course_ids: list) -> Dict[int, Dict[int, int]]:
         """Map course_id -> {department_id: semester} for per-department placement."""
         mapping: Dict[int, Dict[int, int]] = {}
@@ -145,6 +161,7 @@ class CourseRepository(BaseRepository):
             )
         return mapping
 
+    # /     /     >---- نحدد أقسام المقرر مع الفصل الدراسي لكل قسم
     def set_departments(self, course_id: int, placements: list,
                         default_semester: int = 1) -> None:
         """Set the course's department placements (per-department semester).
@@ -154,12 +171,13 @@ class CourseRepository(BaseRepository):
         When a department is passed without a semester, ``default_semester`` is
         used (for API/create callers that only send department IDs).
         """
+        # /     /     >---- نجيب فصل المقرر نفسه
         course_sem = self.db.execute(
             'SELECT semester FROM courses WHERE id = ?', (course_id,)
         ).fetchone()
         course_sem = course_sem['semester'] if course_sem else None
 
-        # Normalise to a list of (dept_id, semester) pairs.
+        # /     /     >---- نوّحد الشكل إلى أزواج (dept_id, semester)
         items = []
         for p in placements:
             if isinstance(p, dict):
@@ -170,10 +188,12 @@ class CourseRepository(BaseRepository):
             else:
                 items.append((int(p), None))
 
+        # /     /     >---- نمسح القديم ونستبدله بالجديد
         self.db.execute(
             'DELETE FROM course_departments WHERE course_id = ?', (course_id,)
         )
         for dept_id, sem in items:
+            # /     /     >---- إذا ما فيش فصل نستخدم فصل المقرر أو الافتراضي
             if sem is None:
                 sem = course_sem if course_sem is not None else default_semester
             sem = int(sem)
@@ -184,9 +204,7 @@ class CourseRepository(BaseRepository):
                 'VALUES (?, ?, ?)',
                 (course_id, dept_id, sem),
             )
-        # Keep the owner department (courses.department_id) in sync: when the
-        # current owner is no longer among the placements it was unchecked
-        # from the course, so it must not linger in that department's plan.
+        # /     /     >---- نزامن مالك المقرر: إذا المالك القديم ما عدش داخل التوزيع نتغير
         owner_row = self.db.execute(
             'SELECT department_id FROM courses WHERE id = ?', (course_id,)
         ).fetchone()
@@ -201,7 +219,9 @@ class CourseRepository(BaseRepository):
                 )
         self.db.commit()
 
+    # /     /     >---- نحدد المتطلبات السابقة للمقرر
     def set_prerequisites(self, course_id: int, prerequisite_id: int = None) -> None:
+        # /     /     >---- نمسح القديم
         self.db.execute(
             'DELETE FROM course_prerequisites WHERE course_id = ?', (course_id,)
         )
@@ -212,6 +232,7 @@ class CourseRepository(BaseRepository):
             )
         self.db.commit()
 
+    # /     /     >---- بيانات نموذج الإنشاء (الأقسام والمقررات للتخصصات)
     def get_create_form_data(self) -> Dict[str, Any]:
         departments = self.list_visible_departments()
         courses = [dict(r) for r in self.db.execute(
@@ -220,4 +241,3 @@ class CourseRepository(BaseRepository):
         course_ids = [c['id'] for c in courses]
         course_dept_map = self.get_dept_id_mapping(course_ids) if course_ids else {}
         return {'departments': departments, 'courses': courses, 'course_dept_map': course_dept_map}
-

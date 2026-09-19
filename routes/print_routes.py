@@ -1,14 +1,15 @@
-from flask import Blueprint, request, session, render_template
+from flask import Blueprint, request, session, render_template, url_for
 
 from flask_db import get_db
 from security import login_required, permission_required
 from security import current_user
-from services import timetable_service, course_service, department_service, exam_service
+from services import timetable_service, course_service, department_service, exam_service, public_service
 from services.search import build_course_search, build_teacher_search, build_room_search
 
 bp = Blueprint('print_routes', __name__, url_prefix='/print')
 
 
+# /     /     >---- طباعة الجدول العام
 @bp.route('/timetable')
 @login_required
 @permission_required('timetable.view')
@@ -20,10 +21,37 @@ def print_timetable():
     selected_section = None
     db = get_db()
     data = timetable_service.get_timetable_data(db, role, user_dept, selected_dept, selected_semester, selected_section)
+    forms, vocab, syllabi_files = public_service.get_course_content_files(db)
+    content_maps = {
+        'form': {
+            cid: {'id': item['id'], 'url': url_for('public_library.course_file', file_id=item['id'])}
+            for cid, item in forms.items()
+        },
+        'vocab': {
+            cid: {
+                'id': item['id'],
+                'originalFilename': item['original_filename'],
+                'url': url_for('public_library.course_file', file_id=item['id']),
+            }
+            for cid, item in vocab.items()
+        },
+        'syllabus': {},
+    }
+    for key, item in syllabi_files.items():
+        entry = {
+            'id': item['id'],
+            'url': url_for('public_library.course_file', file_id=item['id']),
+            'teacher_id': item.get('teacher_id'),
+            'course_id': item['course_id'],
+        }
+        content_maps['syllabus'][key] = entry
+        if item.get('teacher_id') is None:
+            content_maps['syllabus']['*:{}'.format(item['course_id'])] = entry
     return render_template('timetable/list.html', days_list=timetable_service.DAYS,
-                           user=current_user(), **data)
+                           user=current_user(), content_maps=content_maps, **data)
 
 
+# /     /     >---- طباعة قائمة المقررات مع الأقسام المرتبطة
 @bp.route('/courses')
 @login_required
 @permission_required('reports.view')
@@ -41,6 +69,7 @@ def print_courses():
                            user=current_user())
 
 
+# /     /     >---- طباعة قائمة الأقسام
 @bp.route('/lists/departments')
 @login_required
 @permission_required('departments.view')
@@ -51,6 +80,7 @@ def print_list_departments():
                            user=current_user())
 
 
+# /     /     >---- طباعة قائمة الأساتذة
 @bp.route('/lists/teachers')
 @login_required
 @permission_required('teachers.view')
@@ -62,6 +92,7 @@ def print_list_teachers():
                            user=current_user())
 
 
+# /     /     >---- طباعة قائمة القاعات
 @bp.route('/lists/rooms')
 @login_required
 @permission_required('rooms.view')
@@ -73,6 +104,7 @@ def print_list_rooms():
                            user=current_user())
 
 
+# /     /     >---- طباعة جدول امتحانات الأقسام (لرئيس القسم قسمه فقط)
 @bp.route('/exams/schedule')
 @login_required
 @permission_required('exams.view')
@@ -88,6 +120,7 @@ def print_exams_schedule():
                            user=current_user())
 
 
+# /     /     >---- طباعة جدول قسم محدد حسب النسخة النشطة
 @bp.route('/timetables/department')
 @login_required
 @permission_required('timetable.view')
@@ -101,6 +134,7 @@ def print_timetable_department():
                            user=current_user())
 
 
+# /     /     >---- طباعة جدول أستاذ أسبوعياً مع ألوان حسب القسم
 @bp.route('/timetables/teacher')
 @login_required
 @permission_required('timetable.view')
@@ -121,6 +155,7 @@ def print_timetable_teacher():
     days_order = list(timetable_service.DAYS)
     weekly = timetable_service.build_teacher_weekly(db, teacher['id'], days_order) if teacher else {}
     all_dept_names = sorted({e['department_name'] for day_entries in weekly.values() for e in day_entries if e.get('department_name')})
+    # /     /     >---- لوحة ألوان لأسماء الأقسام المختلفة
     palette = [
         '#166534', '#0e7490', '#b45309', '#7c3aed',
         '#be123c', '#1d4ed8', '#15803d', '#c2410c',
@@ -132,6 +167,7 @@ def print_timetable_teacher():
                            dept_colors=dept_colors)
 
 
+# /     /     >---- طباعة جميع جداول الأقسام في عرض واحد
 @bp.route('/timetables/all')
 @login_required
 @permission_required('timetable.view')

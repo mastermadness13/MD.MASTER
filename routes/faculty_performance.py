@@ -97,17 +97,52 @@ def preview(teacher_id):
         flash('العضو غير موجود', 'error')
         return redirect(url_for('faculty_performance.reports_select'))
 
+    _leaves_out_of_semester_warning(
+        db, data, teacher_id, academic_year, semester)
+    select_data = fps.get_select_data(db)
+
     return render_template(
         'faculty_performance/preview.html',
         user=current_user(),
         form_data=data,
-        research_types=fps.get_select_data(db)['research_types'],
-        admin_task_types=fps.get_select_data(db)['admin_task_types'],
-        admin_task_hours=fps.get_select_data(db)['admin_task_hours'],
+        research_types=select_data['research_types'],
+        admin_task_types=select_data['admin_task_types'],
+        admin_task_hours=select_data['admin_task_hours'],
+        leave_types=select_data['leave_types'],
     )
 
 
 # ── Edit Pages ───────────────────────────────────────────────────
+
+def _leaves_out_of_semester_warning(db, data, teacher_id, academic_year, semester):
+    """Annotate preview warnings when saved leaves fall outside the viewed term.
+
+    Leaves are stored per teacher (not per term); the official form filters
+    them by the semester window at read time. So a saved leave whose dates are
+    outside the displayed term shows a "hidden edit" symptom — this warning
+    tells the user those leaves exist but are not part of this term's form.
+    """
+    repo = fps._repo(db)
+    all_leaves = repo.get_leaves(teacher_id, academic_year, semester)
+    entered = sum(
+        1 for lv in all_leaves
+        if lv.get('leave_type') and lv.get('start_date'))
+    visible = len(data.get('leaves') or [])
+    hidden = entered - visible
+    if hidden > 0:
+        warnings = list(data.get('warnings') or [])
+        warnings.insert(0, {
+            'type': 'leaves_out_of_semester',
+            'severity': 'info',
+            'message': (
+                f'توجد {hidden} إجازة مسجلة خارج فترة الفصل المعروض '
+                f'({fps.academic_year_label(academic_year)} — '
+                f'{fps.SEMESTER_LABELS.get(semester, "")}). '
+                'الإجازات محفوظة لكنها لا تظهر في هذا الكشف.'
+            ),
+        })
+        data['warnings'] = warnings
+
 
 def _get_form_context(db, teacher_id):
     """Shared context for edit pages."""
@@ -241,62 +276,12 @@ def edit_assignments(teacher_id):
     )
 
 
-@bp.route('/edit-leaves/<int:teacher_id>', methods=['GET', 'POST'])
+@bp.route('/edit-leaves/<int:teacher_id>')
 @login_required
 @permission_required('faculty_performance.edit_leaves')
-@csrf_required
 def edit_leaves(teacher_id):
-    """Edit leaves for a teacher."""
-    db = get_db()
-    _check_teacher_access(db, teacher_id)
-    ctx = _get_form_context(db, teacher_id)
-    if not ctx:
-        flash('العضو غير موجود', 'error')
-        return redirect(url_for('faculty_performance.reports_select'))
-
-    academic_year = request.args.get('year') or request.form.get('academic_year', '')
-    semester = request.args.get('semester', 1, type=int) or request.form.get('semester', 1, type=int)
-
-    if request.method == 'POST':
-        leaves = []
-        types = request.form.getlist('leave_type[]')
-        d_numbers = request.form.getlist('decision_number[]')
-        d_authorities = request.form.getlist('decision_authority[]')
-        d_dates = request.form.getlist('decision_date[]')
-        s_dates = request.form.getlist('start_date[]')
-        e_dates = request.form.getlist('end_date[]')
-        hours_list = request.form.getlist('hours[]')
-        notes_list = request.form.getlist('notes[]')
-        for i, lt in enumerate(types):
-            leaves.append({
-                'leave_type': lt,
-                'decision_number': d_numbers[i] if i < len(d_numbers) else '',
-                'decision_authority': d_authorities[i] if i < len(d_authorities) else '',
-                'decision_date': d_dates[i] if i < len(d_dates) else '',
-                'start_date': s_dates[i] if i < len(s_dates) else '',
-                'end_date': e_dates[i] if i < len(e_dates) else None,
-                'hours': hours_list[i] if i < len(hours_list) else 0,
-                'notes': notes_list[i] if i < len(notes_list) else '',
-            })
-        fps.save_leaves_data(db, teacher_id, leaves)
-        flash('تم حفظ الإجازات بنجاح', 'success')
-        return redirect(url_for(
-            'faculty_performance.preview',
-            teacher_id=teacher_id, year=academic_year, semester=semester,
-        ))
-
-    repo = fps._repo(db)
-    leaves = repo.get_leaves(teacher_id, academic_year, semester)
-
-    return render_template(
-        'faculty_performance/edit_leaves.html',
-        user=current_user(),
-        teacher=ctx,
-        leaves=leaves,
-        leave_types=fps.get_select_data(db)['leave_types'],
-        academic_year=academic_year,
-        semester=semester,
-    )
+    """Legacy leaves editor — superseded by faculty_performance.leaves_manage."""
+    return redirect(url_for('faculty_performance.leaves_manage', teacher_id=teacher_id))
 
 
 # ── Print Page ───────────────────────────────────────────────────
@@ -397,6 +382,42 @@ def member_reports():
     )
 
 
+@bp.route('/performance-rate-list')
+@login_required
+@permission_required('faculty_performance.view_summary')
+def performance_rate_list():
+    """قائمة معدل الأداء — ملخص الساعات لكل الأعضاء (للسوبر أدمن).
+
+    Consumed by the super-admin sidebar item. Shows per-member teaching /
+    research / admin / leaves totals (the same numbers as the official
+    performance form) plus the sum across all members.
+    """
+    db = get_db()
+    academic_year = request.args.get('year', '')
+    semester = request.args.get('semester', type=int)
+
+    active = fps.get_active_semester(db)
+    if not academic_year:
+        academic_year = active.get('academic_year', '')
+    if semester is None:
+        semester = active.get('semester', 1)
+
+    rows, totals = fps.list_members_performance_summary(
+        db, academic_year, semester)
+
+    return render_template(
+        'faculty_performance/performance_rate_list.html',
+        user=current_user(),
+        rows=rows,
+        totals=totals,
+        academic_year=academic_year,
+        semester=semester,
+        semester_label=fps.SEMESTER_LABELS.get(semester, ''),
+        academic_year_label=fps.academic_year_label(academic_year),
+        academic_years=fps.get_select_data(db)['academic_years'],
+    )
+
+
 @bp.route('/leaves')
 @login_required
 @permission_required('faculty_performance.edit_leaves')
@@ -491,3 +512,294 @@ def api_teachers_by_dept():
     db = get_db()
     teachers = fps.get_teachers_by_dept(db, dept_id)
     return jsonify(teachers)
+
+
+# ── Leaves AJAX (in-place modal — no redirect after save) ──────
+
+@bp.route('/api/teachers/<int:teacher_id>/leaves')
+@login_required
+@permission_required('faculty_performance.view')
+def api_teacher_leaves(teacher_id):
+    """Return one teacher's leaves for the in-page leave editor modal."""
+    db = get_db()
+    _check_teacher_access(db, teacher_id)
+    repo = fps._repo(db)
+    teacher = repo.get_teacher_profile(teacher_id)
+    if not teacher:
+        return jsonify({'ok': False, 'message': 'العضو غير موجود'}), 404
+    return jsonify({
+        'ok': True,
+        'teacher_id': teacher_id,
+        'teacher_name': teacher.get('name', ''),
+        'dept_name': teacher.get('dept_name', '') or '',
+        'leave_types': fps.get_select_data(db)['leave_types'],
+        'leaves': repo.get_leaves(teacher_id, '', 1),
+    })
+
+
+@bp.route('/api/teachers/<int:teacher_id>/leaves', methods=['POST'])
+@login_required
+@permission_required('faculty_performance.edit_leaves')
+@csrf_required
+def api_teacher_leaves_save(teacher_id):
+    """Save leaves from the in-page modal — JSON only, never redirects."""
+    db = get_db()
+    _check_teacher_access(db, teacher_id)
+    payload = request.get_json(silent=True) or {}
+    cleaned = []
+    for lv in payload.get('leaves') or []:
+        leave_type = (lv.get('leave_type') or '').strip()
+        start_date = lv.get('start_date') or ''
+        if not leave_type or not start_date:
+            continue
+        cleaned.append({
+            'leave_type': leave_type,
+            'decision_number': lv.get('decision_number') or '',
+            'decision_authority': lv.get('decision_authority') or '',
+            'decision_date': lv.get('decision_date') or '',
+            'start_date': start_date,
+            'end_date': lv.get('end_date') or None,
+            'hours': int(lv.get('hours') or 0),
+            'notes': lv.get('notes') or '',
+        })
+    fps.save_leaves_data(db, teacher_id, cleaned)
+    return jsonify({
+        'ok': True,
+        'success': True,
+        'teacher_id': teacher_id,
+        'leaves_count': len(cleaned),
+        'total_hours': sum(int(lv['hours']) for lv in cleaned),
+    })
+
+
+@bp.route('/api/teachers/<int:teacher_id>/leaves-section')
+@login_required
+@permission_required('faculty_performance.view')
+def api_teacher_leaves_section(teacher_id):
+    """Rendered leaves section + warnings for live in-page refresh (preview)."""
+    db = get_db()
+    _check_teacher_access(db, teacher_id)
+    academic_year = request.args.get('year', '')
+    semester = request.args.get('semester', 1, type=int)
+    department_id = request.args.get('dept', type=int)
+    if not academic_year:
+        active = fps.get_active_semester(db)
+        academic_year = active.get('academic_year', '')
+        if semester is None:
+            semester = active.get('semester', 1)
+    if semester is None:
+        semester = 1
+
+    data = fps.get_performance_form_data(
+        db, teacher_id, academic_year, semester,
+        department_id=department_id)
+    if not data:
+        return jsonify({'ok': False, 'message': 'العضو غير موجود'}), 404
+    _leaves_out_of_semester_warning(
+        db, data, teacher_id, academic_year, semester)
+    return jsonify({
+        'ok': True,
+        'teacher_id': teacher_id,
+        'leaves_html': render_template(
+            'faculty_performance/_leaves_section.html', fd=data),
+        'warnings_html': render_template(
+            'faculty_performance/_preview_warnings.html',
+            warnings=data.get('warnings') or []),
+    })
+
+
+# ── Research hours AJAX (in-place modal — no redirect after save) ──
+
+def _resolve_term(db, year, semester):
+    """Return (academic_year, semester), defaulting to the active term."""
+    if not year:
+        active = fps.get_active_semester(db)
+        return active.get('academic_year', ''), active.get('semester', 1) if semester is None else semester
+    return year, semester if semester is not None else 1
+
+
+@bp.route('/api/teachers/<int:teacher_id>/research')
+@login_required
+@permission_required('faculty_performance.view')
+def api_teacher_research(teacher_id):
+    """Return one teacher's research activities for the in-page editor modal."""
+    db = get_db()
+    _check_teacher_access(db, teacher_id)
+    repo = fps._repo(db)
+    teacher = repo.get_teacher_profile(teacher_id)
+    if not teacher:
+        return jsonify({'ok': False, 'message': 'العضو غير موجود'}), 404
+    academic_year, semester = _resolve_term(
+        db, request.args.get('year', ''), request.args.get('semester', type=int))
+
+    research = repo.get_research_activities(teacher_id, academic_year, semester)
+    rules_raw = repo.get_workload_rules(
+        teacher.get('rank_id', 0) or 0, academic_year
+    ) if teacher.get('rank_id') else []
+    rules = {r['category']: r for r in rules_raw}
+    max_research = rules.get('research', {}).get('max_hours', 10)
+
+    return jsonify({
+        'ok': True,
+        'teacher_id': teacher_id,
+        'teacher_name': teacher.get('name', ''),
+        'dept_name': teacher.get('dept_name', '') or '',
+        'academic_year': academic_year,
+        'semester': semester,
+        'research_types': fps.get_select_data(db)['research_types'],
+        'max_research': max_research,
+        'research': research,
+    })
+
+
+@bp.route('/api/teachers/<int:teacher_id>/research', methods=['POST'])
+@login_required
+@permission_required('faculty_performance.edit_research')
+@csrf_required
+def api_teacher_research_save(teacher_id):
+    """Save research activities from the in-page modal — JSON only, never redirects."""
+    db = get_db()
+    _check_teacher_access(db, teacher_id)
+    payload = request.get_json(silent=True) or {}
+    academic_year, semester = _resolve_term(
+        db, payload.get('academic_year') or '', int(payload.get('semester') or 1))
+
+    activities = []
+    for act in payload.get('activities') or []:
+        atype = (act.get('activity_type') or '').strip()
+        if not atype:
+            continue
+        raw = str(act.get('hours') or '')
+        hours = int(raw) if str(raw).isdigit() else 0
+        activities.append({
+            'activity_type': atype,
+            'hours': hours,
+            'notes': (act.get('notes') or '').strip(),
+        })
+    fps.save_research_data(db, teacher_id, academic_year, semester, activities)
+    return jsonify({
+        'ok': True,
+        'success': True,
+        'teacher_id': teacher_id,
+        'total_hours': sum(int(a['hours']) for a in activities),
+    })
+
+
+@bp.route('/api/teachers/<int:teacher_id>/research-section')
+@login_required
+@permission_required('faculty_performance.view')
+def api_teacher_research_section(teacher_id):
+    """Rendered research section + grand total for live in-page refresh (preview)."""
+    db = get_db()
+    _check_teacher_access(db, teacher_id)
+    academic_year, semester = _resolve_term(
+        db, request.args.get('year', ''), request.args.get('semester', type=int))
+    department_id = request.args.get('dept', type=int)
+
+    data = fps.get_performance_form_data(
+        db, teacher_id, academic_year, semester, department_id=department_id)
+    if not data:
+        return jsonify({'ok': False, 'message': 'العضو غير موجود'}), 404
+    return jsonify({
+        'ok': True,
+        'teacher_id': teacher_id,
+        'research_html': render_template(
+            'faculty_performance/_research_section.html', fd=data),
+        'grand_total': data.get('grand_total', data.get('total_hours')),
+    })
+
+
+# ── Admin assignments AJAX (in-place modal — no redirect after save) ──
+
+@bp.route('/api/teachers/<int:teacher_id>/assignments')
+@login_required
+@permission_required('faculty_performance.view')
+def api_teacher_assignments(teacher_id):
+    """Return one teacher's admin assignments for the in-page editor modal."""
+    db = get_db()
+    _check_teacher_access(db, teacher_id)
+    repo = fps._repo(db)
+    teacher = repo.get_teacher_profile(teacher_id)
+    if not teacher:
+        return jsonify({'ok': False, 'message': 'العضو غير موجود'}), 404
+    academic_year, semester = _resolve_term(
+        db, request.args.get('year', ''), request.args.get('semester', type=int))
+
+    sem_start, sem_end = _semester_dates(academic_year, semester)
+    select_data = fps.get_select_data(db)
+
+    return jsonify({
+        'ok': True,
+        'teacher_id': teacher_id,
+        'teacher_name': teacher.get('name', ''),
+        'dept_name': teacher.get('dept_name', '') or '',
+        'academic_year': academic_year,
+        'semester': semester,
+        'assignments': repo.get_admin_assignments(teacher_id, academic_year, semester),
+        'admin_task_types': select_data['admin_task_types'],
+        'admin_task_hours': select_data['admin_task_hours'],
+        'sem_start': sem_start,
+        'sem_end': sem_end,
+    })
+
+
+@bp.route('/api/teachers/<int:teacher_id>/assignments', methods=['POST'])
+@login_required
+@permission_required('faculty_performance.edit_assignments')
+@csrf_required
+def api_teacher_assignments_save(teacher_id):
+    """Save admin assignments from the in-page modal — JSON only, never redirects."""
+    db = get_db()
+    _check_teacher_access(db, teacher_id)
+    payload = request.get_json(silent=True) or {}
+    academic_year, semester = _resolve_term(
+        db, payload.get('academic_year') or '', int(payload.get('semester') or 1))
+
+    assignments = []
+    for a in payload.get('assignments') or []:
+        task_name = (a.get('task_name') or '').strip()
+        if not task_name:
+            continue
+        auto = a.get('auto_hours')
+        assignments.append({
+            'task_name': task_name,
+            'auto_hours': auto if auto is not None and auto != '' else None,
+            'manual_hours': int(a.get('manual_hours') or 0),
+            'assignment_date': (a.get('assignment_date') or ''),
+            'start_date': (a.get('start_date') or ''),
+            'end_date': (a.get('end_date') or '') or None,
+            'notes': (a.get('notes') or ''),
+            'academic_year': academic_year,
+            'semester': semester,
+        })
+    fps.save_admin_data(db, teacher_id, assignments)
+    return jsonify({
+        'ok': True,
+        'success': True,
+        'teacher_id': teacher_id,
+        'assignments_count': len(assignments),
+    })
+
+
+@bp.route('/api/teachers/<int:teacher_id>/assignments-section')
+@login_required
+@permission_required('faculty_performance.view')
+def api_teacher_assignments_section(teacher_id):
+    """Rendered assignments section + grand total for live in-page refresh (preview)."""
+    db = get_db()
+    _check_teacher_access(db, teacher_id)
+    academic_year, semester = _resolve_term(
+        db, request.args.get('year', ''), request.args.get('semester', type=int))
+    department_id = request.args.get('dept', type=int)
+
+    data = fps.get_performance_form_data(
+        db, teacher_id, academic_year, semester, department_id=department_id)
+    if not data:
+        return jsonify({'ok': False, 'message': 'العضو غير موجود'}), 404
+    return jsonify({
+        'ok': True,
+        'teacher_id': teacher_id,
+        'assignments_html': render_template(
+            'faculty_performance/_assignments_section.html', fd=data),
+        'grand_total': data.get('grand_total', data.get('total_hours')),
+    })

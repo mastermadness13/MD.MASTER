@@ -156,14 +156,15 @@
         <button type="button" id="roleSwitchBtn" onclick="toggleRoleMenu()"
                 class="flex items-center gap-2 rounded-xl border border-outline px-3 py-2 text-sm font-bold hover:bg-surface-container transition no-underline text-on-surface">
           <span class="material-symbols-outlined text-lg text-primary">swap_horiz</span>
-          <span class="hidden xl:inline">{{ role_labels.get(session.get('role') or '', 'واجهة') }}</span>
+          <span class="hidden xl:inline role-switch-label">{{ role_labels.get(session.get('role') or '', 'واجهة') }}</span>
+          <span class="material-symbols-outlined text-base role-switch-spinner" style="display:none">progress_activity</span>
           <span class="material-symbols-outlined text-base text-on-surface-variant">expand_more</span>
         </button>
         <div id="roleMenu" style="display:none"
              class="absolute end-0 top-full mt-2 w-56 rounded-xl border border-outline bg-surface-container-lowest shadow-lg overflow-hidden z-50">
           {% for r in user_roles %}
           {% if r in role_labels %}
-          <form method="post" action="{{ url_for('dashboard.switch_role') }}" class="m-0">
+          <form method="post" action="{{ url_for('dashboard.switch_role') }}" class="m-0" data-role-switch="1">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="role" value="{{ r }}">
             <button type="submit"
@@ -220,6 +221,15 @@
 <script src="{{ url_for('static', filename='js/base_double_submit.js') }}"></script>
 <script src="/static/js/mobile.js"></script>
 <script src="/static/js/mobile_actions.js"></script>
+<script src="{{ url_for('static', filename='js/action_menu.js') }}"></script>
+{# Modals render at body level — never inside .main-content-inner (its
+   backdrop-filter makes it the containing block for position:fixed). #}
+<div id="modal-root">{% block modals %}{% endblock %}</div>
+
+{# Mobile app-style bottom navigation (phones only, hidden on desktop) #}
+{% include 'shared/components/bottom_nav.html' %}
+<script src="/static/js/bottom_nav.js"></script>
+
 {% block scripts %}{% endblock %}
 </body>
 </html>

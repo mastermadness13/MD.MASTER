@@ -32,7 +32,7 @@ Accounts, authentication and access.
 | `password_resets` | Password reset tokens |
 
 ## academic — االكلية 
-Departments, faculty, courses, semesters and study plans.
+Departments, faculty, courses and study plans.
 
 | Table | Purpose |
 |-------|---------|
@@ -47,7 +47,6 @@ Departments, faculty, courses, semesters and study plans.
 | `courses` | Courses with codes, hours, year, semester |
 | `course_departments` | Course ↔ department (many-to-many) |
 | `course_prerequisites` | Course prerequisite graph |
-| `semesters` | Semester numbering per department |
 | `course_content_submissions` | Teacher course-content submissions |
 | `course_content_curriculum` | Curriculum items of a submission |
 | `faculty_attendance` | Faculty attendance records |

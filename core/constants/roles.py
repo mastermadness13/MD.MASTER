@@ -4,7 +4,8 @@ The former ``support_admin`` role was removed; existing accounts were
 promoted to ``super_admin`` by the schema migration.
 """
 
-# ── Role names (Arabic display labels) ────────────────────────────────────────
+# ── أسماء الأدوار (أسماء العرض بالعربي) ───────────────────────────────────────
+# /     /     >---- كل دور في النظام عنده اسم عربي يظهر في الواجهة
 ROLE_NAMES = {
     'super_admin': 'مدير النظام',
     'research_development': 'قسم البحث والتطوير والمناهج',
@@ -14,7 +15,8 @@ ROLE_NAMES = {
     'exam': 'قسم الإدارة والامتحانات',
 }
 
-# Backward-compatible alias used by the template context processor.
+# /     /     >---- اسم ثاني لنفس القاموس (للتوافق مع الأكواد القديمة)
 ROLE_LABELS = ROLE_NAMES
 
+# /     /     >---- قائمة كل الأدوار (للترتيب والعد)
 ALL_ROLES = tuple(ROLE_NAMES)

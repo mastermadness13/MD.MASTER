@@ -164,7 +164,7 @@
             {% if can_manage %}
             <th class="px-4 py-3 border-b border-outline-variant font-bold w-12">
               <div class="flex items-center justify-center gap-1">
-                <input type="checkbox" id="roomSelectAll" class="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" title="تحديد الكل">
+                <input type="checkbox" id="roomSelectAll" class="rounded border-outline-variant text-primary focus:ring-primary cursor-pointer" title="تحديد الكل">
                 <button type="button" id="roomHeaderDeleteBtn"
                         class="material-symbols-outlined text-red-600 hover:text-red-700 transition-colors bg-transparent border-0 cursor-pointer"
                         style="display:none" title="حذف المحدد">delete</button>
@@ -187,7 +187,7 @@
           <tr class="hover:bg-primary/5 transition-colors border-b border-outline-variant last:border-b-0">
             {% if can_manage %}
             <td class="px-4 py-3 text-center">
-              <input type="checkbox" class="room-select rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" value="{{ r.id }}" onchange="onRoomCheck()">
+              <input type="checkbox" class="room-select rounded border-outline-variant text-primary focus:ring-primary cursor-pointer" value="{{ r.id }}" onchange="onRoomCheck()">
             </td>
             {% endif %}
             <td class="px-4 py-3 text-on-surface-variant">{{ (page - 1) * per_page + loop.index }}</td>
@@ -228,16 +228,30 @@
               </span>
             </td>
             <td class="px-4 py-3">
-              <div class="flex items-center justify-center gap-2">
-                <a href="{{ url_for('classrooms.room_detail', id=r.id) }}"
-                   class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors no-underline" title="عرض">visibility</a>
-                <a href="{{ url_for('classrooms.rooms_edit', id=r.id) }}"
-                   class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors no-underline" title="تعديل">edit</a>
-                <form method="post" action="{{ url_for('classrooms.rooms_delete', id=r.id) }}" style="display:inline"
-                      onsubmit="return confirm('تأكيد حذف القاعة؟')">
-                  <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                  <button type="submit" class="material-symbols-outlined text-red-600 hover:text-red-700 transition-colors bg-transparent border-0 cursor-pointer" title="حذف">delete</button>
-                </form>
+              <div class="relative inline-block">
+                <button type="button" onclick="toggleActionMenu(this)"
+                        class="action-menu-btn material-symbols-outlined rounded-lg p-1 text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors bg-transparent border-0 cursor-pointer"
+                        title="الإجراءات" aria-haspopup="true" aria-expanded="false">more_vert</button>
+                <div class="action-menu hidden absolute end-0 top-full mt-1 z-30 min-w-[180px] rounded-xl border border-outline-variant bg-white shadow-lg overflow-hidden">
+                  <a href="{{ url_for('classrooms.room_detail', id=r.id) }}"
+                     class="flex items-center gap-2.5 px-3.5 py-2.5 text-sm font-bold text-on-surface hover:bg-primary/10 transition-colors no-underline">
+                    <span class="material-symbols-outlined text-lg text-primary shrink-0">visibility</span>
+                    عرض
+                  </a>
+                  <a href="{{ url_for('classrooms.rooms_edit', id=r.id) }}"
+                     class="flex items-center gap-2.5 px-3.5 py-2.5 text-sm font-bold text-on-surface hover:bg-primary/10 transition-colors no-underline">
+                    <span class="material-symbols-outlined text-lg text-primary shrink-0">edit</span>
+                    تعديل
+                  </a>
+                  <form method="post" action="{{ url_for('classrooms.rooms_delete', id=r.id) }}"
+                        onsubmit="return confirm('تأكيد حذف القاعة؟')">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 transition-colors bg-transparent border-0 cursor-pointer text-right">
+                      <span class="material-symbols-outlined text-lg shrink-0">delete</span>
+                      حذف
+                    </button>
+                  </form>
+                </div>
               </div>
             </td>
           </tr>

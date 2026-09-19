@@ -1,14 +1,15 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Sequence
 
 from core.constants.seasons import LEGACY_PERIOD_CODE
 from database.repositories.base_repository import BaseRepository
 
-
+# /     /     >---- مستودع أعضاء هيئة التدريس — كل العمليات على جدول teachers
 class TeacherRepository(BaseRepository):
     table = 'teachers'
 
+    # /     /     >---- نجيب أستاذ بالمعرف (مع اسم المستخدم)
     def find_by_id(self, teacher_id: int) -> Optional[Dict[str, Any]]:
         row = self.db.execute(
             'SELECT t.*, u.username as username FROM teachers t LEFT JOIN users u ON t.user_id = u.id WHERE t.id = ?',
@@ -16,6 +17,7 @@ class TeacherRepository(BaseRepository):
         ).fetchone()
         return dict(row) if row else None
 
+    # /     /     >---- نجيب أستاذ حسب معرف المستخدم (للوحة المدرس)
     def find_by_user_id(self, user_id: int) -> Optional[Dict[str, Any]]:
         row = self.db.execute(
             'SELECT id, name, department_id FROM teachers WHERE user_id = ?',
@@ -23,6 +25,7 @@ class TeacherRepository(BaseRepository):
         ).fetchone()
         return dict(row) if row else None
 
+    # /     /     >---- ندوّر على أساتذة بنفس الرقم الأكاديمي (للتأكد من التكرار)
     def find_by_academic_number(self, academic_number: str) -> List[Dict[str, Any]]:
         """Find teachers by exact academic_number match."""
         rows = self.db.execute(
@@ -31,6 +34,7 @@ class TeacherRepository(BaseRepository):
         ).fetchall()
         return [dict(r) for r in rows]
 
+    # /     /     >---- ندوّر على أساتذة بنفس الاسم المطبّع (تحذير فقط)
     def find_by_name_normalized(self, normalized_name: str) -> List[Dict[str, Any]]:
         """Find teachers whose normalized name matches.
 
@@ -46,6 +50,7 @@ class TeacherRepository(BaseRepository):
             if normalize_arabic_name(r['name']) == normalized_name
         ]
 
+    # /     /     >---- كل تفاصيل الأستاذ (القسم، التخصص، المؤهل، الرتبة، التصنيف)
     def find_detail(self, teacher_id: int) -> Optional[Dict[str, Any]]:
         row = self.db.execute(
             'SELECT t.*, d.name as dept_name, hd.name as hod_dept_name, q.name_ar as qual_name,\n'
@@ -66,6 +71,7 @@ class TeacherRepository(BaseRepository):
         if not row:
             return None
         detail = dict(row)
+        # /     /     >---- نزيد أسماء الأقسام المرتبطة بالأستاذ
         linked = self.db.execute(
             'SELECT d.name FROM teacher_departments td\n'
             '               JOIN departments d ON td.department_id = d.id\n'
@@ -75,6 +81,7 @@ class TeacherRepository(BaseRepository):
         detail['dept_names'] = [r['name'] for r in linked]
         return detail
 
+    # /     /     >---- المقررات اللي يدرّسها الأستاذ حالياً في الجدول الفعّال
     def get_courses_for_teacher(self, teacher_id: int) -> List[Dict[str, Any]]:
         rows = self.db.execute(
             "SELECT c.* FROM courses c\n"
@@ -87,6 +94,7 @@ class TeacherRepository(BaseRepository):
         ).fetchall()
         return [dict(r) for r in rows]
 
+    # /     /     >---- عدد الحصص في الجدول الفعّال للأستاذ
     def count_timetable_entries(self, teacher_id: int) -> int:
         row = self.db.execute(
             "SELECT COUNT(*) AS cnt FROM timetable WHERE teacher_id = ? AND (version_id IS NULL OR version_id IN (SELECT id FROM timetable_versions WHERE status = 'active'))",
@@ -94,6 +102,7 @@ class TeacherRepository(BaseRepository):
         ).fetchone()
         return row['cnt'] or 0
 
+    # /     /     >---- نجيب الأساتذة مع الترقيم (حسب شروط البحث)
     def list_teachers(
         self,
         where_clause: str,
@@ -111,38 +120,46 @@ class TeacherRepository(BaseRepository):
         )
         return self.paginate(base, params, page, per_page)
 
+    # /     /     >---- الأقسام المظهرة
     def list_visible_departments(self) -> List[Dict[str, Any]]:
         rows = self.db.execute(
             'SELECT * FROM departments WHERE hidden = 0 AND deleted_at IS NULL ORDER BY name'
         ).fetchall()
         return [dict(r) for r in rows]
 
+    # /     /     >---- كل القيم المساعدة لنماذج الإنشاء والتعديل
     def get_form_lookups(self) -> Dict[str, list]:
+        # /     /     >---- الأقسام
         departments = self.db.execute(
             'SELECT * FROM departments WHERE hidden = 0 AND deleted_at IS NULL ORDER BY name'
         ).fetchall()
         departments = [dict(r) for r in departments]
 
+        # /     /     >---- المؤهلات العلمية
         qualifications = self.db.execute(
             'SELECT * FROM qualifications ORDER BY name_ar'
         ).fetchall()
         qualifications = [dict(r) for r in qualifications]
 
+        # /     /     >---- الرتب الأكاديمية
         ranks = self.db.execute(
             'SELECT * FROM academic_ranks ORDER BY sort_order'
         ).fetchall()
         ranks = [dict(r) for r in ranks]
 
+        # /     /     >---- التصنيفات
         classifications = self.db.execute(
             'SELECT * FROM classifications ORDER BY name_ar'
         ).fetchall()
         classifications = [dict(r) for r in classifications]
 
+        # /     /     >---- المقررات
         courses = self.db.execute(
             'SELECT * FROM courses WHERE deleted_at IS NULL ORDER BY name'
         ).fetchall()
         courses = [dict(r) for r in courses]
 
+        # /     /     >---- التخصصات المرتبطة بالأقسام
         specializations = self.db.execute(
             'SELECT s.id, s.department_id, s.name\n'
             '                   FROM specializations s\n'
@@ -161,9 +178,11 @@ class TeacherRepository(BaseRepository):
             'specializations': specializations,
         }
 
+    # /     /     >---- نصنع أستاذ جديد ونرجع معرّفه
     def create(self, data: Dict[str, Any]) -> int:
         from utils.text import normalize_academic_number
 
+        # /     /     >---- نطبّع الرقم الأكاديمي (نحذف الفراغات)
         an = normalize_academic_number(data.get('academic_number'))
         self.db.execute(
             'INSERT INTO teachers (name, email, phone, department_id, hod_department_id, academic_number,\n'
@@ -196,13 +215,16 @@ class TeacherRepository(BaseRepository):
         self.db.commit()
         return self.db.execute('SELECT last_insert_rowid()').fetchone()[0]
 
+    # /     /     >---- نحدّث بيانات أستاذ (حقول أساسية + اختيارية)
     def update(self, teacher_id: int, data: Dict[str, Any]) -> None:
+        # /     /     >---- الحقول الأساسية الدائمة
         cols = [
             'name', 'email', 'phone', 'department_id', 'academic_number',
             'qualification_id', 'rank_id', 'classification_id', 'national_id',
             'contract_date', 'tasks',
         ]
         params = [data[c] for c in cols]
+        # /     /     >---- الحقول الاختيارية (تضاف بس لو موجودة)
         for optional in [
             'specialization', 'specialization_id', 'position', 'photo_filename',
             'semester', 'first_lecture_date', 'work_start_date', 'general_notes',
@@ -219,6 +241,7 @@ class TeacherRepository(BaseRepository):
         )
         self.db.commit()
 
+    # /     /     >---- نربط الأستاذ بحساب مستخدم
     def link_user(self, teacher_id: int, user_id: int) -> None:
         self.db.execute(
             'UPDATE teachers SET user_id = ? WHERE id = ?',
@@ -226,6 +249,7 @@ class TeacherRepository(BaseRepository):
         )
         self.db.commit()
 
+    # /     /     >---- السجل التدريسي التاريخي للأستاذ (بالسنوات والأقسام)
     def get_teaching_record(
         self,
         teacher_id: int,
@@ -238,11 +262,13 @@ class TeacherRepository(BaseRepository):
         """
         params = [teacher_id]
         where = 'ttc.teacher_id = ?'
+        # /     /     >---- فلتر السنة (معاملة خاصة للبيانات المهاجرة)
         if year_filter == LEGACY_PERIOD_CODE:
             where += " AND semester_code LIKE 'migrated%'"
         elif year_filter:
             where += ' AND semester_code = ?'
             params.append(year_filter)
+        # /     /     >---- فلتر الفصل الدراسي
         if semester_filter:
             where += ' AND ttc.semester = ?'
             params.append(semester_filter)
@@ -268,6 +294,7 @@ class TeacherRepository(BaseRepository):
         ).fetchall()
         return [dict(r) for r in rows]
 
+    # /     /     >---- السنوات الدراسية اللي عندها سجل تدريسي للأستاذ
     def get_teaching_years(self, teacher_id: int) -> List[str]:
         rows = self.db.execute(
             '\n            SELECT DISTINCT semester_code\n'
@@ -279,6 +306,7 @@ class TeacherRepository(BaseRepository):
         ).fetchall()
         return [r['semester_code'] for r in rows]
 
+    # /     /     >---- الفصول الدراسية المتوفرة في سجل الأستاذ
     def get_teaching_semesters(self, teacher_id: int) -> List[int]:
         rows = self.db.execute(
             '\n            SELECT DISTINCT semester\n'
@@ -290,6 +318,7 @@ class TeacherRepository(BaseRepository):
         ).fetchall()
         return [r['semester'] for r in rows]
 
+    # /     /     >---- مجموع الساعات التدريسية للأستاذ
     def count_teaching_hours(self, teacher_id: int) -> int:
         row = self.db.execute(
             'SELECT SUM(COALESCE(hours, 0)) AS h FROM teacher_taught_courses WHERE teacher_id = ?',
@@ -297,6 +326,7 @@ class TeacherRepository(BaseRepository):
         ).fetchone()
         return int(row['h'] or 0)
 
+    # /     /     >---- المقررات في الجدول الفعّال للأستاذ
     def get_timetable_courses(self, teacher_id: int) -> List[Dict[str, Any]]:
         rows = self.db.execute(
             "SELECT course_id FROM timetable WHERE teacher_id = ? AND (version_id IS NULL OR version_id IN (SELECT id FROM timetable_versions WHERE status = 'active'))",
@@ -304,6 +334,7 @@ class TeacherRepository(BaseRepository):
         ).fetchall()
         return [dict(r) for r in rows]
 
+    # /     /     >---- السجل التدريسي مفلتر بالسنة والفصل والقسم
     def get_teaching_record_filtered(
         self,
         teacher_id: int,
@@ -314,11 +345,13 @@ class TeacherRepository(BaseRepository):
         """Teaching record filtered by year level and period (optionally one department)."""
         params = [teacher_id, semester]
         extra = ''
+        # /     /     >---- شروط رمز السنة (معاملة البيانات المهاجرة)
         if semester_code == LEGACY_PERIOD_CODE:
             code_clause = "semester_code LIKE 'migrated%'"
         else:
             code_clause = 'semester_code = ?'
             params.append(semester_code)
+        # /     /     >---- فلتر اختياري بالقسم
         if department_id is not None:
             extra = ' AND ttc.department_id = ?'
             params.append(department_id)
@@ -349,14 +382,10 @@ class TeacherRepository(BaseRepository):
         ).fetchall()
         return [dict(r) for r in rows]
 
+    # /     /     >---- الاسم العربي لعرض رمز الفصل الدراسي
     def get_semester_display_name(self, semester_code: str) -> str:
-        """Look up the Arabic display name for a semester_code."""
+        """Arabic display name for a semester_code (format-derived)."""
         if not semester_code:
             return ''
-        row = self.db.execute(
-            'SELECT name_ar FROM semesters WHERE code = ? LIMIT 1',
-            (semester_code,),
-        ).fetchone()
-        if row and row['name_ar']:
-            return row['name_ar']
-        return ''
+        from utils.format import semester_display_name
+        return semester_display_name(semester_code)

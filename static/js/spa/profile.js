@@ -38,9 +38,9 @@
         '<div><label class="block text-sm font-bold mb-1">كلمة المرور الحالية</label>' +
         '<input name="current_password" type="password" required class="w-full px-3 py-2 rounded-lg border border-outline text-sm focus:outline-none focus:ring-2 focus:ring-primary"></div>' +
         '<div><label class="block text-sm font-bold mb-1">كلمة المرور الجديدة</label>' +
-        '<input name="new_password" type="password" required minlength="6" class="w-full px-3 py-2 rounded-lg border border-outline text-sm focus:outline-none focus:ring-2 focus:ring-primary"></div>' +
+        '<input name="new_password" type="password" required minlength="8" class="w-full px-3 py-2 rounded-lg border border-outline text-sm focus:outline-none focus:ring-2 focus:ring-primary"></div>' +
         '<div><label class="block text-sm font-bold mb-1">تأكيد كلمة المرور</label>' +
-        '<input name="confirm_password" type="password" required minlength="6" class="w-full px-3 py-2 rounded-lg border border-outline text-sm focus:outline-none focus:ring-2 focus:ring-primary"></div>' +
+        '<input name="confirm_password" type="password" required minlength="8" class="w-full px-3 py-2 rounded-lg border border-outline text-sm focus:outline-none focus:ring-2 focus:ring-primary"></div>' +
         '<div class="flex justify-end"><button type="submit" class="px-5 py-2 rounded-lg bg-primary text-on-primary text-sm font-bold hover:opacity-90">' +
         '<span class="material-symbols-outlined text-lg align-middle">save</span> حفظ</button></div></form></div>';
 
@@ -56,8 +56,12 @@
           showToastError('كلمتا المرور غير متطابقتين');
           return;
         }
-        if (payload.new_password.length < 6) {
-          showToastError('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+        if (payload.new_password.length < 8) {
+          showToastError('كلمة المرور يجب أن تكون 8 أحرف على الأقل');
+          return;
+        }
+        if (!/[A-Z]/.test(payload.new_password) || !/[a-z]/.test(payload.new_password) || !/\d/.test(payload.new_password)) {
+          showToastError('كلمة المرور يجب أن تحتوي على حرف كبير وصغير ورقم');
           return;
         }
         fetch('/change-password', {
@@ -76,8 +80,12 @@
         }).then(function (res) { return res.json().catch(function () { return null; }); })
           .then(function (data) {
             if (data && data.ok === false) { showToastError(data.message || 'خطأ'); return; }
-            showToastSuccess('تم تغيير كلمة المرور بنجاح');
-            e.target.reset();
+            if (data && data.ok === true) {
+              showToastSuccess('تم تغيير كلمة المرور بنجاح');
+              e.target.reset();
+              return;
+            }
+            showToastError('تعذر تغيير كلمة المرور، حاول مجدداً');
           }).catch(function (err) { showToastError(err.message || 'خطأ'); });
       });
     }).catch(function (err) {

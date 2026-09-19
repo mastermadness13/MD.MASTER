@@ -1,0 +1,137 @@
+{# ============================================================
+   bottom_nav.html — Mobile app-style bottom navigation (phones only).
+   Rendered at the end of base.html for authenticated users.
+   Desktop (>=1024px) hides the whole bar via layout/mobile.css.
+
+   Tabs are derived from the SAME role-filtered ``nav_items`` the
+   sidebar uses, so no backend change is needed for access control.
+   ============================================================ #}
+{% if not hide_sidebar and user %}
+{% set bn_role = session.get('role') | default('') %}
+{% set bn_eps = nav_items | map(attribute='endpoint') | list %}
+
+{% if 'dashboard.dashboard' in bn_eps %}
+  {% set bn_home_ep = 'dashboard.dashboard' %}
+{% elif bn_role == 'exam' and 'exams.exams' in bn_eps %}
+  {% set bn_home_ep = 'exams.exams' %}
+{% elif 'timetable.timetable' in bn_eps %}
+  {% set bn_home_ep = 'timetable.timetable' %}
+{% elif bn_eps %}
+  {% set bn_home_ep = nav_items | selectattr('section', 'equalto', 'main') | map(attribute='endpoint') | first | default(bn_eps[0]) %}
+{% else %}
+  {% set bn_home_ep = 'dashboard.dashboard' %}
+{% endif %}
+
+{% if 'timetable.timetable' in bn_eps %}
+  {% set bn_tt_ep = 'timetable.timetable' %}
+{% elif 'timetable.rnd_timetable' in bn_eps %}
+  {% set bn_tt_ep = 'timetable.rnd_timetable' %}
+{% elif 'exams.exams' in bn_eps %}
+  {% set bn_tt_ep = 'exams.exams' %}
+{% elif 'courses.courses_list' in bn_eps %}
+  {% set bn_tt_ep = 'courses.courses_list' %}
+{% else %}
+  {% set bn_tt_ep = bn_home_ep %}
+{% endif %}
+
+{% if 'teacher_pages.teacher_course_content' in bn_eps %}
+  {% set bn_teacher_ep = 'teacher_pages.teacher_my_schedule' %}
+{% elif 'courses.courses_list' in bn_eps %}
+  {% set bn_teacher_ep = 'courses.courses_list' %}
+{% else %}
+  {% set bn_teacher_ep = bn_tt_ep %}
+{% endif %}
+
+{% set bn_reports_ep = 'html_to_pdf.html_to_pdf' %}
+{% set bn_tools = has_permission('tools.view') %}
+
+<nav id="bottomNav" class="bottom-nav no-print" aria-label="التنقل السفلي">
+  <div class="bottom-nav-inner">
+    <a href="{{ url_for(bn_home_ep) }}" class="bn-item{% if request.endpoint == 'dashboard.dashboard' or (bn_home_ep == 'exams.exams' and request.endpoint == 'exams.exams') %} active{% endif %}">
+      <span class="material-symbols-outlined">home</span>
+      <span>الرئيسية</span>
+    </a>
+    <a href="{{ url_for(bn_tt_ep) }}" class="bn-item{% if request.endpoint and request.endpoint.startswith('timetable.') %} active{% endif %}">
+      <span class="material-symbols-outlined">calendar_month</span>
+      <span>الجدول</span>
+    </a>
+
+    <button type="button" class="bn-fab" onclick="toggleBnSheet('quick')" aria-label="قائمة سريعة" title="قائمة سريعة">
+      <span class="material-symbols-outlined">add</span>
+    </button>
+
+    <a href="{{ url_for(bn_teacher_ep) }}" class="bn-item{% if request.endpoint == bn_teacher_ep or (bn_teacher_ep == 'courses.courses_list' and request.blueprint == 'courses') %} active{% endif %}">
+      <span class="material-symbols-outlined">school</span>
+      <span>الأستاذ</span>
+    </a>
+
+    {% if bn_tools %}
+    <a href="{{ url_for(bn_reports_ep) }}" class="bn-item{% if request.endpoint == 'html_to_pdf.html_to_pdf' %} active{% endif %}">
+      <span class="material-symbols-outlined">assessment</span>
+      <span>التقارير</span>
+    </a>
+    {% else %}
+    <button type="button" class="bn-item" onclick="toggleBnSheet('more')" aria-label="القائمة الكاملة">
+      <span class="material-symbols-outlined">menu</span>
+      <span>المزيد</span>
+    </button>
+    {% endif %}
+  </div>
+</nav>
+
+{# Bottom sheet dialog — quick actions (FAB) or the full menu #}
+<div id="bnSheetDialog" class="bn-overlay no-print" role="dialog" aria-modal="true" aria-label="قائمة الجهاز" hidden>
+  <div class="bn-backdrop" data-bn-close></div>
+  <div class="bn-sheet">
+    <div class="bn-handle"></div>
+
+    <section class="bn-section" data-bn-section="quick">
+      <h4 class="bn-title">قائمة سريعة</h4>
+      <div class="bn-items">
+        {% if has_permission('timetable.edit') %}
+        <a href="{{ url_for('timetable.timetable_create') }}" class="bn-item-row">
+          <span class="material-symbols-outlined">post_add</span> إضافة محاضرة
+        </a>
+        {% endif %}
+        {% if has_permission('timetable.view') %}
+        <a href="{{ url_for('timetable.timetable_department_view') }}" class="bn-item-row">
+          <span class="material-symbols-outlined">calendar_view_week</span> محرر الجدول
+        </a>
+        {% endif %}
+        {% if bn_role == 'teacher' %}
+        <a href="{{ url_for('teacher_pages.teacher_my_schedule') }}" class="bn-item-row">
+          <span class="material-symbols-outlined">schedule</span> جدولي الأسبوعي
+        </a>
+        {% endif %}
+        {% if bn_tools %}
+        <a href="{{ url_for('html_to_pdf.html_to_pdf') }}" class="bn-item-row">
+          <span class="material-symbols-outlined">description</span> التقارير والطباعة
+        </a>
+        {% endif %}
+        <button type="button" class="bn-item-row" onclick="window.print()">
+          <span class="material-symbols-outlined">print</span> طباعة الصفحة الحالية
+        </button>
+      </div>
+    </section>
+
+    <section class="bn-section" data-bn-section="more" hidden>
+      <h4 class="bn-title">القائمة</h4>
+      <div class="bn-items">
+        {% for item in nav_items %}
+        <a href="{{ url_for(item.endpoint) }}" class="bn-item-row">
+          <span class="material-symbols-outlined">{{ item.icon }}</span> {{ item.label }}
+        </a>
+        {% endfor %}
+      </div>
+      <div class="bn-more-actions">
+        <button type="button" class="bn-item-row" onclick="toggleTheme()">
+          <span class="material-symbols-outlined">dark_mode</span> الوضع الليلي
+        </button>
+        <a href="{{ url_for('auth.logout') }}" class="bn-item-row bn-danger">
+          <span class="material-symbols-outlined">logout</span> تسجيل الخروج
+        </a>
+      </div>
+    </section>
+  </div>
+</div>
+{% endif %}

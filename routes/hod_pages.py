@@ -10,6 +10,7 @@ from services import message_service, notification_service
 bp = Blueprint('hod_pages', __name__, url_prefix='/hod')
 
 
+# /     /     >---- رسائل الأقسام: الرد على الطلب وحلّه وإشعار الأستاذ
 @bp.route('/messages', methods=['GET', 'POST'])
 @login_required
 @permission_required('messages.review')
@@ -30,6 +31,7 @@ def hod_messages():
             message_service.update_teacher_request(db, request_id, 'resolved', session['user_id'], reply_text)
             db.commit()
 
+            # /     /     >---- إشعار للأستاذ بأن رئيس القسم رد على طلبه
             if req and req['user_id']:
                 notification_service.create_notification(
                     db, req['user_id'],
@@ -45,6 +47,7 @@ def hod_messages():
                            user=current_user())
 
 
+# /     /     >---- مواد القسم: قائمة قابلة للبحث وتصفية حسب النوع
 @bp.route('/materials')
 @login_required
 @permission_required('materials.manage')
@@ -66,6 +69,7 @@ def hod_materials():
     '''
     params = [dept_id]
 
+    # /     /     >---- البحث في اسم المقرر والعنوان والملف والأستاذ
     if search:
         query += ' AND (c.name LIKE ? OR m.title LIKE ? OR m.original_filename LIKE ? OR t.name LIKE ?)'
         like = f'%{search}%'
@@ -78,6 +82,7 @@ def hod_materials():
     query += ' ORDER BY c.name, m.created_at DESC'
     materials = [dict(r) for r in db.execute(query, params).fetchall()]
 
+    # /     /     >---- قائمة الأساتذة لفلتر سريع
     teachers = [dict(r) for r in db.execute(
         'SELECT DISTINCT t.id, t.name FROM teacher_materials m '
         'JOIN teachers t ON m.teacher_id = t.id WHERE m.department_id = ? ORDER BY t.name',
@@ -89,6 +94,7 @@ def hod_materials():
                            user=current_user())
 
 
+# /     /     >---- حذف ملف من مواد القسم مع إزالة الملف وإشعار الأستاذ
 @bp.route('/materials/delete/<int:material_id>', methods=['POST'])
 @login_required
 @permission_required('materials.manage')
@@ -111,6 +117,7 @@ def hod_material_delete(material_id):
     db.execute('DELETE FROM teacher_materials WHERE id = ?', (material_id,))
     db.commit()
 
+    # /     /     >---- إشعار الأستاذ عند حذف ملفه
     teacher_uid = notification_service.get_teacher_user_id(db, mat['teacher_id'])
     if teacher_uid:
         notification_service.create_notification(
@@ -124,6 +131,7 @@ def hod_material_delete(material_id):
     return redirect(url_for('hod_pages.hod_materials'))
 
 
+# /     /     >---- تحميل ملف من مواد القسم مع تحديث عدد التحميلات
 @bp.route('/materials/download/<int:material_id>')
 @login_required
 @permission_required('materials.manage')

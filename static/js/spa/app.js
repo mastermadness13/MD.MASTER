@@ -65,9 +65,15 @@
       }).then(function () {
         window.location.reload();
       }).catch(function (err) {
-        var box = document.getElementById('spa-login-error');
-        box.textContent = err.message;
-        box.classList.remove('hidden');
+        if (err.status === 429) {
+          var box = document.getElementById('spa-login-error');
+          box.classList.add('hidden');
+          window.SPA.showToast(err.message, 'warning');
+        } else {
+          var box = document.getElementById('spa-login-error');
+          box.textContent = err.message;
+          box.classList.remove('hidden');
+        }
         btn.disabled = false;
       });
     });
@@ -330,8 +336,8 @@
       container.className = 'fixed top-4 left-1/2 -translate-x-1/2 z-[70] space-y-2';
       document.body.appendChild(container);
     }
-    var icon = type === 'success' ? 'check_circle' : (type === 'error' ? 'error' : 'info');
-    var color = type === 'success' ? 'bg-emerald-600' : (type === 'error' ? 'bg-rose-600' : 'bg-slate-700');
+    var icon = type === 'success' ? 'check_circle' : (type === 'error' ? 'error' : (type === 'warning' ? 'warning' : 'info'));
+    var color = type === 'success' ? 'bg-emerald-600' : (type === 'error' ? 'bg-rose-600' : (type === 'warning' ? 'bg-amber-600' : 'bg-slate-700'));
     var toast = document.createElement('div');
     toast.className = 'flex items-center gap-2 text-white text-sm font-bold px-4 py-2.5 rounded-lg shadow-lg ' + color;
     toast.innerHTML = '<span class="material-symbols-outlined text-lg">' + icon + '</span><span>' + escapeHtml(message) + '</span>';

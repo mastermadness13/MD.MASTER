@@ -1,6 +1,8 @@
-﻿"""Public portal data access — read-only queries for the college public site.
+"""Public portal data access — read-only queries for the college public site.
 
 All queries here are safe to run without an authenticated session.
+
+/     /     >---- وصول بيانات البوابة العامة: استعلامات قراءة فقط للموقع العام.
 """
 
 from __future__ import annotations
@@ -10,6 +12,7 @@ from typing import Dict, List
 from services.timetable_service import active_version_condition
 
 
+# /     /     >---- قائمة الأقسام الظاهرة
 def get_departments(db) -> List[Dict]:
     return [dict(r) for r in db.execute(
         'SELECT id, name, semesters, has_sections FROM departments '
@@ -17,6 +20,7 @@ def get_departments(db) -> List[Dict]:
     ).fetchall()]
 
 
+# /     /     >---- قسم واحد حسب المعرّف
 def get_department(db, department_id: int) -> Dict | None:
     row = db.execute(
         'SELECT id, name, semesters, has_sections FROM departments '
@@ -26,6 +30,7 @@ def get_department(db, department_id: int) -> Dict | None:
     return dict(row) if row else None
 
 
+# /     /     >---- تخصصات القسم
 def get_majors(db, department_id: int) -> List[str]:
     return [r['name'] for r in db.execute(
         'SELECT name FROM department_majors WHERE department_id = ? ORDER BY name',
@@ -33,12 +38,14 @@ def get_majors(db, department_id: int) -> List[str]:
     ).fetchall()]
 
 
+# /     /     >---- الفترات الدراسية مرتبة
 def get_periods(db) -> List[Dict]:
     return [dict(r) for r in db.execute(
         'SELECT * FROM period_settings ORDER BY sort_order'
     ).fetchall()]
 
 
+# /     /     >---- مداخل الجدول الفعّالة (مع ربط المقرر/الأستاذ/القاعة)
 def get_active_entries(db, department_id: int | None = None,
                        semester: int | None = None) -> List[Dict]:
     conditions = ['t.deleted_at IS NULL', active_version_condition('t')]
@@ -63,6 +70,7 @@ def get_active_entries(db, department_id: int | None = None,
     ).fetchall()]
 
 
+# /     /     >---- مجموعة معرّفات المقررات الموجودة في الجدول الفعّال
 def get_active_timetable_course_ids(db) -> set:
     """Set of course ids that appear in the active timetable."""
     rows = db.execute(
@@ -72,6 +80,7 @@ def get_active_timetable_course_ids(db) -> set:
     return {r['course_id'] for r in rows}
 
 
+# /     /     >---- خريطة course_id إلى department_id للربط
 def get_course_department_ids(db) -> Dict[int, int]:
     """Map ``course_id`` -> ``department_id`` from the ``course_departments`` table."""
     result: Dict[int, int] = {}
@@ -84,7 +93,8 @@ def get_course_department_ids(db) -> Dict[int, int]:
     return result
 
 
-def get_course_files(db, course_id=None, file_type=None, status=('approved', 'published')) -> List[Dict]:
+# /     /     >---- ملفات المقرر من مخزن course_files الموحّد (بعدة فلاتر)
+def get_course_files(db, course_id=None, file_type=None, status=('published',)) -> List[Dict]:
     """Course-owned files from the unified ``course_files`` store.
 
     Every file belongs to a course; the uploader (teacher/R&D) is metadata
@@ -121,6 +131,7 @@ def get_course_files(db, course_id=None, file_type=None, status=('approved', 'pu
     ).fetchall()]
 
 
+# /     /     >---- صف ملف واحد من course_files (لمسار التحميل)
 def get_course_file(db, file_id: int, status=('approved', 'published')) -> Dict | None:
     """Single ``course_files`` row (for the download route)."""
     params: list = [file_id]
@@ -147,16 +158,19 @@ def get_course_file(db, file_id: int, status=('approved', 'published')) -> Dict 
     return dict(row) if row else None
 
 
+# /     /     >---- قاموس المفردات لكل مقرر من الملفات المعتمدة
 def get_course_vocabularies(db) -> Dict[int, Dict]:
     rows = get_course_files(db, file_type='vocabulary', status='approved')
     return {r['course_id']: r for r in rows}
 
 
+# /     /     >---- قاموس نماذج المقررات المعتمدة/المنشورة
 def get_approved_course_forms(db) -> Dict[int, Dict]:
-    rows = get_course_files(db, file_type='form', status=('approved', 'published'))
+    rows = get_course_files(db, file_type='form', status=('published',))
     return {r['course_id']: r for r in rows}
 
 
+# /     /     >---- تحميل الملفات دفعة واحدة ومفصولة حسب النوع
 def get_course_content_files(db) -> tuple:
     """One-pass loader of public course files, split by type.
 
@@ -171,7 +185,7 @@ def get_course_content_files(db) -> tuple:
     syllabi: Dict[str, Dict] = {}
     for r in rows:
         ft = r['file_type']
-        if ft == 'form':
+        if ft == 'form' and r['status'] == 'published':
             forms[r['course_id']] = r
         elif ft == 'vocabulary' and r['status'] == 'approved':
             vocab[r['course_id']] = r
@@ -180,11 +194,13 @@ def get_course_content_files(db) -> tuple:
     return forms, vocab, syllabi
 
 
+# /     /     >---- ملفات المنهج لكل أستاذ/مقرر
 def get_teacher_syllabus_files(db) -> Dict[str, Dict]:
     rows = get_course_files(db, file_type='syllabus', status='approved')
     return {f"{r['teacher_id']}:{r['course_id']}": r for r in rows}
 
 
+# /     /     >---- ملفات المنهج لكل مقرر (مقروءة بالمعرّف)
 def get_course_syllabus_files(db) -> Dict[int, List[Dict]]:
     rows = get_course_files(db, file_type='syllabus', status='approved')
     files: Dict[int, List[Dict]] = {}
@@ -193,6 +209,7 @@ def get_course_syllabus_files(db) -> Dict[int, List[Dict]]:
     return files
 
 
+# /     /     >---- جدول الامتحانات العام: الصفوف المؤكدة والمنشورة رسمياً
 def get_published_exams(db) -> List[Dict]:
     """Public exam schedule: confirmed ('scheduled') and officially 'published' rows."""
     return [dict(r) for r in db.execute(
@@ -207,6 +224,7 @@ def get_published_exams(db) -> List[Dict]:
     ).fetchall()]
 
 
+# /     /     >---- كل المقررات غير المحذوفة
 def get_courses(db) -> List[Dict]:
     return [dict(r) for r in db.execute(
         'SELECT id, code, name, department_id, department, year, semester, '
@@ -215,22 +233,13 @@ def get_courses(db) -> List[Dict]:
     ).fetchall()]
 
 
+# /     /     >---- الفصل الفعّال حالياً (الاسم + الرمز)، محسوب من تاريخ اليوم
 def get_active_semester(db) -> Dict:
     """Return the currently active semester label (e.g. ``خريف 2026``) plus its code.
 
-    Falls back to a season+year derived from the current date so the public
-    portal can always show a meaningful term name.
+    The season+year is derived from the current date so the public portal can
+    always show a meaningful term name.
     """
-    row = db.execute(
-        'SELECT code, season, year, name_ar FROM semesters '
-        'WHERE is_active = 1 AND deleted_at IS NULL LIMIT 1'
-    ).fetchone()
-    if row:
-        name_ar = (row['name_ar'] or '').strip()
-        if not name_ar:
-            season_ar = 'خريف' if (row['season'] or '').lower() == 'fall' else 'ربيع'
-            name_ar = f'{season_ar} {row["year"]}'
-        return {'code': row['code'], 'label': name_ar}
     from datetime import date
     today = date.today()
     season = 'fall' if today.month >= 9 else 'spring'
@@ -239,6 +248,7 @@ def get_active_semester(db) -> Dict:
     return {'code': f'{season}_{year}', 'label': f'{season_ar} {year}'}
 
 
+# /     /     >---- إحصائيات الصفحة الرئيسية للبوابة
 def get_home_stats(db) -> Dict:
     return {
         'departments': db.execute(

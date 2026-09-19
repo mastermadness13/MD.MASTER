@@ -197,9 +197,8 @@ def bootstrap_defaults(path: str) -> None:
                 (name, semesters, majors, 'administrative'),
             )
 
-    # NOTE: Semester seeding is handled by _migrate_to_named_semesters()
-    # in schema.py (called via ensure_schema above). The old per-department
-    # semesters schema was replaced with a global (code, season, year) schema.
+    # Semester codes (fall_2026 …) are computed from the current date;
+    # there is no semesters table anymore (academic calendar removed).
 
     default_department = db.execute(
         'SELECT id, name FROM departments ORDER BY id LIMIT 1'

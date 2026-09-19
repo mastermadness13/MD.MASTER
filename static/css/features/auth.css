@@ -258,8 +258,8 @@
 }
 
 .auth-header { text-align: center; margin-bottom: 32px; }
-.auth-logo { margin-bottom: 16px; text-align: center; }
-.auth-logo img { height: 48px; width: 48px; object-fit: cover; border-radius: 10px; display: block; margin: 0 auto; }
+.auth-logo { margin-bottom: 20px; text-align: center; }
+.auth-logo img { height: 96px; width: 96px; object-fit: cover; border-radius: 18px; display: block; margin: 0 auto; box-shadow: 0 6px 18px rgba(0,0,0,0.15); }
 .auth-title {
   font-size: 22px;
   font-weight: 800;
@@ -477,6 +477,62 @@
   .auth-card { width: 100%; padding: 32px 24px; }
   .auth-screen { padding: 16px; }
 }
+
+/* ===== App pages (shared/layouts/base.html): show the auth gradient through the chrome =====
+   The fixed .auth-bg layer is present on every app page; these rules make the
+   sidebar / header / content scrim translucent so the gradient stays visible,
+   while cards and tables keep their opaque white surfaces. */
+
+body.sidebar-layout {
+  background: var(--auth-deep);
+}
+
+body.sidebar-layout .sidebar {
+  background: var(--surface-glass-panel);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+body.sidebar-layout .sidebar-content .app-header {
+  background: var(--surface-glass-panel);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+body.sidebar-layout .sidebar-content .main-content-inner {
+  background: var(--app-content-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+@media print {
+  body.sidebar-layout .sidebar,
+  body.sidebar-layout .sidebar-content .app-header,
+  body.sidebar-layout .sidebar-content .main-content-inner {
+    background: #ffffff !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+/* ===== Password strength meter + validation (auth pages) ===== */
+
+.strength-meter-segment {
+  height: 6px;
+  border-radius: 999px;
+  transition: background-color 0.2s ease;
+}
+
+.strength-meter-segment.on { background-color: var(--primary-light); }
+.strength-meter-segment.on.warn { background-color: var(--tertiary); }
+.strength-meter-segment.on.strong { background-color: var(--success); }
+
+.strength-req-ok { color: var(--success) !important; }
+.strength-req-ok .material-symbols-outlined {
+  font-variation-settings: 'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24;
+}
+
+.auth-invalid { border-color: var(--error) !important; }
 
 /* ===== Teacher Name Link ===== */
 .teacher-name-link { color: var(--primary, #320058); cursor: pointer; font-weight: 600; transition: color 0.2s; }

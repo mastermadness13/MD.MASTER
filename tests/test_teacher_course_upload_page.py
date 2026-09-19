@@ -138,7 +138,7 @@ def test_teacher_page_shows_assigned_courses(client):
     body = r.get_data(as_text=True)
     assert r.status_code == 200
     assert 'المقررات المكلف بها' in body
-    for header in ['المقرر', 'القسم', 'الفصل', 'المنهاج', 'نموذج R']:
+    for header in ['الكود', 'اسم المقرر', 'نظري', 'عملي', 'الساعات', 'المنهاج', 'المقرر (R']:
         assert header in body
     assert 'CS101' in body
     assert 'CS102' in body
@@ -147,8 +147,9 @@ def test_teacher_page_shows_assigned_courses(client):
 
 def test_teacher_page_binary_upload_badge(client):
     body = client.get('/teacher/course-content').get_data(as_text=True)
-    assert 'لم يُرفع' in body, 'binary state: not uploaded yet'
-    assert 'رفع المنهاج' in body
+    assert 'لم يُرفع المنهج' in body, 'binary state: not uploaded yet'
+    assert 'رفع المنهج' in body
+    assert 'لا يوجد نموذج مقرر' in body, 'R&D form not present for CS102 (no submission)'
 
 
 def test_teacher_page_marks_uploaded_when_syllabus_exists(client):
@@ -157,14 +158,15 @@ def test_teacher_page_marks_uploaded_when_syllabus_exists(client):
     _q('''INSERT INTO course_files (course_id, file_type, filename, original_filename, file_size, teacher_id, status)
           VALUES (?, 'syllabus', 'syllabus.pdf', 'syllabus-original.pdf', 9, ?, 'approved')''', (cid, tid))
     body = client.get('/teacher/course-content').get_data(as_text=True)
-    assert 'تم الرفع' in body
-    assert 'عرض PDF' in body
-    assert 'استبدال المنهاج' in body
+    assert 'تم رفع المنهج' in body
+    assert 'تحميل المنهج' in body
+    assert 'استبدال' in body
 
 
 def test_teacher_page_rnd_form_link_only_when_course_form_exists(client):
     body = client.get('/teacher/course-content').get_data(as_text=True)
     assert 'عرض نموذج R' in body, 'CS101 has an R&D-created form → link shown'
+    assert 'نموذج المقرر موجود' in body, 'CS101 has a form → green badge shown'
     # CS102 gets a personal (teacher-created) submission WITHOUT course_id —
     # the R&D form link must still not appear for it.
     super_id = _q("SELECT id FROM users WHERE username='superadmin'")[0]['id']
@@ -175,12 +177,13 @@ def test_teacher_page_rnd_form_link_only_when_course_form_exists(client):
           VALUES (?, ?, ?, 'تراكيب بيانات', 'CS102', 'draft')''', (super_id, dept_id, tid))
     body = client.get('/teacher/course-content').get_data(as_text=True)
     assert body.count('عرض نموذج R') == 1, 'only the R&D-created (course_id) submission gets the link'
+    assert body.count('نموذج المقرر موجود') == 1, 'only CS101 gets the green badge'
 
 
 def test_teacher_page_has_no_admin_controls(client):
     body = client.get('/teacher/course-content').get_data(as_text=True)
     for legacy in ['رمز المادة', 'اسم المادة', 'إجراءات', 'ccCourseTableBody', 'إنشاء النموذج',
-                   'تعديل المقرر', 'تحميل المنهج', 'بحث']:
+                   'تعديل المقرر', 'بحث']:
         assert legacy not in body, f'admin/legacy control visible on teacher page: {legacy}'
 
 
@@ -271,8 +274,10 @@ def test_form_view_readonly_for_owner(client):
     body = client.get(f'/teacher/course-content/{sid}/form').get_data(as_text=True)
     assert 'عرض نموذج المقرر من إعداد البحث والتطوير' in body
     assert 'مقدمة برمجة' in body
-    assert 'name="curriculum_topic[]"' in body, 'readonly form renders the official form fields'
-    assert 'placeholder="الموضوع" disabled' in body, 'teacher view fields must be disabled (read-only)'
+    assert 'name="theoretical_curriculum_topic[]"' in body, 'readonly form renders the official theoretical fields'
+    assert 'name="practical_content"' in body, 'readonly form renders the practical free-text field'
+    assert 'onclick="downloadCourseSheet()"' in body, 'readonly view exposes the sheet download'
+    assert 'data-course-code=' in body
 
 
 def test_form_view_404_for_other_teacher(other_teacher_client):

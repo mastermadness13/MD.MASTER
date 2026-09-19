@@ -1,0 +1,38 @@
+{# Official form section "ثانياً: الساعات البحثية" — standalone fragment.
+   Included by _official_sections.html AND returned by the preview
+   research-section AJAX endpoint for in-place refresh. Uses the same
+   inline + .official-sections styling so it matches the printed form. #}
+<div class="official-sections" id="research-section">
+  <div>
+    <div class="section-title">ثانياً: الساعات البحثية (10-4 ساعات حسب الدرجة العلمية)</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:70%;">نوع النشاط</th>
+          <th style="width:30%;">عدد الساعات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if fd.research_rows %}
+        {% for r in fd.research_rows %}
+        <tr>
+          <td style="text-align:right;">{{ r.type }}</td>
+          <td>{{ r.hours }}</td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr><td style="text-align:right;">مشروع تخرج</td><td></td></tr>
+        <tr><td style="text-align:right;">دراسات ميدانية</td><td></td></tr>
+        <tr><td style="text-align:right;">مجموعات بحثية</td><td></td></tr>
+        <tr><td style="text-align:right;">دراسة حقلية</td><td></td></tr>
+        <tr><td style="text-align:right;">بحث علمي</td><td></td></tr>
+        <tr><td style="text-align:right;">الإرشاد الكلية</td><td></td></tr>
+        {% endif %}
+        <tr style="background-color: #e6e6e6; font-weight: bold;">
+          <td style="text-align:right;">إجمالي عدد الساعات البحثية</td>
+          <td>{% if fd.research_total is defined %}{{ fd.research_total }}{% endif %}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

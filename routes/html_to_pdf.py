@@ -5,6 +5,7 @@ from security import current_user
 bp = Blueprint('html_to_pdf', __name__)
 
 
+# /     /     >---- صفحة أداة تحويل HTML إلى PDF (تتطلب صلاحية tools.view)
 @bp.route('/tools/html-to-pdf')
 @login_required
 @permission_required('tools.view')

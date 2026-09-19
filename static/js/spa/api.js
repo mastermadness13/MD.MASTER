@@ -21,7 +21,10 @@
     if (!res.ok || !payload || payload.ok === false) {
       var error = new Error((payload && payload.message) || 'حدث خطأ غير متوقع');
       error.status = res.status;
-      if (res.status === 401) {
+      // Session expired / not logged in → back to the login screen.
+      // A failed login POST (401) must NOT reload: the form shows its own
+      // error message in place.
+      if (res.status === 401 && url !== '/api/auth/login') {
         window.location.hash = '';
         window.location.reload();
       }

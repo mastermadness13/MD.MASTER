@@ -1,168 +1,85 @@
-﻿<!DOCTYPE html>
-<html dir="rtl" lang="ar" data-theme="light">
-<head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<meta name="csrf-token" content="{{ csrf_token() }}">
-{% include 'shared/components/theme_init.html' %}
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300;400;500;600;700;800&family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="/static/css/app.css?v={{ app_version() }}"/>
-<link rel="icon" type="image/png" href="/static/image/logo.png"/>
-{% include 'shared/components/tailwind_config.html' %}
-</head>
-<body class="auth-body">
+﻿{% extends 'shared/layouts/auth.html' %}
+{% set sidebar_active = '' %}
+{% set page_title = 'تسجيل الدخول' %}
 
+{% block content %}
 
-<!-- Background -->
-<div class="auth-bg">
-  <div class="auth-bg-gradient"></div>
-  <div class="auth-bg-pattern"></div>
-  <div class="auth-bg-shapes">
-    <div class="auth-bg-shape"></div>
-    <div class="auth-bg-shape"></div>
-    <div class="auth-bg-shape"></div>
-    <div class="auth-bg-shape"></div>
-    <div class="auth-bg-shape"></div>
-  </div>
-</div>
-
-<!-- Auth Screen -->
-<section class="auth-screen">
-  <div class="auth-layout">
-
-    <!-- Brand Panel -->
-    <div class="auth-brand-panel">
-      <div class="brand-top">
-        <h1 class="brand-title"> كلية التقنية الهندسية زوارة</h1>
-        <div class="brand-logo-large"><div class="site-logo">
+<div class="auth-header">
+  <div class="auth-logo"><div class="site-logo">
     <img src="/static/image/logo.png" alt="كلية التقنية الهندسية زوارة">
   </div></div>
-        <h2 class="brand-heading">مشروع تخرج بعنوان: منصة رقمية لإدارة الجداول والمقرارت الدراسية</h2>
-        <p class="brand-subtitle">منصة رقمية متكاملة لإدارة الجداول الدراسية وجداول الامتحانات النهائية والمقرارت الدراسية، وإدارة بيانات أعضاء هيئة التدريس والقاعات والمعامل الدراسية.</p>
-      </div>
-<div class="brand-team-section">
-              <div class="brand-team-block">
-                <h3 class="brand-team-title">إعداد الطالبين</h3>
-                <div class="brand-team-names">
-                  <span class="brand-team-name">مهند محمد الصويعي</span>
-                  <span class="brand-team-name">سعيد فرحات ابوالسعود</span>
-                </div>
-              </div>
-              <div class="brand-team-block">
-                <h3 class="brand-team-title">المشرف</h3>
-                <div class="brand-team-names">
-                  <span class="brand-team-name brand-supervisor">غالية المالطي</span>
-                </div>
-              </div>
-            </div>
-      <div class="brand-features">
-        <div class="brand-feature">
-          <div class="brand-feature-icon"><span class="material-symbols-outlined">calendar_month</span></div>
-          <div class="brand-feature-text">
-            <span class="brand-feature-title">إدارة الجداول الدراسية</span>
-            <span class="brand-feature-desc">إعداد وتنظيم وإدارة الجداول الدراسية للفصول والأقسام الكلية.</span>
-          </div>
-        </div>
-        <div class="brand-feature">
-          <div class="brand-feature-icon"><span class="material-symbols-outlined">event_available</span></div>
-          <div class="brand-feature-text">
-            <span class="brand-feature-title">إدارة جداول الامتحانات النهائية</span>
-            <span class="brand-feature-desc">تنظيم وإدارة جداول الامتحانات النهائية وفق الفترات الدراسية المعتمدة.</span>
-          </div>
-        </div>
-        <div class="brand-feature">
-          <div class="brand-feature-icon"><span class="material-symbols-outlined">description</span></div>
-          <div class="brand-feature-text">
-            <span class="brand-feature-title">إدارة المقرارت الدراسية</span>
-            <span class="brand-feature-desc">إدارة وتنظيم المقرارت والإجراءات الدراسية الخاصة بالكلية.</span>
-          </div>
-        </div>
-        <div class="brand-feature">
-          <div class="brand-feature-icon"><span class="material-symbols-outlined">badge</span></div>
-          <div class="brand-feature-text">
-            <span class="brand-feature-title">إدارة بيانات أعضاء هيئة التدريس</span>
-            <span class="brand-feature-desc">إدارة بيانات أعضاء هيئة التدريس وسجلاتهم الكلية والتدريسية.</span>
-          </div>
-        </div>
-        <div class="brand-feature">
-          <div class="brand-feature-icon"><span class="material-symbols-outlined">meeting_room</span></div>
-          <div class="brand-feature-text">
-            <span class="brand-feature-title">إدارة القاعات والمعامل الدراسية</span>
-            <span class="brand-feature-desc">إدارة القاعات والمعامل وربطها بالجداول الدراسية والامتحانات.</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="brand-bottom">
-        <div class="brand-footer-text">© 2026 كلية التقنية الهندسية زوارة — جميع الحقوق محفوظة</div>
-      </div>
-    </div>
-
-    <!-- Login Card -->
-    <div class="auth-card">
-      <div class="auth-header">
-        <div class="auth-logo"><div class="site-logo">
-    <img src="/static/image/logo.png" alt="كلية التقنية الهندسية زوارة">
-  </div></div>
-
-        <p class="auth-subtitle">كلية التقنية الهندسية زوارة — منصة رقمية لإدارة الجداول المقرارت الدراسية</p>
-      </div>
-
-      <!-- User Login Form -->
-      <form method="post" action="{{ url_for('auth.login') }}" class="auth-form" id="loginForm">
-        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-        <div class="form-group">
-          <label for="username">اسم المستخدم</label>
-          <input type="text" id="username" name="username" class="form-control" placeholder="أدخل اسم المستخدم" autocomplete="username" required="" value="{{ username|default('', true) }}" {% if form_error %}aria-invalid="true"{% endif %}>
-        </div>
-
-        <div class="form-group">
-          <label for="password">كلمة المرور</label>
-          <div class="auth-password-group">
-            <input type="password" name="password" id="password" class="form-control auth-password-input" placeholder="أدخل كلمة المرور" autocomplete="current-password" required="" {% if form_error %}aria-invalid="true"{% endif %}>
-            <button type="button" class="auth-password-toggle" id="togglePassword" onclick="togglePass()" aria-label="إظهار كلمة المرور">
-              <span class="password-toggle-label" id="toggleLabel">إظهار</span>
-            </button>
-          </div>
-        </div>
-
-        {% if form_error %}
-        <div class="field-error" role="alert">
-          <span class="material-symbols-outlined">error</span>
-          {{ form_error }}
-        </div>
-        {% endif %}
-
-        <button type="submit" class="w-full h-14 bg-primary text-on-primary rounded-lg font-bold shadow-lg hover:bg-primary-container transition-all active:scale-95 flex items-center justify-center gap-md">دخول ←</button>
-
-        <a href="/index.html" class="w-full h-14 border-2 border-primary text-primary rounded-lg font-bold hover:bg-primary-container transition-all active:scale-95 flex items-center justify-center gap-md mt-4">
-          <span class="material-symbols-outlined">public</span>
-          الذهاب إلى صفحة
-        </a>
-
-      </form>
-
-      <div class="auth-footer" id="userFooter">
-        <a href="{{ url_for('auth.forgot_password') }}" class="forgot-password-link">نسيت كلمة المرور؟</a>
-      </div>
-
-      
-      <div class="auth-footer" id="userFooterExtra">
-        <span>منصة رقمية لإدارة الجداول المقرارت الدراسية — كلية التقنية الهندسية زوارة</span>
-      </div>
-    </div>
-
-  </div>
-</section>
-
-<!-- Toast -->
-<div class="notification-toast" id="toast">
-  <div class="toast-icon" id="toastIcon">✓</div>
-  <span id="toastMsg">تم بنجاح</span>
+  <p class="auth-subtitle">كلية التقنية الهندسية زوارة — منصة رقمية لإدارة الجداول المقرارت الدراسية</p>
 </div>
 
+<!-- User Login Form -->
+<form method="post" action="{{ url_for('auth.login') }}" class="auth-form" id="loginForm">
+  <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+  <div class="form-group">
+    <label for="username">اسم المستخدم</label>
+    <input type="text" id="username" name="username" class="form-control" placeholder="أدخل اسم المستخدم" autocomplete="username" required="" value="{{ username|default('', true) }}" {% if form_error %}aria-invalid="true"{% endif %}>
+  </div>
+
+  <div class="form-group">
+    <label for="password">كلمة المرور</label>
+    <div class="auth-password-group">
+      <input type="password" name="password" id="password" class="form-control auth-password-input" placeholder="أدخل كلمة المرور" autocomplete="current-password" required="" {% if form_error %}aria-invalid="true"{% endif %}>
+      <button type="button" class="auth-password-toggle" id="togglePassword" onclick="togglePass()" aria-label="إظهار كلمة المرور">
+        <span class="password-toggle-label" id="toggleLabel">إظهار</span>
+      </button>
+    </div>
+  </div>
+
+  {% if form_error %}
+  <div class="field-error" role="alert">
+    <span class="material-symbols-outlined">error</span>
+    <span>{{ form_error }}</span>
+  </div>
+  {% endif %}
+
+  <button type="submit" class="w-full h-14 bg-primary text-on-primary rounded-lg font-bold shadow-lg hover:bg-primary-container transition-all active:scale-95 flex items-center justify-center gap-md">دخول ←</button>
+
+</form>
+
+<div class="auth-footer">
+  <a href="{{ url_for('auth.forgot_password') }}" class="forgot-password-link">نسيت كلمة المرور؟</a>
+</div>
+
+<div class="auth-footer">
+  <a href="/index.html" class="forgot-password-link" style="display:flex;align-items:center;justify-content:center;gap:6px">
+    <span class="material-symbols-outlined" style="font-size:15px">public</span>
+    الذهاب إلى الموقع العام
+  </a>
+</div>
+
+<div class="auth-footer" id="userFooterExtra">
+  <span>منصة رقمية لإدارة الجداول المقرارت الدراسية — كلية التقنية الهندسية زوارة</span>
+</div>
+
+
+
+{% endblock %}
+
+{% block scripts %}
 <script src="/static/js/login.js"></script>
-
-</body>
+{% if auth_warning %}
+<div class="sr-only" role="status" id="authWarning">
+  {{ auth_warning }}
+</div>
+<script>
+  (function () {
+    var el = document.getElementById('authWarning');
+    if (!el || !window.showNotification) return;
+    var msg = el.textContent;
+    function fire() {
+      window.showNotification(msg, 'warning', 7000);
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', fire);
+    } else {
+      setTimeout(fire, 250);
+    }
+  })();
+</script>
+{% endif %}
+{% endblock %}

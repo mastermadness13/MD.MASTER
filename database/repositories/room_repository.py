@@ -4,16 +4,18 @@ from typing import Any, Dict, List, Optional
 
 from database.repositories.base_repository import BaseRepository
 
-
+# /     /     >---- مستودع القاعات — كل العمليات على جدول rooms
 class RoomRepository(BaseRepository):
     table = 'rooms'
 
+    # /     /     >---- نجيب قاعة بالمعرف
     def find_by_id(self, room_id: int) -> Optional[Dict[str, Any]]:
         row = self.db.execute(
             'SELECT * FROM rooms WHERE id = ?', (room_id,)
         ).fetchone()
         return dict(row) if row else None
 
+    # /     /     >---- نجيب قاعة بكل تفاصيلها (النوع، الحالة، الطابق، القسم)
     def find_detail(self, room_id: int) -> Optional[Dict[str, Any]]:
         row = self.db.execute(
             '''SELECT r.*, rt.name_ar as type_name, rs.name_ar as status_name,
@@ -28,6 +30,7 @@ class RoomRepository(BaseRepository):
         ).fetchone()
         return dict(row) if row else None
 
+    # /     /     >---- نجيب القاعات مع الترقيم (المختبرات الأول)
     def list_rooms(self, where_clause: str, params: list,
                    page: int = 1, per_page: int = 20) -> tuple:
         base = (
@@ -44,11 +47,13 @@ class RoomRepository(BaseRepository):
         )
         return self.paginate(base, params, page, per_page)
 
+    # /     /     >---- الأقسام المظهرة (غير المخفية)
     def list_visible_departments(self) -> List[Dict[str, Any]]:
         return [dict(r) for r in self.db.execute(
             'SELECT * FROM departments WHERE hidden = 0 AND deleted_at IS NULL ORDER BY name'
         ).fetchall()]
 
+    # /     /     >---- القيم المساعدة لصفحة الإنشاء (الأنواع، الحالات، الطوابق)
     def get_create_lookups(self) -> Dict[str, list]:
         from database.seed_data import CANONICAL_ROOM_TYPES
         canonical = ','.join('?' * len(CANONICAL_ROOM_TYPES))
@@ -66,11 +71,13 @@ class RoomRepository(BaseRepository):
             'departments': self.list_visible_departments(),
         }
 
+    # /     /     >---- كل القاعات (اللي ما فيهمش حذف ناعم)
     def list_all(self) -> List[Dict[str, Any]]:
         return [dict(r) for r in self.db.execute(
             'SELECT id, name, type, capacity FROM rooms WHERE deleted_at IS NULL ORDER BY name'
         ).fetchall()]
 
+    # /     /     >---- نصنع قاعة جديدة ونرجع معرّفها
     def create(self, data: Dict[str, Any], commit: bool = True) -> int:
         self.db.execute(
             'INSERT INTO rooms (name, code, capacity, room_type_id, status_id, '
@@ -83,6 +90,7 @@ class RoomRepository(BaseRepository):
             self.db.commit()
         return self.db.execute('SELECT last_insert_rowid()').fetchone()[0]
 
+    # /     /     >---- نحدّث بيانات القاعة
     def update(self, room_id: int, data: Dict[str, Any]) -> None:
         self.db.execute(
             'UPDATE rooms SET name=?, code=?, capacity=?, room_type_id=?, '
@@ -92,4 +100,3 @@ class RoomRepository(BaseRepository):
              data.get('building', ''), data.get('department_id'), data.get('computers', 0), room_id),
         )
         self.db.commit()
-

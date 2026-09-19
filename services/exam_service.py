@@ -2,6 +2,8 @@
 
 Uses ``ExamRepository`` for data access.  Module-level functions are kept
 for backward compatibility with existing routes.
+
+/     /     >---- خدمة الامتحانات: الجدولة والإعدادات وإدارة القاعات.
 """
 
 from __future__ import annotations
@@ -14,6 +16,7 @@ from core.constants.seasons import season_label as core_season_label
 
 logger = logging.getLogger(__name__)
 
+# /     /     >---- ثوابت العرض: أيام وشهور عربية وترتيب أيام الامتحان وحدود الأسابيع
 ARABIC_DAYS = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت']
 ARABIC_MONTHS = {
     '01': 'يناير', '02': 'فبراير', '03': 'مارس', '04': 'أبريل',
@@ -25,6 +28,7 @@ EXAM_DAYS_ORDER = ['السبت', 'الأحد', 'الاثنين', 'الثلاثا
 MAX_EXAM_WEEKS = 5
 
 
+# /     /     >---- اسم اليوم بالعربي من التاريخ
 def _day_ar_from_date(date_str):
     if not date_str:
         return ''
@@ -34,6 +38,8 @@ def _day_ar_from_date(date_str):
         return ''
     return ARABIC_WEEKDAYS.get(d.weekday(), '').replace('الإثنين', 'الاثنين')
 
+
+# /     /     >---- ملصقات الحالات العربية للمخطط الامتحاني
 STATUS_LABELS = {
     'draft': 'مسودة', 'planned': 'مخطط', 'scheduled': 'مجدول',
     'published': 'منشور', 'completed': 'مكتمل',
@@ -43,6 +49,7 @@ STATUS_ACTIVE = ('planned', 'scheduled', 'published', 'completed')
 STATUS_UNPUBLISHED = ('planned', 'scheduled')
 
 
+# /     /     >---- عرض التاريخ كاملاً: يوم + شهر عربي + سنة
 def _date_display(date_str):
     if not date_str:
         return ''
@@ -53,6 +60,7 @@ def _date_display(date_str):
         return date_str
 
 
+# /     /     >---- عرض التاريخ مختصر وبدون سنة: "2025-12-09" → "9 ديسمبر"
 def _date_short_display(date_str):
     """"2025-12-09" → "9 ديسمبر" (day + Arabic month, no year)."""
     if not date_str:
@@ -64,16 +72,19 @@ def _date_short_display(date_str):
         return date_str
 
 
+# /     /     >---- الأعداد الترتيبية العربية للفصول
 ARABIC_ORDINALS = ['الأول', 'الثاني', 'الثالث', 'الرابع',
                    'الخامس', 'السادس', 'السابع', 'الثامن', 'التاسع', 'العاشر']
 
 
+# /     /     >---- اسم الفصل بالعربي (الفصل الأول ... الفصل العاشر)
 def semester_label(sem):
     if 1 <= sem <= len(ARABIC_ORDINALS):
         return 'الفصل ' + ARABIC_ORDINALS[sem - 1]
     return f'الفصل {sem}'
 
 
+# /     /     >---- تجهيز بيانات امتحانات الأقسام للواجهة (JSON جاهز للعرض)
 def build_exam_schedule_view(db, departments, dept_stats):
     """Shape department exam data into a JSON-friendly payload for the workspace UI."""
     period = get_exam_period(db)
@@ -89,6 +100,7 @@ def build_exam_schedule_view(db, departments, dept_stats):
         except (ValueError, TypeError):
             year_label = ''
 
+    # /     /     >---- أسماء القاعات وخياراتها مع السعة
     room_names = sorted({r['name'] for r in get_exam_halls(db)})
     room_options = [
         {'id': r['id'], 'name': r['name'], 'capacity': r['capacity']}
@@ -141,6 +153,7 @@ def build_exam_schedule_view(db, departments, dept_stats):
                     'course_id': cell.get('course_id'),
                     'status': cell.get('status') or '',
                 })
+        # /     /     >---- حالة القسم: معتمد إذا كل عموده منشور أو مكتمل
         if exams and all(e['status'] in ('published', 'completed') for e in exams):
             dept_status = 'approved'
         else:
@@ -167,16 +180,15 @@ def build_exam_schedule_view(db, departments, dept_stats):
         })
 
     # Read semester exam dates for display
+    # /     /     >---- تواريخ امتحانات الفصل الأكاديمي للعرض (من إعدادات الامتحانات)
     sem_exam_start, sem_exam_end = '', ''
     try:
-        sem_row = db.execute(
-            'SELECT exam_start_date, exam_end_date '
-            'FROM semesters WHERE is_active = 1 '
-            'AND exam_start_date != "" LIMIT 1'
+        settings_row = db.execute(
+            'SELECT exam_start_date, exam_end_date FROM exam_settings LIMIT 1'
         ).fetchone()
-        if sem_row:
-            sem_exam_start = sem_row['exam_start_date'] or ''
-            sem_exam_end = sem_row['exam_end_date'] or ''
+        if settings_row:
+            sem_exam_start = settings_row['exam_start_date'] or ''
+            sem_exam_end = settings_row['exam_end_date'] or ''
     except Exception:
         pass
 
@@ -198,11 +210,13 @@ def build_exam_schedule_view(db, departments, dept_stats):
     }
 
 
+# /     /     >---- منسّق التاريخ العربي العام للاستخدام الخارجي
 def format_exam_date(date_str):
     """Public Arabic date formatter (e.g. ``2025-09-15`` → ``15 سبتمبر 2025``)."""
     return _date_display(date_str)
 
 
+# /     /     >---- بناء عرض الطباعة: بيانات القسم مع إحصائيات ثم تجهيز العرض
 def build_exam_print_view(db, dept_id=None):
     """Build the exam schedule view for printing/embedding.
 
@@ -230,56 +244,31 @@ def build_exam_print_view(db, dept_id=None):
     return view
 
 
+# /     /     >---- تحديد الفترة الأكاديمية الموضحة في ترويسة الفضاء/الطباعة
 def resolve_academic_period(db) -> Dict[str, str]:
     """Resolve the academic period shown in the exam workspace/print header.
 
-    Primary source is the ACTIVE academic semester (the academic calendar's
-    ``is_active`` row): its own ``season`` + ``year`` drive the label, while
-    its exam window provides ``start``/``end``. ``exam_settings`` is only a
-    fallback when no active semester exists. Returns
-    ``{'start', 'yearLabel', 'seasonWord'}``.
+    The active semester (season + year) is computed from today's date and
+    drives the label; its exam window comes from ``exam_settings``.
+    Returns ``{'start', 'yearLabel', 'seasonWord'}``.
     """
     from core.constants.seasons import SEASON_FALL, SEASON_SPRING
 
-    season = ''
-    year = ''
-    start = end = ''
-    try:
-        row = db.execute(
-            'SELECT season, year, exam_start_date, exam_end_date '
-            'FROM semesters WHERE is_active = 1 LIMIT 1'
-        ).fetchone()
-        if row:
-            season = row['season'] or ''
-            year = row['year'] or ''
-            start = row['exam_start_date'] or ''
-            end = row['exam_end_date'] or ''
-    except Exception:
-        pass
+    now = datetime.now()
+    season = 'fall' if now.month >= 9 else 'spring'
+    year = now.year
 
-    if year:
-        season_word = {
-            'fall': SEASON_FALL, 'spring': SEASON_SPRING,
-        }.get(str(season).strip().lower(), season) or ''
-        if not season_word and start:
-            season_word = (core_season_label(start) or '').split(' ')[0]
-        year_label = str(year)
-    else:
-        settings = get_exam_period(db)
-        if not start:
-            start = settings.get('exam_start_date') or ''
-        if not end:
-            end = settings.get('exam_end_date') or ''
-        year_label = ''
-        if start:
-            try:
-                sy = int(start[:4])
-                ey = int(end[:4]) if end and len(end) >= 4 else sy
-                year_label = f'{sy}' if sy == ey else f'{sy}\u2013{ey}'
-            except (ValueError, TypeError):
-                year_label = ''
-        season = core_season_label(start) or ''
-        season_word = season.split(' ')[0] if season else ''
+    settings = get_exam_period(db)
+    start = settings.get('exam_start_date') or ''
+    end = settings.get('exam_end_date') or ''
+
+    # /     /     >---- كلمة الفصل من شخصية الفصل النشط
+    season_word = {
+        'fall': SEASON_FALL, 'spring': SEASON_SPRING,
+    }.get(str(season).strip().lower(), season) or ''
+    if not season_word and start:
+        season_word = (core_season_label(start) or '').split(' ')[0]
+    year_label = str(year)
 
     return {
         'start': start,
@@ -289,12 +278,16 @@ def resolve_academic_period(db) -> Dict[str, str]:
 
 
 class ExamService:
-    """Class-based exam service with repository injection."""
+    """Class-based exam service with repository injection.
+
+    /     /     >---- الخدمة بشكل كلاس مع حقن مستودع الامتحانات.
+    """
 
     def __init__(self, db, exam_repo):
         self.db = db
         self._repo = exam_repo
 
+    # /     /     >---- بناء بيانات امتحانات الأقسام: فترات مخزنّة + خلايا زمنية + تواريخ
     def build_dept_exam_data(self, filter_dept_id=None):
         if filter_dept_id:
             departments = [self._repo.find_department(filter_dept_id)]
@@ -302,6 +295,7 @@ class ExamService:
         else:
             departments = self._repo.list_visible_departments()
 
+        # /     /     >---- الفترة: من الفصل النشط أولاً ثم من إعدادات الامتحانات
         sem_start, sem_end = self._get_semester_exam_dates()
         if sem_start and sem_end:
             start_str, end_str = sem_start, sem_end
@@ -313,6 +307,7 @@ class ExamService:
         # Resolve (week, day) → concrete date when an exam period is set.
         # Start from the Saturday of the week containing start_dt so every
         # exam day (Sat-Thu) in every week always gets a mapped date.
+        # /     /     >---- ربط (الأسبوع، اليوم) بتواريخ فعلية بدءاً من السبت
         date_map = {}
         if start_str and end_str:
             try:
@@ -330,6 +325,7 @@ class ExamService:
                     if wd in ARABIC_WEEKDAYS:
                         day_ar = ARABIC_WEEKDAYS[wd].replace('الإثنين', 'الاثنين')
                         date_map[(week, day_ar)] = cur.strftime('%Y-%m-%d')
+                        # /     /     >---- الخميس = آخر يوم في الأسبوع فنتنقل للأسبوع اللي بعده
                         if day_ar == 'الخميس':
                             week += 1
                             if cur > end_dt:
@@ -342,6 +338,7 @@ class ExamService:
             is_general = ('عام' in dept_name)
             sem_start, sem_end = (1, 1) if is_general else (2, 7)
 
+            # /     /     >---- سجلات الامتحانات المخزنة للقسم
             rows = self.db.execute(
                 '''SELECT es.*, c.name as course_name, c.code as course_code,
                           r.name as room_name, c.practical_hours
@@ -353,6 +350,7 @@ class ExamService:
                 (dept['id'],),
             ).fetchall()
 
+            # /     /     >---- فهرسة السجلات حسب الخلية (أسبوع، يوم، فصل)
             stored_weeks = set()
             exam_by_cell = {}
             for r in rows:
@@ -370,6 +368,7 @@ class ExamService:
             max_week = max(stored_weeks) if stored_weeks else 1
             max_week = min(max_week, MAX_EXAM_WEEKS)
 
+            # /     /     >---- بناء شبكة الفترات الفارغة لملء الخلايا في الواجهة
             time_slots = []
             for week in range(1, max_week + 1):
                 for day_ar in EXAM_DAYS_ORDER:
@@ -391,6 +390,7 @@ class ExamService:
 
         return dept_list
 
+    # /     /     >---- تعديل قاعة الامتحان وإرجاع الاسم المحدّث
     def update_exam_room(self, schedule_id, room_id):
         self._repo.update_room(schedule_id, room_id or None)
         row = self.db.execute(
@@ -400,6 +400,7 @@ class ExamService:
         ).fetchone()
         return {'room_name': row['room_name'] if row and row['room_name'] else '', 'room_id': room_id}
 
+    # /     /     >---- إعدادات الامتحانات مع حساب عدد الأيام
     def get_exam_settings(self):
         settings = self._repo.get_settings() or {}
         total_days = 0
@@ -415,6 +416,7 @@ class ExamService:
     def save_exam_settings(self, data):
         self._repo.save_settings(data)
 
+    # /     /     >---- قاعات الامتحانات النشطة
     def get_exam_halls(self):
         return self._repo.get_active_rooms()
 
@@ -425,6 +427,7 @@ class ExamService:
         )
         self.db.commit()
 
+    # /     /     >---- فحص وجود اسم قاعة مكرر
     def hall_name_exists(self, name, exclude_id=None):
         if exclude_id:
             return self.db.execute(
@@ -439,6 +442,7 @@ class ExamService:
         )
         self.db.commit()
 
+    # /     /     >---- قراءة فترة الامتحانات مع قيم افتراضية
     def get_exam_period(self):
         row = self.db.execute('SELECT * FROM exam_settings LIMIT 1').fetchone()
         if not row:
@@ -449,28 +453,20 @@ class ExamService:
             }
         return dict(row)
 
+    # /     /     >---- تاريخي امتحانات الفصل النشط (من إعدادات الامتحانات)
     def _get_semester_exam_dates(self):
-        """Read exam period from the active semester (primary source).
+        """Read exam period dates from ``exam_settings``.
 
-        Returns (start_date, end_date) tuple. Falls back to empty strings
-        if no active semester has exam dates set.
+        Returns (start_date, end_date) tuple.
         """
-        try:
-            row = self.db.execute(
-                'SELECT exam_start_date, exam_end_date '
-                'FROM semesters WHERE is_active = 1 '
-                'AND exam_start_date != "" AND exam_end_date != "" LIMIT 1'
-            ).fetchone()
-            if row:
-                return row['exam_start_date'], row['exam_end_date']
-        except Exception:
-            pass
-        return '', ''
+        settings = self.get_exam_period()
+        return settings.get('exam_start_date') or '', settings.get('exam_end_date') or ''
 
+    # /     /     >---- رفض تواريخ خارج فترة الامتحانات المحددة
     def validate_exam_date(self, exam_date):
         """Reject exam dates outside the configured examination period.
 
-        Checks the active semester first, then falls back to exam_settings.
+        Reads the exam window from ``exam_settings``.
         Raises ValueError with an Arabic message if the date is out of range.
         """
         if not exam_date:
@@ -492,6 +488,7 @@ class ExamService:
                 f'فترة الامتحانات: {es} — {ee}'
             )
 
+    # /     /     >---- حفظ فترة الامتحانات (المصدر الوحيد: إعدادات الامتحانات)
     def save_exam_period(self, data, username):
         is_resave = data.get('resave')
         status = 'draft' if is_resave else data.get('period_status', 'draft')
@@ -520,17 +517,9 @@ class ExamService:
                 (data['exam_start_date'], data['exam_end_date'],
                  data['exam_start_time'], data['exam_end_time'], status, username),
             )
-        # Dual-write: also update the active semester's exam dates
-        try:
-            self.db.execute(
-                'UPDATE semesters SET exam_start_date = ?, exam_end_date = ? '
-                'WHERE is_active = 1',
-                (data['exam_start_date'], data['exam_end_date']),
-            )
-        except Exception:
-            pass
         self.db.commit()
 
+    # /     /     >---- نشر فترة الامتحانات
     def publish_exam_period(self, username):
         now = "datetime('now', 'localtime')"
         existing = self.db.execute('SELECT id FROM exam_settings LIMIT 1').fetchone()
@@ -553,9 +542,11 @@ class ExamService:
             )
         self.db.commit()
 
+    # /     /     >---- مقررات قسم معيّن في فصل معيّن
     def get_department_courses(self, dept_id, semester):
         return self._repo.get_department_courses(dept_id, semester)
 
+    # /     /     >---- توكيلات الامتحانات النشطة للقسم/الفصل
     def get_department_exam_assignments(self, dept_id, semester):
         rows = self.db.execute(
             '''SELECT es.*, c.name as course_name, c.code as course_code,
@@ -570,6 +561,7 @@ class ExamService:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    # /     /     >---- حفظ توكيل امتحان: إدراج/تحديث/حذف حسب الوجود والحالة
     def save_exam_assignment(self, course_id, dept_id, semester, exam_date, user_id):
         self.validate_exam_date(exam_date)
         existing = self.db.execute(
@@ -579,6 +571,7 @@ class ExamService:
             (course_id, dept_id, semester),
         ).fetchone()
         if existing:
+            # /     /     >---- المقررات المنشورة/المكتملة لا تُعدل
             if existing['status'] in ('published', 'completed'):
                 return
             if exam_date:
@@ -588,6 +581,7 @@ class ExamService:
                     (exam_date, new_status, existing['id']),
                 )
             else:
+                # /     /     >---- إلغاء التاريخ يعني حذف التوكيل
                 self.db.execute('DELETE FROM exam_schedule WHERE id = ?', (existing['id'],))
         else:
             if exam_date:
@@ -599,6 +593,7 @@ class ExamService:
                 )
         self.db.commit()
 
+    # /     /     >---- الامتحانات قيد التخطيط (مخطط أو مجدول)
     def get_planning_exams(self):
         rows = self.db.execute(
             '''SELECT es.*, c.name as course_name, c.code as course_code,
@@ -612,6 +607,7 @@ class ExamService:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    # /     /     >---- عدد الطلاب: أُزيل مع إعادة هيكلة الأدوار فيُترك صفراً
     def get_student_count(self, dept_id, semester):
         # Student role/tables were removed in the role overhaul — no student
         # counts exist anymore.  Kept as 0 so capacity/planning flows still work.
@@ -620,6 +616,7 @@ class ExamService:
     def get_exam_rooms(self):
         return self._repo.get_active_rooms()
 
+    # /     /     >---- إسناد قاعة ووقت للامتحان وتحديث الحالة لمجدول
     def assign_exam_resources(self, schedule_id, room_id, start_time, end_time):
         if start_time and end_time:
             self.db.execute(
@@ -635,6 +632,7 @@ class ExamService:
             )
         self.db.commit()
 
+    # /     /     >---- الفترات الزمنية (جلسات) المحددة في إعدادات الامتحانات
     def get_exam_sessions(self):
         settings = self.db.execute(
             'SELECT session_a, session_b, session_c FROM exam_settings WHERE id = 1'
@@ -647,6 +645,7 @@ class ExamService:
                     sessions.append({'value': settings[key], 'label': label})
         return sessions
 
+    # /     /     >---- استغلال القاعات حسب اليوم (يومياً للعرض)
     def get_room_day_usage(self):
         rooms = self.get_exam_rooms()
         usage = {}
@@ -666,6 +665,7 @@ class ExamService:
                 days[date] = days.get(date, 0) + cnt
         return usage
 
+    # /     /     >---- فحص تعارضات الامتحان: قاعة/فصل/قسم/أستاذ/سعة/تكرار
     def check_exam_conflicts(self, schedule_id, room_id=None, start_time=None, end_time=None):
         exam = self.db.execute(
             'SELECT * FROM exam_schedule WHERE id = ?', (schedule_id,)
@@ -679,6 +679,7 @@ class ExamService:
         semester = exam['semester']
         course_id = exam['course_id']
 
+        # /     /     >---- كل الامتحانات المجدولة/المنشورة ما عدا الحالي
         assigned = self.db.execute(
             '''SELECT es.*, c.name as course_name, c.code as course_code
                FROM exam_schedule es
@@ -687,6 +688,7 @@ class ExamService:
             (schedule_id,)
         ).fetchall()
 
+        # /     /     >---- تعارض قاعة: نفس القاعة وفي نفس الوقت
         if room_id:
             for a in assigned:
                 if a['room_id'] == room_id and a['exam_date'] == exam_date:
@@ -701,6 +703,7 @@ class ExamService:
                             'message': f"القاعة محجوزة في هذا اليوم — {a['course_name']}",
                         })
 
+        # /     /     >---- تعارض فصل: نفس الفصل يمتحن مقررين في وقت واحد
         for a in assigned:
             if a['department_id'] == dept_id and a['exam_date'] == exam_date and a['semester'] == semester:
                 if a['start_time'] and start_time and a['start_time'] < end_time and a['end_time'] > start_time:
@@ -709,6 +712,7 @@ class ExamService:
                         'message': f"الفصل يمتحن امتحاناً آخر في نفس الوقت — {a['course_name']}",
                     })
 
+        # /     /     >---- تعارض قسم: القسم يمتحن فصلاً آخر في نفس الوقت
         for a in assigned:
             if a['department_id'] == dept_id and a['exam_date'] == exam_date and a['semester'] != semester:
                 if a['start_time'] and start_time and a['start_time'] < end_time and a['end_time'] > start_time:
@@ -717,6 +721,7 @@ class ExamService:
                         'message': f"القسم يمتحن فصلاً آخر في نفس الوقت — {a['course_name']} ({a['semester']})",
                     })
 
+        # /     /     >---- تعارض أستاذ: نفس عضو هيئة التدريس مراقب لامتحان آخر
         teacher = self.db.execute(
             'SELECT teacher_id FROM timetable WHERE course_id = ? '
             'AND (version_id IS NULL OR version_id IN '
@@ -739,6 +744,7 @@ class ExamService:
                             'message': f"عضو هيئة التدريس مكلف بامتحان آخر في نفس الوقت — {a['course_name']}",
                         })
 
+        # /     /     >---- تعارض السعة: عدد الطلاب أكبر من سعة القاعة
         if room_id:
             room = self.db.execute('SELECT capacity FROM rooms WHERE id = ?', (room_id,)).fetchone()
             if room:
@@ -749,6 +755,7 @@ class ExamService:
                         'message': f"سعة القاعة ({room['capacity']}) أقل من عدد الطلاب ({student_count})",
                     })
 
+        # /     /     >---- تكرار: أكثر من امتحان في نفس القاعة بنفس اليوم
         if room_id and exam_date:
             dup = self.db.execute(
                 '''SELECT COUNT(*) as cnt FROM exam_schedule
@@ -764,6 +771,7 @@ class ExamService:
 
         return conflicts
 
+    # /     /     >---- تحويل خلية الجدول (أسبوع، يوم) إلى تاريخ امتحان فعلّي
     def resolve_exam_date(self, week_number, day_ar):
         """Map a (week, day) table cell back to a concrete exam date."""
         sem_start, sem_end = self._get_semester_exam_dates()
@@ -795,6 +803,7 @@ class ExamService:
             cur += timedelta(days=1)
         return None
 
+    # /     /     >---- تعارضات للخلية قبل الحفظ: (أسبوع، يوم) مشترك بين كل الأقسام
     def check_cell_conflicts(self, dept_id, semester, week, day_ar, room_id, start_time, end_time, exclude_id=None):
         """Conflicts for a proposed cell exam before it is saved.
 
@@ -805,6 +814,7 @@ class ExamService:
         day_norm = (day_ar or '').replace('الإثنين', 'الاثنين')
         exclude_id = exclude_id if exclude_id is not None else -1
 
+        # /     /     >---- كل الامتحانات في نفس الخلية (الأسبوع واليوم)
         assigned = self.db.execute(
             '''SELECT es.*, c.name as course_name, c.code as course_code
                FROM exam_schedule es
@@ -817,6 +827,7 @@ class ExamService:
         for a in assigned:
             overlap = (a['start_time'] and start_time
                        and a['start_time'] < end_time and a['end_time'] > start_time)
+            # /     /     >---- تعارض داخل نفس القسم والفصل
             if a['department_id'] == dept_id and a['semester'] == semester:
                 if overlap:
                     conflicts.append({
@@ -828,6 +839,7 @@ class ExamService:
                         'type': 'semester_day_conflict',
                         'message': f"الفصل {semester} لديه امتحان في نفس اليوم — {a['course_name']}",
                     })
+            # /     /     >---- تعارض قاعة في نفس الخلية
             if room_id and a['room_id'] == room_id:
                 if overlap:
                     conflicts.append({
@@ -841,6 +853,7 @@ class ExamService:
                     })
         return conflicts
 
+    # /     /     >---- إنشاء/تحديث امتحان داخل خلية واحدة (أسبوع × يوم × فصل)
     def save_cell_exam(self, dept_id, semester, week, day_ar, exam_date, course_id, room_id, start_time, end_time, exam_type, user_id, schedule_id=None):
         """Create or update an exam in a single (week × day × semester) cell."""
         self.validate_exam_date(exam_date)
@@ -872,6 +885,7 @@ class ExamService:
         self.db.commit()
         return schedule_id
 
+    # /     /     >---- حذف امتحان من خلية مع التحقق من ملكية القسم
     def delete_cell_exam(self, schedule_id, dept_id):
         row = self.db.execute(
             'SELECT * FROM exam_schedule WHERE id = ?', (schedule_id,)
@@ -881,7 +895,9 @@ class ExamService:
         self.db.execute('DELETE FROM exam_schedule WHERE id = ?', (schedule_id,))
         self.db.commit()
 
+    # /     /     >---- اقتراح توزيع الامتحانات على القاعات تلقائياً
     def suggest_distribution(self):
+        # /     /     >---- الامتحانات المخططة بلا قاعة بعد
         exams = [e for e in self.get_planning_exams() if e['status'] == 'planned' and not e['room_id']]
         for ex in exams:
             ex['student_count'] = self.get_student_count(ex['department_id'], ex['semester'])
@@ -901,12 +917,14 @@ class ExamService:
                 room_schedule[rid] = []
             room_schedule[rid].append(dict(a))
 
+        # /     /     >---- منع امتحانين لنفس القسم والفصل في نفس اليوم
         dept_same_day = {}
         for a in assigned:
             key = (a['department_id'], a['semester'], a['exam_date'])
             dept_same_day[key] = dept_same_day.get(key, 0) + 1
 
         suggestions = []
+        # /     /     >---- أكثر الامتحانات عدداً أولاً، وأفضل ملاءمة للسعة
         for ex in sorted(exams, key=lambda x: x['student_count'], reverse=True):
             day = ex.get('exam_date', '')
             dept_id = ex['department_id']
@@ -944,11 +962,13 @@ class ExamService:
                 })
         return suggestions
 
+    # /     /     >---- نشر الجدول: تحويل كل المجدول إلى منشور وإرجاع عدد الصفوف
     def publish_schedule(self):
         self.db.execute("UPDATE exam_schedule SET status = 'published' WHERE status = 'scheduled'")
         self.db.commit()
         return self.db.execute('SELECT changes()').fetchone()[0]
 
+    # /     /     >---- بيانات التخطيط الكاملة مقسمة حسب اليوم/القاعة/القسم
     def get_planning_data(self):
         exams = self.get_planning_exams()
         rooms = self.get_exam_rooms()
@@ -978,6 +998,8 @@ class ExamService:
 
 
 # ── Backward-compatible module-level API ──────────────────────────────────
+# /     /     >---- دوال مستوى الوحدة للتوافق مع المسارات القديمة
+
 
 def build_dept_exam_data(db, filter_dept_id=None):
     from database.repositories.exam_repository import ExamRepository

@@ -3,6 +3,8 @@
 The SPA is the primary admin UI: it talks to the REST API (``/api/*``) and
 shares the session cookie with the HTML routes.  Everything after login
 happens client-side; this route only renders the shell.
+
+/     /     >---- مسار SPA: يُحَمّل هيكل التطبيق الرئيسي والفعل كله بعد الدخول في الواجهة.
 """
 
 from __future__ import annotations

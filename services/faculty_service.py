@@ -1,7 +1,9 @@
-﻿"""Faculty Affairs Office service — teaching assignments and dashboard data.
+"""Faculty Affairs Office service — teaching assignments and dashboard data.
 
 Module-level functions take a database connection as the first argument and
 run raw SQL, mirroring the other domain services in this package.
+
+/     /     >---- خدمة شؤون هيئة التدريس: التكليفات التدريسية وبيانات اللوحات.
 """
 
 from __future__ import annotations
@@ -9,12 +11,14 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Tuple
 
 from utils.format import paginate
-# Theoretical hours count 1.0 and practical hours count 0.75 toward the weekly
-# teaching load. A member whose weighted load exceeds this is overloaded.
+
+# /     /     >---- الساعات النظرية تُحسب 1.0 والعملية 0.75 من العبء الأسبوعي
 PRACTICAL_WEIGHT = 0.75
+# /     /     >---- من تجاوز هذا العبء المحسوب يُعتبر محمّلاً بشكل زائد
 OVERLOAD_THRESHOLD = 18
 
 
+# /     /     >---- بناء شروط استعلام التكليفات (بحث + قسم + رتبة)
 def _assignments_where(search='', department_id=None, rank_id=None):
     where = ['t.deleted_at IS NULL']
     params: list = []
@@ -30,6 +34,7 @@ def _assignments_where(search='', department_id=None, rank_id=None):
     return where, params
 
 
+# /     /     >---- الإجمالات التدريسية لكل أستاذ + بيانات الفلاتر للصفحة
 def get_teaching_assignments(
     db,
     search: str = '',
@@ -59,6 +64,7 @@ def get_teaching_assignments(
 
     rows, total, pg, pp = paginate(base, params, page)
     for row in rows:
+        # /     /     >---- حساب العبء الموزون وتحديد المُحمّلين زائداً
         weighted = row['theory_hours'] + PRACTICAL_WEIGHT * row['practical_hours']
         row['weighted_hours'] = round(weighted, 1)
         row['overloaded'] = weighted > OVERLOAD_THRESHOLD
@@ -76,6 +82,7 @@ def get_teaching_assignments(
     return rows, total, pg, pp, departments, ranks
 
 
+# /     /     >---- إجماليات ملخصة لرأس صفحة التكليفات
 def get_teaching_assignments_summary(
     db,
     search: str = '',
@@ -103,6 +110,7 @@ def get_teaching_assignments_summary(
     ).fetchone()
     assigned = row['with_assignments'] or 0
 
+    # /     /     >---- عدد المحمّلين زائداً حسب العبء الموزون
     overloaded = db.execute(
         f'''SELECT COUNT(*) FROM (
                 SELECT t.id
@@ -126,6 +134,7 @@ def get_teaching_assignments_summary(
     }
 
 
+# /     /     >---- بيانات لوحة شؤون هيئة التدريس (العدادات والتفاصيل)
 def get_faculty_dept_dashboard_data(db):
     """Data for the Faculty Affairs Office sub-admin dashboard."""
     data = {}
@@ -147,6 +156,7 @@ def get_faculty_dept_dashboard_data(db):
         '(SELECT id FROM timetable_versions WHERE status = \'active\'))'
     ).fetchone()[0]
 
+    # /     /     >---- إجمالي الساعات النظرية والعملية والحد الموزون والمتوسط
     load_row = db.execute(
         '''SELECT COALESCE(SUM(c.theoretical_hours), 0) AS theory,
                   COALESCE(SUM(c.practical_hours), 0) AS practical
@@ -183,6 +193,7 @@ def get_faculty_dept_dashboard_data(db):
         (PRACTICAL_WEIGHT, OVERLOAD_THRESHOLD),
     ).fetchone()[0]
 
+    # /     /     >---- عدد أعضاء الهيئة لكل قسم أكاديمي
     dept_rows = db.execute(
         '''SELECT d.id, d.name, COUNT(t.id) AS faculty_count
            FROM departments d

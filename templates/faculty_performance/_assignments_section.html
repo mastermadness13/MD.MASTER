@@ -1,0 +1,35 @@
+{# Official form section "رابعاً: التكليف بمهام إدارية" — standalone fragment.
+   Included by _official_sections.html AND returned by the preview
+   assignments-section AJAX endpoint for in-place refresh. Uses the same
+   inline + .official-sections styling so it matches the printed form. #}
+<div class="official-sections" id="assignments-section">
+  <div>
+    <div class="section-title">رابعاً: التكليف بمهام إدارية</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:34%;">المهمة الإدارية</th>
+          <th style="width:33%;">تاريخ التكليف</th>
+          <th style="width:33%;">عدد الساعات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set admin_list = fd.admin_assignments or [] %}
+        {% for a in admin_list %}
+        <tr>
+          <td>{{ a.task }}</td>
+          <td>{{ a.assignment_date or a.start_date or '' }}</td>
+          <td>{{ a.hours_used }}</td>
+        </tr>
+        {% endfor %}
+        {% if not admin_list %}
+        <tr>
+          <td>فرغ</td>
+          <td>فرغ</td>
+          <td>فرغ</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>

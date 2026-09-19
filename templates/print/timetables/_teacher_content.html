@@ -7,8 +7,7 @@
     <div style="font-size: 11px; font-weight: 400; color: #333; margin-top: 2px;">تاريخ الطباعة: {{ now().strftime('%Y/%m/%d %H:%M') }}</div>
   </div>
 
-  {% set any_entries = false %}
-  {% for day in days_order %}{% if weekly_schedule.get(day) %}{% set any_entries = true %}{% endif %}{% endfor %}
+  {% set any_entries = (weekly_schedule.values() | select() | list | length > 0) %}
 
   {% if any_entries %}
   <div class="space-y-4">

@@ -5,11 +5,6 @@
 </head>
 <body class="auth-body">
 
-<a href="{{ url_for('public_site.index_page') }}" class="fixed top-4 start-4 z-50 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/85 text-slate-700 text-sm font-bold shadow-md border border-slate-200 hover:bg-white hover:text-slate-900 transition-colors no-underline" title="الموقع العام" target="_blank" rel="noopener">
-  <span class="material-symbols-outlined text-[18px]">globe</span>
-  الموقع العام
-</a>
-
 <div class="auth-bg">
   <div class="auth-bg-gradient"></div>
   <div class="auth-bg-pattern"></div>
@@ -23,29 +18,148 @@
 </div>
 
 <section class="auth-screen">
-  <div class="flex items-center justify-center min-h-screen w-full px-4 sm:px-6 py-8">
-    <div class="w-full max-w-md">
+  <div class="auth-layout">
+
+    <!-- Brand panel (الشعار + وصف المنصة + فريق الإعداد) -->
+    <div class="auth-brand-panel">
+      <div class="brand-top">
+        <h1 class="brand-title"> كلية التقنية الهندسية زوارة</h1>
+        <div class="brand-logo-large"><div class="site-logo">
+          <img src="/static/image/logo.png" alt="كلية التقنية الهندسية زوارة">
+        </div></div>
+        <h2 class="brand-heading">مشروع تخرج بعنوان: منصة رقمية لإدارة الجداول والمقرارت الدراسية</h2>
+        <p class="brand-subtitle">منصة رقمية متكاملة لإدارة الجداول الدراسية وجداول الامتحانات النهائية والمقرارت الدراسية، وإدارة بيانات أعضاء هيئة التدريس والقاعات والمعامل الدراسية.</p>
+      </div>
+
+      <div class="brand-team-section">
+        <div class="brand-team-block">
+          <h3 class="brand-team-title">إعداد الطالبين</h3>
+          <div class="brand-team-names">
+            <span class="brand-team-name">مهند محمد الصويعي</span>
+            <span class="brand-team-name">سعيد فرحات ابوالسعود</span>
+          </div>
+        </div>
+        <div class="brand-team-block">
+          <h3 class="brand-team-title">المشرف</h3>
+          <div class="brand-team-names">
+            <span class="brand-team-name brand-supervisor">غالية المالطي</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="brand-features">
+        <div class="brand-feature">
+          <div class="brand-feature-icon"><span class="material-symbols-outlined">calendar_month</span></div>
+          <div class="brand-feature-text">
+            <span class="brand-feature-title">إدارة الجداول الدراسية</span>
+            <span class="brand-feature-desc">إعداد وتنظيم وإدارة الجداول الدراسية للفصول والأقسام الكلية.</span>
+          </div>
+        </div>
+        <div class="brand-feature">
+          <div class="brand-feature-icon"><span class="material-symbols-outlined">event_available</span></div>
+          <div class="brand-feature-text">
+            <span class="brand-feature-title">إدارة جداول الامتحانات النهائية</span>
+            <span class="brand-feature-desc">تنظيم وإدارة جداول الامتحانات النهائية وفق الفترات الدراسية المعتمدة.</span>
+          </div>
+        </div>
+        <div class="brand-feature">
+          <div class="brand-feature-icon"><span class="material-symbols-outlined">description</span></div>
+          <div class="brand-feature-text">
+            <span class="brand-feature-title">إدارة المقرارت الدراسية</span>
+            <span class="brand-feature-desc">إدارة وتنظيم المقرارت والإجراءات الدراسية الخاصة بالكلية.</span>
+          </div>
+        </div>
+        <div class="brand-feature">
+          <div class="brand-feature-icon"><span class="material-symbols-outlined">badge</span></div>
+          <div class="brand-feature-text">
+            <span class="brand-feature-title">إدارة بيانات أعضاء هيئة التدريس</span>
+            <span class="brand-feature-desc">إدارة بيانات أعضاء هيئة التدريس وسجلاتهم الكلية والتدريسية.</span>
+          </div>
+        </div>
+        <div class="brand-feature">
+          <div class="brand-feature-icon"><span class="material-symbols-outlined">meeting_room</span></div>
+          <div class="brand-feature-text">
+            <span class="brand-feature-title">إدارة القاعات والمعامل الدراسية</span>
+            <span class="brand-feature-desc">إدارة القاعات والمعامل وربطها بالجداول الدراسية والامتحانات.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="brand-bottom">
+        <div class="brand-footer-text">© 2026 كلية التقنية الهندسية زوارة — جميع الحقوق محفوظة</div>
+      </div>
+    </div>
+
+    <!-- Form card -->
+    <div class="auth-card">
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-          <div class="mb-md space-y-sm">
-            {% for category, message in messages %}
-              <div class="flex items-center gap-sm p-md rounded-lg text-sm
-                {% if category == 'error' %}bg-error-container text-error
-                {% elif category == 'success' %}bg-success-teal text-on-surface
-                {% else %}bg-primary-fixed text-primary{% endif %}">
-                <span class="material-symbols-outlined text-[18px] shrink-0">{% if category == 'error' %}error{% elif category == 'success' %}check_circle{% else %}info{% endif %}</span>
-                <span>{{ message }}</span>
+          {% set toast_warnings = [] %}
+          {% set has_static = namespace(show=false) %}
+          {% for category, message in messages %}
+            {% if category == 'warning' %}
+              {% if toast_warnings.append(message) %}{% endif %}
+            {% else %}
+              {% set has_static.show = true %}
+              <div class="mb-md space-y-sm" id="authFlash" data-flash-timer="12000">
+                <div class="flex items-center gap-sm p-md rounded-lg text-sm
+                  {% if category == 'error' %}bg-error-container text-error
+                  {% elif category == 'success' %}bg-success-teal text-on-surface
+                  {% else %}bg-primary-fixed text-primary{% endif %}">
+                  <span class="material-symbols-outlined text-[18px] shrink-0">{% if category == 'error' %}error{% elif category == 'success' %}check_circle{% else %}info{% endif %}</span>
+                  <span>{{ message }}</span>
+                </div>
               </div>
+            {% endif %}
+          {% endfor %}
+          {% if toast_warnings %}
+          <div class="sr-only" id="authWarnings">
+            {% for msg in toast_warnings %}
+            <span data-toast-warning>{{ msg }}</span>
             {% endfor %}
           </div>
+          <script>
+            (function () {
+              var items = document.querySelectorAll('#authWarnings [data-toast-warning]');
+              function fire() {
+                items.forEach(function (el) {
+                  if (window.showNotification) window.showNotification(el.textContent, 'warning', 7000);
+                });
+              }
+              if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', fire);
+              } else {
+                setTimeout(fire, 250);
+              }
+            })();
+          </script>
+          {% endif %}
+          {% if has_static.show %}
+          <script>
+            (function () {
+              var el = document.getElementById('authFlash');
+              if (!el) return;
+              var delay = parseInt(el.getAttribute('data-flash-timer'), 10);
+              if (!delay || delay < 0) return;
+              setTimeout(function () {
+                el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+                el.style.opacity = '0';
+                el.style.transform = 'translateY(-8px)';
+                setTimeout(function () { el.style.display = 'none'; }, 600);
+              }, delay);
+            })();
+          </script>
+          {% endif %}
         {% endif %}
       {% endwith %}
       {% block content %}{% endblock %}
     </div>
+
   </div>
 </section>
 
 <script src="/static/js/main.js"></script>
+<script src="/static/js/toast.js"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

@@ -6,7 +6,9 @@ current codebase:
   SEC-001  config.py — no hardcoded/predictable SECRET_KEY fallback.
   SEC-002  config.py — SESSION_COOKIE_SECURE on by default.
   DB-001   database/connection.py — WAL journal mode (MEMORY lost data on crash).
-  DB-002   schema.py — named-semesters migration runs once, never wipes admin data.
+  DB-002   schema.py — named-semesters migration runs once, converts
+             timetable_versions without wiping data; the semesters table no
+             longer exists (academic calendar feature removed).
   SEC-003  services/search.py — highlight_text() HTML-escapes before marking.
   AUTH-001 api/auth.py — API login is throttled like the HTML login form.
   AUTH-002 routes/dashboard.py — switch-role requires a CSRF token and never
@@ -95,7 +97,7 @@ def test_connection_uses_wal_journal_mode(tmp_path):
 
 @pytest.fixture
 def legacy_db(tmp_path):
-    """A legacy-shaped DB: per-department semesters, no migration logged."""
+    """A legacy-shaped DB: timetable_versions with academic_year, no migration logged."""
     path = str(tmp_path / 'legacy.db')
     conn = connect(path)
     conn.execute("""
@@ -106,43 +108,87 @@ def legacy_db(tmp_path):
         )
     """)
     conn.execute("""
-        CREATE TABLE semesters (
+        CREATE TABLE departments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            department_id INTEGER,
-            semester_number INTEGER,
-            academic_year TEXT
+            name TEXT,
+            semesters INTEGER NOT NULL DEFAULT 1
         )
     """)
+    conn.execute("""
+        CREATE TABLE timetable_versions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            department_id INTEGER,
+            semester INTEGER NOT NULL,
+            academic_year TEXT,
+            status TEXT NOT NULL DEFAULT 'active',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE timetable (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            department_id INTEGER,
+            semester INTEGER NOT NULL,
+            version_id INTEGER
+        )
+    """)
+    conn.execute(
+        "INSERT INTO timetable_versions (id, department_id, semester, academic_year, status) "
+        "VALUES (1, NULL, 1, '2025-2026', 'active')"
+    )
+    conn.execute(
+        "INSERT INTO timetable (id, department_id, semester, version_id) "
+        "VALUES (10, NULL, 1, 1)"
+    )
     conn.commit()
     conn.close()
     return path
 
 
-def test_migrate_to_named_semesters_runs_once_preserving_admin_data(legacy_db):
+def test_migrate_to_named_semesters_converts_timetable_versions(legacy_db):
     conn = connect(legacy_db)
     try:
         _migrate_to_named_semesters(conn)
 
-        # Admin adds a custom semester after the initial migration.
-        conn.execute(
-            "INSERT INTO semesters (code, season, year, name_ar, name_en, is_active) "
-            "VALUES ('thesis_2031', 'summer', 2031, 'أطروحة', 'Thesis', 1)"
-        )
-        conn.commit()
-        custom_before = _semester_codes(conn)
-
-        # Simulate the next app startup — previously this DROPPED the table
-        # and re-seeded, wiping the custom semester and resetting is_active.
-        _migrate_to_named_semesters(conn)
-        custom_after = _semester_codes(conn)
-
-        assert 'thesis_2031' in custom_after
-        assert custom_after == custom_before
+        cols = {r[1] for r in conn.execute('PRAGMA table_info(timetable_versions)').fetchall()}
+        assert 'semester_code' in cols
+        assert 'academic_year' not in cols
 
         row = conn.execute(
-            "SELECT is_active FROM semesters WHERE code = 'thesis_2031'"
+            'SELECT id, semester_code FROM timetable_versions WHERE id = 1'
         ).fetchone()
-        assert row['is_active'] == 1
+        assert row['id'] == 1
+        assert row['semester_code'] == 'fall_2026'
+
+        tables = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table'"
+        ).fetchall()}
+        assert 'semesters' not in tables
+    finally:
+        conn.close()
+
+
+def test_migrate_to_named_semesters_runs_once_preserving_data(legacy_db):
+    conn = connect(legacy_db)
+    try:
+        # First startup: migration applies and preserves the version/timetable ids.
+        _migrate_to_named_semesters(conn)
+        first = dict(conn.execute(
+            'SELECT semester_code, status FROM timetable_versions WHERE id = 1'
+        ).fetchone())
+
+        # Simulate the next app startup — data must be untouched.
+        _migrate_to_named_semesters(conn)
+        second = dict(conn.execute(
+            'SELECT semester_code, status FROM timetable_versions WHERE id = 1'
+        ).fetchone())
+
+        assert second == first
+        version_id = conn.execute(
+            'SELECT version_id FROM timetable WHERE id = 10'
+        ).fetchone()['version_id']
+        assert version_id == 1
     finally:
         conn.close()
 
@@ -157,11 +203,6 @@ def test_migrate_to_named_semesters_marks_migration_done(legacy_db):
         assert done is not None
     finally:
         conn.close()
-
-
-def _semester_codes(conn):
-    rows = conn.execute('SELECT code FROM semesters').fetchall()
-    return {r['code'] for r in rows}
 
 
 # ── SEC-003: highlight_text escaping ──────────────────────────────────────
@@ -258,6 +299,35 @@ def test_api_login_is_rate_limited(app_fx):
     assert responses[5] == 429
 
 
+def test_api_login_rate_limited_per_username(app_fx):
+    """Each account gets its own 5-chance budget regardless of client IP."""
+    client = app_fx.test_client()
+    with client.session_transaction() as sess:
+        sess['_csrf_token'] = 'test-token'
+    username = 'lockme_account'
+    statuses = []
+    for i in range(6):
+        resp = client.post('/api/auth/login', environ_base={
+            'REMOTE_ADDR': '10.0.0.%d' % i,  # different IP every attempt
+        }, json={
+            'username': username,
+            'password': 'bad',
+            '_csrf_token': 'test-token',
+        })
+        statuses.append(resp.status_code)
+    assert statuses[:5] == [401] * 5
+    assert statuses[5] == 429
+    # A different account is not affected by the lockout
+    other = client.post('/api/auth/login', environ_base={
+        'REMOTE_ADDR': '10.0.0.99',
+    }, json={
+        'username': 'someone_else',
+        'password': 'bad',
+        '_csrf_token': 'test-token',
+    })
+    assert other.status_code == 401
+
+
 # ── AUTH-002: switch-role CSRF + safe redirect ────────────────────────────
 
 
@@ -306,3 +376,96 @@ def test_switch_role_ignores_cross_origin_referrer(app_fx):
     assert resp.status_code == 302
     target = resp.headers.get('Location', '')
     assert 'evil.example' not in target
+
+
+def test_switch_role_ajax_success(app_fx):
+    client = _login_session(app_fx, role='teacher', roles=('teacher', 'exam'))
+    resp = client.post('/switch-role', headers={
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'application/json',
+    }, data={
+        'role': 'exam',
+        '_csrf_token': 'test-token',
+    })
+    assert resp.status_code == 200
+    assert resp.is_json
+    assert resp.get_json()['ok'] is True
+    with client.session_transaction() as sess:
+        assert sess.get('role') == 'exam'
+
+
+def test_switch_role_ajax_denied_role(app_fx):
+    client = _login_session(app_fx, role='teacher', roles=('teacher',))
+    resp = client.post('/switch-role', headers={
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'application/json',
+    }, data={
+        'role': 'faculty_affairs',
+        '_csrf_token': 'test-token',
+    })
+    assert resp.status_code == 403
+    assert resp.is_json
+    assert resp.get_json()['ok'] is False
+    with client.session_transaction() as sess:
+        assert sess.get('role') == 'teacher'
+
+
+def test_switch_role_ajax_missing_csrf(app_fx):
+    client = _login_session(app_fx)
+    resp = client.post('/switch-role', headers={
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'application/json',
+    }, data={
+        'role': 'teacher',
+        '_csrf_token': 'wrong-token',
+    })
+    assert resp.status_code == 403
+    assert resp.is_json
+    assert resp.get_json()['ok'] is False
+    with client.session_transaction() as sess:
+        assert sess.get('role') == 'teacher'
+
+
+# ── AUTH-001: shared throttle across HTML + API login ─────────────────────
+
+
+def test_login_throttle_shared_between_form_and_api(app_fx):
+    """CWE-307: alternating between /api/auth/login and /login shares one budget."""
+    client = app_fx.test_client()
+    with client.session_transaction() as sess:
+        sess['_csrf_token'] = 'test-token'
+    ip = '10.7.7.7'
+    username = 'shared_lock_me'
+    # 3 API failures → 3 hits recorded to the shared bucket
+    for _ in range(3):
+        resp = client.post(
+            '/api/auth/login',
+            environ_base={'REMOTE_ADDR': ip},
+            json={'username': username, 'password': 'bad', '_csrf_token': 'test-token'},
+        )
+        assert resp.status_code == 401
+    # 2 HTML-form failures → total 5 hits (both recorded to the same bucket)
+    for _ in range(2):
+        resp = client.post(
+            '/login',
+            environ_base={'REMOTE_ADDR': ip},
+            data={'username': username, 'password': 'bad', '_csrf_token': 'test-token'},
+        )
+        body = resp.get_data(as_text=True)
+        assert resp.status_code == 200
+        assert 'اسم المستخدم أو كلمة المرور غير صحيحة' in body
+    # 6th attempt on EITHER endpoint must now be blocked
+    resp = client.post(
+        '/api/auth/login',
+        environ_base={'REMOTE_ADDR': ip},
+        json={'username': username, 'password': 'bad', '_csrf_token': 'test-token'},
+    )
+    assert resp.status_code == 429
+    resp = client.post(
+        '/login',
+        environ_base={'REMOTE_ADDR': ip},
+        data={'username': username, 'password': 'bad', '_csrf_token': 'test-token'},
+    )
+    body = resp.get_data(as_text=True)
+    assert resp.status_code == 200
+    assert 'تم تجاوز الحد المسموح' in body

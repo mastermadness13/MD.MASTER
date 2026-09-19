@@ -100,6 +100,98 @@ def test_current_table_shows_editable_badge_and_hint(client):
     assert 'title="إنشاء نسخة العام القادم"' in body
     assert 'id="nextYearBtn"' in body
 
+def test_delete_entry_removes_row(client):
+    """زر «حذف» في نافذة تفاصيل المحاضرة: DELETE عبر /timetable/api/delete-entry يزيل السجل فعلاً."""
+    dept_id = _dept_id()
+    conn = sqlite3.connect(flask_db.DATABASE)
+    conn.row_factory = sqlite3.Row
+    existing = conn.execute("SELECT id FROM courses WHERE code='TT-DEL'").fetchone()
+    if not existing:
+        c = conn.execute(
+            "INSERT INTO courses (code, name, department_id, year, semester, theoretical_hours, practical_hours, total_hours) "
+            "VALUES ('TT-DEL', 'مقرر حذف', ?, 1, 2, 2, 1, 3)",
+            (dept_id,),
+        )
+        cid = c.lastrowid
+        t = conn.execute("INSERT INTO teachers (name, department_id) VALUES (?, ?)", ('معلم', dept_id))
+        tid = t.lastrowid
+        r = conn.execute("INSERT INTO rooms (name, code) VALUES (?, ?)", ('قاعة حذف', 'DEL-1'))
+        rid = r.lastrowid
+        v = conn.execute("SELECT id FROM timetable_versions WHERE department_id=? AND status='active'", (dept_id,)).fetchone()['id']
+        e = conn.execute(
+            "INSERT INTO timetable (day, semester, period, course_id, teacher_id, room_id, department_id, version_id) "
+            "VALUES ('الأحد', 2, 'C', ?, ?, ?, ?, ?)",
+            (cid, tid, rid, dept_id, v),
+        )
+        eid = e.lastrowid
+        conn.commit()
+        conn.close()
+    else:
+        conn.close()
+        eid = _q("SELECT id FROM timetable WHERE day='الأحد'")[0]['id']
+
+    r = client.post('/timetable/api/delete-entry', json={
+        '_csrf_token': 't',
+        'lecture_id': eid,
+    })
+    data = r.get_json()
+    assert r.status_code == 200
+    assert data['ok'] is True
+    assert _q('SELECT id FROM timetable WHERE id=?', (eid,)) == [], 'row removed from the database'
+
+    r2 = client.post('/timetable/api/delete-entry', json={
+        '_csrf_token': 't',
+        'lecture_id': eid,
+    })
+    data2 = r2.get_json()
+    assert data2['ok'] is False, 'deleting a missing row reports failure'
+
+
+def test_print_timetable_cells_have_download_buttons(client):
+    """الجدول الدراسي (list.html) يعرض زرّي تحميل المقرر/المنهج في الخلايا عبر /course-file/."""
+    dept_id = _dept_id()
+    v = _version('active')
+    conn = sqlite3.connect(flask_db.DATABASE)
+    conn.row_factory = sqlite3.Row
+    c = conn.execute(
+        "INSERT INTO courses (code, name, department_id, year, semester, theoretical_hours, practical_hours, total_hours) "
+        "VALUES ('TT-LIST', 'مقرر الجدول', ?, 1, 1, 2, 1, 3)",
+        (dept_id,),
+    )
+    cid = c.lastrowid
+    t = conn.execute("INSERT INTO teachers (name, department_id) VALUES (?, ?)", ('معلم الجدول', dept_id))
+    tid = t.lastrowid
+    r = conn.execute("INSERT INTO rooms (name, code) VALUES (?, ?)", ('قاعة الجدول', 'LST-1'))
+    rid = r.lastrowid
+    conn.execute(
+        "INSERT INTO timetable (day, semester, period, course_id, teacher_id, room_id, department_id, version_id) "
+        "VALUES ('الأحد', 1, 'C', ?, ?, ?, ?, ?)",
+        (cid, tid, rid, dept_id, v),
+    )
+    sid = conn.execute(
+        "INSERT INTO course_content_submissions (user_id, department_id, course_id, course_name, course_code, status) "
+        "VALUES (1, ?, ?, 'مقرر الجدول', 'TT-LIST', 'published')",
+        (dept_id, cid),
+    ).lastrowid
+    conn.execute(
+        "INSERT INTO course_files (course_id, submission_id, file_type, filename, original_filename, file_size, status) "
+        "VALUES (?, ?, 'form', 'form.pdf', 'form.pdf', 9, 'published')",
+        (cid, sid),
+    )
+    conn.execute(
+        "INSERT INTO course_files (course_id, submission_id, file_type, filename, original_filename, file_size, status) "
+        "VALUES (?, ?, 'syllabus', 'syl.pdf', 'syl.pdf', 9, 'approved')",
+        (cid, sid),
+    )
+    conn.commit()
+    conn.close()
+
+    body = client.get('/print/timetable').get_data(as_text=True)
+    assert '/course-file/' in body
+    assert 'تحميل المقرر' in body
+    assert 'تحميل المنهج' in body
+
+
 def test_create_next_year_activates_new_version(client):
     """واجهة برمجة التطبيقات تنشئ نسخة الفصل القادم وتجعلها نشطة بدل القديمة."""
     active = _version('active')

@@ -2,11 +2,13 @@
 
 Assembles all data for the ministry-standard performance form.
 Module-level functions take a database connection as the first argument.
+
+/     /     >---- خدمة تقييم أداء أعضاء هيئة التدريس: تجميع بيانات نموذج العبء.
 """
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from database.repositories.faculty_performance_repository import (
     FacultyPerformanceRepository,
@@ -18,14 +20,16 @@ from core.constants.seasons import (
     period_label as _season_period_label,
 )
 
-# ── Constants ────────────────────────────────────────────────────
+# /     /     >---- الثوابت العامة
 
+# /     /     >---- تسميات السنوات الدراسية
 YEAR_LABELS = {
     1: 'السنة الأولى', 2: 'السنة الثانية', 3: 'السنة الثالثة',
     4: 'السنة الرابعة', 5: 'السنة الخامسة', 6: 'السنة السادسة',
     7: 'السنة السابعة',
 }
 
+# /     /     >---- تحويل نوع المحاضرة إلى الاسم العربي
 LECTURE_TYPE_MAP = {
     'theory': 'نظري',
     'practical': 'عملي',
@@ -33,7 +37,7 @@ LECTURE_TYPE_MAP = {
     'عملي': 'عملي',
 }
 
-
+# /     /     >---- أنواع الأنشطة البحثية الستة الرسمية
 RESEARCH_ACTIVITY_TYPES = [
     'مشروع تخرج',
     'دراسات ميدانية',
@@ -45,20 +49,20 @@ RESEARCH_ACTIVITY_TYPES = [
 
 COLLEGE_NAME = 'كلية التقنية الهندسية زوارة'
 
+# /     /     >---- تسميات الفصول
 SEMESTER_LABELS = {
     1: 'الفصل الأول',
     2: 'الفصل الثاني',
 }
 
-# ── Ministry workload baseline ────────────────────────────────────
-# الأساسي يُعرض حتى 10 (حسب عنوان النموذج "4-10 ساعات"),
-# البحثي يُعرض حتى 10، والمواد الزائدة عن حد الأساسي تُنقل كاملة
-# إلى الساعات الإضافية. التكليف الإداري منفصل تمامًا عن هذه الساعات.
+# /     /     >---- خط الأساس للعبء الوزاري:
+# /     /     >---- الأساسي يُعرض حتى 10، البحثي حتى 10، والفائض يُنقل كاملاً للإضافي
 TARGET_TOTAL = 14
 BASIC_CAP = 10
 RESEARCH_CAP = 10
 
 
+# /     /     >---- تسمية عربية للعرض للرمز (fall_2026 ← موسم وسنة)
 def academic_year_label(code: str) -> str:
     """Arabic-only display label for a term code.
 
@@ -77,6 +81,7 @@ def _repo(db):
     return FacultyPerformanceRepository(db)
 
 
+# /     /     >---- نص آمن للعرض: ما نعرضش None أو السلسلة 'None'
 def _clean_field(value: Any) -> str:
     """Display-safe string: never print ``None`` / the literal string ``'None'``."""
     if value is None:
@@ -86,8 +91,9 @@ def _clean_field(value: Any) -> str:
     return str(value)
 
 
-# ── Data Assembly ────────────────────────────────────────────────
+# /     /     >---- تجميع بيانات النموذج
 
+# /     /     >---- بناء بيانات نموذج الأداء الكاملة لأستاذ وفصل معين
 def get_performance_form_data(
     db, teacher_id: int, academic_year: str, semester: int,
     department_id: int = None,
@@ -104,9 +110,7 @@ def get_performance_form_data(
     if not teacher:
         return None
 
-    # Departments: primary assignment + additional memberships (issue 9 M2M)
-    # + departments from teaching assignments (a teacher may have courses in
-    #   departments they are not formally linked to via teacher_departments)
+    # /     /     >---- الأقسام: الأساسي + العضويات الإضافية + أقسام التكليفات التدريسية
     m2m_rows = db.execute(
         'SELECT department_id FROM teacher_departments WHERE teacher_id = ?',
         (teacher_id,),
@@ -126,7 +130,7 @@ def get_performance_form_data(
     if department_id is not None and department_id in dept_ids:
         dept_ids = [department_id]
 
-    # Workload rules
+    # /     /     >---- قواعد العبء التدريسي حسب الرتبة والسنة
     rank_id = teacher.get('rank_id')
     rules_raw = repo.get_workload_rules(rank_id, academic_year) if rank_id else []
     rules = {}
@@ -136,13 +140,11 @@ def get_performance_form_data(
         if cat not in rules:
             rules[cat] = {'min': 0, 'max': 999}
 
-    # Timetable entries from the teaching-assignment ledger
+    # /     /     >---- مداخل الجدول من سجل التكليفات التدريسية
     timetable_entries = repo.get_timetable_entries(
         teacher_id, dept_ids, academic_year
     )
-    # The fallback widens to every department the teacher has taught in that
-    # semester. It is intentionally NOT applied when the form was explicitly
-    # scoped to one department, otherwise the scope would silently leak.
+    # /     /     >---- عند عدم وجود مداخل: توسّع لشمل كل الأقسام اللي درّس فيها
     if not timetable_entries and department_id is None:
         tt_dept_rows = db.execute(
             'SELECT DISTINCT department_id FROM teacher_taught_courses '
@@ -156,7 +158,7 @@ def get_performance_form_data(
                 teacher_id, fallback_ids, academic_year
             )
 
-    # Cross-department teaching vs the member's primary department
+    # /     /     >---- تدريس عبر الأقسام مقارنةً بالقسم الأساسي
     primary_dept_id = teacher.get('department_id')
     extra_depts = sorted({
         str(entry.get('department_id')) for entry in timetable_entries
@@ -164,12 +166,11 @@ def get_performance_form_data(
         and entry.get('department_id') != primary_dept_id
     })
 
-    # Build basic teaching table
+    # /     /     >---- بناء جدول التدريس الأساسي
     basic_teaching = []
     total_raw_hours = 0
     for entry in timetable_entries:
-        # Skip orphan rows (teaching-assignment ledger rows whose course no
-        # longer exists / was never linked to a course).
+        # /     /     >---- نتجاهل الصفوف اليتيمة بدون مقرر
         if not entry.get('course_id') or not entry.get('course_name'):
             continue
         idx = len(basic_teaching) + 1
@@ -197,9 +198,7 @@ def get_performance_form_data(
             'hours': hours,
         })
 
-    # Workload split — basic capped at BASIC_CAP (10); any ENTIRE course
-    # that would push the running basic total past the cap moves to the
-    # additional table. Basic courses are never split in half.
+    # /     /     >---- توزيع العبء: الأساسي حتى 10، والمقرر الكامل الزائد يُنقل للإضافي
     additional_teaching = []
     _scratch = []
     _running = 0
@@ -213,7 +212,7 @@ def get_performance_form_data(
     basic_teaching = _scratch
     basic_total = _running
 
-    # Research activities (only those active in this semester)
+    # /     /     >---- الأنشطة البحثية (الفعّالة في هذا الفصل فقط)
     research_raw = repo.get_research_activities(teacher_id, academic_year, semester)
     research = []
     research_total = 0
@@ -221,7 +220,7 @@ def get_performance_form_data(
         research.append({'type': r['activity_type'], 'hours': r['hours'], 'notes': r.get('notes', '')})
         research_total += r['hours']
 
-    # Admin assignments (only those active in this semester)
+    # /     /     >---- التكليفات الإدارية (الفعّالة في هذا الفصل فقط)
     admin_raw = repo.get_admin_assignments(teacher_id, academic_year, semester)
     admin_assignments = []
     admin_total = 0
@@ -240,7 +239,7 @@ def get_performance_form_data(
             })
             admin_total += a['hours_used']
 
-    # Leaves (only those active in this semester)
+    # /     /     >---- الإجازات (الفعّالة في هذا الفصل فقط)
     leaves_raw = repo.get_leaves(teacher_id, academic_year, semester)
     leaves = []
     leaves_total = 0
@@ -259,7 +258,7 @@ def get_performance_form_data(
                 'hours': lv_hours,
             })
 
-    # Fixed six activity rows of the official paper form
+    # /     /     >---- الصفوف الستة الثابتة في النموذج الورقي الرسمي
     research_rows = []
     for name in RESEARCH_ACTIVITY_TYPES:
         match = next(
@@ -272,16 +271,16 @@ def get_performance_form_data(
         if r['type'].strip() not in RESEARCH_ACTIVITY_TYPES:
             research_rows.append({'type': r['type'], 'hours': r['hours']})
 
-    # Research total is shown whole up to the research cap (10).
+    # /     /     >---- الإجمالي البحثي يُعرض كاملاً حتى حد 10
     research_raw_total = research_total
     research_total = min(research_total, RESEARCH_CAP)
 
-    # Additional total = sum of the whole courses moved past the basic cap.
+    # /     /     >---- الإجمالي الإضافي = مجموع المقررات المنقولة فوق الحد الأساسي
     additional_total = sum(
         (e.get('hours') or 0) for e in additional_teaching
         if isinstance(e.get('hours'), (int, float)))
 
-    # Warnings
+    # /     /     >---- التحذيرات
     warnings = []
     if total_raw_hours > BASIC_CAP:
         warnings.append({
@@ -305,11 +304,10 @@ def get_performance_form_data(
     grand_total = (basic_total + research_total + additional_total
                    + admin_total + leaves_total)
 
-    # Semester label
+    # /     /     >---- تسمية الفصل
     semester_label = 'الفصل الأول' if semester == 1 else 'الفصل الثاني'
 
-    # Official paper layout always shows at least 6 rows
-    # (padding is added LAST so hour arithmetic never sees blanks)
+    # /     /     >---- النموذج الرسمي يعرض على الأقل 6 صفوف (الحشو في الأخير)
     while len(basic_teaching) < 6:
         basic_teaching.append({
             'index': len(basic_teaching) + 1,
@@ -359,6 +357,7 @@ def get_performance_form_data(
     }
 
 
+# /     /     >---- حساب الساعات الكاملة من وقت البداية إلى النهاية (HH:MM)
 def _calculate_hours(start_time: Optional[str], end_time: Optional[str]) -> float:
     """Calculate whole hours from HH:MM start to HH:MM end. Returns an int."""
     if not start_time or not end_time:
@@ -376,25 +375,16 @@ def _calculate_hours(start_time: Optional[str], end_time: Optional[str]) -> floa
         return 0
 
 
-# ── Save Functions ───────────────────────────────────────────────
+# /     /     >---- دوال الحفظ
 
+# /     /     >---- الفصل الفعّال حالياً بصيغة {academic_year, semester}
 def get_active_semester(db) -> Dict[str, Any]:
     """Return the currently active semester as ``{academic_year, semester}``.
 
     ``academic_year`` is the named-term code (e.g. ``fall_2026``) used to
-    store research activities, derived from the active ``semesters`` row.
+    store research activities, computed from today's date.
     ``semester`` is the logical 1/2 (Fall → 1, Spring → 2).
     """
-    row = db.execute(
-        'SELECT code, season FROM semesters '
-        'WHERE is_active = 1 AND deleted_at IS NULL LIMIT 1'
-    ).fetchone()
-    if row and row['code']:
-        season = (row['season'] or '').lower()
-        return {
-            'academic_year': row['code'],
-            'semester': 1 if season == 'fall' else 2,
-        }
     from datetime import date
     today = date.today()
     season = 'fall' if today.month >= 9 else 'spring'
@@ -405,6 +395,7 @@ def get_active_semester(db) -> Dict[str, Any]:
     }
 
 
+# /     /     >---- حفظ الأنشطة البحثية للفصل
 def save_research_data(
     db, teacher_id: int, academic_year: str, semester: int,
     activities: List[Dict[str, Any]],
@@ -412,6 +403,7 @@ def save_research_data(
     _repo(db).upsert_research_activities(teacher_id, academic_year, semester, activities)
 
 
+# /     /     >---- أنواع الأنشطة البحثية الستة لنموذج التعديل
 def get_research_types(db) -> List[Dict[str, Any]]:
     """Return the six fixed research activity types for the member edit form.
 
@@ -421,6 +413,7 @@ def get_research_types(db) -> List[Dict[str, Any]]:
     return [{'id': i, 'name': name} for i, name in enumerate(RESEARCH_ACTIVITY_TYPES)]
 
 
+# /     /     >---- الأنشطة البحثية للفصل الفعّال
 def get_research_activities_for_semester(db, teacher_id: int) -> List[Dict[str, Any]]:
     """Research activities for the active semester, as a list of activity types + hours."""
     sem = get_active_semester(db)
@@ -441,8 +434,9 @@ def save_leaves_data(
     _repo(db).upsert_leaves(teacher_id, leaves)
 
 
-# ── Dropdowns ────────────────────────────────────────────────────
+# /     /     >---- القوائم المنسدلة
 
+# /     /     >---- بيانات القوائم المنسدلة للصفحات
 def get_select_data(db) -> Dict[str, Any]:
     repo = _repo(db)
     admin_types = repo.list_admin_assignment_types()
@@ -464,13 +458,72 @@ def get_teachers_by_dept(db, department_id: int) -> List[Dict[str, Any]]:
     return _repo(db).list_teachers_by_department(department_id)
 
 
-# ── Faculty Affairs Office (مكتب إدارة أعضاء هيئة التدريس) ──────
+# /     /     >---- مكتب إدارة أعضاء هيئة التدريس
 
+# /     /     >---- ملخص كل الأعضاء النشطين مع حقول العرض
 def list_members_summary(db) -> List[Dict[str, Any]]:
     """All active teaching members with display fields (member pickers)."""
     return _repo(db).list_members_summary()
 
 
+def list_members_performance_summary(
+    db,
+    academic_year: str = '',
+    semester: Optional[int] = None,
+) -> Tuple[List[Dict[str, Any]], Dict[str, int]]:
+    """Per-member hourly totals for the قائمة معدل الأداء (explanatory list).
+
+    Aggregates the same numbers shown on the official performance form:
+    basic / additional teaching, research, admin assignments, leaves and the
+    grand total. Defaults to the currently active semester when the caller
+    passes no year (mirrors ``preview`` behaviour).
+    """
+    if not academic_year or semester is None:
+        active = get_active_semester(db)
+        academic_year = academic_year or active.get('academic_year', '')
+        if semester is None:
+            semester = active.get('semester', 1)
+
+    rows: List[Dict[str, Any]] = []
+    for m in list_members_summary(db):
+        form = get_performance_form_data(db, m['id'], academic_year, semester)
+        base = {
+            'id': m['id'],
+            'name': m.get('name', ''),
+            'academic_number': m.get('academic_number', ''),
+            'dept_name': m.get('dept_name', ''),
+            'qual_name': m.get('qual_name', ''),
+            'rank_name': m.get('rank_name', ''),
+        }
+        if form is None:
+            base.update({
+                'basic_total': 0, 'additional_total': 0,
+                'research_total': 0, 'admin_total': 0,
+                'leaves_total': 0, 'grand_total': 0,
+            })
+        else:
+            base.update({
+                'basic_total': form.get('basic_total') or 0,
+                'additional_total': form.get('additional_total') or 0,
+                'research_total': form.get('research_total') or 0,
+                'admin_total': form.get('admin_total') or 0,
+                'leaves_total': form.get('leaves_total') or 0,
+                'grand_total': form.get('grand_total') or 0,
+            })
+        rows.append(base)
+
+    totals = {
+        'basic_total': sum(r['basic_total'] for r in rows),
+        'additional_total': sum(r['additional_total'] for r in rows),
+        'research_total': sum(r['research_total'] for r in rows),
+        'admin_total': sum(r['admin_total'] for r in rows),
+        'leaves_total': sum(r['leaves_total'] for r in rows),
+        'grand_total': sum(r['grand_total'] for r in rows),
+    }
+    return rows, totals
+
+
+# /     /     >---- حالة الإجازة من تواريخها فقط (حالية / قادمة / منتهية)
 def compute_leave_status(
     start_date: str, end_date: Optional[str], today: Optional[str] = None,
 ) -> str:
@@ -487,6 +540,7 @@ def compute_leave_status(
     return 'حالية'
 
 
+# /     /     >---- عدد الأيام بين البداية والنهاية (بما فيها الأطراف، على الأقل 1)
 def leave_duration_days(
     start_date: str, end_date: Optional[str],
 ) -> int:
@@ -507,6 +561,7 @@ def leave_duration_days(
     return max(0, (e - s).days + 1)
 
 
+# /     /     >---- تقرير إجازات العضو: بياناته + مقرراته + إجازاته مع الحالة والمدة
 def get_leave_report_data(db, teacher_id: int) -> Optional[Dict[str, Any]]:
     """تقرير إجازات عضو: بياناته + مقرراته (الفصل النشط) + إجازاته مع الحالة والمدة."""
     repo = _repo(db)
@@ -530,7 +585,7 @@ def get_leave_report_data(db, teacher_id: int) -> Optional[Dict[str, Any]]:
         header = form.get('header')
         courses = form.get('basic_teaching') or []
 
-    # Full detail list (status, duration, notes) for companion views.
+    # /     /     >---- قائمة التفاصيل الكاملة (الحالة، المدة، الملاحظات)
     detail_leaves = []
     for lv in repo.get_leaves(teacher_id, academic_year, semester):
         start_date = lv.get('start_date') or ''
@@ -549,8 +604,7 @@ def get_leave_report_data(db, teacher_id: int) -> Optional[Dict[str, Any]]:
             'duration_days': leave_duration_days(start_date, end_date),
         })
 
-    # Leaves for the official خامساً section: prefer the semester-filtered
-    # rows from the performance form so the printed report matches the form.
+    # /     /     >---- إجازات قسم خامساً الرسمي: نفضّل صفوف نموذج الأداء المفصل
     leaves = form.get('leaves') if form and form.get('leaves') else detail_leaves
 
     return {
@@ -568,8 +622,9 @@ def get_leave_report_data(db, teacher_id: int) -> Optional[Dict[str, Any]]:
     }
 
 
-# ── Course-Level Report (محضر مقرر) ──────────────────────────────
+# /     /     >---- محضر المقرر (تقرير مستوى المقرر)
 
+# /     /     >---- تجميع بيانات محضر المقرر لكل الأساتذة المكلفين به في الفصل
 def get_course_report_data(
     db, course_id: int, academic_year: str, semester: int,
     department_id: int = None,
@@ -624,7 +679,7 @@ def get_course_report_data(
             'hours': hours,
         })
 
-    # Official paper layout always shows at least 6 rows
+    # /     /     >---- النموذج الورقي يعرض دائماً 6 صفوف على الأقل
     while len(entries) < 6:
         entries.append({
             'index': len(entries) + 1,

@@ -95,3 +95,18 @@ Audit run against tree AFTER b43f693 (the external frontend pass already removed
 
 ### Phase 4 result
 Full suite **129 passed / 0 failed** after b43f693. Phase 5 carries the FE-00x removals/consolidations with archive + regression tests per deletion policy (git is the primary archive; non-template artifacts go to `_archive/2026-09/`).
+
+## Visual Layer — Token/Unit Migration (0a→0d) — closed 2026-09-12
+
+Semantic-token visual layer established; **159 tests green**.
+
+- **0a**: no inline `<style>` in base-layout templates EXCEPT documented exceptions below (data-table sheets, full-page/self-contained print docs, and flagged conflict-held blocks).
+- **0b**: `gray-*` utility → semantic tokens; CSS `#e5e7eb/#374151/#9ca3af/#f1f4f9/#cfc2d3` → `var(--border)/var(--text-secondary)/var(--text-faint)/var(--surface-hover)/var(--border-accent)`; purple/red hexes kept (linked to `--color-*` definitions).
+- **0c**: `tailwind_config.html` defines every token in use (outline, outline-variant, on-surface, on-surface-variant, surface-container-low, surface-dim, …).
+- **0d**: `!important` only in `exams.css` print section (documented, none removed); `dark.css` `.text-gray-300` rule now dead (zero consumers) — kept, not deleted.
+- **Incident**: same-run single-char corruption (r→o, b→g, t→e) hit 7 templates via mispairing bug in a PS array-unroll pattern (never use single-pair replacement). 4 recovered from HEAD; `templates/teachers/course_content_page.html` reconstructed from corrupted backup (guided line/char alignment vs HEAD + lexicon token rectification). Corrupted originals: `%TEMP%\opencode\corrupted_originals\`.
+
+**Held inline intentionally** (cascade-collision evidence; `app.css` order `components → auth → timetable → teachers`, Tailwind CDN loads **after** `app.css` so utilities win ties):
+- `templates/timetable/*` + `templates/courses/list.html`: `.filter-btn` (globally defined at `teachers.css:81-83`, loads later — would override), `.tt-cell`/`.cell-card` (department vs rnd definitions differ page-to-page), `.dept-card` (duplicated list-vs-rnd), `.drawer-*` (three distinct mechanisms: `modals.css` `.open` / `auth.css` `.show` / courses-list inline `.open` on panel), page-specific `@media print` blocks (moving them globalizes print behavior for other pages).
+
+**Safe subset MOVED to `static/css/features/timetable.css` (2026-09-12)**, one canonical block: `.tt-file-btns/.tt-file-btn` (+ states), `.tt-action`, `.popup-panel/.modal-panel`, `.tt-empty`, `.drop-target.drop-hover`, `.day-acc-header/.day-acc-chevron/.day-acc-collapsed/.day-accordion`. Behavior identical (JS only toggles `.hidden`/state classes; `.hidden` still wins the cascade before and after). **159 passed.**

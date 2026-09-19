@@ -1,4 +1,5 @@
 {% set total_pages = (total // per_page) + (1 if total % per_page else 0) %}
+{% from 'shared/components/pagination.html' import pagination %}
 
 <table class="search-table w-full text-right border-collapse text-sm">
   <thead>
@@ -38,14 +39,20 @@
         </div>
       </td>
       <td class="px-4 py-3">
-        <div class="flex items-center justify-center gap-2">
-          <a href="{{ url_for('departments.departments_edit', id=d.id) }}"
-             class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors no-underline" title="تعديل">edit</a>
-          <form method="post" action="{{ url_for('departments.departments_delete', id=d.id) }}" style="display:inline"
-                onsubmit="return confirm('تأكيد حذف القسم؟')">
-            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="material-symbols-outlined text-red-600 hover:text-red-700 transition-colors bg-transparent border-0 cursor-pointer" title="حذف">delete</button>
-          </form>
+        <div class="relative inline-block">
+          <button type="button" onclick="toggleActionMenu(this)"
+                  class="action-menu-btn material-symbols-outlined rounded-lg p-1 text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors bg-transparent border-0 cursor-pointer"
+                  title="الإجراءات" aria-haspopup="true" aria-expanded="false">more_vert</button>
+          <div class="action-menu hidden absolute end-0 top-full mt-1 z-30 min-w-[180px] rounded-xl border border-outline-variant bg-white shadow-lg overflow-hidden">
+            <form method="post" action="{{ url_for('departments.departments_delete', id=d.id) }}"
+                  onsubmit="return confirm('تأكيد حذف القسم؟')">
+              <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 transition-colors bg-transparent border-0 cursor-pointer text-right">
+                <span class="material-symbols-outlined text-lg shrink-0">delete</span>
+                حذف
+              </button>
+            </form>
+          </div>
         </div>
       </td>
     </tr>
@@ -67,26 +74,5 @@
   </tbody>
 </table>
 
-{% if total_pages > 1 %}
-<div class="search-pagination flex flex-wrap items-center justify-between gap-4 mt-5">
-  <span class="text-xs font-bold text-on-surface-variant">عرض {{ ((page - 1) * per_page) + 1 }} إلى {{ [page * per_page, total] | min }} من {{ total }}</span>
-  <div class="flex flex-wrap gap-2">
-    {% if page > 1 %}
-    <a href="{{ url_for('departments.departments_list', page=page - 1, search=search) }}"
-       class="px-3 py-2 rounded-lg border border-outline-variant bg-white hover:bg-primary/10 text-on-surface text-sm font-bold transition no-underline">السابق</a>
-    {% endif %}
-    {% for p in range(1, total_pages + 1) %}
-    {% if p == page %}
-    <span class="px-3 py-2 rounded-lg bg-primary text-on-primary text-sm font-bold">{{ p }}</span>
-    {% elif p >= page - 2 and p <= page + 2 %}
-    <a href="{{ url_for('departments.departments_list', page=p, search=search) }}"
-       class="px-3 py-2 rounded-lg border border-outline-variant bg-white hover:bg-primary/10 text-on-surface text-sm font-bold transition no-underline">{{ p }}</a>
-    {% endif %}
-    {% endfor %}
-    {% if page * per_page < total %}
-    <a href="{{ url_for('departments.departments_list', page=page + 1, search=search) }}"
-       class="px-3 py-2 rounded-lg border border-outline-variant bg-white hover:bg-primary/10 text-on-surface text-sm font-bold transition no-underline">التالي</a>
-    {% endif %}
-  </div>
-</div>
-{% endif %}
+{{ pagination(page, per_page, total, total_pages,
+               url_for('departments.departments_list', page='__page__', search=search)) }}

@@ -1,3 +1,4 @@
+# /     /     >---- خدمات لوحات المعلومات: تجهيز بيانات كل لوحة حسب الدور
 from datetime import datetime
 
 from services import classroom_request_service as crs
@@ -5,6 +6,7 @@ from services import notification_service
 from services import course_service
 
 
+# /     /     >---- بيانات لوحة إدارة الامتحانات
 def get_exam_dept_dashboard_data(db):
     """Data for the Exam Department sub-admin dashboard."""
     data = {}
@@ -65,6 +67,7 @@ def get_exam_dept_dashboard_data(db):
     return data
 
 
+# /     /     >---- بيانات لوحة قسم البحث والتطوير
 def get_rnd_dept_dashboard_data(db):
     """Data for the R&D Department sub-admin dashboard."""
     data = {}
@@ -96,10 +99,10 @@ def get_rnd_dept_dashboard_data(db):
                   (SELECT cf2.id FROM course_files cf2
                    WHERE cf2.course_id = c.id AND cf2.file_type = 'syllabus'
                    ORDER BY cf2.created_at DESC LIMIT 1) AS syllabus_file_id,
-                  (SELECT cf3.id FROM course_files cf3
-                   WHERE cf3.course_id = c.id AND cf3.file_type = 'form'
-                     AND cf3.status IN ('approved', 'published')
-                   ORDER BY cf3.created_at DESC LIMIT 1) AS form_file_id,
+                   (SELECT cf3.id FROM course_files cf3
+                    WHERE cf3.course_id = c.id AND cf3.file_type = 'form'
+                      AND cf3.status = 'published'
+                    ORDER BY cf3.created_at DESC LIMIT 1) AS form_file_id,
                   (SELECT cs.id FROM course_content_submissions cs
                    WHERE cs.course_id = c.id
                    ORDER BY COALESCE(cs.submitted_at, cs.created_at) DESC
@@ -124,6 +127,7 @@ def get_rnd_dept_dashboard_data(db):
     return data
 
 
+# /     /     >---- بيانات لوحة رئيس القسم (الحضور، القاعات، الجدول، الطلبات)
 def get_hod_dashboard_data(db, dept_id):
     hod_data = {}
     dept_row = db.execute('SELECT name FROM departments WHERE id = ?', (dept_id,)).fetchone()
@@ -135,6 +139,7 @@ def get_hod_dashboard_data(db, dept_id):
     if today_day == 'الجمعة':
         today_day = None
 
+    # /     /     >---- حضور أعضاء هيئة التدريس لليوم (غير الجمعة)
     if today_day is not None:
         rows = db.execute(
             '''SELECT fa.*, t.name as teacher_name
@@ -155,6 +160,7 @@ def get_hod_dashboard_data(db, dept_id):
         hod_data['faculty_attendance'] = []
         hod_data['faculty_present'] = hod_data['faculty_late'] = hod_data['faculty_absent'] = 0
 
+    # /     /     >---- القاعات المشغولة اليوم
     if today_day is not None:
         rows = db.execute(
             '''SELECT t.*, c.name as course_name, tc.name as teacher_name, r.name as room_name
@@ -181,6 +187,7 @@ def get_hod_dashboard_data(db, dept_id):
     hod_data['occupied_room_ids'] = list(occupied_room_ids)
     hod_data['available_rooms'] = [r for r in hod_data['all_rooms'] if r['id'] not in occupied_room_ids]
 
+    # /     /     >---- الجدول الأسبوعي الكامل للقسم
     weekly_rows = db.execute(
         '''SELECT t.day, t.period, t.room_id, c.name as course_name, tc.name as teacher_name, r.name as room_name
            FROM timetable t
@@ -204,6 +211,7 @@ def get_hod_dashboard_data(db, dept_id):
         'SELECT * FROM period_settings ORDER BY sort_order'
     ).fetchall()]
     hod_data['active_days'] = list(hod_data['weekly_timetable'].keys())
+    # /     /     >---- جدول القاعات: لكل قاعة ولكل يوم مداخل الحصص
     room_schedule = {}
     for day_name, day_entries in hod_data['weekly_timetable'].items():
         for entry in day_entries:
@@ -219,6 +227,7 @@ def get_hod_dashboard_data(db, dept_id):
                 })
     hod_data['room_schedule'] = room_schedule
 
+    # /     /     >---- الطلبات المعلّقة من الأساتذة
     rows = db.execute(
         '''SELECT r.*, t.name as teacher_name
            FROM teacher_requests r
@@ -233,6 +242,7 @@ def get_hod_dashboard_data(db, dept_id):
     hod_data['departments'] = [dict(r) for r in db.execute(
         'SELECT * FROM departments WHERE hidden = 0 AND deleted_at IS NULL ORDER BY name'
     ).fetchall()]
+    # /     /     >---- نسبة المقررات المجدولة من إجمالي مقررات كل قسم
     dept_rows_raw = db.execute(
         '''SELECT d.id,
                   (SELECT COUNT(*) FROM course_departments WHERE department_id = d.id) as total,
@@ -294,6 +304,7 @@ def get_hod_dashboard_data(db, dept_id):
     return hod_data
 
 
+# /     /     >---- بيانات لوحة الأستاذ (محاضرات اليوم، الجدول، الامتحانات، الإشعارات)
 def get_teacher_dashboard_data(db, user_id):
     teacher_data = {}
     teacher_row = db.execute('SELECT * FROM teachers WHERE user_id = ?', (user_id,)).fetchone()
@@ -314,7 +325,7 @@ def get_teacher_dashboard_data(db, user_id):
     now = datetime.now()
     current_time = now.strftime('%H:%M')
 
-    # ── Today's entries with period times ──────────────────────────
+    # /     /     >---- محاضرات اليوم مع تحديد المحاضرة الحالية أو التالية
     if teacher_id and today_day and today_day != 'الجمعة':
         rows = db.execute(
             '''SELECT t.*, c.name as course_name, c.year as course_year, c.code as course_code,
@@ -333,14 +344,14 @@ def get_teacher_dashboard_data(db, user_id):
             (teacher_id, today_day)
         ).fetchall()
         teacher_data['today_entries'] = [dict(r) for r in rows]
-        # Current lecture detection
+        # /     /     >---- كشف المحاضرة اللي وقع جارية فيها الآن
         current_lecture = None
         for entry in teacher_data['today_entries']:
             if entry.get('start_time') and entry.get('end_time'):
                 if entry['start_time'] <= current_time < entry['end_time']:
                     current_lecture = entry
                     break
-        # If no current lecture, find the next one
+        # /     /     >---- إذا مافيش محاضرة حالية، نلقى التالية
         if not current_lecture:
             next_lecture = None
             for entry in teacher_data['today_entries']:
@@ -360,7 +371,7 @@ def get_teacher_dashboard_data(db, user_id):
         teacher_data['next_lecture'] = None
         teacher_data['lecture_state'] = 'free_day'
 
-    # ── Full weekly schedule ──────────────────────────────────────
+    # /     /     >---- الجدول الأسبوعي الكامل للأستاذ
     weekly_schedule = {}
     if teacher_id:
         for day_name in days_order:
@@ -380,7 +391,7 @@ def get_teacher_dashboard_data(db, user_id):
     teacher_data['weekly_schedule'] = weekly_schedule
     teacher_data['days_order'] = days_order
 
-    # ── Teaching assignments (courses with rooms/semesters) ───────
+    # /     /     >---- تكليفات التدريس المميزة (المقررات مع قاعاتها وفصولها)
     if teacher_id:
         rows = db.execute(
             '''SELECT DISTINCT c.id, c.name, c.code, c.year, c.semester, c.department,
@@ -399,7 +410,7 @@ def get_teacher_dashboard_data(db, user_id):
     else:
         teacher_data['assignments'] = []
 
-    # ── Classroom change requests ─────────────────────────────────
+    # /     /     >---- طلبات تغيير القاعة السابقة للأستاذ
     if teacher_id:
         rows = db.execute(
             '''SELECT r.*, cr.name as current_room_name, rr.name as requested_room_name,
@@ -427,7 +438,7 @@ def get_teacher_dashboard_data(db, user_id):
         teacher_data['classroom_requests'] = []
         teacher_data['classroom_request_counts'] = {}
 
-    # ── Upcoming exams ────────────────────────────────────────────
+    # /     /     >---- الامتحانات القادمة للمقررات المتعلقة بالأستاذ
     if teacher_id:
         today_str = now.strftime('%Y-%m-%d')
         rows = db.execute(
@@ -446,7 +457,7 @@ def get_teacher_dashboard_data(db, user_id):
     else:
         teacher_data['upcoming_exams'] = []
 
-    # ── Notifications ─────────────────────────────────────────────
+    # /     /     >---- الإشعارات وعدد غير المقروء
     if user_id:
         teacher_data['notifications'] = notification_service.get_user_notifications(db, user_id, limit=10)
         teacher_data['unread_count'] = notification_service.get_unread_count(db, user_id)
@@ -454,7 +465,7 @@ def get_teacher_dashboard_data(db, user_id):
         teacher_data['notifications'] = []
         teacher_data['unread_count'] = 0
 
-    # ── Department announcements ──────────────────────────────────
+    # /     /     >---- إعلانات القسم المنشورة
     if teacher_data['teacher'] and teacher_data['teacher'].get('department_id'):
         dept_id = teacher_data['teacher']['department_id']
         rows = db.execute(
@@ -467,7 +478,7 @@ def get_teacher_dashboard_data(db, user_id):
     else:
         teacher_data['announcements'] = []
 
-    # ── Recent activity (history) ─────────────────────────────────
+    # /     /     >---- آخر النشاطات من سجل العمليات
     if teacher_id:
         rows = db.execute(
             '''SELECT * FROM history
@@ -482,7 +493,7 @@ def get_teacher_dashboard_data(db, user_id):
     else:
         teacher_data['recent_activity'] = []
 
-    # ── Pending requests count (teacher → department) ──────────────
+    # /     /     >---- عدد طلبات الأستاذ المعلّقة للقسم
     if teacher_id:
         teacher_data['pending_requests_count'] = db.execute(
             'SELECT COUNT(*) FROM teacher_messages WHERE teacher_id = ? AND status = ?',
@@ -494,6 +505,7 @@ def get_teacher_dashboard_data(db, user_id):
     return teacher_data
 
 
+# /     /     >---- بيانات لوحة شؤون هيئة التدريس (الأساتذة + جدول الأعباء)
 def get_faculty_affairs_dashboard_data(db):
     """Data for the Faculty Affairs office dashboard — teacher-focused.
 
@@ -517,6 +529,7 @@ def get_faculty_affairs_dashboard_data(db):
         '(SELECT id FROM timetable_versions WHERE status = \'active\'))'
     ).fetchone()[0]
 
+    # /     /     >---- جدول الأعباء: لكل أستاذ عدد المقررات والمحاضرات والساعات
     rows = db.execute(
         '''SELECT t.id, t.name, t.academic_number,
                   COALESCE(d.name, '') AS dept_name,
@@ -551,6 +564,7 @@ def get_faculty_affairs_dashboard_data(db):
     return data
 
 
+# /     /     >---- إحصائيات عامة + آخر النشاطات للوحة الرئيسية
 def get_dashboard_stats(role: str, show: int = 5) -> dict:
     """Aggregate counts + recent activity for the generic dashboard home.
 
@@ -587,4 +601,3 @@ def get_dashboard_stats(role: str, show: int = 5) -> dict:
         ).fetchall()
     ]
     return stats
-

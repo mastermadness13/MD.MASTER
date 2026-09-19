@@ -1,9 +1,26 @@
+/*
+ * Modals — general rule (project-wide):
+ *  1. A modal must be a REAL overlay bound to the viewport:
+ *     position: fixed; inset: 0; width: 100vw; height: 100vh;
+ *     centered horizontally + vertically, above all page content.
+ *  2. The modal MARKUP must be rendered at body level
+ *     (base.html `{% block modals %}` inside #modal-root), NOT inside
+ *     .main-content-inner: that element has `backdrop-filter`, which
+ *     makes it the containing block for position:fixed descendants, so
+ *     modals get pinned to the page content and appear at the bottom /
+ *     scroll away with the page.
+ *  3. Never wrap a modal in an element that has transform / filter /
+ *     backdrop-filter / perspective / contain — same containing-block trap.
+ */
 .modal-overlay {
   position: fixed;
   inset: 0;
+  width: 100vw;
+  height: 100vh;
   background: var(--overlay);
   display: none;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
   z-index: 2000;
   padding: 16px;
 }

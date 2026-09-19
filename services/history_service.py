@@ -2,6 +2,8 @@
 
 Uses ``HistoryRepository`` for data access.  Module-level functions are kept
 for backward compatibility with existing routes.
+
+/     /     >---- خدمة سجل العمليات: عرض سجل المتابعة وتفاصيل العمليات.
 """
 
 from __future__ import annotations
@@ -12,6 +14,7 @@ from typing import Any, Dict, List, Optional
 logger = logging.getLogger(__name__)
 
 
+# /     /     >---- الخدمة بشكل كلاس: حقن المستودع في المُنشئ
 class HistoryService:
     """Class-based history service with repository injection."""
 
@@ -19,15 +22,16 @@ class HistoryService:
         self.db = db
         self._repo = history_repo
 
+    # /     /     >---- جلب السجل الكامل مع البحث والترقيم
     def list_history(self, search: str = '', page: int = 1) -> tuple:
         return self._repo.list_history(search, page)
 
+    # /     /     >---- جلب تفاصيل عملية معينة من السجل
     def get_history_detail(self, history_id: int) -> Optional[Dict]:
         return self._repo.find_by_id(history_id)
 
 
-# ── Backward-compatible module-level API ──────────────────────────────────
-
+# /     /     >---- دوال مستوى الوحدة للمحافظة على التوافق مع المسارات القديمة
 def list_history(db, search, page):
     from utils.format import paginate
     query = 'SELECT * FROM history'
@@ -39,5 +43,6 @@ def list_history(db, search, page):
     return paginate(query, params, page)
 
 
+# /     /     >---- جلب عملية وحدة من السجل حسب المعرّف
 def get_history_detail(db, id):
     return db.execute('SELECT * FROM history WHERE id = ?', (id,)).fetchone()

@@ -139,7 +139,7 @@
 
   --main-content-bg: #110d18;
 
-  --app-content-bg: rgba(17, 13, 24, 0.62);
+  --app-content-bg: rgba(17, 13, 24, 0.55);
 }
 
 /* ===== Tailwind gray utilities not covered by theme-overrides.css ===== */

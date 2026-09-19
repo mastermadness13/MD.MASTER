@@ -1,7 +1,9 @@
-﻿"""User service — authentication, CRUD, password management.
+"""User service — authentication, CRUD, password management.
 
 Refactored to accept repository injection while maintaining backward
 compatibility with the existing module-level function API.
+
+/     /     >---- خدمة المستخدمين: تسجيل الدخول، إدارة الحسابات، وكلمات المرور.
 """
 
 from __future__ import annotations
@@ -19,30 +21,38 @@ from core.constants import (
 )
 from core.exceptions import ConflictError, ProtectedAccountError, ValidationError
 from security.authorization import highest_priority_role
+from services.hod_resolution import get_current_hod
 
 logger = logging.getLogger(__name__)
 
-# Administrative roles never belong to an academic department.
-# They may be assigned to an administrative unit (type='administrative').
+# /     /     >---- تجزئة وهمية تُستخدم دائماً لمنع تمييز الحسابات (CWE-204)
+# /     /     >---- hasher موحد لضمان استهلاك نفس الوقت سواء وُجد المستخدم أم لا
+_DUMMY_PASSWORD_HASH = generate_password_hash('dummy-not-a-real-account-3x!Kq')
+
+# /     /     >---- الأدوار الإدارية ما تنتميش لقسم أكاديمي
 _DEPARTMENTLESS_ROLES = frozenset({'super_admin', 'exam'})
 
-# Administrative roles that carry an administrative unit (not academic dept).
+# /     /     >---- الأدوار الإدارية اللي كياخدو وحدة إدارية (مش قسم أكاديمي)
 _ADMINISTRATIVE_ROLES = frozenset({'faculty_affairs', 'research_development', 'exam'})
 
-# Roles that carry an academic department.
+# /     /     >---- الأدوار اللي كياخدو قسم أكاديمي
 _ACADEMIC_ROLES = frozenset({'teacher', 'head_of_department'})
 
 
 class UserService:
-    """Class-based user service with dependency injection."""
+    """Class-based user service with dependency injection.
+
+    /     /     >---- خدمة المستخدمين بشكل كلاس مع حقن التبعيات.
+    """
 
     def __init__(self, db, user_repository, teacher_repository=None):
         self.db = db
         self._repo = user_repository
         self._teacher_repo = teacher_repository
 
-    # ── Super-admin protection ───────────────────────────────────────────
+    # /     /     >---- حماية حساب المدير النظامي الرئيسي
 
+    # /     /     >---- نتحقق هل المستخدم هو المدير النظامي الأساسي (بالدور أو بجدول الأدوار)
     def is_protected_user(self, user_id: int) -> bool:
         """Return True if the user is the main super-admin (by landing role or
         by an explicit ``super_admin`` entry in ``user_roles``).
@@ -59,31 +69,35 @@ class UserService:
         roles = self._repo.find_roles_by_user(user_id) or []
         return 'super_admin' in roles
 
+    # /     /     >---- مانع: ما نخلّيش أي عملية تخريبية على حساب محمي
     def _guard_against_destructive(self, user_id: int) -> None:
         if self.is_protected_user(user_id):
             raise ProtectedAccountError()
 
-    # ── Authentication ───────────────────────────────────────────────────
+    # /     /     >---- المصادقة (تسجيل الدخول)
 
+    # /     /     >---- تسجيل الدخول: تحقق من اسم المستخدم وكلمة المرور، ونسجّل الجلسة
     def authenticate(self, username: str, password: str, remember: bool,
                      session_dict: dict) -> Tuple[bool, Optional[Dict]]:
         user = self._repo.find_by_username(username)
-        if user and check_password_hash(user['password'], password):
+        # /     /     >---- دائماً نتحقق من التجزئة حتى لو المستخدم غير موجود
+        # /     /     >---- هذا يمنع تمييز الحسابات عبر فرق التوقيت (CWE-204)
+        pw_hash = user['password'] if user else _DUMMY_PASSWORD_HASH
+        if user and check_password_hash(pw_hash, password):
             if not user.get('is_active', 1):
                 return False, None
             session_dict.clear()
             session_dict['permanent'] = bool(remember)
             session_dict['user_id'] = user['id']
             session_dict['username'] = user['username']
-            # Multi-role: full granted role set + landing (highest priority) role.
+            # /     /     >---- أدوار متعددة: كامل مجموعة الأدوار + دور الهبوط (الأعلى أولوية)
             granted = self._repo.find_roles_by_user(user['id']) or [user['role']]
             if not granted:
                 granted = [user['role']]
             session_dict['roles'] = granted
             session_dict['role'] = highest_priority_role(granted) or user['role']
             session_dict['label'] = user['label'] or ''
-            # The single source of truth for the user→teacher link is
-            # teachers.user_id (there is no users.teacher_id column).
+            # /     /     >---- المصدر الوحيد لربط المستخدم بالأستاذ هو teachers.user_id
             teacher_id = None
             hod_department_id = None
             teacher_department_id = None
@@ -118,8 +132,9 @@ class UserService:
             return True, user
         return False, None
 
-    # ── Password management ──────────────────────────────────────────────
+    # /     /     >---- إدارة كلمات المرور
 
+    # /     /     >---- إنشاء رمز إعادة تعيين كلمة المرور لاسم المستخدم
     def create_password_reset(self, username: str) -> Optional[tuple]:
         user = self._repo.find_by_username_or_email(username)
         if user:
@@ -129,23 +144,29 @@ class UserService:
             )
             self._repo.create_password_reset(user['id'], token, expires)
             return token, user.get('email')
+        # /     /     >---- حساب تفتيش تجزئة وهمي لمعادلة زمن الاستجابة (CWE-204)
+        check_password_hash(_DUMMY_PASSWORD_HASH, username)
         return None
 
+    # /     /     >---- التحقق من صحة رمز إعادة التعيين وصلاحيته
     def validate_reset_token(self, token: str) -> Optional[Dict]:
         return self._repo.find_valid_reset_token(token)
 
+    # /     /     >---- تنفيذ إعادة التعيين وتحديث كلمة المرور وعلام الرمز كمستعمل
     def reset_password(self, row: Dict, password: str) -> None:
         self._repo.update_password(row['user_id'], generate_password_hash(password))
         self._repo.mark_reset_used(row['id'])
 
+    # /     /     >---- تغيير كلمة مرور مستخدم معين
     def change_user_password(self, user_id: int, new_password: str) -> None:
         self._repo.update_password(user_id, generate_password_hash(new_password))
 
-    # ── User CRUD ────────────────────────────────────────────────────────
+    # /     /     >---- عمليات CRUD للمستخدمين
 
     def get_user_by_id(self, user_id: int) -> Optional[Dict]:
         return self._repo.find_by_id(user_id)
 
+    # /     /     >---- جلب الملف الكامل للمستخدم مع قسمه وأستاذه واسم الدور
     def get_user_profile(self, user_id: int) -> Optional[Dict]:
         user = self._repo.find_with_department(user_id)
         if not user:
@@ -163,6 +184,7 @@ class UserService:
     def get_all_departments(self):
         return self._repo.list_visible_departments()
 
+    # /     /     >---- الأقسام الأكاديمية الظاهرة للأدوار الأكاديمية
     def get_departments_for_role(self, role):
         from database.repositories.department_repository import DepartmentRepository
         return DepartmentRepository(self._repo.db).list_academic()
@@ -190,6 +212,7 @@ class UserService:
         self._guard_against_destructive(user_id)
         self._repo.delete_user(user_id)
 
+    # /     /     >---- تفعيل/تعطيل الحساب (تعطيل ناعم عبر is_active)
     def set_user_active(self, user_id: int, active: bool) -> None:
         """Enable/disable a user account (soft disable via ``is_active``).
 
@@ -199,6 +222,7 @@ class UserService:
             self._guard_against_destructive(user_id)
         self._repo.set_user_active(user_id, bool(active))
 
+    # /     /     >---- استبدال مجموعة أدوار المستخدم (يأبى نزع super_admin من حساب محمي)
     def set_user_roles(self, user_id: int, roles) -> None:
         """Replace the user's granted role set stored in ``user_roles``.
 
@@ -208,8 +232,9 @@ class UserService:
             raise ProtectedAccountError()
         self._repo.set_user_roles(user_id, roles)
 
-    # ── Role-aware create/update (merged user + profile flow) ───────────
+    # /     /     >---- إنشاء/تحديث مدرك للدور (دمج تدفق المستخدم + الملف)
 
+    # /     /     >---- يرجع القسم الأكاديمي المسموح للدور، أو None
     def _force_academic_department(self, role: str, department_id):
         """Return the academic department_id allowed for the given role, or None."""
         if department_id is None:
@@ -223,6 +248,7 @@ class UserService:
             return None
         return department_id
 
+    # /     /     >---- يرجع القسم الإداري المسموح للدور، أو None
     def _force_administrative_department(self, role: str, administrative_department_id):
         """Return the administrative department_id allowed for the given role, or None."""
         if administrative_department_id is None:
@@ -236,6 +262,7 @@ class UserService:
             return None
         return administrative_department_id
 
+    # /     /     >---- هل يوجد حساب مدير نظامي (مع إمكانية استثناء مستخدم)
     def _super_admin_exists(self, exclude_user_id: int = None) -> bool:
         sql = "SELECT 1 FROM users WHERE role = 'super_admin'"
         params = []
@@ -244,6 +271,7 @@ class UserService:
             params.append(exclude_user_id)
         return self.db.execute(sql, params).fetchone() is not None
 
+    # /     /     >---- هل قسم رئيس القسم متاح (بدون استثناء مستخدم معين)
     def _hod_department_available(self, department_id, exclude_user_id: int = None) -> bool:
         sql = ("SELECT 1 FROM users WHERE role = 'head_of_department' "
                'AND department_id = ?')
@@ -253,10 +281,17 @@ class UserService:
             params.append(exclude_user_id)
         return self.db.execute(sql, params).fetchone() is None
 
+    # /     /     >---- رسالة إيضاحية عند محاولة تعيين رئيس لقسم مشغول
+    def _hod_occupied_message(self, department_id) -> str:
+        hod = get_current_hod(self.db, department_id)
+        current = f' ({hod["name"]})' if hod else ''
+        return f'هذا القسم لديه رئيس قسم بالفعل{current} — يتم استبدال الرئيس من ملف الأستاذ'
+
+    # /     /     >---- إنشاء ملف أستاذ مرتبط بالمستخدم (مع منع تكرار الرقم الأكاديمي)
     def _create_teacher_profile(self, user_id: int, data: Dict[str, Any]) -> None:
         from utils.text import normalize_academic_number
 
-        # Stable-identity guard: reject if academic_number already exists
+        # /     /     >---- حارس الهوية: نرفض إذا الرقم الأكاديمي موجود من قبل
         an = normalize_academic_number(data.get('academic_number'))
         if an and self._teacher_repo:
             existing = self._teacher_repo.find_by_academic_number(an)
@@ -286,6 +321,7 @@ class UserService:
         )
         self.db.commit()
 
+    # /     /     >---- تحديث ملف الأستاذ أو إنشاؤه إذا مازالش موجود
     def _update_teacher_profile(self, user_id: int, data: Dict[str, Any]) -> None:
         existing = self._repo.get_teacher_by_user(user_id)
         if existing:
@@ -310,6 +346,7 @@ class UserService:
         else:
             self._create_teacher_profile(user_id, data)
 
+    # /     /     >---- إنشاء مستخدم مع تطبيق قواعد نموذج الأدوار
     def create_user_with_profile(self, username: str, password: str, role: str,
                                   department_id, email: str, label: str,
                                   **extra) -> int:
@@ -332,7 +369,7 @@ class UserService:
             if department_id is None:
                 raise ValidationError(message='يرجى اختيار القسم لرئيس القسم')
             if not self._hod_department_available(department_id):
-                raise ConflictError('هذا القسم لديه رئيس قسم بالفعل')
+                raise ConflictError(self._hod_occupied_message(department_id))
 
         user_id = self._repo.create_user({
             'username': username,
@@ -356,6 +393,7 @@ class UserService:
             })
         return user_id
 
+    # /     /     >---- تحديث مستخدم مع تطبيق قواعد نموذج الأدوار
     def update_user_with_profile(self, user_id: int, username: str, role: str, department_id,
                                   email: str, label: str, phone: str = '',
                                   password: str = None,
@@ -382,7 +420,7 @@ class UserService:
             if department_id is None:
                 raise ValidationError(message='يرجى اختيار القسم لرئيس القسم')
             if not self._hod_department_available(department_id, exclude_user_id=user_id):
-                raise ConflictError('هذا القسم لديه رئيس قسم بالفعل')
+                raise ConflictError(self._hod_occupied_message(department_id))
 
         data = {
             'username': username or existing['username'],
@@ -407,14 +445,12 @@ class UserService:
                 'department_id': department_id,
                 'rank_id': extra.get('rank_id'),
             })
-        # else: keep the teacher profile linked to the same user.  A role
-        # change (teacher → head of department, teacher → administrative role)
-        # must NOT destroy the teacher record or create a duplicate when the
-        # role is later reverted to teacher.
+        # /     /     >---- نحافظ على ملف الأستاذ مرتبطاً حتى لو تبدّل الدور
 
     def username_exists(self, username: str) -> bool:
         return self._repo.username_exists(username)
 
+    # /     /     >---- تغيير الثيم (فاتح/داكن/ملوّن)
     def update_theme(self, user_id: int, theme: str) -> bool:
         if theme not in ('light', 'dark', 'colorful'):
             return False
@@ -422,9 +458,8 @@ class UserService:
         return True
 
 
-# ── Backward-compatible module-level API ──────────────────────────────────
-# These thin wrappers allow existing route code to keep working unchanged.
-# New code should inject the service via g.container instead.
+# /     /     >---- دوال مستوى الوحدة المحافظة على التوافق مع المسارات القديمة
+# /     /     >---- الكود الجديد يحقن الخدمة عبر g.container
 
 
 def authenticate(db, username, password, remember, session_dict):

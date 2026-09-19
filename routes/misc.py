@@ -5,6 +5,7 @@ from security import current_user
 bp = Blueprint('misc', __name__)
 
 
+# /     /     >---- صفحة جدول المحاضرات (تتطلب صلاحية timetable.view)
 @bp.route('/lecture-schedule')
 @login_required
 @permission_required('timetable.view')

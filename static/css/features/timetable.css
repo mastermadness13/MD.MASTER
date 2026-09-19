@@ -225,3 +225,22 @@
   font-size: 12px;
   color: var(--text-muted);
 }
+
+/* ===== Timetable cell actions + file buttons (moved from timetable templates, 0a) ===== */
+.tt-file-btns { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
+.tt-file-btn { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; background: var(--surface-card); border: 1px solid var(--border); color: var(--text-secondary); cursor: pointer; padding: 0; text-decoration: none; transition: all 0.15s ease; }
+.tt-file-btn .material-symbols-outlined { font-size: 15px; }
+.tt-file-btn.tt-file-active { background: var(--primary); color: var(--text-on-primary, #fff); border-color: var(--primary); }
+.tt-file-btn.tt-file-active:hover { opacity: 0.85; }
+.tt-file-btn:hover:not(:disabled):not(.tt-file-active) { background: var(--primary-container); }
+.tt-file-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.tt-action { color: var(--primary); border-color: var(--primary); }
+.popup-panel, .modal-panel { display: flex; align-items: center; justify-content: center; }
+.tt-empty { cursor: pointer; }
+.tt-empty:hover { background: var(--primary-container); }
+.drop-target.drop-hover { outline: 2px dashed var(--primary); outline-offset: -2px; background: var(--primary-glow); }
+.day-acc-header { cursor: pointer; user-select: none; }
+.day-acc-chevron { transition: transform .25s ease; }
+.day-acc-collapsed .day-acc-chevron { transform: rotate(-90deg); }
+.day-acc-collapsed .day-acc-body { display: none; }
+.day-accordion { transition: background-color .3s ease; }

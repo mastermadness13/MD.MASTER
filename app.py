@@ -19,41 +19,48 @@ from utils.format import submission_status_label, submission_status_color
 from utils.format import academic_title_prefix, teacher_display_name
 from utils.redirects import redirect_back
 
+# /     /     >---- تسجيل الأخطاء والرسوم
 logger = logging.getLogger(__name__)
 
 
+# /     /     >---- دالة إعداد اللوقنق (تسجل الأخطاء في ملف وتشوفها في الترمينال)
 def _setup_logging(app):
     """Configure rotating file + stderr logging."""
+    # /     /     >---- نصنع مجلد اللوقس إذا ما كان موجود
     log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
     os.makedirs(log_dir, exist_ok=True)
     log_file = os.path.join(log_dir, 'ropey.log')
 
+    # /     /     >---- تنسيق الرسائل
     formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s')
 
+    # /     /     >---- ملف اللوقق بالتدوير (5 ميجا كحد أقصى، 5 نسخ احتياطية)
     file_handler = RotatingFileHandler(log_file, maxBytes=5 * 1024 * 1024, backupCount=5)
     file_handler.setFormatter(formatter)
     file_handler.setLevel(logging.WARNING)
 
+    # /     /     >---- شاشة الترمينال للرسوم المهمة
     stream_handler = logging.StreamHandler()
     stream_handler.setFormatter(formatter)
     stream_handler.setLevel(logging.INFO)
 
-    # Windows consoles default to cp1252, which cannot encode Arabic log lines
-    # (UnicodeEncodeError). Force UTF-8 so Arabic messages never crash the handler.
+    # /     /     >---- في ويندوز، الترمينال ما يدعم العربي، نجبره على UTF-8
     try:
         sys.stderr.reconfigure(encoding='utf-8')
     except Exception:
         pass
 
+    # /     /     >---- نضبط مستوى التسجيل الرئيسي
     root = logging.getLogger()
     root.setLevel(logging.INFO)
     root.addHandler(file_handler)
     root.addHandler(stream_handler)
 
-    # Quiet noisy libraries
+    # /     /     >---- نخفي رسوم المكتبات الزايدة
     logging.getLogger('waitress').setLevel(logging.INFO)
     logging.getLogger('urllib3').setLevel(logging.WARNING)
 
+# ── استيراد كل البلوبرنتات (المسارات الفرعية) ─────────────────────
 from routes.auth import bp as auth_bp
 from routes.dashboard import bp as dashboard_bp
 from routes.profile import bp as profile_bp
@@ -76,23 +83,28 @@ from routes.public_library import bp as public_library_bp
 from routes.public import bp as public_bp
 from routes.public_site import bp as public_site_bp
 from routes.faculty_performance import bp as faculty_performance_bp
-from routes.academic_calendar import bp as academic_calendar_bp
 from api import register_api
 
 
+# /     /     >---- الدالة الرئيسية اللي تصنع التطبيق وتهيئ كل شي
 def create_app():
+    # /     /     >---- نصنع كائن Flask
     app = Flask(__name__)
     app.jinja_loader = FileSystemLoader(os.path.join(app.root_path, 'templates'))
     app.config.from_object(Config)
+    # /     /     >---- نتأكد مجلد الرفع موجود
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
+    # /     /     >---- نهيئ قاعدة البيانات واللوقنق
     db_init_app(app)
     _setup_logging(app)
 
+    # /     /     >---- نغلق قاعدة البيانات بعد كل طلب
     @app.teardown_appcontext
     def teardown(exception):
         close_db(exception)
 
+    # /     /     >---- نضيف الدوال المساعدة للقوالب (Jinja2)
     app.jinja_env.globals['csrf_token'] = generate_csrf_token
     app.jinja_env.globals['now'] = datetime.now
     app.jinja_env.globals['app_version'] = lambda: app.config.get('APP_VERSION', '0')
@@ -106,16 +118,18 @@ def create_app():
     app.jinja_env.globals['submission_status_color'] = submission_status_color
     app.context_processor(inject_navigation)
 
+    # /     /     >---- نضيف بيانات المستخدم المرحّب به في كل صفح
     @app.context_processor
     def inject_welcome():
         return {'welcome_user': session.pop('welcome_user', None)}
 
+    # /     /     >---- نضيف حد الرفع الأقصى في القوالب
     @app.context_processor
     def inject_upload_limit():
         mb = (app.config.get('MAX_CONTENT_LENGTH') or 0) // (1024 * 1024)
         return {'max_upload_mb': mb}
 
-    # ── Register Blueprints ──────────────────────────────────────
+    # ── تسجيل البلوبرنتات ──────────────────────────────────────
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(profile_bp)
@@ -138,24 +152,25 @@ def create_app():
     app.register_blueprint(public_bp)
     app.register_blueprint(public_site_bp)
     app.register_blueprint(faculty_performance_bp)
-    app.register_blueprint(academic_calendar_bp)
     register_api(app)
 
-    # ── Health check ─────────────────────────────────────────────
+    # ── فحص صحة التطبيق ─────────────────────────────────────────
     @app.route('/health')
     def health_check():
         try:
+            # /     /     >---- نجرب نوصل لقاعدة البيانات
             db = get_db()
             db.execute('SELECT 1')
             return jsonify({'ok': True, 'status': 'healthy'}), 200
         except Exception:
             return jsonify({'ok': False, 'status': 'unhealthy'}), 503
 
-    # ── Error handlers ───────────────────────────────────────────
+    # ── معالجات الأخطاء ───────────────────────────────────────────
     from core.exceptions import AppError
 
     @app.errorhandler(AppError)
     def handle_app_error(e):
+        # /     /     >---- إذا الطلب من AJAX نرجع JSON، وإلا نرجع صفحة
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'ok': False, 'message': e.message}), e.status_code
         flash(e.message, 'error')
@@ -163,10 +178,12 @@ def create_app():
 
     @app.errorhandler(404)
     def not_found(e):
+        # /     /     >---- صفحة 404 - الصفحة غير موجودة
         return render_template('errors/404.html'), 404
 
     @app.errorhandler(413)
     def file_too_large(e):
+        # /     /     >---- الملف أكبر من الحد المسموح
         msg = f'حجم الملف أكبر من الحد المسموح ({app.config.get("MAX_CONTENT_LENGTH", 0) // (1024 * 1024)} ميجابايت)'
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'ok': False, 'message': msg}), 413
@@ -175,6 +192,7 @@ def create_app():
 
     @app.errorhandler(429)
     def too_many_requests(e):
+        # /     /     >---- تجاوز الحد المسموح من الطلبات
         msg = 'تم تجاوز الحد المسموح من الطلبات، يرجى المحاولة لاحقاً'
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'ok': False, 'message': msg}), 429
@@ -183,20 +201,23 @@ def create_app():
 
     @app.errorhandler(500)
     def server_error(e):
+        # /     /     >---- خطأ داخلي في السيرفر
         logger.exception('Internal server error')
         if 'user_id' in session:
             return render_template('errors/500.html', user=current_user()), 500
         return redirect(url_for('auth.login'))
 
-    # ── Security headers & caching ──────────────────────────────
+    # ── الهيدرز الأمنية والكاش ──────────────────────────────────
     @app.after_request
     def add_security_headers(response):
+        # /     /     >---- هيدرز الحماية من الثغرات الأمنية
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['X-Frame-Options'] = 'SAMEORIGIN'
         response.headers['X-XSS-Protection'] = '1; mode=block'
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
         response.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()'
 
+        # /     /     >---- سياسة أمان المحتوى (CSP)
         csp_parts = [
             "default-src 'self'",
             "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net",
@@ -208,11 +229,14 @@ def create_app():
         ]
         response.headers['Content-Security-Policy'] = '; '.join(csp_parts)
 
+        # /     /     >---- إعداد الكاش حسب نوع المسار
         path = request.path
         if path.startswith('/static/'):
+            # /     /     >---- الملفات الثابتة تكاش لمدة سنة
             response.cache_control.public = True
             response.cache_control.max_age = 31536000
         elif path.startswith('/uploads/'):
+            # /     /     >---- الملفات المرفوعة تكاش لمدة ساعة
             response.cache_control.private = True
             response.cache_control.max_age = 3600
 
@@ -220,17 +244,24 @@ def create_app():
 
     return app
 
+# ─────────────────────────────────────────────
 
+# /     /     >---- نقطة الدخول الرئيسية للتشغيل المباشر
 if __name__ == '__main__':
     import sys
     if 'init-db' in sys.argv:
+        # /     /     >---- إذا كتبنا flask init-db نهيئ القاعدة فقط
         from flask_db import init_db, bootstrap_defaults as _seed
         init_db()
         _seed()
         print('Database initialized and seeded.')
     else:
+        # /     /     >---- نشغّل السيرفر بشكل طبيعي
         from flask_db import init_db, bootstrap_defaults as _seed
         init_db()
         _seed()
         app = create_app()
-        app.run(debug=True, host='127.0.0.1', port=5000)
+        # /     /     >---- وضع التصحيح اختياري (FLASK_DEBUG=1) — إعادة التشغيل التلقائية
+        # /     /     >---- تمسح عدادات تحديد معدل المحاولات من الذاكرة
+        debug = os.environ.get('FLASK_DEBUG', '').strip().lower() in ('1', 'true', 'yes', 'on')
+        app.run(debug=debug, host='127.0.0.1', port=5000)

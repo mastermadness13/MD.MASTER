@@ -1,4 +1,4 @@
-﻿from collections import OrderedDict
+from collections import OrderedDict
 
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 
@@ -19,6 +19,8 @@ def exams():
 
     Data is served by the REST API in ``api/exams.py`` and rendered
     client-side; the API re-enforces every action.
+
+    /     /     >---- فضاء الامتحانات الموحد: بياناته من API والواجهة تعرضه.
     """
     role = session.get('role', '')
     db = get_db()
@@ -30,5 +32,3 @@ def exams():
         period_year=period.get('yearLabel', ''),
         season_word=period.get('seasonWord', ''),
     )
-
-

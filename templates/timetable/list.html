@@ -3,6 +3,7 @@
 {% set page_title = 'الجدول الدراسي' %}
 
 {% set entries = entries | default([]) %}
+{% set content_maps = content_maps | default({'form': {}, 'vocab': {}, 'syllabus': {}}) %}
 {% set departments = departments | default([]) %}
 {% set periods = periods | default([]) %}
 {% set available_semesters = available_semesters | default([1]) %}
@@ -91,7 +92,7 @@
 
   <!-- Weekly Grid -->
   <div class="bg-surface-card rounded-2xl shadow-sm border border-outline-variant overflow-hidden">
-    <div class="p-4 overflow-x-auto">
+    <div class="p-4 overflow-x-auto hidden lg:block">
       {% if periods and days_list %}
       <table class="w-full text-right border-collapse min-w-[760px]">
         <thead>
@@ -120,6 +121,8 @@
               {% if cell %}
               <div class="flex flex-col gap-1.5">
                 {% for e in cell %}
+                {% set frm = content_maps.form.get(e.course_id) if content_maps else none %}
+                {% set syk = (content_maps.syllabus.get(e.teacher_id ~ ':' ~ e.course_id) if content_maps else none) or (content_maps.syllabus.get('*:' ~ e.course_id) if content_maps else none) %}
                 <div class="p-2 bg-primary-container border-r-2 border-primary rounded-lg">
                   {% if e.start_time %}
                    <div class="text-[11px] font-bold text-primary mb-1" dir="ltr">{{ format_time12(e.start_time) }}{% if e.end_time %} ← {{ format_time12(e.end_time) }}{% endif %}</div>
@@ -135,6 +138,24 @@
                     <span class="material-symbols-outlined text-[14px]">meeting_room</span>{{ e.room_name or '—' }}
                     {% if e.semester %}<span class="text-on-surface-variant">· ف{{ e.semester }}</span>{% endif %}
                     {% if e.student_section %}<span class="text-on-surface-variant">· ش{{ e.student_section }}</span>{% endif %}
+                  </div>
+                  <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                    <span class="{% if frm and frm.url %}text-green-600{% else %}text-red-400{% endif %} text-[10px] font-bold">● مقرر</span>
+                    <span class="{% if syk and syk.url %}text-green-600{% else %}text-red-400{% endif %} text-[10px] font-bold">● منهاج</span>
+                    {% if frm and frm.url %}
+                    <a href="{{ frm.url }}{% if '?' in frm.url %}&{% else %}?{% endif %}download=1"
+                       class="inline-flex items-center gap-1 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-2 py-1 rounded-md text-[11px] font-bold transition no-underline">
+                      <span class="material-symbols-outlined text-[13px]">description</span>
+                      تحميل المقرر
+                    </a>
+                    {% endif %}
+                    {% if syk and syk.url %}
+                    <a href="{{ syk.url }}{% if '?' in syk.url %}&{% else %}?{% endif %}download=1"
+                       class="inline-flex items-center gap-1 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-2 py-1 rounded-md text-[11px] font-bold transition no-underline">
+                      <span class="material-symbols-outlined text-[13px]">download</span>
+                      تحميل المنهج
+                    </a>
+                    {% endif %}
                   </div>
                   {% if can_edit %}
                   <div class="flex items-center gap-1.5 mt-1.5">
@@ -167,6 +188,71 @@
       </div>
       {% endif %}
     </div>
+  </div>
+
+  <!-- Mobile card list (phones <1024px) -->
+  <div class="tt-mobile-grid lg:hidden mt-5 no-print">
+    {% set any_mobile = [] %}
+    {% for day in days_list %}
+      {% set day_entries = [] %}
+      {% for e in entries %}{% if e.day == day %}{% set _ = day_entries.append(e) %}{% endif %}{% endfor %}
+      {% if day_entries %}
+        {% set _ = any_mobile.append(1) %}
+        <div class="tt-mday">
+          <div class="tt-mday-head">
+            <span class="material-symbols-outlined">today</span>
+            <span>{{ day }}</span>
+            <span class="tt-mday-count">{{ day_entries | length }} حصة</span>
+          </div>
+          <div class="tt-mday-body">
+            {% for e in day_entries %}
+            {% set frm = content_maps.form.get(e.course_id) %}
+            {% set syk = content_maps.syllabus.get(e.teacher_id ~ ':' ~ e.course_id) or content_maps.syllabus.get('*:' ~ e.course_id) %}
+            <div class="tt-mcard">
+              <div class="tt-mcard-title">
+                <span>{{ e.course_name }}</span>
+                {% if e.course_code %}<span class="code">({{ e.course_code }})</span>{% endif %}
+                <span class="tt-mday-count" style="margin-inline-start:auto">
+                  <span class="{% if frm and frm.url %}text-green-600{% else %}text-red-400{% endif %}">● مقرر</span>
+                  <span class="{% if syk and syk.url %}text-green-600{% else %}text-red-400{% endif %} ms-1">● منهاج</span>
+                </span>
+              </div>
+              <div class="tt-mrow tt-mtime">
+                <span class="material-symbols-outlined">schedule</span>
+                <span dir="ltr">{% if e.start_time %}{{ format_time12(e.start_time) }}{% if e.end_time %} ← {{ format_time12(e.end_time) }}{% endif %}{% endif %}</span>
+              </div>
+              <div class="tt-mrow">
+                <span class="material-symbols-outlined">person</span> {{ e.teacher_name or '—' }}
+              </div>
+              <div class="tt-mrow">
+                <span class="material-symbols-outlined">meeting_room</span> {{ e.room_name or '—' }}
+                {% if e.semester %}<span>· ف{{ e.semester }}</span>{% endif %}
+                {% if e.student_section %}<span>· ش{{ e.student_section }}</span>{% endif %}
+              </div>
+              <div class="tt-actions">
+                {% if frm and frm.url %}
+                <a class="tt-chip tt-chip-primary" href="{{ frm.url }}{% if '?' in frm.url %}&amp;{% else %}?{% endif %}download=1" target="_blank" rel="noopener"><span class="material-symbols-outlined">description</span> تحميل المقرر</a>
+                {% endif %}
+                {% if syk and syk.url %}
+                <a class="tt-chip tt-chip-soft" href="{{ syk.url }}{% if '?' in syk.url %}&amp;{% else %}?{% endif %}download=1" target="_blank" rel="noopener"><span class="material-symbols-outlined">download</span> تحميل المنهج</a>
+                {% endif %}
+                {% if can_edit %}
+                <a class="tt-chip tt-chip-soft" href="{{ url_for('timetable.timetable_edit', entry_id=e.id) }}"><span class="material-symbols-outlined">edit</span> تعديل</a>
+                <button type="button" class="tt-chip tt-chip-danger" onclick="deleteEntry({{ e.id }}, '{{ e.course_name }}')"><span class="material-symbols-outlined">delete</span> حذف</button>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+    {% endfor %}
+    {% if not any_mobile %}
+    <div class="tt-mempty">
+      <span class="material-symbols-outlined">calendar_today</span>
+      لا توجد حصص مجدولة بعد
+    </div>
+    {% endif %}
   </div>
 
   <!-- Legend -->

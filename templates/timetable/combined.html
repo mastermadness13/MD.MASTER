@@ -28,13 +28,6 @@
   .filter-btn { display: inline-flex; align-items: center; justify-content: center; padding: 10px 18px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-card); color: var(--text-secondary); font-size: 14px; font-weight: 500; cursor: pointer; text-decoration: none; transition: .25s; }
   .filter-btn:hover { background: var(--surface-hover); }
   .filter-btn.active { background: var(--primary); color: var(--text-on-primary); border-color: var(--primary); }
-  .tt-file-btns { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
-  .tt-file-btn { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; background: var(--surface-card); border: 1px solid var(--border); color: var(--text-secondary); cursor: pointer; text-decoration: none; transition: all 0.15s ease; }
-  .tt-file-btn .material-symbols-outlined { font-size: 15px; }
-  .tt-file-btn.tt-file-active { background: var(--primary); color: var(--text-on-primary, #fff); border-color: var(--primary); }
-  .tt-file-btn.tt-file-active:hover { opacity: 0.85; }
-  .tt-file-btn:hover:not(:disabled):not(.tt-file-active) { background: var(--primary-container); }
-  .tt-file-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   @media print {
     .no-print { display: none !important; }
     .print-area { break-inside: avoid; }
@@ -144,7 +137,7 @@
       </span>
     </div>
 
-    <div class="overflow-x-auto">
+    <div class="overflow-x-auto hidden lg:block">
       {% if periods %}
       <table class="w-full text-right border-collapse min-w-[760px]">
         <thead>
@@ -175,7 +168,7 @@
                 {% for e in cell %}
                 {% set form_file = payload.form.get(e.course_id) %}
                 {% set syllabus_file = payload.syllabus.get(e.teacher_id ~ ':' ~ e.course_id) or payload.syllabus.get('*:' ~ e.course_id) %}
-                {% set course_href = '/teacher/super-admin/course-content/' ~ form_file.id if form_file and form_file.id else '/teacher/super-admin/course-content/create?course_id=' ~ e.course_id %}
+                {% set course_href = '/teacher/super-admin/course-content/' ~ form_file.id ~ '/form' if form_file and form_file.id else '' %}
                 <div class="bg-primary-container rounded-lg p-3 shadow-md text-[11px]">
                   <h3 class="font-bold text-on-surface mb-1.5 text-xs">📘 مقرر: {{ e.course_name or '—' }}</h3>
                   <div class="flex items-center gap-1.5 text-primary font-bold mb-1">
@@ -192,34 +185,34 @@
                     <span class="material-symbols-outlined text-[14px]">schedule</span>
                     {{ 'عملي' if e.lecture_type == 'practical' else 'نظري' }}{% if duration_label(e.start_time, e.end_time) %} · {{ duration_label(e.start_time, e.end_time) }}{% endif %}
                   </div>
-                  <div class="flex flex-wrap gap-1.5">
+                  <div class="flex flex-wrap gap-1">
                     {% if form_file and form_file.url %}
-                    <a href="{{ form_file.url }}{% if '?' in form_file.url %}&amp;{% else %}?{% endif %}download=1" target="_blank" rel="noopener" class="bg-primary text-white px-2 py-0.5 rounded text-[10px] font-bold">📄 تحميل المقرر</a>
+                    <a href="{{ form_file.url }}{% if '?' in form_file.url %}&amp;{% else %}?{% endif %}download=1" target="_blank" rel="noopener" title="تحميل المقرر" aria-label="تحميل المقرر" class="w-6 h-6 flex items-center justify-center rounded bg-primary text-white hover:bg-primary/90 transition no-underline"><span class="material-symbols-outlined text-sm">description</span></a>
                     {% else %}
-                    <button disabled class="bg-gray-300 text-gray-600 px-2 py-0.5 rounded text-[10px] font-bold">📄 تحميل المقرر</button>
+                    <button disabled title="لا يوجد ملف المقرر" class="w-6 h-6 flex items-center justify-center rounded bg-outline-variant text-on-surface-variant opacity-50"><span class="material-symbols-outlined text-sm">description</span></button>
                     {% endif %}
                     {% if syllabus_file and syllabus_file.url %}
-                    <a href="{{ syllabus_file.url }}{% if '?' in syllabus_file.url %}&amp;{% else %}?{% endif %}download=1" target="_blank" rel="noopener" class="bg-primary text-white px-2 py-0.5 rounded text-[10px] font-bold">⬇️ تحميل المنهج</a>
+                    <a href="{{ syllabus_file.url }}{% if '?' in syllabus_file.url %}&amp;{% else %}?{% endif %}download=1" target="_blank" rel="noopener" title="تحميل المنهج" aria-label="تحميل المنهج" class="w-6 h-6 flex items-center justify-center rounded bg-primary text-white hover:bg-primary/90 transition no-underline"><span class="material-symbols-outlined text-sm">download</span></a>
                     {% else %}
-                    <button disabled class="bg-gray-300 text-gray-600 px-2 py-0.5 rounded text-[10px] font-bold">⬇️ تحميل المنهج</button>
+                    <button disabled title="لا يوجد ملف المنهج" class="w-6 h-6 flex items-center justify-center rounded bg-outline-variant text-on-surface-variant opacity-50"><span class="material-symbols-outlined text-sm">download</span></button>
                     {% endif %}
                     {% set is_owner = (current_teacher_id and e.teacher_id == current_teacher_id) or is_rd %}
                     {% if not locked and is_owner %}
                       {% set has_syllabus = (syllabus_file and (is_rd or (syllabus_file.teacher_id and syllabus_file.teacher_id == current_teacher_id))) %}
                       {% set upload_ep = url_for('teacher_pages.super_admin_course_syllabus_upload', course_id=e.course_id) if is_rd else url_for('teacher_pages.teacher_syllabus_upload') %}
                       {% set delete_ep = url_for('teacher_pages.super_admin_course_syllabus_delete', course_id=e.course_id) if is_rd else (url_for('teacher_pages.teacher_syllabus_delete', tf_id=syllabus_file.id) if has_syllabus else '') %}
-                      <form action="{{ upload_ep }}" method="POST" enctype="multipart/form-data" class="inline-flex items-center gap-1">
+                      <form action="{{ upload_ep }}" method="POST" enctype="multipart/form-data" class="inline-flex m-0">
                         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                         {% if not is_rd %}<input type="hidden" name="course_id" value="{{ e.course_id }}">{% endif %}
-                        <label class="bg-primary text-white px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer">
+                        <label class="w-6 h-6 flex items-center justify-center rounded bg-primary text-white hover:bg-primary/90 transition cursor-pointer" title="{% if has_syllabus %}تحديد المنهج{% else %}رفع المنهج{% endif %}">
                           <input type="file" name="file" accept=".pdf" onchange="this.form.submit()" class="hidden">
-                          {% if has_syllabus %}<span>📝 تحديد المنهج</span>{% else %}<span>⬆️ رفع المنهج</span>{% endif %}
+                          <span class="material-symbols-outlined text-sm">{{ 'swap_vert' if has_syllabus else 'upload_file' }}</span>
                         </label>
                       </form>
                       {% if delete_ep %}
-                      <form action="{{ delete_ep }}" method="POST" onsubmit="return confirm('حذف ملف المنهج هذا؟');" class="inline-flex">
+                      <form action="{{ delete_ep }}" method="POST" onsubmit="return confirm('حذف ملف المنهج هذا؟');" class="inline-flex m-0">
                         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="bg-red-50 text-red-600 border border-red-200 px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer">🗑 حذف</button>
+                        <button type="submit" title="حذف المنهج" class="w-6 h-6 flex items-center justify-center rounded bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition cursor-pointer"><span class="material-symbols-outlined text-sm">delete</span></button>
                       </form>
                       {% endif %}
                     {% endif %}
@@ -244,6 +237,94 @@
       {% endif %}
     </div>
   </section>
+
+  <!-- Mobile card list (phones <1024px) — TikTok-style vertical feed -->
+  <div class="tt-mobile-grid lg:hidden mt-5 no-print">
+    {% set any_mobile = [] %}
+    {% for day in days_list %}
+      {% set day_entries = [] %}
+      {% for e in entries %}{% if e.day == day %}{% set _ = day_entries.append(e) %}{% endif %}{% endfor %}
+      {% if day_entries %}
+        {% set _ = any_mobile.append(1) %}
+        <div class="tt-mday">
+          <div class="tt-mday-head">
+            <span class="material-symbols-outlined">today</span>
+            <span>{{ day }}</span>
+            <span class="tt-mday-count">{{ day_entries | length }} محاضرة</span>
+          </div>
+          <div class="tt-mday-body">
+            {% for e in day_entries %}
+            {% set form_file = payload.form.get(e.course_id) %}
+            {% set syllabus_file = payload.syllabus.get(e.teacher_id ~ ':' ~ e.course_id) or payload.syllabus.get('*:' ~ e.course_id) %}
+            {% set is_owner = (current_teacher_id and e.teacher_id == current_teacher_id) or is_rd %}
+            <div class="tt-mcard">
+              <div class="tt-mcard-title">
+                <span>📘 {{ e.course_name or '—' }}</span>
+                {% if e.course_code %}<span class="code">({{ e.course_code }})</span>{% endif %}
+                <span class="tt-mday-count" style="margin-inline-start:auto">{% if form_file and form_file.url %}<span class="text-green-600">● مقرر</span>{% else %}<span class="text-red-400">● مقرر</span>{% endif %}</span>
+              </div>
+              <div class="tt-mrow tt-mtime">
+                <span class="material-symbols-outlined">schedule</span>
+                {% if e.start_time and e.end_time %}
+                <span dir="ltr">{{ format_time12(e.start_time) }} ← {{ format_time12(e.end_time) }}</span>
+                {% elif e.start_time %}
+                <span dir="ltr">{{ format_time12(e.start_time) }}</span>
+                {% endif %}
+                {% if duration_label(e.start_time, e.end_time) %}<span>· {{ duration_label(e.start_time, e.end_time) }}</span>{% endif %}
+              </div>
+              <div class="tt-mrow">
+                <span class="material-symbols-outlined">person</span> {{ teacher_label(e.teacher_name) }}
+              </div>
+              <div class="tt-mrow">
+                <span class="material-symbols-outlined">meeting_room</span> {{ e.room_name or '—' }}
+              </div>
+              <div class="tt-mrow">
+                <span class="material-symbols-outlined">category</span> {{ 'عملي' if e.lecture_type == 'practical' else 'نظري' }}
+              </div>
+              <div class="tt-actions">
+                {% if form_file and form_file.url %}
+                <a class="tt-chip tt-chip-primary" href="{{ form_file.url }}{% if '?' in form_file.url %}&amp;{% else %}?{% endif %}download=1" target="_blank" rel="noopener"><span class="material-symbols-outlined">description</span> تحميل المقرر</a>
+                {% else %}
+                <button class="tt-chip tt-chip-primary" disabled><span class="material-symbols-outlined">description</span> لا يوجد مقرر</button>
+                {% endif %}
+                {% if syllabus_file and syllabus_file.url %}
+                <a class="tt-chip tt-chip-soft" href="{{ syllabus_file.url }}{% if '?' in syllabus_file.url %}&amp;{% else %}?{% endif %}download=1" target="_blank" rel="noopener"><span class="material-symbols-outlined">download</span> تحميل المنهج</a>
+                {% else %}
+                <button class="tt-chip tt-chip-soft" disabled><span class="material-symbols-outlined">download</span> لا يوجد منهج</button>
+                {% endif %}
+                {% if not locked and is_owner %}
+                  {% set has_syllabus = (syllabus_file and (is_rd or (syllabus_file.teacher_id and syllabus_file.teacher_id == current_teacher_id))) %}
+                  {% set upload_ep = url_for('teacher_pages.super_admin_course_syllabus_upload', course_id=e.course_id) if is_rd else url_for('teacher_pages.teacher_syllabus_upload') %}
+                  {% set delete_ep = url_for('teacher_pages.super_admin_course_syllabus_delete', course_id=e.course_id) if is_rd else (url_for('teacher_pages.teacher_syllabus_delete', tf_id=syllabus_file.id) if has_syllabus else '') %}
+                  <form action="{{ upload_ep }}" method="POST" enctype="multipart/form-data" class="m-0">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                    {% if not is_rd %}<input type="hidden" name="course_id" value="{{ e.course_id }}">{% endif %}
+                    <label class="tt-chip tt-chip-soft cursor-pointer" title="{% if has_syllabus %}تحديد المنهج{% else %}رفع المنهج{% endif %}">
+                      <input type="file" name="file" accept=".pdf" onchange="this.form.submit()" class="hidden">
+                      <span class="material-symbols-outlined">{{ 'swap_vert' if has_syllabus else 'upload_file' }}</span> {% if has_syllabus %}تحديد المنهج{% else %}رفع المنهج{% endif %}
+                    </label>
+                  </form>
+                  {% if delete_ep %}
+                  <form action="{{ delete_ep }}" method="POST" onsubmit="return confirm('حذف ملف المنهج هذا؟');" class="m-0">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="tt-chip tt-chip-danger"><span class="material-symbols-outlined">delete</span> حذف المنهج</button>
+                  </form>
+                  {% endif %}
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+    {% endfor %}
+    {% if not any_mobile %}
+    <div class="tt-mempty">
+      <span class="material-symbols-outlined">calendar_today</span>
+      لا توجد حصص مجدولة لهذا القسم في {{ semester_label(sel_sem) }} {{ display_year }}
+    </div>
+    {% endif %}
+  </div>
 
   {% endif %}
 </div>

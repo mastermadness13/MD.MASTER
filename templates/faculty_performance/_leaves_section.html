@@ -1,0 +1,38 @@
+{# Official form section "خامساً: الإجازات" — standalone fragment.
+   Included by _official_sections.html AND returned by the preview
+   leaves-section AJAX endpoint for in-place refresh. Uses the same
+   inline + .official-sections styling so it matches the printed form. #}
+<div class="official-sections" id="leaves-section">
+  <div>
+    <div class="section-title">خامساً: (إجازة التفرغ العلمي - التفرغ الدراسي - الإيفاد بالداخل)</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:25%;">نوع القرار</th>
+          <th style="width:25%;">رقم القرار</th>
+          <th style="width:25%;">جهة صدور القرار</th>
+          <th style="width:25%;">تاريخ صدور القرار</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set leaves_list = fd.leaves or [] %}
+        {% for lv in leaves_list %}
+        <tr>
+          <td>{{ lv.type }}</td>
+          <td>{{ lv.decision_number }}</td>
+          <td>{{ lv.decision_authority }}</td>
+          <td>{{ lv.decision_date }}</td>
+        </tr>
+        {% endfor %}
+        {% if not leaves_list %}
+        <tr>
+          <td>فرغ</td>
+          <td>فرغ</td>
+          <td>فرغ</td>
+          <td>فرغ</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>

@@ -8,6 +8,7 @@
 {% set search = search | default('') %}
 {% set current_filter = current_filter | default('Pending') %}
 {% set total_pages = (total // per_page) + (1 if total % per_page else 0) %}
+{% from 'shared/components/pagination.html' import pagination %}
 
 {% set status_meta = {
   'Pending':   {'label': 'قيد المراجعة', 'cls': 'bg-primary/10 text-primary'},
@@ -140,29 +141,8 @@
   </div>
 
   <!-- Pagination -->
-  {% if total_pages > 1 %}
-  <div class="search-pagination flex flex-wrap items-center justify-between gap-4 mt-5">
-    <span class="text-xs font-bold text-on-surface-variant">عرض {{ ((page - 1) * per_page) + 1 }} إلى {{ [page * per_page, total] | min }} من {{ total }}</span>
-    <div class="flex flex-wrap gap-2">
-      {% if page > 1 %}
-      <a href="{{ url_for('classroom_requests.pending', page=page - 1, search=search, status=current_filter) }}"
-         class="px-3 py-2 rounded-lg border border-outline-variant bg-white hover:bg-primary/10 text-on-surface text-sm font-bold transition no-underline">السابق</a>
-      {% endif %}
-      {% for p in range(1, total_pages + 1) %}
-      {% if p == page %}
-      <span class="px-3 py-2 rounded-lg bg-primary text-on-primary text-sm font-bold">{{ p }}</span>
-      {% elif p >= page - 2 and p <= page + 2 %}
-      <a href="{{ url_for('classroom_requests.pending', page=p, search=search, status=current_filter) }}"
-         class="px-3 py-2 rounded-lg border border-outline-variant bg-white hover:bg-primary/10 text-on-surface text-sm font-bold transition no-underline">{{ p }}</a>
-      {% endif %}
-      {% endfor %}
-      {% if page * per_page < total %}
-      <a href="{{ url_for('classroom_requests.pending', page=page + 1, search=search, status=current_filter) }}"
-         class="px-3 py-2 rounded-lg border border-outline-variant bg-white hover:bg-primary/10 text-on-surface text-sm font-bold transition no-underline">التالي</a>
-      {% endif %}
-    </div>
-  </div>
-  {% endif %}
+  {{ pagination(page, per_page, total, total_pages,
+                url_for('classroom_requests.pending', page='__page__', search=search, status=current_filter)) }}
 
 </div>
 {% endblock %}

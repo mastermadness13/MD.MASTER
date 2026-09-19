@@ -1,0 +1,49 @@
+{% set up_file_types = up_file_types | default({'syllabus': 'منهاج', 'notes': 'ملاحظات', 'exams': 'امتحانات', 'lecture': 'محاضرة', 'books': 'كتب', 'other': 'أخرى'}) %}
+{% set up_form_id = up_form_id | default('') %}
+{% set up_form_class = up_form_class | default('') %}
+{% set up_next = up_next | default('') %}
+{% set up_max_upload_mb = up_max_upload_mb | default(max_upload_mb | default(16)) %}
+
+<form {% if up_form_id %}id="{{ up_form_id }}"{% endif %} method="POST" action="{{ url_for('teacher_pages.teacher_upload') }}" enctype="multipart/form-data" class="{{ up_form_class }}" data-upload-limit="{{ up_max_upload_mb }}">
+  <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+  {% if up_next %}<input type="hidden" name="next" value="{{ up_next }}">{% endif %}
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="md:col-span-2">
+      <label class="block text-xs font-bold text-on-surface-variant mb-1.5">عنوان الملف *</label>
+      <input type="text" name="title" required
+             class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+    </div>
+    <div>
+      <label class="block text-xs font-bold text-on-surface-variant mb-1.5">النوع</label>
+      <select name="file_type"
+              class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+        {% for val, lbl in up_file_types.items() %}
+        <option value="{{ val }}">{{ lbl }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="block text-xs font-bold text-on-surface-variant mb-1.5">الوصف</label>
+      <input type="text" name="description"
+             class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+    </div>
+    <div class="md:col-span-2">
+      <label class="block text-xs font-bold text-on-surface-variant mb-1.5">الملف *</label>
+      <input type="file" name="file" required
+             class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+      <p class="text-xs text-on-surface-variant mt-1.5 flex items-center gap-1">
+        <span class="material-symbols-outlined text-sm">info</span>
+        الحد الأقصى لحجم الملف: {{ up_max_upload_mb }} ميجابايت
+      </p>
+      <p id="upload-size-error" class="hidden mt-1.5 text-xs font-bold text-red-700 flex items-center gap-1">
+        <span class="material-symbols-outlined text-sm">error</span>
+        حجم الملف أكبر من الحد المسموح ({{ up_max_upload_mb }} ميجابايت)
+      </p>
+    </div>
+  </div>
+  <button type="submit"
+          class="mt-5 flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-5 py-2.5 rounded-lg text-sm font-bold transition shadow-sm">
+    <span class="material-symbols-outlined text-lg">upload</span>
+    رفع الملف
+  </button>
+</form>

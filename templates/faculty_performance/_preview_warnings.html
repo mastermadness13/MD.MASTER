@@ -1,0 +1,14 @@
+{# Preview warnings list — shared body of the in-app warnings block and the
+   leaves-section AJAX refresh payload. Expects `warnings` (list of
+   {severity, message}) and must render identically inside preview.html. #}
+{% for w in warnings %}
+<div class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold
+  {% if w.severity == 'warning' %}bg-amber-50 text-amber-700 border border-amber-200
+  {% elif w.severity == 'error' %}bg-red-50 text-red-700 border border-red-200
+  {% else %}bg-blue-50 text-blue-700 border border-blue-200{% endif %}">
+  <span class="material-symbols-outlined text-lg">
+    {% if w.severity == 'warning' %}warning{% elif w.severity == 'error' %}error{% else %}info{% endif %}
+  </span>
+  {{ w.message }}
+</div>
+{% endfor %}

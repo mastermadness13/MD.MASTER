@@ -6,10 +6,12 @@ from security.authorization import has_permission
 bp = Blueprint('uploads', __name__, url_prefix='/uploads')
 
 # Roles that may serve any upload regardless of folder ownership.
+# /     /     >---- أدوار تصل لأي ملف مرفوع بغض النظر عن ملكية المجلد
 _FULL_ACCESS_ROLES = {'super_admin'}
 
 # Shared, non-private folders readable by any staff member allowed to view
 # teachers (e.g. profile photos live in ``photos/``).
+# /     /     >---- مجلدات مشتركة يقراها الموظفون (مثل صور الملفات)
 _SHARED_FOLDERS = {'photos'}
 
 
@@ -18,6 +20,8 @@ def _allowed_folder_prefixes():
     of a teacher linked to their account.
 
     Naming matches the per-user folder convention (``teacher_<id>``).
+
+    /     /     >---- مجلدات المستخدم الحالي: مجلده + أي مجلد أستاذ مربوط بحسابه.
     """
     prefixes = set()
     user_id = session.get('user_id')
@@ -31,6 +35,7 @@ def _allowed_folder_prefixes():
     return prefixes
 
 
+# /     /     >---- تقديم الملف المرفوع مع التحقق من صلاحية الوصول للمجلد
 @bp.route('/<path:filename>')
 @login_required
 @permission_required('uploads.serve')

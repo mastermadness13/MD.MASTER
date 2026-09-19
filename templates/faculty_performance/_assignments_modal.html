@@ -1,0 +1,39 @@
+{# In-page admin-assignments editor modal — opened by [data-assignments-manage] buttons.
+   Fetch + save run through the faculty_performance api_teacher_assignments
+   JSON endpoints; the page never navigates on save. The modal uses the
+   project's standard .modal-overlay / .modal components (static/css/
+   components/modals.css + openModal/closeModal in static/js/main.js). #}
+<div id="assignmentsModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="assignmentsModalTitle">
+  <div class="modal" style="max-width: 1100px;">
+    <div class="modal-header">
+      <h3 id="assignmentsModalTitle">تعديل التكليفات الإدارية</h3>
+      <button type="button" class="modal-close material-symbols-outlined" onclick="window.closeModal('assignmentsModal')" aria-label="إغلاق">close</button>
+    </div>
+    <div class="modal-body">
+      <p id="assignmentsModalTeacher" class="text-sm font-bold text-on-surface-variant mb-1"></p>
+      <div id="assignmentsModalPeriod"
+           class="mb-3 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 text-sm font-bold">
+        <span class="material-symbols-outlined text-lg">info</span>
+        <span id="assignmentsModalPeriodText"></span>
+      </div>
+      <div id="modal-assignments-container" class="space-y-3"></div>
+      <button type="button" id="modalAddAssignmentRow"
+              class="mt-3 flex items-center gap-1.5 text-sm font-bold text-primary hover:text-primary/80 transition">
+        <span class="material-symbols-outlined text-lg">add_circle</span>
+        إضافة تكليف جديد
+      </button>
+    </div>
+    <div class="modal-footer flex flex-wrap items-center justify-end gap-3">
+      <button type="button" onclick="window.closeModal('assignmentsModal')"
+              class="flex items-center gap-2 bg-surface-container text-on-surface-variant hover:bg-surface-container-high border border-outline-variant px-4 py-2 rounded-lg text-sm font-bold transition">
+        <span class="material-symbols-outlined text-lg">close</span>
+        إلغاء
+      </button>
+      <button type="button" id="modalSaveAssignments"
+              class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-5 py-2 rounded-lg text-sm font-bold transition shadow-sm">
+        <span class="material-symbols-outlined text-lg">save</span>
+        حفظ
+      </button>
+    </div>
+  </div>
+</div>

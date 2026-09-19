@@ -25,7 +25,7 @@ from database.connection import connect
 from database.history import add_history
 from database.schema import ensure_schema
 
-# seed.py moved to scripts/ — load by file path
+# ── تحميل سكربت الزراعة (seed.py) من مجلد scripts ──────────────
 import sys as _sys
 import importlib.util as _iu
 _project_root = os.path.dirname(os.path.abspath(__file__))
@@ -41,14 +41,18 @@ _bootstrap_defaults = _seed_mod.bootstrap_defaults
 
 DATABASE = Config.DATABASE
 
+# ─────────────────────────────────────────────
 
+# /     /     >---- تجيب الاتصال بقاعدة البيانات للطلب الحالي
 def get_db():
     """Return the per-request SQLite connection, creating it on first use."""
+    # /     /     >---- نشوف إذا فيه اتصال محفوظ في الجلسة
     db = getattr(g, '_database', None)
     if db is None:
+        # /     /     >---- ما فيه، نصنع واحد جديد
         db = g._database = connect(DATABASE)
     else:
-        # Reconnect if closed (e.g. by teardown between test requests)
+        # /     /     >---- فيه اتصال، نتأكد شغال. إذا مقفل نفتح واحد جديد
         try:
             db.execute('SELECT 1')
         except sqlite3.ProgrammingError:
@@ -56,32 +60,42 @@ def get_db():
             db = g._database = connect(DATABASE)
     return db
 
+# ─────────────────────────────────────────────
 
+# /     /     >---- نغلق الاتصال بقاعدة البيانات في نهاية الطلب
 def close_db(e: BaseException | None = None) -> None:
     """Close the per-request connection if one was opened."""
     db = getattr(g, '_database', None)
     if db is not None:
         db.close()
 
+# ─────────────────────────────────────────────
 
+# /     /     >---- نزرع البيانات الأساسية في قاعدة البيانات
 def bootstrap_defaults() -> None:
     """Seed default data into the configured database."""
     _bootstrap_defaults(DATABASE)
 
+# ─────────────────────────────────────────────
 
+# /     /     >---- نهيئ قاعدة البيانات من الصفر (الجدول + الهجرة)
 def init_db() -> None:
     """Create a fresh schema from ``database/schema.sql`` and migrate."""
     conn = connect(DATABASE)
+    # /     /     >---- نقرأ ملف SQL ونشغّله
     schema_path = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), 'database', 'schema.sql'
     )
     with open(schema_path, mode='r', encoding='utf-8') as f:
         conn.executescript(f.read())
+    # /     /     >---- نطبق التغييرات إن وجدت
     ensure_schema(conn)
     conn.commit()
     conn.close()
 
+# ─────────────────────────────────────────────
 
+# /     /     >---- أمر سطر الأوامر: flask init-db
 @click.command('init-db')
 @click.option('--confirm', is_flag=True, default=False,
               help='Required to proceed. Prevents accidental data loss.')
@@ -94,6 +108,7 @@ def init_db_command(confirm):
     import sqlite3
     from config import Config
     db_path = Config.DATABASE
+    # /     /     >---- نشوف كم مستخدم موجود في القاعدة
     try:
         conn = sqlite3.connect(db_path)
         row = conn.execute('SELECT COUNT(*) FROM users').fetchone()
@@ -102,6 +117,7 @@ def init_db_command(confirm):
     except Exception:
         user_count = 0
 
+    # /     /     >---- إذا فيه مستخدمين وما كتبنا --confirm نوقف
     if user_count > 0 and not confirm:
         click.echo(
             f'ABORT: Database has {user_count} users. '
@@ -111,23 +127,28 @@ def init_db_command(confirm):
         )
         return
 
+    # /     /     >---- إذا فيه مستخدمين، نسأله يأكد
     if user_count > 0:
         click.confirm(
             f'Database has {user_count} users. This will DESTROY all data. Continue?',
             abort=True
         )
 
+    # /     /     >---- نهيئ القاعدة ونزرع البيانات
     init_db()
     click.echo('Initialized the database schema.')
     bootstrap_defaults()
     click.echo('Seeded default data.')
 
+# ─────────────────────────────────────────────
 
+# /     /     >---- نسجل الدوال مع تطبيق Flask
 def init_app(app) -> None:
     """Register database functions with the Flask app."""
     app.teardown_appcontext(close_db)
     app.cli.add_command(init_db_command)
 
+# ─────────────────────────────────────────────
 
 __all__ = ['get_db', 'close_db', 'init_app', 'init_db', 'init_db_command',
            'bootstrap_defaults', 'ensure_schema', 'add_history']

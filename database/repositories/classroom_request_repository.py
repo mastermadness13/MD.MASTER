@@ -4,10 +4,11 @@ from typing import Any, Dict, List, Optional
 
 from database.repositories.base_repository import BaseRepository
 
-
+# /     /     >---- مستودع طلبات تبديل القاعات
 class ClassroomRequestRepository(BaseRepository):
     table = 'classroom_change_requests'
 
+    # /     /     >---- نجيب طلب بالمعرف مع كل التفاصيل
     def find_by_id(self, request_id: int) -> Optional[Dict[str, Any]]:
         row = self.db.execute(
             '''SELECT r.*, tc.name as teacher_name, c.name as course_name, t.day, t.period,
@@ -25,6 +26,7 @@ class ClassroomRequestRepository(BaseRepository):
         ).fetchone()
         return dict(row) if row else None
 
+    # /     /     >---- نجيب الطلب بشكل مبسط (بدون الانضمامات)
     def find_simple(self, request_id: int) -> Optional[Dict[str, Any]]:
         row = self.db.execute(
             'SELECT id, user_id, status, schedule_id, current_classroom_id, requested_classroom_id '
@@ -33,6 +35,7 @@ class ClassroomRequestRepository(BaseRepository):
         ).fetchone()
         return dict(row) if row else None
 
+    # /     /     >---- طلبات مدرس معين
     def list_for_teacher(self, user_id: int) -> List[Dict[str, Any]]:
         return [dict(r) for r in self.db.execute(
             '''SELECT r.*, c.name as course_name, t.day, t.period,
@@ -49,6 +52,7 @@ class ClassroomRequestRepository(BaseRepository):
             (user_id,),
         ).fetchall()]
 
+    # /     /     >---- طلبات رئيس قسم (مع فلتر اختياري بالحالة)
     def list_for_hod(self, department_id: int, status_filter: str = None) -> List[Dict[str, Any]]:
         query = (
             'SELECT r.*, tc.name as teacher_name, c.name as course_name, t.day, t.period, '
@@ -68,6 +72,7 @@ class ClassroomRequestRepository(BaseRepository):
         query += ' ORDER BY r.created_at DESC'
         return [dict(r) for r in self.db.execute(query, params).fetchall()]
 
+    # /     /     >---- نصنع طلب جديد ونرجع معرّفه
     def create(self, data: Dict[str, Any]) -> int:
         self.db.execute(
             'INSERT INTO classroom_change_requests '
@@ -80,6 +85,7 @@ class ClassroomRequestRepository(BaseRepository):
         self.db.commit()
         return self.db.execute('SELECT last_insert_rowid()').fetchone()[0]
 
+    # /     /     >---- نوافق على الطلب
     def approve(self, request_id: int, reviewed_by: int, hod_comment: str = '') -> None:
         self.db.execute(
             "UPDATE classroom_change_requests SET status='Approved', reviewed_by=?, "
@@ -88,6 +94,7 @@ class ClassroomRequestRepository(BaseRepository):
         )
         self.db.commit()
 
+    # /     /     >---- نرفض الطلب
     def reject(self, request_id: int, reviewed_by: int, hod_comment: str = '') -> None:
         self.db.execute(
             "UPDATE classroom_change_requests SET status='Rejected', reviewed_by=?, "
@@ -96,6 +103,7 @@ class ClassroomRequestRepository(BaseRepository):
         )
         self.db.commit()
 
+    # /     /     >---- نلغي الطلب
     def cancel(self, request_id: int) -> None:
         self.db.execute(
             "UPDATE classroom_change_requests SET status='Cancelled', "
@@ -103,18 +111,22 @@ class ClassroomRequestRepository(BaseRepository):
         )
         self.db.commit()
 
+    # /     /     >---- نحدّث قاعة المحاضرة في الجدول (بعد الموافقة)
     def update_timetable_room(self, schedule_id: int, room_id: int) -> None:
         self.db.execute(
             'UPDATE timetable SET room_id=? WHERE id=?', (room_id, schedule_id)
         )
         self.db.commit()
 
+    # /     /     >---- نتأكد القاعة المطلوبة متاحة في نفس الوقت
     def check_room_available(self, room_id: int, schedule_id: int) -> bool:
+        # /     /     >---- نجيب وقت المحاضرة الحالية
         sched = self.db.execute(
             'SELECT day, start_time, end_time FROM timetable WHERE id=?', (schedule_id,)
         ).fetchone()
         if not sched:
             return False
+        # /     /     >---- نفحص التعارض إذا فيه وقت (start/end)
         if sched['start_time'] and sched['end_time']:
             conflicts = self.db.execute(
                 'SELECT 1 FROM timetable WHERE room_id=? AND id!=? AND day=? '
@@ -124,14 +136,17 @@ class ClassroomRequestRepository(BaseRepository):
                 (room_id, schedule_id, sched['day'], sched['end_time'], sched['start_time']),
             ).fetchone()
         else:
+            # /     /     >---- وإلا نفحص حسب الفترة
             conflicts = self.db.execute(
                 'SELECT 1 FROM timetable WHERE room_id=? AND id!=? AND day=? AND period=? '
                 'AND (version_id IS NULL OR version_id IN '
                 '(SELECT id FROM timetable_versions WHERE status = \'active\')) LIMIT 1',
                 (room_id, schedule_id, sched['day'], ''),
             ).fetchone()
+        # /     /     >---- متاحة إذا ما فيش تعارض
         return conflicts is None
 
+    # /     /     >---- عدد الطلبات المعلقة لقسم
     def get_pending_count(self, department_id: int) -> int:
         row = self.db.execute(
             "SELECT COUNT(*) as cnt FROM classroom_change_requests "
@@ -140,6 +155,7 @@ class ClassroomRequestRepository(BaseRepository):
         ).fetchone()
         return row['cnt'] if row else 0
 
+    # /     /     >---- آخر الطلبات المعلقة لقسم (للوحة التحكم)
     def get_recent_pending(self, department_id: int, limit: int = 5) -> List[Dict[str, Any]]:
         return [dict(r) for r in self.db.execute(
             '''SELECT r.*, tc.name as teacher_name, c.name as course_name
@@ -152,12 +168,14 @@ class ClassroomRequestRepository(BaseRepository):
             (department_id, limit),
         ).fetchall()]
 
+    # /     /     >---- نجيب سطر الجدول (للتأكد من القاعة الحالية)
     def find_schedule_entry(self, entry_id: int) -> Optional[Dict[str, Any]]:
         row = self.db.execute(
             'SELECT id, room_id FROM timetable WHERE id=?', (entry_id,)
         ).fetchone()
         return dict(row) if row else None
 
+    # /     /     >---- جدول أستاذ معين (لاختيار المحاضرة)
     def list_teacher_schedule(self, user_id: int) -> List[Dict[str, Any]]:
         return [dict(r) for r in self.db.execute(
             '''SELECT t.id, t.day, t.period, t.semester,
@@ -173,6 +191,7 @@ class ClassroomRequestRepository(BaseRepository):
             (user_id,),
         ).fetchall()]
 
+    # /     /     >---- كل القاعات المتاحة (لاختيار القاعة الجديدة)
     def list_all_rooms(self) -> List[Dict[str, Any]]:
         return [dict(r) for r in self.db.execute(
             'SELECT id, name, type, capacity FROM rooms WHERE deleted_at IS NULL ORDER BY name'

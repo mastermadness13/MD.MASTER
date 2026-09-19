@@ -1,4 +1,4 @@
-﻿"""Read-only diagnostic script for teacher identity duplication.
+"""Read-only diagnostic script for teacher identity duplication.
 
 Opens the database in read-only mode and produces a report of potential
 duplicate teacher records.  This script NEVER writes, updates, deletes,

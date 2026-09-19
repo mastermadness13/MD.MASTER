@@ -2,6 +2,8 @@
 
 Uses ``NotificationRepository`` for data access.  Module-level functions are kept
 for backward compatibility with existing routes.
+
+/     /     >---- خدمة الإشعارات: إنشاء الإشعارات، إرسالها، وجلب مستخدمي الأدوار.
 """
 
 from __future__ import annotations
@@ -12,6 +14,7 @@ from typing import Any, Dict, List, Optional
 logger = logging.getLogger(__name__)
 
 
+# /     /     >---- الخدمة بشكل كلاس مع حقن مستودع الإشعارات
 class NotificationService:
     """Class-based notification service with repository injection."""
 
@@ -19,6 +22,7 @@ class NotificationService:
         self.db = db
         self._repo = notification_repo
 
+    # /     /     >---- إنشاء إشعار لمستخدم واحد (إذا ما عطينا user_id نحيد)
     def create_notification(self, user_id: int, title: str, message: str,
                             notif_type: str = 'info', related_type: str = '',
                             related_id: int = 0) -> None:
@@ -26,6 +30,7 @@ class NotificationService:
             return
         self._repo.create(user_id, title, message, notif_type, related_type, related_id)
 
+    # /     /     >---- إرسال نفس الإشعار لمجموعة مستخدمين
     def notify_multiple(self, user_ids: list, title: str, message: str,
                         notif_type: str = 'info', related_type: str = '',
                         related_id: int = 0) -> None:
@@ -33,33 +38,40 @@ class NotificationService:
             if uid:
                 self.create_notification(uid, title, message, notif_type, related_type, related_id)
 
+    # /     /     >---- جلب إشعارات المستخدم الحديثة (بالحد المحدد)
     def get_user_notifications(self, user_id: int, limit: int = 20) -> List[Dict]:
         return self._repo.get_user_notifications(user_id, limit)
 
+    # /     /     >---- عدد الإشعارات غير المقروءة للمستخدم
     def get_unread_count(self, user_id: int) -> int:
         return self._repo.get_unread_count(user_id)
 
+    # /     /     >---- تعليم كل الإشعارات كمقروءة للمستخدم
     def mark_all_read(self, user_id: int) -> None:
         self._repo.mark_all_read(user_id)
 
+    # /     /     >---- جلب معرّفات مستخدمي رؤساء الأقسام (وبحسب القسم اختياري)
     def get_hod_user_ids(self, department_id: int = None) -> List[int]:
         return self._repo.get_hod_user_ids(department_id)
 
+    # /     /     >---- معرّفات مستخدمي الإدارة
     def get_admin_user_ids(self) -> List[int]:
         return self._repo.get_admin_user_ids()
 
+    # /     /     >---- معرّفات مستخدمي إدارة الامتحانات
     def get_exam_user_ids(self) -> List[int]:
         return self._repo.get_exam_user_ids()
 
+    # /     /     >---- معرّف مستخدم أستاذ معين
     def get_teacher_user_id(self, teacher_id: int) -> Optional[int]:
         return self._repo.get_teacher_user_id(teacher_id)
 
+    # /     /     >---- معرّفات مستخدمي كل الأساتذة (أو حسب القسم)
     def get_all_teacher_user_ids(self, department_id: int = None) -> List[int]:
         return self._repo.get_all_teacher_user_ids(department_id)
 
 
-# ── Backward-compatible module-level API ──────────────────────────────────
-
+# /     /     >---- دوال مستوى الوحدة المحافظة على التوافق مع المسارات القديمة
 def create_notification(db, user_id, title, message, notif_type='info',
                         related_type='', related_id=0):
     if not user_id:
@@ -72,6 +84,7 @@ def create_notification(db, user_id, title, message, notif_type='info',
     db.commit()
 
 
+# /     /     >---- إرسال إشعار لمجموعة من المستخدمين
 def notify_multiple(db, user_ids, title, message, notif_type='info',
                     related_type='', related_id=0):
     for uid in user_ids:
@@ -79,6 +92,7 @@ def notify_multiple(db, user_ids, title, message, notif_type='info',
             create_notification(db, uid, title, message, notif_type, related_type, related_id)
 
 
+# /     /     >---- جلب إشعارات المستخدم (حزمة التوافق)
 def get_user_notifications(db, user_id, limit=20):
     from database.repositories.notification_repository import NotificationRepository
     return NotificationRepository(db).get_user_notifications(user_id, limit)
@@ -109,6 +123,7 @@ def get_exam_user_ids(db):
     return NotificationRepository(db).get_exam_user_ids()
 
 
+# /     /     >---- معرّفات مستخدمي قسم البحث والتطوير
 def get_rnd_user_ids(db):
     from database.repositories.notification_repository import NotificationRepository
     return NotificationRepository(db).get_rnd_user_ids()

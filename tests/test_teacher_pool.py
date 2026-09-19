@@ -1,4 +1,4 @@
-﻿"""Tests for teacher pool (many-to-many membership) features.
+"""Tests for teacher pool (many-to-many membership) features.
 
 Covers:
   1. Teacher-pool endpoint excludes teachers already in HOD's dept
