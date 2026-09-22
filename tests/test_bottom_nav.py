@@ -22,7 +22,7 @@ def db_fx(tmp_path, monkeypatch):
         conn.executescript(f.read())
     ensure_schema(conn)
     conn.execute(
-        "INSERT OR IGNORE INTO users (username, password, role, label) VALUES ('superadmin', 'x', 'super_admin', 'مدير')"
+        "INSERT OR IGNORE INTO users (username, password, role, label) VALUES ('office_manager', 'x', 'faculty_affairs', 'مدير مكتب أعضاء هيئة التدريس')"
     )
     conn.execute(
         "INSERT OR IGNORE INTO users (username, password, role, label) VALUES ('hod', 'x', 'head_of_department', 'رئيس قسم')"
@@ -60,7 +60,7 @@ def _client_for(app_fx, user_id, role, username, dept_id=None):
 
 @pytest.fixture
 def client(app_fx, db_fx):
-    return _client_for(app_fx, _user_id(db_fx, 'superadmin'), 'super_admin', 'superadmin')
+    return _client_for(app_fx, _user_id(db_fx, 'office_manager'), 'faculty_affairs', 'office_manager')
 
 
 def test_bottom_nav_renders_on_app_page(client):
@@ -92,5 +92,5 @@ def test_bottom_nav_absent_on_login(app_fx, db_fx):
 
 def test_bottom_nav_quick_sheet_has_print_action(app_fx, db_fx):
     """الورقة السريعة تحوي دائماً «طباعة الصفحة الحالية» لكل الأدوار."""
-    body = _client_for(app_fx, _user_id(db_fx, 'superadmin'), 'super_admin', 'superadmin').get('/timetable/department').get_data(as_text=True)
+    body = _client_for(app_fx, _user_id(db_fx, 'office_manager'), 'faculty_affairs', 'office_manager').get('/timetable/department').get_data(as_text=True)
     assert 'window.print()' in body

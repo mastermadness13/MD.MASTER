@@ -128,7 +128,7 @@
                         title="الإجراءات" aria-haspopup="true" aria-expanded="false">more_vert</button>
                 <div class="action-menu hidden absolute end-0 top-full mt-1 z-30 min-w-[180px] rounded-xl border border-outline-variant bg-white shadow-lg overflow-hidden">
                   <form method="post" action="{{ url_for('departments.departments_delete', id=d.id) }}"
-                        onsubmit="return confirm('تأكيد حذف القسم؟')">
+                        data-confirm-message="تأكيد حذف القسم؟">
                     <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 transition-colors bg-transparent border-0 cursor-pointer text-right">
                       <span class="material-symbols-outlined text-lg shrink-0">delete</span>

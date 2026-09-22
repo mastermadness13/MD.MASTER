@@ -16,6 +16,7 @@ from api.helpers import (
     err,
     ok,
 )
+from core.validators import integer_between, valid_date_range, valid_time
 from flask_db import get_db
 from security import csrf_required
 from security import current_user
@@ -27,7 +28,7 @@ bp = Blueprint('api_exams', __name__, url_prefix='/api/exams')
 def _dept_exam_data_for_user(db):
     role = session.get('role', '')
     user_data = current_user()
-    if role in ('exam', 'super_admin'):
+    if role == 'exam':
         return exam_service.build_dept_exam_data(db)
     user_dept_id = user_data.get('department_id') if user_data else None
     if not user_dept_id:
@@ -87,7 +88,7 @@ def api_exam_department_schedule():
     user_data = current_user()
     user_dept_id = user_data.get('department_id') if user_data else None
 
-    if role == 'super_admin':
+    if role == 'exam':
         departments = [dict(r) for r in db.execute(
             'SELECT id, name, semesters FROM departments WHERE hidden = 0 AND deleted_at IS NULL ORDER BY name'
         ).fetchall()]
@@ -203,8 +204,6 @@ def api_exam_department_cell_save():
         return err('بيانات غير صالحة', 422)
     if role == 'head_of_department' and dept_id != user_dept_id:
         return err('لا يمكنك تعديل جدول قسم آخر', 403)
-    if role == 'exam':
-        return err('حساب الامتحانات يمكنه تغيير القاعة فقط', 403)
     if week < 1 or week > 5:
         return err('رقم الأسبوع غير صالح (1-5)', 422)
     if day not in ('السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'):
@@ -289,8 +288,6 @@ def api_exam_department_cell_delete(schedule_id):
         return err('الامتحان غير موجود', 404)
     if role == 'head_of_department' and row['department_id'] != user_dept_id:
         return err('لا يمكنك تعديل جدول قسم آخر', 403)
-    if role == 'exam':
-        return err('حساب الامتحانات يمكنه تغيير القاعة فقط', 403)
     try:
         exam_service.delete_cell_exam(db, schedule_id, row['department_id'])
     except Exception as exc:  # noqa: BLE001
@@ -434,6 +431,18 @@ def api_exam_settings_save():
         'avoid_relatives': 1 if data.get('avoid_relatives') else 0,
         'auto_notify': 1 if data.get('auto_notify') else 0,
     }
+    errors = [
+        e for e in (
+            valid_time(payload['session_a'], 'الجلسة الأولى'),
+            valid_time(payload['session_b'], 'الجلسة الثانية'),
+            valid_time(payload['session_c'], 'الجلسة الثالثة'),
+            integer_between(payload['proctors_per_room'], 1, 10, 'عدد المراقبين لكل قاعة'),
+            valid_date_range(payload['exam_start_date'], payload['exam_end_date'],
+                             'تاريخ بداية الامتحانات', 'تاريخ نهاية الامتحانات'),
+        ) if e
+    ]
+    if errors:
+        return err('بيانات غير صحيحة', 422, errors=errors)
     db = get_db()
     exam_service.save_exam_settings(db, payload)
     return ok(True)
@@ -510,6 +519,16 @@ def api_exam_period_save():
         'exam_end_time': data.get('exam_end_time', '17:00'),
         'resave': data.get('resave'),
     }
+    errors = [
+        e for e in (
+            valid_time(payload['exam_start_time'], 'وقت بداية الامتحانات'),
+            valid_time(payload['exam_end_time'], 'وقت نهاية الامتحانات'),
+            valid_date_range(payload['exam_start_date'], payload['exam_end_date'],
+                             'تاريخ بداية الامتحانات', 'تاريخ نهاية الامتحانات'),
+        ) if e
+    ]
+    if errors:
+        return err('بيانات غير صحيحة', 422, errors=errors)
     exam_service.save_exam_period(db, payload, session.get('username', ''))
     return ok(True)
 

@@ -35,7 +35,7 @@
           <span class="text-primary font-bold">تعديل ملف العضو</span>
         </div>
         <div class="flex items-center gap-2.5 min-w-0">
-          <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-primary-container text-on-primary flex items-center justify-center text-sm font-bold shadow-xs shrink-0 border border-outline-variant/40">
+          <div class="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center text-sm font-bold shadow-xs shrink-0 border border-outline-variant/40">
             {{ (teacher.get('name') or '؟')[:1] }}
           </div>
           <h1 class="text-lg sm:text-xl font-bold text-on-surface truncate">{{ teacher.get('name', '') }}</h1>
@@ -77,7 +77,7 @@
     <!-- Row 1: Identity & Photo (8) + Account (4) -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
 
-      <section class="lg:col-span-8 rounded-2xl bg-surface-container-lowest border border-outline-variant/50 shadow-sm overflow-hidden">
+      <section class="lg:col-span-12 rounded-2xl bg-surface-container-lowest border border-outline-variant/50 shadow-sm overflow-hidden">
         <div class="px-5 py-3 border-b border-outline-variant/40 bg-surface/70 flex items-center justify-between gap-3">
           <h2 class="text-sm font-bold text-on-surface flex items-center gap-2">
             <span class="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
@@ -100,7 +100,7 @@
                        alt="{{ teacher.get('name', '') }}"
                        class="w-16 h-16 rounded-xl object-cover border-2 border-surface-container-lowest ring-1 ring-outline-variant shadow-sm">
                   {% else %}
-                  <div class="w-16 h-16 rounded-xl bg-gradient-to-tr from-primary to-primary-container text-on-primary flex items-center justify-center text-2xl font-black shadow-sm border border-outline-variant/40">
+                  <div class="w-16 h-16 rounded-xl bg-primary text-on-primary flex items-center justify-center text-2xl font-black shadow-sm border border-outline-variant/40">
                     {{ (teacher.get('name') or '؟')[:1] }}
                   </div>
                   {% endif %}
@@ -141,15 +141,19 @@
           </div>
         </div>
       </section>
+    </div>
 
-      <section class="lg:col-span-4 rounded-2xl bg-surface-container-lowest border border-outline-variant/50 shadow-sm overflow-hidden flex flex-col">
-        <div class="px-5 py-3 border-b border-outline-variant/40 bg-surface/70 flex items-center justify-between gap-3">
-          <h2 class="text-sm font-bold text-on-surface flex items-center gap-2">
-            <span class="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-              <span class="material-symbols-outlined text-[18px]">lock</span>
-            </span>
-            بيانات الحساب وتسجيل الدخول
-          </h2>
+    <!-- Row 2: Qualification (5) + Administrative Assignment (7) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+
+      <section class="lg:col-span-5 rounded-2xl bg-surface-container-lowest border border-outline-variant/50 shadow-sm overflow-hidden flex flex-col">
+        <div class="px-5 py-3 border-b border-outline-variant/40 bg-surface/70 flex items-center gap-2">
+          <span class="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+            <span class="material-symbols-outlined text-[18px]">school</span>
+          </span>
+          <h2 class="text-sm font-bold text-on-surface">بيانات الدخول وتسجيل الدخول</h2>
+        </div>
+        
           <span class="text-[11px] font-mono text-on-surface-variant">Security</span>
         </div>
 
@@ -161,7 +165,7 @@
                 <span class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-on-surface-variant/70">
                   <span class="material-symbols-outlined text-[17px]">account_circle</span>
                 </span>
-                <input class="w-full h-10 rounded-xl border border-outline-variant bg-surface-container-lowest focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm text-on-surface pr-9 pl-3 font-mono font-semibold" dir="ltr" name="username" type="text" value="{{ teacher.get('username', '') }}">
+                <input class="w-full h-10 rounded-xl border border-outline-variant bg-surface-container-lowest focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm text-on-surface pr-9 pl-3 font-mono font-semibold" dir="ltr" name="username" type="text" value="{{ teacher.get('username') or '' }}">
               </div>
             </div>
 
@@ -179,7 +183,7 @@
           <div class="pt-2">
             <p class="text-[11px] text-on-surface-variant mb-2">تعيين كلمة مرور جديدة يمنح المستخدم دخولاً فورياً دون طلب التنشيط.</p>
             <button type="button"
-                    onclick="if(confirm('إعادة تعيين كلمة المرور؟ سيتم توليد كلمة جديدة تظهر بعد الحفظ')){document.getElementById('resetPwForm').submit();}"
+                    onclick="window.confirmThenSubmit('resetPwForm', 'إعادة تعيين كلمة المرور؟ سيتم توليد كلمة جديدة تظهر بعد الحفظ');"
                     class="w-full py-2 px-3 rounded-xl border border-secondary/40 bg-secondary-container/50 hover:bg-secondary-container text-on-secondary-container text-xs font-semibold transition-colors flex items-center justify-center gap-1.5">
               <span class="material-symbols-outlined text-[16px] text-secondary">lock_reset</span>
               إعادة تعيين كلمة المرور
@@ -204,14 +208,18 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             {{ academic_select(sel, ranks, teacher.get('rank_id'), 'الدرجة العلمية', 'rank_id',
                                placeholder='اختر الدرجة العلمية', required=true,
-                               col_class='sm:col-span-2 flex flex-col gap-1.5') }}
+                               col_class='sm:col-span-2 flex flex-col gap-1.5',
+                               custom_value=teacher.get('custom_rank_id', teacher.get('academic_rank', ''))) }}
             {{ academic_select(sel, qualifications, teacher.get('qualification_id'), 'المؤهل الأكاديمي', 'qualification_id',
-                               placeholder='اختر المؤهل', required=true) }}
+                               placeholder='اختر المؤهل', required=true,
+                               custom_value=teacher.get('custom_qualification_id', teacher.get('qualification', ''))) }}
             {{ academic_select(sel, classifications, teacher.get('classification_id'), 'التصنيف الوظيفي', 'classification_id',
-                               placeholder='اختر التصنيف') }}
+                               placeholder='اختر التصنيف',
+                               custom_value=teacher.get('custom_classification_id', teacher.get('classification', ''))) }}
           </div>
 
-          {{ specialization_select(sel, 'edit_specialization', specializations, teacher.get('specialization_id')) }}
+          {{ specialization_select(sel, 'edit_specialization', specializations, teacher.get('specialization_id'),
+                                   custom_value=teacher.get('custom_specialization_id', teacher.get('specialization', ''))) }}
         </div>
       </section>
 
@@ -232,7 +240,9 @@
                                  hod_value=teacher.get('hod_department_id'),
                                  assignment_date=assignment_date,
                                  department_hods=department_hods|default({}),
-                                 confirm_replace=confirm_replace|default(false)) }}
+                                 confirm_replace=confirm_replace|default(false),
+                                 custom_value=teacher.get('custom_position', ''),
+                                 admin_tasks=admin_tasks) }}
         </div>
       </section>
     </div>

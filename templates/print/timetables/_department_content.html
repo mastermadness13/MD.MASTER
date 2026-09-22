@@ -1,6 +1,6 @@
 {% set payload = payload | default(None) %}
 {% set dept_name = (payload.dept.name if payload.dept else '—') %}
-{% set sem_label = payload.active_academic_label if not payload.locked else (payload.viewing_semester_name or payload.semester_name_ar or payload.semester_code or '—') %}
+{% set sem_label = semester_label(payload.selected_semester) if payload.selected_semester else (payload.viewing_semester_name or payload.semester_name_ar or payload.semester_code or '—') %}
 {% set table_label = 'الجدول الدراسي — ' ~ (semester_label(payload.selected_semester) if payload.selected_semester else '') %}
 <style>
   .timetable-print { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
@@ -52,7 +52,12 @@
         <tr>
           <th style="width: 130px;">اليوم</th>
           {% for p in payload.periods %}
-          <th>{{ p.label if p.label else p.code }}</th>
+          <th>
+            <div>{{ p.label if p.label else p.code }}</div>
+            {% if p.start_time %}
+            <div dir="ltr" style="font-weight: 400; font-size: 11px; color: #333; margin-top: 1px;">{{ format_time12(p.start_time) }}{% if p.end_time %} ← {{ format_time12(p.end_time) }}{% endif %}</div>
+            {% endif %}
+          </th>
           {% endfor %}
         </tr>
       </thead>
@@ -70,7 +75,7 @@
               {% for e in cell %}
               <div style="margin: 2px 0;">
                 <div style="font-weight: 700;">{{ e.course_name or '—' }}</div>
-                <div>{{ teacher_label(e.teacher_name) }}</div>
+                <div>{{ teacher_label(e.teacher_name) if e.teacher_name else 'محاضرة بدون أستاذ' }}</div>
                 <div>قاعة: {{ e.room_name or '—' }}</div>
                 <div dir="ltr">{{ format_time12(e.start_time) or '—' }}{% if e.end_time %} ← {{ format_time12(e.end_time) }}{% endif %}</div>
               </div>
@@ -92,5 +97,6 @@
   <!-- Print footer -->
   <div style="text-align:center; font-size: 11px; color:#333; margin-top: 10px;">
     تاريخ الطباعة: {{ now().strftime('%Y/%m/%d %H:%M') }}
+    {% if payload.fingerprint %}&nbsp;•&nbsp; رمز الإصدار: <span dir="ltr">{{ payload.fingerprint }}</span>{% endif %}
   </div>
 </div>

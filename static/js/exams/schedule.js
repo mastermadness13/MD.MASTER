@@ -2,10 +2,11 @@
  * Schedule — exam matrix (design: days × semesters).
  *
  * Rows are exam days (السبت…الخميس) with their concrete dates, columns are the
- * department semesters.  The data itself comes from the head of department:
- * only a scoped head_of_department can add/edit/delete exams here — every
- * other role renders the submitted schedule read-only.  Weeks are independent
- * tabs (1–5) — every exam stores its week number.
+ * department semesters.  The data comes from the head of department or the
+ * exam department role: only a scoped head_of_department (or exam department)
+ * can add/edit/delete exams here — every other role renders the submitted
+ * schedule read-only.  Weeks are independent tabs (1–5) — every exam stores
+ * its week number.
  */
 (function () {
   'use strict';
@@ -50,8 +51,8 @@
     opts = opts || {};
     var DEPTS = data.departments || [];
     var role = opts.role || '';
-    // Rendering page: exams are entered by the head of department only.
-    var canEdit = role === 'head_of_department';
+    // Rendering page: exams are entered by the head of department or the exam department.
+    var canEdit = role === 'head_of_department' || role === 'exam';
     var scoped = !!opts.scoped;
 
     var switchers = document.getElementById('exam-controls') || document.getElementById('exam-switchers');
@@ -72,7 +73,7 @@
         '<span class="material-symbols-outlined block text-[40px] text-gray-300 mb-2">grading</span>' +
         '<p class="text-on-surface-variant font-bold">لا توجد بيانات امتحانات لعرضها</p>' +
         '<p class="text-sm text-on-surface-variant mt-1">' +
-        (canEdit ? 'أضف امتحانات من جدول قسمك لتظهر هنا.' : 'ستظهر الامتحانات هنا بعد إدخالها من رؤساء الأقسام.') +
+        (canEdit ? 'بإمكانك إضافة امتحانات من هذا الجدول لتظهر هنا.' : 'ستظهر الامتحانات هنا بعد إدخالها من رؤساء الأقسام.') +
         '</p>' +
         '</div>';
       return;
@@ -543,15 +544,19 @@
 
       var delBtn = modal.querySelector('.ws-f-delete');
       if (delBtn) delBtn.addEventListener('click', function () {
-        if (!window.confirm('هل تريد حذف هذا الامتحان؟')) return;
-        delBtn.disabled = true;
-        window.Exams.api.del('/api/exams/department-schedule/cell/' + existing.exam.id).then(function () {
-          window.ExamToast('تم حذف الامتحان');
-          closeModal();
-          reloadTable();
-        }).catch(function (err) {
-          delBtn.disabled = false;
-          window.ExamToast(err.message, true);
+        window.askConfirm({
+          message: 'هل تريد حذف هذا الامتحان؟',
+          onConfirm: function () {
+            delBtn.disabled = true;
+            window.Exams.api.del('/api/exams/department-schedule/cell/' + existing.exam.id).then(function () {
+              window.ExamToast('تم حذف الامتحان');
+              closeModal();
+              reloadTable();
+            }).catch(function (err) {
+              delBtn.disabled = false;
+              window.ExamToast(err.message, true);
+            });
+          }
         });
       });
     }

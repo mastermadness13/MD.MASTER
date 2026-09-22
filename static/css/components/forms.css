@@ -16,12 +16,13 @@ input::placeholder, textarea::placeholder, select::placeholder {
 
 .form-input {
   width: 100%;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-default);
-  padding: 10px 12px;
+  min-height: 46px;
+  border: 1px solid var(--border-input);
+  border-radius: var(--control-radius);
+  padding: 11px 14px;
   font-size: 14px;
   font-family: inherit;
-  transition: border-color 0.2s;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
   background: var(--surface-card);
   color: var(--text-primary);
 }
@@ -29,14 +30,27 @@ input::placeholder, textarea::placeholder, select::placeholder {
 .form-input:focus {
   outline: none;
   border-color: var(--border-input-focus);
-  box-shadow: 0 0 0 2px var(--primary-glow);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+.form-input:focus-visible {
+  outline: 2px solid var(--border-input-focus);
+  outline-offset: 1px;
+}
+
+.form-input:disabled,
+.form-input[readonly] {
+  background: var(--surface-hover);
+  color: var(--text-muted);
+  cursor: not-allowed;
 }
 
 .form-select {
   width: 100%;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-default);
-  padding: 10px 12px;
+  min-height: 46px;
+  border: 1px solid var(--border-input);
+  border-radius: var(--control-radius);
+  padding: 11px 14px;
   font-size: 14px;
   font-family: inherit;
   background: var(--surface-card);
@@ -44,17 +58,30 @@ input::placeholder, textarea::placeholder, select::placeholder {
   appearance: auto;
 }
 
+.form-select:focus {
+  outline: none;
+  border-color: var(--border-input-focus);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
 .form-textarea {
   width: 100%;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-default);
-  padding: 10px 12px;
+  border: 1px solid var(--border-input);
+  border-radius: var(--control-radius);
+  padding: 11px 14px;
   font-size: 14px;
   font-family: inherit;
   resize: vertical;
-  min-height: 100px;
+  min-height: 110px;
   background: var(--surface-card);
   color: var(--text-primary);
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.form-textarea:focus {
+  outline: none;
+  border-color: var(--border-input-focus);
+  box-shadow: 0 0 0 3px var(--primary-glow);
 }
 
 .form-error {
@@ -147,12 +174,12 @@ input::placeholder, textarea::placeholder, select::placeholder {
   height: 46px;
   padding: 0 14px;
   border: 1px solid var(--border-input);
-  border-radius: 10px;
+  border-radius: var(--control-radius);
   font-size: 14px;
   font-family: inherit;
   background: var(--surface-card);
   color: var(--text-primary);
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
   box-sizing: border-box;
 }
 
@@ -162,16 +189,23 @@ input::placeholder, textarea::placeholder, select::placeholder {
   box-shadow: 0 0 0 3px var(--primary-glow);
 }
 
+.form-control:disabled,
+.form-control[readonly] {
+  background: var(--surface-hover);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
 .page-form-control {
   width: 100%;
-  height: 42px;
-  padding: 0 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  font-size: 13px;
+  height: 46px;
+  padding: 0 14px;
+  border: 1px solid var(--border-input);
+  border-radius: var(--control-radius);
+  font-size: 14px;
   font-family: inherit;
   background: var(--surface-card);
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
   box-sizing: border-box;
 }
 
@@ -189,9 +223,9 @@ input::placeholder, textarea::placeholder, select::placeholder {
 
 textarea.page-form-control {
   height: auto;
-  padding: 10px 12px;
+  padding: 11px 14px;
   resize: vertical;
-  min-height: 60px;
+  min-height: 70px;
 }
 
 select.page-form-control {
@@ -204,21 +238,21 @@ select.page-form-control {
 
 .page-form-control-sm {
   width: 100%;
-  height: 36px;
-  padding: 0 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  font-size: 12px;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--border-input);
+  border-radius: calc(var(--control-radius) - 4px);
+  font-size: 13px;
   font-family: inherit;
   background: var(--surface-card);
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
   box-sizing: border-box;
 }
 
 .page-form-control-sm:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 2px var(--primary-glow);
+  box-shadow: 0 0 0 3px var(--primary-glow);
 }
 
 /* Sticky Action Bar — always visible while scrolling form pages */

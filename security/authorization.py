@@ -19,18 +19,19 @@ from functools import wraps
 
 from flask import flash, redirect, session, url_for
 
-from core.constants import NAV_ITEMS, ROLE_LABELS, ROLE_PERMISSIONS
+from core.constants import ROLE_LABELS, ROLE_PERMISSIONS
 from utils.redirects import redirect_back
 
 # /     /     >---- ترتيب الأدوار (الأعلى أولاً). بعد تسجيل الدخول الطالب
 # /     /     >---- ينزل على أعلى دور عنده، ويقدر يبدل بين الأدوار داخل التطبيق
 ROLE_PRIORITY = [
-    'super_admin',
     'research_development',
     'faculty_affairs',
+    'dean',
     'exam',
     'head_of_department',
     'teacher',
+    'visitor',
 ]
 
 # /     /     >---- مجموعة كل الأدوار المعروفة
@@ -164,6 +165,8 @@ def permission_required(permission):
                 return redirect_back()
             return f(*args, **kwargs)
 
+        # Store required permission for deny-by-default before_request hook
+        decorated_function._required_permission = permission
         return decorated_function
 
     return decorator
@@ -224,65 +227,15 @@ def any_role_required(*roles):
 
 # ─────────────────────────────────────────────
 
-# /     /     >---- نرجع قائمة عناصر التنقل اللي تظهر لدور معين
-def get_nav_items(role, department_id=None) -> list:
-    """Return the ordered list of navigation items visible to a role.
-
-    *role* may be a single role string or a list/set of roles (multi-role).
-    When multiple roles are granted, an item is shown if any role makes it
-    visible, subject to the same dedup rules as before.
-
-    Deduplicates items that share the same endpoint but differ by
-    role_filter (e.g. teacher vs hod classroom_requests).
-    """
-    roles = _normalize_roles(role)
-    perms = get_user_permissions(roles, department_id)
-
-    # /     /     >---- عشان نتفادى تكرار العناصر
-    seen_endpoints = set()
-    seen_active_keys = set()
-    items = []
-    for item in NAV_ITEMS:
-        # /     /     >---- إذا العنصر خاص بالمدرسين والمستخدم مش مدرس نتخطى
-        if item.get('teacher_only') and 'teacher' not in roles:
-            continue
-        # /     /     >---- نتأكد من الصلاحية
-        perm = item.get('permission')
-        if perm is not None and perm not in perms:
-            continue
-        # /     /     >---- نتأكد من فلتر الدور
-        role_filter = item.get('role_filter')
-        if role_filter and role_filter not in roles:
-            continue
-        # /     /     >---- نتأكد ما هو مستثنى لدور معين
-        exclude_roles = item.get('exclude_roles') or []
-        if any(r in exclude_roles for r in roles):
-            continue
-        # /     /     >---- نتجنب التكرار في نفس النقطة
-        ep = item['endpoint']
-        if ep in seen_endpoints and not role_filter:
-            continue
-        if not role_filter:
-            active_keys = item.get('active_keys') or []
-            if any(k in seen_active_keys for k in active_keys):
-                continue
-        seen_endpoints.add(ep)
-        if role_filter:
-            seen_active_keys.update(item.get('active_keys') or [])
-        items.append(item)
-    return items
-
-# ─────────────────────────────────────────────
-
 # /     /     >---- نرجع رابط الرسائل في الهيدر حسب الدور
-def get_header_messages_url(role) -> str | None:
+def get_header_messages_url(roles) -> str | None:
     """Return the messages endpoint for the header, or None.
 
     Multi-role aware: prefers the HOD messages page when the user holds the
     ``head_of_department`` role, else the teacher messages page when they hold
     ``teacher``.
     """
-    roles = _normalize_roles(role)
+    roles = _normalize_roles(roles)
     # /     /     >---- رئيس القسم أولاً
     if 'head_of_department' in roles:
         return 'hod_pages.hod_messages'
@@ -294,24 +247,35 @@ def get_header_messages_url(role) -> str | None:
 # ─────────────────────────────────────────────
 
 # /     /     >---- مساعد القوالب (Jinja): يضيف دوال التنقل في كل الصفحات
+def get_nav_items(role, department_id=None):
+    """Backward-compatible helper: navigation items for a role/dept.
+
+    Delegates to the permission-based pipeline so both the SPA bootstrap
+    (``api/auth.py``) and template injection share the same source of truth.
+    """
+    perms = get_user_permissions(role, department_id)
+    from core.constants.navigation import get_nav_for_permissions
+    return get_nav_for_permissions(perms)
+
+
+# /     /     >---- مساعد القوالب (Jinja): يضيف دوال التنقل في كل الصفحات
 def inject_navigation() -> dict:
     """Jinja context processor — makes nav helpers available in every template.
 
     ``nav_items``/``user_permissions``/``has_permission``/``header_messages_url``
-    reflect the **active** role (``session['role']``), so switching roles in-app
-    immediately changes the sidebar.  ``user_roles`` keeps the full granted set
-    for the role switcher and badges.
+    reflect the user's **granted permissions** (union of all roles).
     """
+    from core.constants.navigation import get_nav_for_permissions
     roles = get_granted_roles()
-    active = get_active_roles()
     dept_id = session.get('department_id')
+    perms = get_user_permissions(roles, dept_id)
     return {
-        'nav_items': get_nav_items(active, dept_id),
-        'user_permissions': get_user_permissions(active, dept_id),
-        'has_permission': lambda perm: has_permission(active, perm, dept_id),
-        'header_messages_url': get_header_messages_url(active),
+        'nav_items': get_nav_for_permissions(perms),
+        'user_permissions': perms,
+        'has_permission': lambda perm: perm in perms,
+        'header_messages_url': get_header_messages_url(roles),
         'role_labels': ROLE_LABELS,
         'hide_sidebar': False,
         'user_roles': roles,
-        'user_priority_role': highest_priority_role(active),
+        'user_priority_role': highest_priority_role(roles),
     }

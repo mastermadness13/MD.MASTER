@@ -14,28 +14,6 @@ The authenticated user's role is the single source of truth.
 # /     /     >---- خريطة الصلاحيات لكل دور في النظام
 # /     /     >---- Architecture: الدور ← الصلاحيات ← التنقل
 ROLE_PERMISSIONS = {
-    # ── مدير النظام (كله إله) ───────────────────────────────────────
-    'super_admin': {
-        'dashboard.view',
-        'departments.manage', 'departments.view',
-        'teachers.manage', 'teachers.view',
-        'courses.manage', 'courses.view',
-        'rooms.manage', 'rooms.view',
-        'timetable.view', 'timetable.edit',
-        'exams.view', 'exams.manage', 'exams.period', 'exams.planning', 'exams.department_schedule', 'exams.assign_room',
-        'history.view',
-        'course_content.view', 'course_content.manage',
-        'course_content.create', 'course_content.edit',
-        'course_content.review', 'course_content.publish', 'course_content.unpublish',
-        'reports.view',
-        'uploads.serve',
-        'tools.view',
-        'profile.view', 'profile.edit',
-        'faculty_performance.view', 'faculty_performance.edit_research',
-        'faculty_performance.edit_assignments', 'faculty_performance.edit_leaves',
-        'faculty_performance.print',
-        'faculty_performance.view_summary',
-    },
     # ── قسم البحث والتطوير والمناهج ─────────────────────────────────
     'research_development': {
         'dashboard.view',
@@ -43,40 +21,39 @@ ROLE_PERMISSIONS = {
         'teachers.view',
         'courses.manage', 'courses.view',
         'timetable.view',
+        'academic_calendar.manage',
         'course_content.view', 'course_content.manage',
         'course_content.create', 'course_content.edit', 'course_content.submit',
         'course_content.review', 'course_content.publish',
         'reports.view',
         'uploads.serve',
         'profile.view', 'profile.edit',
-        'faculty_performance.view', 'faculty_performance.edit_research',
-        'faculty_performance.edit_assignments', 'faculty_performance.edit_leaves',
-        'faculty_performance.print',
+        'faculty_performance.view',
     },
     # ── مكتب إدارة أعضاء هيئة التدريس ───────────────────────────────
     'faculty_affairs': {
         'dashboard.view',
         'teachers.manage', 'teachers.view',
-
-        'course_content.view',
+        'teachers.assign',
+        'timetable.view',
+        'history.view',
         'uploads.serve',
         'tools.view',
+        'rooms.view', 'rooms.manage',
         'profile.view', 'profile.edit',
-        'faculty_performance.view', 'faculty_performance.edit_research',
+        'faculty_performance.view', 'faculty_performance.view_summary',
+        'faculty_performance.edit_research',
         'faculty_performance.edit_assignments', 'faculty_performance.edit_leaves',
         'faculty_performance.print',
     },
     # ── رئيس القسم ──────────────────────────────────────────────────
     'head_of_department': {
         'dashboard.view',
-        'teachers.view', 'teachers.assign',
-        'courses.view',
+        'teachers.view',
         'course_content.view',
         'timetable.view', 'timetable.edit',
         'exams.view', 'exams.department_schedule',
-        'materials.manage',
         'messages.review',
-        'classroom_requests.manage',
         'profile.view', 'profile.edit',
         'faculty_performance.view', 'faculty_performance.edit_research',
         'faculty_performance.edit_assignments', 'faculty_performance.print',
@@ -85,26 +62,49 @@ ROLE_PERMISSIONS = {
     'teacher': {
         'dashboard.view',
         'timetable.view',
-        'course_content.view',
-        'course_content.edit',
-        'uploads.view',
-        'messages.view',
-        'classroom_requests.view',
-        'uploads.serve',
-        'tools.view',
-        'profile.view', 'profile.edit',
-        'faculty_performance.view', 'faculty_performance.print',
+      
+        
+       
     },
-    # ── قسم الإدارة والامتحانات ─────────────────────────────────────
+# ── قسم الإدارة والامتحانات ─────────────────────────────────────
     'exam': {
         'dashboard.view',
-        'timetable.view',
+        'departments.view', 'departments.manage',
         'courses.view',
         'course_content.view',
-        'rooms.view',
+        'rooms.view',  # /     /     >---- عرض القاعات لاختيارها عند جدولة الامتحانات فقط
         'exams.view', 'exams.manage', 'exams.period', 'exams.planning', 'exams.department_schedule', 'exams.assign_room',
         'uploads.serve',
         'tools.view',
         'profile.view', 'profile.edit',
+    },
+    # ── العميد ───────────────────────────────────────────────────
+    # /     /     >---- إشراف قراءة فقط على كل نطاقات النظام
+    'dean': {
+        'dashboard.view',
+        'departments.view',
+        'teachers.view',
+        'courses.view',
+        'rooms.view',
+        'timetable.view',
+        'exams.view',
+        'course_content.view',
+        'reports.view',
+        'history.view',
+        'uploads.serve',
+        'profile.view', 'profile.edit',
+        'faculty_performance.view', 'faculty_performance.view_summary',
+        'faculty_performance.print',
+    },
+    # ── الزائر العام ─────────────────────────────────────────────
+    # /     /     >---- مشاهدة النشرات المتاحة فقط (لا تعديل ولا بيانات خاصة)
+    'visitor': {
+        'dashboard.view',
+        'courses.view',
+        'timetable.view',
+        'exams.view',
+        'course_content.view',
+        'uploads.serve',
+        'profile.view',
     },
 }

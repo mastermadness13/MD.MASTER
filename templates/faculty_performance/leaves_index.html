@@ -1,8 +1,8 @@
 {% extends 'shared/layouts/base.html' %}
 {% set sidebar_active = 'faculty_leaves' %}
-{% set page_title = 'الإجازات' %}
+{% set page_title = 'الإجازات العلمية' %}
 {% set members = members | default([]) %}
-{% set member_action = {'endpoint': 'faculty_performance.leaves_manage', 'label': 'إدارة الإجازات', 'icon': 'event_busy'} %}
+{% set member_action = {'endpoint': 'faculty_performance.leaves_manage', 'label': 'إدارة الإجازات العلمية', 'icon': 'event_busy'} %}
 
 {% block content %}
 <div class="max-w-7xl mx-auto">
@@ -12,7 +12,7 @@
     <div class="page-header-info">
       <span class="material-symbols-outlined page-header-icon">event_busy</span>
       <div>
-        <h1 class="page-title">إدارة الإجازات</h1>
+        <h1 class="page-title">إدارة الإجازات العلمية</h1>
         <p class="page-subtitle">اختر العضو لإضافة وتعديل وطباعة إجازاته</p>
       </div>
     </div>

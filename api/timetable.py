@@ -10,13 +10,20 @@ from api.helpers import (
     err,
     ok,
 )
+from core.constants.ui import ARABIC_DAYS, WEEK_DAYS, WEEK_DAYS_ALT
+from core.validators import integer_between, valid_time
 from flask_db import get_db
 from security import csrf_required
 from services import notification_service, timetable_service
+from services.timetable_scope import (
+    INVALID_SEMESTER_MESSAGE,
+    InvalidSemesterError,
+    allowed_semesters_for,
+    semester_token,
+    validate_semester_allowed,
+)
 
 bp = Blueprint('api_timetable', __name__, url_prefix='/api/timetable')
-
-
 def _entry_fields(data):
     def fk(key, default=None):
         value = data.get(key, default)
@@ -62,6 +69,28 @@ def _entry_times_valid(fields):
         return int(sh) * 60 + int(sm) < int(eh) * 60 + int(em)
     except (ValueError, TypeError):
         return False
+
+
+# /     /     >---- كل أسماء الأيام العربية المسموحة في الجدول (مكتوبة بأي طريقة)
+_ALLOWED_TIMETABLE_DAYS = {*set(WEEK_DAYS), *set(WEEK_DAYS_ALT), *set(ARABIC_DAYS.values())}
+
+
+def _entry_fields_valid(fields):
+    """L6: structural validation — day whitelist, time format, hour bounds."""
+    errors = []
+    day = fields.get('day')
+    if day and day not in _ALLOWED_TIMETABLE_DAYS:
+        errors.append('اليوم غير مسموح')
+    hours = fields.get('hours')
+    if hours not in (None, '', 0):
+        msg = integer_between(hours, 1, 24, 'عدد الساعات')
+        if msg:
+            errors.append(msg)
+    for key, label in (('start_time', 'وقت البداية'), ('end_time', 'وقت النهاية')):
+        msg = valid_time(fields.get(key), label)
+        if msg:
+            errors.append(msg)
+    return errors
 
 
 def _notify(db, teacher_id, title, message, entry_id):
@@ -110,18 +139,54 @@ def api_timetable_department():
     return ok(data)
 
 
+@bp.route('/version/token')
+@api_permission_required('timetable.view')
+def api_timetable_version_token():
+    """Live-sync fingerprint: changes whenever the department's active version
+    for the semester changes (new edits or a fresh next-year copy)."""
+    db = get_db()
+    filter_dept_id = request.args.get('department_id', type=int)
+    if _is_hod():
+        filter_dept_id = _user_dept()
+    semester = request.args.get('semester', type=int)
+
+    if not filter_dept_id:
+        return err('department_id مطلوب', 400)
+    if not semester:
+        return err('semester مطلوب', 400)
+
+    dept_row = db.execute(
+        'SELECT name, semesters FROM departments WHERE id = ?', (filter_dept_id,)
+    ).fetchone()
+    if not dept_row:
+        return err('القسم غير موجود', 404)
+
+    allowed = allowed_semesters_for(dept_row)
+    if semester not in allowed:
+        return err(INVALID_SEMESTER_MESSAGE, 422)
+
+    return ok({'token': semester_token(db, filter_dept_id, semester)})
+
+
 @bp.route('/entries', methods=['POST'])
 @api_permission_required('timetable.edit')
 @csrf_required
 def api_timetable_create_entry():
     fields = _entry_fields(body())
-    if not _entry_required(fields, include_department=True):
-        return err('جميع الحقول المطلوبة يجب ملؤها (بما في ذلك القسم)', 422)
+    if not _entry_required(fields, include_department=True, include_teacher=False):
+        return err('جميع الحقول المطلوبة يجب ملؤها (بما في ذلك القسم). يمكن حفظ الحصة بدون تعيين عضو هيئة تدريس.', 422)
+    entry_errors = _entry_fields_valid(fields)
+    if entry_errors:
+        return err('بيانات غير صحيحة', 422, errors=entry_errors)
     if not _entry_times_valid(fields):
         return err('وقت النهاية يجب أن يكون بعد وقت البداية.', 422)
     if _is_hod() and fields['department_id'] != _user_dept():
         return err('لا يمكن إنشاء حصص إلا في قسمك.', 403)
     db = get_db()
+    try:
+        validate_semester_allowed(db, fields['department_id'], fields['semester'])
+    except InvalidSemesterError:
+        return err(INVALID_SEMESTER_MESSAGE, 422)
     try:
         version_id = None
         if fields['department_id']:
@@ -151,15 +216,23 @@ def api_timetable_update_entry(entry_id):
     fields = _entry_fields(body())
     if not _entry_required(fields, include_department=False, include_teacher=False):
         return err('جميع الحقول المطلوبة يجب ملؤها', 422)
+    entry_errors = _entry_fields_valid(fields)
+    if entry_errors:
+        return err('بيانات غير صحيحة', 422, errors=entry_errors)
     if not _entry_times_valid(fields):
         return err('وقت النهاية يجب أن يكون بعد وقت البداية.', 422)
     db = get_db()
-    if _is_hod():
-        existing = db.execute(
-            'SELECT department_id FROM timetable WHERE id = ?', (entry_id,)
-        ).fetchone()
-        if not existing or existing['department_id'] != _user_dept():
-            return err('لا يمكن تعديل حصص من قسم آخر.', 403)
+    existing = db.execute(
+        'SELECT department_id FROM timetable WHERE id = ?', (entry_id,)
+    ).fetchone()
+    if not existing:
+        return err('الحصة غير موجودة', 404)
+    if _is_hod() and existing['department_id'] != _user_dept():
+        return err('لا يمكن تعديل حصص من قسم آخر.', 403)
+    try:
+        validate_semester_allowed(db, existing['department_id'], fields['semester'])
+    except InvalidSemesterError:
+        return err(INVALID_SEMESTER_MESSAGE, 422)
     try:
         updated = timetable_service.update_entry(
             db, entry_id, fields['day'], fields['semester'], fields['period_code'],

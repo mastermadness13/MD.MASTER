@@ -16,5 +16,6 @@ PASS_THRESHOLD = 50  # percentage — the single place to change it
 # ── الأمان ────────────────────────────────────────────────────────────────
 PASSWORD_MIN_LENGTH = 6          # /     /     >---- أقل عدد حروف لكلمة المرور
 PASSWORD_RESET_EXPIRY_HOURS = 1  # /     /     >---- رابط استرجاع كلمة المرور يصير لو تجاوز ساعة
+INITIAL_CODE_EXPIRY_DAYS = 7     # /     /     >---- صلاحية رمز الدخول الأولي لعضو هيئة التدريس
 LOGIN_RATE_LIMIT_MAX = 3         # /     /     >---- أقصى عدد محاولات دخول خاطئة
 LOGIN_RATE_WINDOW_SECONDS = 300  # /     /     >---- نافذة الوقت (5 دقائق)

@@ -19,9 +19,9 @@ from core.constants import ROLE_NAMES
 from flask_db import get_db
 from security import (
     get_header_messages_url,
-    get_nav_items,
     get_user_permissions,
 )
+from core.constants.navigation import get_nav_for_permissions
 from security import current_user
 from security.csrf import csrf_required
 from services import user_service
@@ -30,10 +30,12 @@ bp = Blueprint('api_auth', __name__, url_prefix='/api/auth')
 
 
 def _session_payload():
-    role = session.get('role', '')
+    from security.authorization import get_granted_roles
+    roles = get_granted_roles()
     dept_id = session.get('department_id')
     user = public_user(current_user())
-    nav_items = get_nav_items(role, dept_id)
+    perms = get_user_permissions(roles, dept_id)
+    nav_items = get_nav_for_permissions(perms)
     for item in nav_items:
         try:
             item['url'] = url_for(item['endpoint'])
@@ -41,11 +43,11 @@ def _session_payload():
             item['url'] = None
     return {
         'user': user,
-        'role': role,
-        'role_label': ROLE_NAMES.get(role, role),
-        'permissions': sorted(get_user_permissions(role, dept_id)),
+        'role': session.get('role', ''),
+        'role_label': ROLE_NAMES.get(session.get('role', ''), ''),
+        'permissions': sorted(perms),
         'nav_items': nav_items,
-        'header_messages_url': get_header_messages_url(role),
+        'header_messages_url': get_header_messages_url(roles),
         'csrf_token': session.get('_csrf_token', ''),
     }
 
@@ -68,6 +70,12 @@ def api_login():
     success, user = user_service.authenticate(db, username, password, remember, session)
     if not success:
         record_login_failure(client_ip, username)
+        if user is not None and user.get('auth_error') == 'initial_code_expired':
+            return err(
+                'انتهت صلاحية رمز الدخول الأولي ولم يُستعمل، '
+                'يرجى مراجعة مدير المكتب لإعادة إرسال رمز جديد',
+                401,
+            )
         return err('اسم المستخدم أو كلمة المرور غير صحيحة', 401)
     reset_login(client_ip, username)
     return ok(_session_payload())

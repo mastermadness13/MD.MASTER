@@ -25,7 +25,7 @@ def db_fx(tmp_path, monkeypatch):
     ensure_schema(conn)
 
     conn.execute(
-        "INSERT OR IGNORE INTO users (username, password, role, label) VALUES ('superadmin', 'x', 'super_admin', 'مدير')"
+        "INSERT OR IGNORE INTO users (username, password, role, label) VALUES ('hod', 'x', 'head_of_department', 'رئيس القسم')"
     )
     conn.execute(
         "INSERT OR IGNORE INTO departments (name, semesters, majors, hidden, has_sections, type) VALUES ('قسم الحاسوب', 8, 8, 0, 1, 'academic')"
@@ -46,9 +46,10 @@ def client(app_fx, db_fx):
     c = app_fx.test_client()
     with c.session_transaction() as sess:
         sess['user_id'] = 1
-        sess['role'] = 'super_admin'
-        sess['username'] = 'superadmin'
+        sess['role'] = 'head_of_department'
+        sess['username'] = 'hod'
         sess['department_id'] = None
+        sess['hod_department_id'] = _q("SELECT id FROM departments WHERE name='قسم الحاسوب'")[0]['id']
         sess['_csrf_token'] = 't'
     return c
 
@@ -76,7 +77,7 @@ def _version(status):
 def _read_js():
     import os
     here = os.path.dirname(os.path.abspath(__file__))
-    with open(os.path.join(here, '..', 'static', 'js', 'timetable_department.js'),
+    with open(os.path.join(here, '..', 'static', 'js', 'timetable_live.js'),
               encoding='utf-8') as fh:
         return fh.read()
 

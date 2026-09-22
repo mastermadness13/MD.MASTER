@@ -13,6 +13,7 @@ from api.helpers import (
     ok,
     pagination,
 )
+from core.validators import integer_between
 from flask_db import get_db
 from security import current_user
 from security import csrf_required
@@ -68,6 +69,29 @@ def _course_form(data, defaults=None):
     return form, placements, prerequisite_id
 
 
+def _validate_course(form):
+    """L5: one shared validation routine for course create + update."""
+    errors = []
+    if not form['code']:
+        errors.append('الكود مطلوب')
+    elif len(form['code']) > 30:
+        errors.append('الكود يجب ألا يتجاوز 30 حرفاً')
+    if not form['name']:
+        errors.append('الاسم مطلوب')
+    elif len(form['name']) > 255:
+        errors.append('اسم المقرر أطول من المسموح (255 حرفاً كحد أقصى)')
+    for check in (
+        integer_between(form['year'], 1, 20, 'السنة الدراسية'),
+        integer_between(form['semester'], 1, 20, 'الفصل الدراسي'),
+        integer_between(form['theoretical_hours'], 0, 30, 'الساعات النظرية'),
+        integer_between(form['practical_hours'], 0, 30, 'الساعات العملية'),
+        integer_between(form['total_hours'], 0, 60, 'إجمالي الساعات'),
+    ):
+        if check:
+            errors.append(check)
+    return errors
+
+
 @bp.route('')
 @api_permission_required('courses.view')
 def api_courses_list():
@@ -92,8 +116,9 @@ def api_courses_list():
 def api_course_create():
     data = body()
     form, department_ids, prerequisite_id = _course_form(data)
-    if not form['code'] or not form['name']:
-        return err('الكود والاسم مطلوبان', 422)
+    errors = _validate_course(form)
+    if errors:
+        return err('بيانات غير صحيحة', 422, errors=errors)
     db = get_db()
     course_id = course_service.create_course(db, form, department_ids, prerequisite_id)
     log_history(db, 'create', 'course', course_id, f'إنشاء مقرر: {form["name"]}')
@@ -121,10 +146,9 @@ def api_course_update(course_id):
         return err('المقرر غير موجود', 404)
     data = body()
     form, department_ids, prerequisite_id = _course_form(data, defaults=dict(c))
-    if not form['code'] or not form['name']:
-        return err('الكود والاسم مطلوبان', 422)
-    if len(form['name']) > 255:
-        return err('اسم المقرر أطول من المسموح (255 حرفاً كحد أقصى)', 422)
+    errors = _validate_course(form)
+    if errors:
+        return err('بيانات غير صحيحة', 422, errors=errors)
     course_service.update_course(db, course_id, form, department_ids, prerequisite_id)
     log_history(db, 'update', 'course', course_id, f'تعديل مقرر: {form["name"]}')
     return ok(True)

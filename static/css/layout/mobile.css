@@ -83,6 +83,28 @@ body.auth-body {
   }
 }
 
+/* ── Touch targets: 44px floor for tappable controls on phones ── */
+@media (max-width: 768px) {
+  .tt-chip,
+  .tt-mday-add,
+  .actions-cell .btn,
+  .search-bar__btn,
+  .page-header > a,
+  .page-header > button,
+  .sticky-action-bar button,
+  .page-card select {
+    min-height: 44px;
+  }
+  .page-header > a,
+  .page-header > button,
+  .sticky-action-bar button,
+  .tt-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
 /* ── Tables: comfortable touch scrolling ───────────────────────── */
 .table-scroll-wrap {
   overflow-x: auto;
@@ -426,7 +448,7 @@ body.sidebar-mobile-open {
     font-family: inherit; -webkit-tap-highlight-color: transparent;
   }
   .tt-chip .material-symbols-outlined { font-size: 16px; }
-  .tt-chip-primary { background: var(--primary, #320058); color: #fff; }
+  .tt-chip-primary { background: var(--primary, #320058); color: var(--text-on-primary, #fff); }
   .tt-chip-soft { background: var(--primary-container, #f1dbff); color: var(--primary, #320058); }
   .tt-chip-danger { background: #fdecea; color: #b3261e; }
   .tt-chip:disabled { opacity: 0.45; pointer-events: none; }

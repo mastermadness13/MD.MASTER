@@ -1,12 +1,12 @@
-"""Tests for multi-role grants and super-admin protection.
+"""Tests for multi-role grants and protected-account handling.
 
 The standalone ``/users`` page was removed in the multi-role overhaul and
 account/role management moved into the teacher create/edit flow.  These tests
 cover the two durable behaviours that live at the service layer:
 
-  1. The super-admin account is protected against every destructive action
-     (delete, deactivate, demote, strip the super_admin role) even when called
-     directly — not just hidden in the UI.
+  1. The primary office-manager account (``office_manager``) is protected
+     against every destructive action (delete, deactivate, demote, strip the
+     faculty_affairs role) even when called directly — not just hidden in the UI.
   2. Creating a teacher grants the landing ``teacher`` role plus any selected
      additional roles into the ``user_roles`` table.
 """
@@ -35,7 +35,7 @@ def db_fx(tmp_path, monkeypatch):
     ensure_schema(conn)
     conn.execute(
         "INSERT OR IGNORE INTO users (username, password, role, label) "
-        "VALUES ('superadmin', 'x', 'super_admin', 'مدير')"
+        "VALUES ('office_manager', 'x', 'faculty_affairs', 'مدير مكتب أعضاء هيئة التدريس')"
     )
     conn.commit()
     conn.close()
@@ -58,13 +58,16 @@ def _q(path, sql, params=()):
     return rows
 
 
-# ── Super-admin protection ──────────────────────────────────────────────
+# ── Office-manager protection ──────────────────────────────────────────
 
 
-def test_superadmin_recognised_as_protected(db_fx, svc):
+def _om_id(path):
+    return _q(path, "SELECT id FROM users WHERE username='office_manager'")[0]['id']
+
+
+def test_office_manager_recognised_as_protected(db_fx, svc):
     user_service, conn = svc
-    super_id = _q(db_fx, "SELECT id FROM users WHERE role='super_admin'")[0]['id']
-    assert user_service.is_protected_user(super_id) is True
+    assert user_service.is_protected_user(_om_id(db_fx)) is True
 
 
 def test_regular_user_not_protected(db_fx, svc):
@@ -77,40 +80,40 @@ def test_regular_user_not_protected(db_fx, svc):
     assert user_service.is_protected_user(uid) is False
 
 
-def test_cannot_delete_superadmin(db_fx, svc):
+def test_cannot_delete_office_manager(db_fx, svc):
     user_service, conn = svc
-    super_id = _q(db_fx, "SELECT id FROM users WHERE role='super_admin'")[0]['id']
+    om_id = _om_id(db_fx)
     with pytest.raises(ProtectedAccountError):
-        user_service.delete_user(super_id)
-    assert _q(db_fx, "SELECT id FROM users WHERE role='super_admin'")
+        user_service.delete_user(om_id)
+    assert _q(db_fx, "SELECT id FROM users WHERE username='office_manager'")
 
 
-def test_cannot_deactivate_superadmin(db_fx, svc):
+def test_cannot_deactivate_office_manager(db_fx, svc):
     user_service, conn = svc
-    super_id = _q(db_fx, "SELECT id FROM users WHERE role='super_admin'")[0]['id']
+    om_id = _om_id(db_fx)
     with pytest.raises(ProtectedAccountError):
-        user_service.set_user_active(super_id, False)
-    assert _q(db_fx, 'SELECT is_active FROM users WHERE id=?', (super_id,))[0]['is_active'] == 1
+        user_service.set_user_active(om_id, False)
+    assert _q(db_fx, 'SELECT is_active FROM users WHERE id=?', (om_id,))[0]['is_active'] == 1
 
 
-def test_cannot_demote_superadmin(db_fx, svc):
+def test_cannot_demote_office_manager(db_fx, svc):
     user_service, conn = svc
-    super_id = _q(db_fx, "SELECT id FROM users WHERE role='super_admin'")[0]['id']
+    om_id = _om_id(db_fx)
     with pytest.raises(ProtectedAccountError):
         user_service.update_user_with_profile(
-            super_id, 'superadmin', 'teacher', None, '', 'مدير'
+            om_id, 'office_manager', 'teacher', None, '', 'مدير مكتب أعضاء هيئة التدريس'
         )
-    assert _q(db_fx, 'SELECT role FROM users WHERE id=?', (super_id,))[0]['role'] == 'super_admin'
+    assert _q(db_fx, 'SELECT role FROM users WHERE id=?', (om_id,))[0]['role'] == 'faculty_affairs'
 
 
-def test_cannot_strip_superadmin_role(db_fx, svc):
+def test_cannot_strip_faculty_affairs_role(db_fx, svc):
     user_service, conn = svc
-    super_id = _q(db_fx, "SELECT id FROM users WHERE role='super_admin'")[0]['id']
+    om_id = _om_id(db_fx)
     with pytest.raises(ProtectedAccountError):
-        user_service.set_user_roles(super_id, ['teacher'])
-    assert 'super_admin' in _q(
-        db_fx, 'SELECT role FROM user_roles WHERE user_id=?', (super_id,)) \
-        or _q(db_fx, 'SELECT role FROM users WHERE id=?', (super_id,))[0]['role'] == 'super_admin'
+        user_service.set_user_roles(om_id, ['teacher'])
+    assert 'faculty_affairs' in _q(
+        db_fx, 'SELECT role FROM user_roles WHERE user_id=?', (om_id,)) \
+        or _q(db_fx, 'SELECT role FROM users WHERE id=?', (om_id,))[0]['role'] == 'faculty_affairs'
 
 
 # ── Multi-role grant via teacher create ────────────────────────────────

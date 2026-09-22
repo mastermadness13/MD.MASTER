@@ -170,6 +170,22 @@ def get_approved_course_forms(db) -> Dict[int, Dict]:
     return {r['course_id']: r for r in rows}
 
 
+def get_published_course_contents(db) -> Dict[int, Dict]:
+    """Published electronic course sheets, including sheets without a PDF."""
+    rows = db.execute(
+        '''SELECT s.id, s.course_id, s.course_name, s.course_code,
+                  s.status, s.updated_at, s.created_at
+           FROM course_content_submissions s
+           JOIN courses c ON c.id = s.course_id AND c.deleted_at IS NULL
+           WHERE s.status = 'published'
+           ORDER BY COALESCE(s.updated_at, s.created_at) DESC, s.id DESC'''
+    ).fetchall()
+    result = {}
+    for row in rows:
+        result.setdefault(row['course_id'], dict(row))
+    return result
+
+
 # /     /     >---- تحميل الملفات دفعة واحدة ومفصولة حسب النوع
 def get_course_content_files(db) -> tuple:
     """One-pass loader of public course files, split by type.

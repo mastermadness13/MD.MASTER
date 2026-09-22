@@ -27,7 +27,7 @@ def svc_fx(tmp_path):
 
     conn.execute(
         "INSERT OR IGNORE INTO users (username, password, role, label) "
-        "VALUES ('superadmin', 'x', 'super_admin', 'مدير')"
+        "VALUES ('office_manager', 'x', 'faculty_affairs', 'مدير مكتب أعضاء هيئة التدريس')"
     )
     dept_id = conn.execute(
         "INSERT INTO departments (name, semesters, majors, hidden, has_sections, type) "
@@ -51,7 +51,7 @@ def svc_fx(tmp_path):
 
     version_id = conn.execute(
         "INSERT INTO timetable_versions (department_id, semester, semester_code, status) "
-        "VALUES (?, 1, 'fall_2026', 'active')",
+        "VALUES (?, 2, 'fall_2026', 'active')",
         (dept_id,),
     ).lastrowid
 
@@ -70,7 +70,7 @@ def _entry(svc_fx, teacher, room, day='الأحد', period='A', course=None,
            start='08:00', end='09:00'):
     f = svc_fx
     return timetable_service.create_entry(
-        f['db'], day, 1, period, course or f['course_id'], teacher, room,
+        f['db'], day, 2, period, course or f['course_id'], teacher, room,
         f['dept_id'], start_time=start, end_time=end,
         version_id=f['version_id'], lecture_type='theory', hours=1,
     )
@@ -127,7 +127,7 @@ def test_update_links_teacher_to_department(svc_fx):
     f = svc_fx
     entry_id = _entry(f, f['teacher1'], f['room1'], period='A')
     ok = timetable_service.update_entry(
-        f['db'], entry_id, 'الأحد', 1, 'B', f['course_id'], f['teacher2'], f['room2'],
+        f['db'], entry_id, 'الأحد', 2, 'B', f['course_id'], f['teacher2'], f['room2'],
         start_time='09:00', end_time='10:00', lecture_type='theory', hours=1,
     )
     assert ok
@@ -142,7 +142,7 @@ def _available_teacher_ids(svc_fx, period, start, end):
     f = svc_fx
     repo = TimetableRepository(f['db'])
     teachers = repo.get_only_available_resources(
-        'teacher', 'الأحد', 1, period, start_time=start, end_time=end
+        'teacher', 'الأحد', 2, period, start_time=start, end_time=end
     )
     return [t['id'] for t in teachers]
 
@@ -172,7 +172,7 @@ def test_teacher_availability_is_cross_department(svc_fx):
     ).lastrowid
     _entry(f, f['teacher1'], f['room1'], period='A', start='09:00', end='12:00')
     second = timetable_service.create_entry(
-        f['db'], 'الأحد', 1, 'B', f['course_id'], f['teacher1'], f['room2'],
+        f['db'], 'الأحد', 2, 'B', f['course_id'], f['teacher1'], f['room2'],
         dept_b, start_time='12:00', end_time='13:00',
         version_id=f['version_id'], lecture_type='theory', hours=1,
     )
@@ -183,7 +183,7 @@ def _available_room_ids(svc_fx, period, start, end):
     f = svc_fx
     repo = TimetableRepository(f['db'])
     rooms = repo.get_only_available_resources(
-        'room', 'الأحد', 1, period, start_time=start, end_time=end
+        'room', 'الأحد', 2, period, start_time=start, end_time=end
     )
     return [r['id'] for r in rooms]
 
@@ -214,7 +214,7 @@ def test_room_available_across_departments_at_adjacent_slot(svc_fx):
         "VALUES ('قسم المدني', 8, 8, 0, 1, 'academic')"
     ).lastrowid
     second = timetable_service.create_entry(
-        f['db'], 'الأحد', 1, 'B', f['course_id'], f['teacher2'], f['room1'],
+        f['db'], 'الأحد', 2, 'B', f['course_id'], f['teacher2'], f['room1'],
         dept_b, start_time='12:00', end_time='13:00',
         version_id=f['version_id'], lecture_type='theory', hours=1,
     )
@@ -238,7 +238,7 @@ def test_legacy_booking_without_times_blocks_period_span(svc_fx):
         'INSERT INTO timetable (day, semester, period, course_id, teacher_id, room_id, '
         'department_id, start_time, end_time, lecture_type, hours) '
         'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        ('الأحد', 1, 'A', f['course_id'], f['teacher1'], f['room1'],
+        ('الأحد', 2, 'A', f['course_id'], f['teacher1'], f['room1'],
          f['dept_id'], '', '', 'theory', 3),
     )
     f['db'].commit()

@@ -9,15 +9,15 @@ for backward compatibility with existing routes.
 from __future__ import annotations
 
 import logging
-import re
 import secrets
 from collections import OrderedDict
+from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
 from flask import session
 from werkzeug.security import generate_password_hash
 
-from core.constants import SEMESTER_LABELS
+from core.constants import INITIAL_CODE_EXPIRY_DAYS, SEMESTER_LABELS
 from core.constants.seasons import (
     LEGACY_PERIOD_CODE,
     LEGACY_PERIOD_LABEL,
@@ -31,14 +31,14 @@ from utils.format import teaching_semester_label
 logger = logging.getLogger(__name__)
 
 
-# /     /     >---- توليد اسم مستخدم من اسم الأستاذ (أول حرف + نقطة + الكلمة الثانية)
-def _generate_username(name: str) -> str:
-    parts = name.strip().split()
-    if len(parts) >= 2:
-        base = parts[0][0] + '.' + parts[1]
-    else:
-        base = parts[0] if parts else 'teacher'
-    return re.sub(r'[^\w.]', '', base.lower())
+# /     /     >---- توليد اسم مستخدم من معرّف السجل الثابت للأستاذ (teacher_105)
+def _generate_username(teacher_id: int) -> str:
+    """Build the automatic account username from the teacher's stable record id.
+
+    The id is unique by construction, so ``teacher_<id>`` never collides and
+    the office manager does not need to invent a username.
+    """
+    return f'teacher_{teacher_id}'
 
 
 # /     /     >---- توليد كلمة مرور عشوائية مؤقتة
@@ -110,20 +110,44 @@ class TeacherService:
             )
             self.db.commit()
 
-        # /     /     >---- إنشاء حساب الدخول تلقائياً مع اسم مستخدم وكلمة مرور مؤقتة
-        username = _generate_username(data['name'])
-        password = _generate_password()
-        if self._user_repo and self._user_repo.username_exists(username):
-            username = f"{username}.{teacher_id}"
+        # /     /     >---- نيك نيم اختياري يحدده المكتب؛ إن تُرك فارغاً يُولَّد تلقائياً
+        nickname = (data.get('username') or '').strip()
+        if nickname:
+            if len(nickname) < 2:
+                raise ValueError(
+                    "Username '"
+                    f"{nickname}"
+                    "' is too short — must be at least 2 characters"
+                )
+            if self._user_repo.username_exists(nickname):
+                raise ValueError(
+                    "Username '"
+                    f"{nickname}"
+                    "' already taken — choose another nickname"
+                )
+
+        # /     /     >---- إنشاء حساب الدخول: نيك نيم المكتب أو التوليد التلقائي + رمز دخول أولي
+        # /     /     >---- الرمز يُرسل بالبريد الشخصي ويُعرض للمكتب مرة واحدة بعد الإنشاء
+        username = nickname or _generate_username(teacher_id)
+        code = _generate_password()
+        expires = (datetime.now() + timedelta(
+            days=INITIAL_CODE_EXPIRY_DAYS
+        )).strftime('%Y-%m-%d %H:%M:%S')
         self.db.execute(
-            'INSERT INTO users (username, password, role, label, department_id, email) VALUES (?, ?, ?, ?, ?, ?)',
+            'INSERT INTO users (username, password, role, label, department_id, email, '
+            'force_password_change, initial_login_code_hash, initial_login_code_used, '
+            'initial_login_code_expires, initial_login_code_email_sent_at) '
+            'VALUES (?, ?, ?, ?, ?, ?, 1, ?, 0, ?, ?)',
             (
                 username,
-                generate_password_hash(password),
+                generate_password_hash(code),
                 'teacher',
                 data['name'],
                 data['department_id'],
                 data['email'],
+                generate_password_hash(code),
+                expires,
+                datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             ),
         )
         user_id = self.db.execute('SELECT last_insert_rowid()').fetchone()[0]
@@ -133,10 +157,20 @@ class TeacherService:
             self._user_repo.set_user_roles(user_id, granted)
         except AttributeError:
             pass
+        self.db.commit()
+        # /     /     >---- إرسال رمز الدخول الأولي إلى البريد الشخصي فقط
+        if data.get('email'):
+            try:
+                from services.email_service import send_initial_login_code
+                send_initial_login_code(
+                    data['email'], username, code, INITIAL_CODE_EXPIRY_DAYS
+                )
+            except Exception as exc:  # /     /     >---- فشل البريد لا يُفشل الإنشاء
+                logger.error('Initial code email failed for user %s: %s', username, exc)
         return {
             'id': teacher_id,
             'username': username,
-            'password': password,
+            'password': code,
         }
 
     def get_teacher(self, teacher_id: int) -> Optional[Dict]:
@@ -165,24 +199,126 @@ class TeacherService:
         granted = ['teacher'] + [r for r in (additional_roles or []) if r and r != 'teacher']
         self._user_repo.set_user_roles(teacher['user_id'], granted)
 
-    # /     /     >---- إعادة تعيين كلمة مرور الأستاذ وإرجاع الكلمة الجديدة
+    # /     /     >---- إعادة تعيين رمز الدخول الأولي للأستاذ وإرساله بالبريد فقط
     def reset_teacher_password(self, teacher_id: int) -> Optional[str]:
         teacher = self._repo.find_by_id(teacher_id)
-        if not teacher or not teacher.get('user_id'):
+        if not teacher:
             return None
-        new_password = _generate_password()
+        if not teacher.get('user_id'):
+            self._ensure_user_account(teacher, email_code=False)
+            teacher = self._repo.find_by_id(teacher_id)
+        if not teacher.get('user_id'):
+            return None
+        new_code = _generate_password()
+        expires = (datetime.now() + timedelta(
+            days=INITIAL_CODE_EXPIRY_DAYS
+        )).strftime('%Y-%m-%d %H:%M:%S')
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         self.db.execute(
-            'UPDATE users SET password = ? WHERE id = ?',
-            (generate_password_hash(new_password), teacher['user_id']),
+            'UPDATE users SET password = ?, force_password_change = 1, '
+            'initial_login_code_hash = ?, initial_login_code_used = 0, '
+            'initial_login_code_expires = ?, initial_login_code_email_sent_at = ? '
+            'WHERE id = ?',
+            (generate_password_hash(new_code), generate_password_hash(new_code),
+             expires, now, teacher['user_id']),
         )
         self.db.commit()
-        return new_password
+        # /     /     >---- إرسال الرمز الجديد إلى البريد الشخصي فقط
+        if teacher.get('email'):
+            try:
+                from services.email_service import send_initial_login_code
+                send_initial_login_code(
+                    teacher['email'],
+                    self._user_repo.find_by_id(teacher['user_id'])['username'],
+                    new_code,
+                    INITIAL_CODE_EXPIRY_DAYS,
+                    renewed=True,
+                )
+            except Exception as exc:
+                logger.error('Reset code email failed for teacher %s: %s', teacher_id, exc)
+        return new_code
+
+    # /     /     >---- إنشاء حساب دخول مرتبط لأستاذ ليس له حساب (المستوردون مثلاً)
+    def _ensure_user_account(self, teacher: Dict[str, Any], primary_username=None,
+                             direct_password=None, email_code=True) -> int:
+        """Create a login account for a teacher that has no linked ``user_id``.
+
+        When ``direct_password`` is given the account logs in immediately with
+        that password. Otherwise an initial login code is generated, stored
+        hashed+expiring and emailed to the teacher's personal email.
+        """
+        username = primary_username or _generate_username(teacher['id'])
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        if direct_password:
+            hashed = generate_password_hash(direct_password)
+            force_change = 0
+            code_hash = None
+            code_used = 1
+            code_expires = None
+            code_sent = None
+        else:
+            code = _generate_password()
+            hashed = generate_password_hash(code)
+            force_change = 1
+            code_hash = hashed
+            code_used = 0
+            code_expires = (datetime.now() + timedelta(
+                days=INITIAL_CODE_EXPIRY_DAYS
+            )).strftime('%Y-%m-%d %H:%M:%S')
+            code_sent = now
+        self.db.execute(
+            'INSERT INTO users (username, password, role, label, department_id, email, '
+            'force_password_change, initial_login_code_hash, initial_login_code_used, '
+            'initial_login_code_expires, initial_login_code_email_sent_at) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            (
+                username,
+                hashed,
+                'teacher',
+                teacher['name'],
+                teacher.get('department_id'),
+                teacher.get('email'),
+                force_change,
+                code_hash,
+                code_used,
+                code_expires,
+                code_sent,
+            ),
+        )
+        user_id = self.db.execute('SELECT last_insert_rowid()').fetchone()[0]
+        self._repo.link_user(teacher['id'], user_id)
+        try:
+            self._user_repo.set_user_roles(user_id, ['teacher'])
+        except AttributeError:
+            pass
+        self.db.commit()
+        # /     /     >---- إرسال رمز الدخول الأولي بالبريد الشخصي فقط
+        if email_code and not direct_password and teacher.get('email'):
+            try:
+                from services.email_service import send_initial_login_code
+                send_initial_login_code(
+                    teacher['email'], username, code, INITIAL_CODE_EXPIRY_DAYS
+                )
+            except Exception as exc:
+                logger.error('Initial code email failed for user %s: %s', username, exc)
+        return user_id
 
     # /     /     >---- تحديث اعتمادات الدخول (اسم مستخدم/كلمة مرور)
     def update_teacher_credentials(self, teacher_id: int, new_username=None,
                                    new_password=None) -> bool:
+        """Update a teacher's login username/password, creating the account first
+        when the teacher has no linked one yet."""
         teacher = self._repo.find_by_id(teacher_id)
-        if not teacher or not teacher.get('user_id'):
+        if not teacher:
+            return False
+        if not teacher.get('user_id'):
+            if not (new_username or new_password):
+                return False
+            self._ensure_user_account(
+                teacher, primary_username=new_username, direct_password=new_password,
+            )
+            teacher = self._repo.find_by_id(teacher_id)
+        if not teacher.get('user_id'):
             return False
         if new_username:
             self.db.execute(
@@ -191,7 +327,10 @@ class TeacherService:
             )
         if new_password:
             self.db.execute(
-                'UPDATE users SET password = ? WHERE id = ?',
+                'UPDATE users SET password = ?, force_password_change = 0, '
+                'initial_login_code_hash = NULL, initial_login_code_used = 1, '
+                'initial_login_code_expires = NULL, '
+                'initial_login_code_email_sent_at = NULL WHERE id = ?',
                 (generate_password_hash(new_password), teacher['user_id']),
             )
         self.db.commit()

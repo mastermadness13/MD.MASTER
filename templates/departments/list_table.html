@@ -1,5 +1,6 @@
 {% set total_pages = (total // per_page) + (1 if total % per_page else 0) %}
 {% from 'shared/components/pagination.html' import pagination %}
+{% from 'shared/components/empty_state.html' import render as empty_state %}
 
 <table class="search-table w-full text-right border-collapse text-sm">
   <thead>
@@ -25,7 +26,7 @@
           <span class="inline-flex items-center gap-1 bg-primary/10 text-primary px-2.5 py-1 rounded-full text-xs font-bold">
             {{ m.name }}
             <form method="post" action="{{ url_for('departments.department_delete_major', dept_id=d.id, major_id=m.id) }}" style="display:inline"
-                  onsubmit="return confirm('حذف الشعبة؟')">
+                  data-confirm-message="حذف الشعبة؟">
               <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="text-primary hover:text-red-600 transition-colors bg-transparent border-0 cursor-pointer p-0 inline-flex" title="حذف الشعبة">
                 <span class="material-symbols-outlined text-[14px]">close</span>
@@ -45,7 +46,7 @@
                   title="الإجراءات" aria-haspopup="true" aria-expanded="false">more_vert</button>
           <div class="action-menu hidden absolute end-0 top-full mt-1 z-30 min-w-[180px] rounded-xl border border-outline-variant bg-white shadow-lg overflow-hidden">
             <form method="post" action="{{ url_for('departments.departments_delete', id=d.id) }}"
-                  onsubmit="return confirm('تأكيد حذف القسم؟')">
+                  data-confirm-message="تأكيد حذف القسم؟">
               <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 transition-colors bg-transparent border-0 cursor-pointer text-right">
                 <span class="material-symbols-outlined text-lg shrink-0">delete</span>
@@ -59,14 +60,11 @@
     {% endfor %}
     {% else %}
     <tr>
-      <td colspan="5" class="px-4 py-14 text-center">
-        <span class="material-symbols-outlined text-6xl text-outline-variant block mb-3">domain_off</span>
+      <td colspan="5" class="px-4 py-6">
         {% if search %}
-        <h3 class="text-on-surface font-bold mb-1">لا توجد نتائج</h3>
-        <p class="text-on-surface-variant text-sm">لا توجد نتائج تطابق "{{ search }}"</p>
+        {{ empty_state(icon='search_off', title='لا توجد نتائج', text='لا توجد نتائج تطابق "' ~ search ~ '"') }}
         {% else %}
-        <h3 class="text-on-surface font-bold mb-1">لا توجد أقسام</h3>
-        <p class="text-on-surface-variant text-sm">لم يتم إنشاء أي أقسام بعد</p>
+        {{ empty_state(icon='domain_off', title='لا توجد أقسام', text='لم يتم إنشاء أي أقسام بعد') }}
         {% endif %}
       </td>
     </tr>

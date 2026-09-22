@@ -37,6 +37,7 @@ def _teacher_form(data):
     department_ids = [int(d) for d in department_ids if str(d).isdigit()]
     return {
         'name': (data.get('name') or '').strip(),
+        'username': (data.get('username') or '').strip(),
         'email': (data.get('email') or '').strip(),
         'phone': (data.get('phone') or '').strip(),
         'department_id': fk('department_id') or (department_ids[0] if department_ids else None),
@@ -81,10 +82,21 @@ def api_teachers_create():
     if not form['name']:
         return err('الاسم مطلوب', 422)
     db = get_db()
-    creds = teacher_service.create_teacher(db, form, department_ids=department_ids)
+    try:
+        creds = teacher_service.create_teacher(db, form, department_ids=department_ids)
+    except ValueError as exc:
+        message = str(exc)
+        if 'academic_number' in message:
+            return err('الرقم الكلية مستخدم مسبقاً', 422)
+        if 'Username' in message:
+            return err('نيك نيم الدخول مستخدم مسبقاً — اختر نيك نيم آخر', 422)
+        if 'too short' in message:
+            return err('نيك نيم الدخول قصير جداً — حرفان على الأقل', 422)
+        return err(message, 422)
     log_history(db, 'create', 'teacher', creds.get('id'),
                 f'إنشاء عضو هيئة التدريس: {form["name"]}')
-    return ok({'id': creds.get('id'), 'username': creds.get('username')}, status=201)
+    return ok({'id': creds.get('id'), 'username': creds.get('username'),
+               'code': creds.get('password')}, status=201)
 
 
 @bp.route('/<int:teacher_id>')
@@ -112,16 +124,6 @@ def api_teacher_update(teacher_id):
     if not form['name']:
         return err('الاسم مطلوب', 422)
 
-    new_username = (data.get('username') or '').strip() or None
-    new_password = (data.get('new_password') or '') or None
-    if new_username:
-        existing = db.execute(
-            'SELECT 1 FROM users WHERE username = ? AND id != ?',
-            (new_username, t['user_id']),
-        ).fetchone()
-        if existing:
-            return err('اسم المستخدم موجود مسبقاً', 409)
-
     teacher_service.update_teacher(db, teacher_id, form)
     db.execute('DELETE FROM teacher_departments WHERE teacher_id = ?', (teacher_id,))
     if department_ids:
@@ -130,13 +132,6 @@ def api_teacher_update(teacher_id):
             [(teacher_id, did) for did in department_ids],
         )
     db.commit()
-    if new_username or new_password:
-        try:
-            teacher_service.update_teacher_credentials(
-                db, teacher_id, new_username, new_password
-            )
-        except Exception:  # noqa: BLE001
-            return err('تم تحديث بيانات العضو لكن فشل تحديث بيانات الدخول', 200)
     log_history(db, 'update', 'teacher', teacher_id,
                 f'تعديل بيانات عضو هيئة التدريس: {form["name"]}')
     return ok(True)

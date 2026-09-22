@@ -1,4 +1,4 @@
-
+﻿
 (function () {
   var BOOT = window.TEACHERS_SUPER_ADMIN_COURSE_CONTENT_BOOT || {};
   'use strict';
@@ -7,6 +7,7 @@
   var COURSES = BOOT.courses || [];
   var SYLLABUS_BY_COURSE = BOOT.syllabusByCourse || {};
   var FORM_BY_COURSE = BOOT.formByCourse || {};
+  var VOCAB_BY_COURSE = BOOT.vocabByCourse || {};
   var selectedIds = {};
 
   var deptNames = [];
@@ -49,20 +50,96 @@
     return H.formStatusBadge ? H.formStatusBadge(c.form_status) : '';
   }
 
+  function pdfBadge(c) {
+    return H.pdfStateBadge ? H.pdfStateBadge(c.pdf_state) : '';
+  }
+
+  function pdfHasFile(c) {
+    return H.pdfStateHasFile ? H.pdfStateHasFile(c.pdf_state) : false;
+  }
+
+  // Layer 2: زر أساسي واحد يتبع pdf_state — الملف عمود لا قائمة منسدلة.
+  function pdfPrimaryAction(c) {
+    var state = c.pdf_state || 'none';
+    var form = FORM_BY_COURSE[c.id];
+    if (state === 'available' || state === 'approved') {
+      var href = form && form.download_url
+        ? form.download_url
+        : ((form && form.id) ? '/course-file/' + form.id + '?download=1' : '#');
+      return '<a href="' + href + '" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 text-xs font-bold transition-colors cursor-pointer" title="تحميل الملف">' +
+        '<span class="material-symbols-outlined text-base">download</span>تحميل</a>';
+    }
+    if (state === 'pending_review') {
+      return '<span class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-100 text-blue-700 text-xs font-bold whitespace-nowrap"><span class="material-symbols-outlined text-base">hourglass_top</span>قيد المراجعة</span>';
+    }
+    if (state === 'draft') {
+      var editUrl = c.latest_form_submission_id
+        ? '/teacher/super-admin/course-content/create?course_id=' + c.id + '&submission_id=' + c.latest_form_submission_id
+        : '/teacher/super-admin/course-content/create?course_id=' + c.id;
+      return '<a href="' + editUrl + '" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-yellow-100 text-yellow-800 hover:bg-yellow-200 text-xs font-bold transition-colors cursor-pointer" title="متابعة التعديل">' +
+        '<span class="material-symbols-outlined text-base">edit_document</span>متابعة</a>';
+    }
+    if (state === 'rejected') {
+      var editUrl2 = c.latest_form_submission_id
+        ? '/teacher/super-admin/course-content/create?course_id=' + c.id + '&submission_id=' + c.latest_form_submission_id
+        : '/teacher/super-admin/course-content/create?course_id=' + c.id;
+      return '<a href="' + editUrl2 + '" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 text-xs font-bold transition-colors cursor-pointer" title="إعادة التسليم">' +
+        '<span class="material-symbols-outlined text-base">refresh</span>إعادة</a>';
+    }
+    var newUrl = '/teacher/super-admin/course-content/create?course_id=' + c.id;
+    return '<a href="' + newUrl + '" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-primary-faint text-primary hover:bg-primary/15 text-xs font-bold transition-colors cursor-pointer" title="إنشاء نموذج المقرر">' +
+      '<span class="material-symbols-outlined text-base">add_circle</span>إنشاء</a>';
+  }
+
   function teachersCell(c) {
     return H.teachersCell ? H.teachersCell(c.teachers) : '';
   }
 
   var openDropdown = null;
+  var floatingMenu = null;
+
+  function onViewportChange() {
+    closeAllDropdowns();
+  }
 
   function closeAllDropdowns() {
-    document.querySelectorAll('.cc-actions-menu.open').forEach(function (m) { m.classList.remove('open'); });
+    if (floatingMenu && floatingMenu.parentNode) {
+      floatingMenu.parentNode.removeChild(floatingMenu);
+    }
+    floatingMenu = null;
     openDropdown = null;
+    window.removeEventListener('scroll', onViewportChange, true);
+    window.removeEventListener('resize', onViewportChange);
   }
 
   document.addEventListener('click', function (e) {
-    if (!e.target.closest('.cc-actions-dropdown')) closeAllDropdowns();
+    if (e.target.closest('.cc-actions-dropdown')) return;
+    if (floatingMenu && floatingMenu.contains(e.target)) return;
+    closeAllDropdowns();
   });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' || e.key === 'Esc') closeAllDropdowns();
+  });
+
+  // Cells الأعمدة الملخصة (النموذج/المادة): شارة الحالة + زر تحميل بجانبها (قائمة المقررات)
+  function pdfCell(c) {
+    var badge = pdfBadge(c);
+    var state = c.pdf_state || 'none';
+    var form = FORM_BY_COURSE[c.id];
+    var dl = '';
+    if ((state === 'available' || state === 'approved') && form && form.id) {
+      var formUrl = form.download_url || ('/course-file/' + form.id + '?download=1');
+      dl = '<a href="' + formUrl + '" title="تحميل النموذج" aria-label="تحميل النموذج" ' +
+        'class="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 transition-colors cursor-pointer">' +
+        '<span class="material-symbols-outlined text-sm">download</span></a>';
+    } else if ((state === 'available' || state === 'approved') && !form) {
+      dl = '<span title="النموذج معتمد لكن الملف غير مربوط (مفقود/محذوف)" aria-label="الملف غير مربوط" ' +
+        'class="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-amber-100 text-amber-700 cursor-help">' +
+        '<span class="material-symbols-outlined text-sm">link_off</span></span>';
+    }
+    return badge ? '<div class="flex items-center justify-center gap-1.5">' + badge + dl + '</div>' : dl;
+  }
 
   function actionsCell(c) {
     var syl = SYLLABUS_BY_COURSE[c.id];
@@ -71,35 +148,68 @@
       ? '/teacher/super-admin/course-content/create?course_id=' + c.id + '&submission_id=' + c.latest_form_submission_id
       : '/teacher/super-admin/course-content/create?course_id=' + c.id;
     var sylHref = (syl && syl.id)
-      ? '/teacher/super-admin/course-content/course-file/' + syl.id + '?download=1'
+      ? '/course-file/' + syl.id + '?download=1'
       : formEditUrl;
 
     var items = '';
     if (form && form.id) {
-      items += '<a href="/course-file/' + form.id + '?download=1"><span class="material-symbols-outlined text-base">description</span>تحميل المقرر</a>';
+      var formUrl = form.download_url || ('/course-file/' + form.id + '?download=1');
+      items += '<a href="' + formUrl + '"><span class="material-symbols-outlined text-base">description</span>تحميل المقرر</a>';
     }
     if (syl && syl.id) {
       items += '<a href="' + sylHref + '"><span class="material-symbols-outlined text-base">download</span>تحميل المنهج</a>';
     }
+    var vocab = VOCAB_BY_COURSE[c.id];
+    if (vocab && vocab.id) {
+      items += '<a href="/course-file/' + vocab.id + '?download=1"><span class="material-symbols-outlined text-base">menu_book</span>تحميل المفردات</a>';
+    }
+    items += '<a href="/teacher/super-admin/course-content/vocabulary/' + c.id + '"><span class="material-symbols-outlined text-base">upload_file</span>رفع/إدارة المفردات</a>';
     items += '<button type="button" onclick="ccPreparePrint(this)" data-cid="' + c.id + '" data-sid="' + (c.latest_form_submission_id || '') + '"><span class="material-symbols-outlined text-base">print</span>طباعة المقرر</button>';
     items += '<a href="' + formEditUrl + '"><span class="material-symbols-outlined text-base">edit</span>إنشاء/تعديل المقرر</a>';
 
     var uid = 'cc-drop-' + c.id;
-    return '<div class="cc-actions-dropdown">' +
-      '<button type="button" onclick="ccToggleDropdown(\'' + uid + '\', event)" class="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border bg-white hover:bg-primary-faint text-primary text-xs font-bold transition-all cursor-pointer">' +
-        '<span class="material-symbols-outlined text-base">more_vert</span>الإجراءات' +
+    return '<div class="flex items-center justify-center gap-2">' +
+      pdfPrimaryAction(c) +
+      '<div class="cc-actions-dropdown">' +
+      '<button type="button" onclick="ccToggleDropdown(\'' + uid + '\', event)" class="flex items-center gap-1 px-2 py-1.5 rounded-lg border border-border bg-white hover:bg-primary-faint text-text-secondary text-xs font-bold transition-all cursor-pointer">' +
+        '<span class="material-symbols-outlined text-base">more_vert</span>' +
       '</button>' +
       '<div id="' + uid + '" class="cc-actions-menu">' + items + '</div>' +
+      '</div>' +
     '</div>';
   }
 
   window.ccToggleDropdown = function (id, e) {
     e.stopPropagation();
-    var menu = document.getElementById(id);
-    if (!menu) return;
-    var isOpen = menu.classList.contains('open');
+    var source = document.getElementById(id);
+    if (!source) return;
+    var wasOpen = !!(openDropdown && openDropdown === id);
     closeAllDropdowns();
-    if (!isOpen) menu.classList.add('open');
+    if (wasOpen) return;
+
+    // قائمة عائمة في body — خارج أي حاوية مقتطعة (overflow)
+    var menu = document.createElement('div');
+    menu.className = 'cc-actions-menu open cc-menu-floating';
+    menu.innerHTML = source.innerHTML;
+    document.body.appendChild(menu);
+    floatingMenu = menu;
+    openDropdown = id;
+
+    var btn = e.currentTarget || e.target;
+    var rect = btn.getBoundingClientRect();
+    var menuH = menu.offsetHeight;
+    var spaceBelow = window.innerHeight - rect.bottom;
+    if (spaceBelow < menuH + 8) {
+      menu.style.bottom = (window.innerHeight - rect.top + 4) + 'px';
+    } else {
+      menu.style.top = (rect.bottom + 4) + 'px';
+    }
+    menu.style.right = Math.max(8, window.innerWidth - rect.right) + 'px';
+    menu.style.left = 'auto';
+    menu.style.position = 'fixed';
+
+    window.addEventListener('scroll', onViewportChange, true);
+    window.addEventListener('resize', onViewportChange);
   };
 
   function ccPreparePrint(btn) {
@@ -179,8 +289,12 @@
         if (!has) return false;
       }
       if (st) {
-        var status = c.form_status || '';
-        if (status !== st) return false;
+        if (st === '__has_file__') {
+          if (!pdfHasFile(c)) return false;
+        } else {
+          var status = c.form_status || '';
+          if (status !== st) return false;
+        }
       }
       if (!q) return true;
       var hay = ((c.name || '') + ' ' + (c.code || '') + ' ' + (c.dept_names || []).join(' ') + ' ' + (c.teachers || []).join(' ') + ' ' + semLabel(c.semester)).toLowerCase();
@@ -196,7 +310,7 @@
       var sb = SYLLABUS_BY_COURSE[b.id] ? 1 : 0;
       return sb - sa;
     });
-    document.getElementById('ccCourseCount').textContent = BOOT.total || rows.length;
+    document.getElementById('ccCourseCount').textContent = rows.length;
     if (!rows.length) {
       tbody.innerHTML = '<tr><td colspan="9" class="px-4 py-12 text-center"><div class="flex flex-col items-center gap-2"><span class="material-symbols-outlined text-4xl text-text-faint">search_off</span><p class="text-text-muted text-sm">لا توجد مقررات مطابقة</p></div></td></tr>';
       return;
@@ -209,7 +323,7 @@
         '<td class="px-3 py-2">' + deptCell(c) + '</td>' +
         '<td class="px-2 py-2 text-center text-xs font-semibold text-text-secondary">' + semLabel(c.semester) + '</td>' +
         '<td class="px-3 py-2">' + teachersCell(c) + '</td>' +
-        '<td class="px-2 py-2 text-center whitespace-nowrap">' + formStatusBadge(c) + '</td>' +
+        '<td class="px-2 py-2 text-center whitespace-nowrap">' + pdfCell(c) + '</td>' +
         '<td class="px-2 py-2">' + hoursBadge(c) + '</td>' +
         '<td class="px-2 py-2">' + actionsCell(c) + '</td>' +
       '</tr>';
@@ -292,11 +406,14 @@
     items += '<a href="' + formEditUrl + '"><span class="material-symbols-outlined text-base">edit</span>إنشاء/تعديل المقرر</a>';
 
     var uid = 'ccp-drop-' + c.id;
-    return '<div class="cc-actions-dropdown">' +
-      '<button type="button" onclick="ccToggleDropdown(\'' + uid + '\', event)" class="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border bg-white hover:bg-primary-faint text-primary text-xs font-bold transition-all cursor-pointer">' +
-        '<span class="material-symbols-outlined text-base">more_vert</span>الإجراءات' +
+    return '<div class="flex items-center justify-center gap-2 no-print">' +
+      pdfPrimaryAction(c) +
+      '<div class="cc-actions-dropdown">' +
+      '<button type="button" onclick="ccToggleDropdown(\'' + uid + '\', event)" class="flex items-center gap-1 px-2 py-1.5 rounded-lg border border-border bg-white hover:bg-primary-faint text-text-secondary text-xs font-bold transition-all cursor-pointer">' +
+        '<span class="material-symbols-outlined text-base">more_vert</span>' +
       '</button>' +
       '<div id="' + uid + '" class="cc-actions-menu">' + items + '</div>' +
+      '</div>' +
     '</div>';
   }
 
@@ -366,7 +483,7 @@
           '<td class="px-3 py-2">' + planDeptCell(c) + '</td>' +
           '<td class="px-2 py-2 text-center text-xs font-semibold text-text-secondary">' + semLabel(c.semester) + '</td>' +
           '<td class="px-3 py-2">' + teachersCell(c) + '</td>' +
-          '<td class="px-2 py-2 text-center whitespace-nowrap">' + formStatusBadge(c) + '</td>' +
+          '<td class="px-2 py-2 text-center whitespace-nowrap">' + pdfCell(c) + '</td>' +
           '<td class="px-2 py-2">' + hoursBadge(c) + '</td>' +
           '<td class="no-print px-2 py-2">' + planActionsCell(c) + '</td>' +
         '</tr>';

@@ -1,0 +1,24 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'faculty_admin_tasks' %}
+{% set page_title = 'المهام الإدارية' %}
+{% set members = members | default([]) %}
+{% set member_action = {'endpoint': 'faculty_performance.edit_assignments', 'label': 'إدارة المهام', 'icon': 'assignment_turned_in'} %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="page-header-info">
+      <span class="material-symbols-outlined page-header-icon">assignment_turned_in</span>
+      <div>
+        <h1 class="page-title">المهام الإدارية</h1>
+        <p class="page-subtitle">اختر العضو لإضافة وتعديل تكليفاته الإدارية</p>
+      </div>
+    </div>
+  </div>
+
+  {% include 'faculty_performance/_member_list.html' %}
+
+</div>
+{% endblock %}

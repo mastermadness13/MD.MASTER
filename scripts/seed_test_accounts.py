@@ -10,7 +10,7 @@ Adds a login-able account for each role so the whole system can be tried:
 
 Existing usernames are skipped.  All new accounts share the password
 ``test123``.  Pre-existing seed accounts keep their credentials
-(``superadmin``/``admin`` = ``admin123``, teachers = ``123456``).
+(``office_manager``/``admin`` = ``admin123``, teachers = ``123456``).
 
 Usage:  python scripts/seed_test_accounts.py
 """

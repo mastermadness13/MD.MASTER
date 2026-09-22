@@ -40,37 +40,37 @@ def _pws(db_path):
 def test_fresh_db_generates_random_password_not_admin123(tmp_path, monkeypatch, capsys):
     db_path = _make_db(tmp_path, monkeypatch, None)
     pws = _pws(db_path)
-    assert 'superadmin' in pws
-    assert not check_password_hash(pws['superadmin'], 'admin123')
+    assert 'office_manager' in pws
+    assert not check_password_hash(pws['office_manager'], 'admin123')
     m = _PW_PAT.search(capsys.readouterr().out)
     assert m, 'expected a printed generated password'
-    assert check_password_hash(pws['superadmin'], m.group(1))
+    assert check_password_hash(pws['office_manager'], m.group(1))
 
 
 def test_admin_password_env_is_used_everywhere(tmp_path, monkeypatch, capsys):
     db_path = _make_db(tmp_path, monkeypatch, 'S3curePass!2026')
     pws = _pws(db_path)
-    assert check_password_hash(pws['superadmin'], 'S3curePass!2026')
+    assert check_password_hash(pws['office_manager'], 'S3curePass!2026')
     assert 'generated super_admin password:' not in capsys.readouterr().out
 
     from scripts.seed import bootstrap_defaults
     bootstrap_defaults(str(db_path))
     pws2 = _pws(db_path)
-    assert check_password_hash(pws2['superadmin'], 'S3curePass!2026')
+    assert check_password_hash(pws2['office_manager'], 'S3curePass!2026')
     assert check_password_hash(pws2['admin'], 'S3curePass!2026')
-    assert 'generated login superadmin/admin password:' not in capsys.readouterr().out
+    assert 'generated login office_manager/admin password:' not in capsys.readouterr().out
 
 
 def test_existing_account_password_never_overwritten(tmp_path, monkeypatch, capsys):
     _make_db(tmp_path, monkeypatch, 'First-Pass!')
     from scripts.seed import bootstrap_defaults
     dp = str(tmp_path / 'seed_pw_test.db')
-    superadmin_before = _pws(dp)['superadmin']
+    office_manager_before = _pws(dp)['office_manager']
 
     monkeypatch.setenv('ADMIN_PASSWORD', 'Second-Pass!')
     bootstrap_defaults(dp)
 
     pws = _pws(dp)
-    assert pws['superadmin'] == superadmin_before
-    assert check_password_hash(pws['superadmin'], 'First-Pass!')
-    assert 'generated login superadmin/admin password:' not in capsys.readouterr().out
+    assert pws['office_manager'] == office_manager_before
+    assert check_password_hash(pws['office_manager'], 'First-Pass!')
+    assert 'generated login office_manager/admin password:' not in capsys.readouterr().out

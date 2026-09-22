@@ -202,7 +202,7 @@ def rooms_edit(id):
 
 @bp.route('/<int:id>')
 @login_required
-@permission_required('rooms.manage')
+@permission_required('rooms.view')
 def room_detail(id):
     db = get_db()
     r = classroom_service.get_room_detail(db, id)
@@ -210,7 +210,8 @@ def room_detail(id):
         flash('القاعة غير موجودة', 'error')
         return redirect(url_for('classrooms.rooms_list'))
     return render_template('classrooms/detail.html', room=r,
-                          user=current_user())
+                          user=current_user(),
+                          can_manage=has_permission(session.get('role', ''), 'rooms.manage', session.get('department_id')))
 
 
 @bp.route('/delete/<int:id>', methods=['POST'])

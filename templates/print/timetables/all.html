@@ -44,7 +44,7 @@
                 {% for e in cell %}
                 <div style="margin: 2px 0;">
                   <div style="font-weight: 700;">{{ e.course_name or '—' }}</div>
-                  <div>{{ teacher_label(e.teacher_name) }}</div>
+                  <div>{{ teacher_label(e.teacher_name) if e.teacher_name else 'محاضرة بدون أستاذ' }}</div>
                   <div>قاعة: {{ e.room_name or '—' }}</div>
                   <div dir="ltr">{{ format_time12(e.start_time) or '—' }}{% if e.end_time %} ← {{ format_time12(e.end_time) }}{% endif %}</div>
                 </div>

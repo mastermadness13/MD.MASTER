@@ -12,8 +12,8 @@
 
   --text-primary: #181c20;
   --text-secondary: #4c4452;
-  --text-muted: #7d7483;
-  --text-faint: #a79db0;
+  --text-muted: #71687a;
+  --text-faint: #6f6a76;
   --text-on-primary: #ffffff;
 
   --primary: #320058;
@@ -62,10 +62,10 @@
   --sidebar-footer-border: #e0e3e8;
   --sidebar-settings-bg: #f1f4f9;
 
-  --border: #e0e3e8;
+  --border: #d8dbe2;
   --border-subtle: #f1f4f9;
-  --border-accent: #cfc2d3;
-  --border-input: #cfc2d3;
+  --border-accent: #c2b5cb;
+  --border-input: #9a8fa2;
   --border-input-focus: #320058;
 
   --table-header: #f7f9ff;
@@ -77,13 +77,13 @@
   --topbar-bg: #ffffff;
   --header-bg: #ffffff;
 
-  --overlay: rgba(0, 0, 0, 0.4);
-  --overlay-light: rgba(0, 0, 0, 0.3);
+  --overlay: rgba(15, 13, 20, 0.45);
+  --overlay-light: rgba(15, 13, 20, 0.3);
 
-  --shadow-sm: rgba(0, 0, 0, 0.04);
-  --shadow-md: rgba(0, 0, 0, 0.08);
-  --shadow-lg: rgba(0, 0, 0, 0.12);
-  --shadow-xl: rgba(0, 0, 0, 0.2);
+  --shadow-sm: rgba(15, 17, 26, 0.03);
+  --shadow-md: rgba(15, 17, 26, 0.06);
+  --shadow-lg: rgba(15, 17, 26, 0.09);
+  --shadow-xl: rgba(15, 17, 26, 0.12);
 
   --icon-bg-1: #f1dbff;
   --icon-bg-2: #dbeafe;
@@ -136,10 +136,14 @@
 
   --app-content-bg: rgba(247, 249, 255, 0.48);
 
-  --radius-sm: 0.125rem;
-  --radius-default: 0.25rem;
-  --radius-md: 0.375rem;
-  --radius-lg: 0.5rem;
-  --radius-xl: 0.75rem;
+  --radius-sm: 0.375rem;
+  --radius-default: 0.875rem;
+  --radius-md: 0.875rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.125rem;
   --radius-full: 9999px;
+
+  /* Apple-style control metrics */
+  --control-h: 44px;
+  --control-radius: 0.875rem;
 }

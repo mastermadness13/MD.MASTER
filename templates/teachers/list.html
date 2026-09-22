@@ -9,7 +9,6 @@
 {% set department_id = department_id | default('') %}
 {% set total_pages = (total // per_page) + (1 if total % per_page else 0) %}
 {% set can_manage = has_permission('teachers.manage') %}
-{# الجدول الكامل يظهر لجميع الأدوار (بما فيها مكتب أعضاء هيئة التدريس و مدير النظام) بعد إزالة القائمة المختصرة #}
 {% set show_full_table = True %}
 
 {% block head_extra %}
@@ -57,31 +56,101 @@
 
   {% if show_full_table %}
 
-  <!-- Search & Filter -->
-  <form id="teachersSearchForm" method="GET" action="{{ url_for('teachers.teachers_list') }}"
-        class="flex flex-wrap items-center gap-3 mb-4">
-    <div class="relative flex-1 min-w-[240px]">
-      <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">search</span>
-      <input type="text" name="search" value="{{ search or '' }}" placeholder="البحث بالاسم أو البريد أو الرقم الكلية..."
-             class="search-input w-full bg-white border border-outline-variant rounded-lg pr-10 pl-10 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
-      <button type="button" class="search-clear absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-error transition-colors bg-transparent border-0 cursor-pointer"
-              style="display: {{ 'flex' if search else 'none' }}" title="مسح البحث">
-        <span class="material-symbols-outlined text-lg">close</span>
-      </button>
-      <span class="material-symbols-outlined search-spinner absolute left-3 top-1/2 -translate-y-1/2 text-primary animate-spin" style="display:none">hourglass_empty</span>
+  <!-- ═══════════════ Search & Filter ═══════════════ -->
+  <form id="teachersSearchForm" method="GET"
+        class="mb-6 overflow-hidden rounded-2xl border border-outline-variant bg-white shadow-sm">
+
+    <!-- رأس البطاقة -->
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-outline-variant/60 bg-gradient-to-l from-primary/5 via-surface-container/60 to-surface-container/60 px-4 py-3">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-[20px] text-primary">person_search</span>
+        <h2 class="text-sm font-extrabold tracking-tight text-on-surface">البحث والتصفية</h2>
+      </div>
+
+      <span class="search-results-count inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
+        <span class="material-symbols-outlined text-[14px]">group</span>
+        {{ total }} عضو
+      </span>
     </div>
-    <select name="department_id" class="bg-white border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40 min-w-[160px]">
-      <option value="">جميع الأقسام</option>
-      {% for d in departments %}
-      <option value="{{ d.id }}" {{ 'selected' if department_id|string == d.id|string }}>{{ d.name }}</option>
-      {% endfor %}
-    </select>
-    <button type="submit"
-            class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm">
-      <span class="material-symbols-outlined text-lg">search</span>
-      بحث
-    </button>
-    <span class="search-results-count text-xs font-bold text-on-surface-variant bg-surface-container px-3 py-1.5 rounded-full">{{ total }} عضو</span>
+
+    <!-- الحقول -->
+    <div class="grid grid-cols-1 gap-4 p-4 md:grid-cols-12">
+
+      <!-- البحث النصي -->
+      <div class="md:col-span-8">
+        <label for="searchInput"
+               class="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">
+          البحث
+        </label>
+
+        <div class="relative">
+          <span class="material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[20px] text-outline">search</span>
+
+          <input type="text"
+                 id="searchInput"
+                 name="search"
+                 value="{{ search or '' }}"
+                 autocomplete="off"
+                 placeholder="ابحث بالاسم أو البريد أو الرقم الكلية..."
+                 class="search-input w-full rounded-xl border border-outline-variant bg-surface-container-lowest py-2.5 pr-11 pl-10 text-sm font-bold text-on-surface transition placeholder:font-medium placeholder:text-on-surface-variant/60 focus:border-primary focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary/15">
+
+          <!-- زر المسح -->
+          <button type="button"
+                  class="search-clear absolute left-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-on-surface-variant transition hover:bg-error/10 hover:text-error"
+                  style="display: {{ 'flex' if search else 'none' }}"
+                  title="مسح البحث">
+            <span class="material-symbols-outlined text-[18px]">close</span>
+          </button>
+
+          <!-- مؤشر التحميل -->
+          <span class="material-symbols-outlined search-spinner absolute left-3 top-1/2 -translate-y-1/2 text-primary animate-spin"
+                style="display:none">progress_activity</span>
+        </div>
+      </div>
+
+      <!-- القسم -->
+      <div class="md:col-span-4">
+        <label for="departmentFilter"
+               class="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">
+          القسم
+        </label>
+
+        <div class="relative">
+          <select id="departmentFilter"
+                  name="department_id"
+                  class="w-full appearance-none rounded-xl border border-outline-variant bg-surface-container-lowest py-2.5 pr-3 pl-9 text-sm font-bold text-on-surface transition focus:border-primary focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary/15">
+            <option value="">جميع الأقسام</option>
+            {% for d in departments %}
+            <option value="{{ d.id }}" {{ 'selected' if department_id|string == d.id|string }}>{{ d.name }}</option>
+            {% endfor %}
+          </select>
+          <span class="material-symbols-outlined pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[18px] text-outline">expand_more</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- شريط سفلي -->
+    <div class="flex flex-wrap items-center justify-between gap-3 border-t border-outline-variant/60 bg-surface-container/40 px-4 py-2.5">
+      <p class="flex items-center gap-1.5 text-[11px] font-medium text-on-surface-variant">
+        <span class="material-symbols-outlined text-[14px]">info</span>
+        اضغط Enter أو زر البحث لتحديث النتائج
+      </p>
+
+      <div class="flex items-center gap-2">
+        <button type="button"
+                id="resetFilters"
+                class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-on-surface-variant transition hover:bg-error/10 hover:text-error">
+          <span class="material-symbols-outlined text-[16px]">restart_alt</span>
+          إعادة تعيين
+        </button>
+
+        <button type="submit"
+                class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-1.5 text-xs font-bold text-on-primary shadow-sm transition hover:bg-primary/90 focus:outline-none focus:ring-4 focus:ring-primary/20">
+          <span class="material-symbols-outlined text-[16px]">search</span>
+          بحث
+        </button>
+      </div>
+    </div>
   </form>
 
   <!-- Teachers Table -->
@@ -114,6 +183,18 @@
       </button>
     </div>
     <div class="p-4 shrink-0">
+      {% if not assign_default_dept %}
+      <div class="mb-3">
+        <label for="assignDeptSelect" class="block text-xs font-bold text-on-surface-variant mb-1.5">القسم المستهدف</label>
+        <select id="assignDeptSelect"
+                class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2.5 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+          <option value="">اختر القسم...</option>
+          {% for d in departments %}
+          <option value="{{ d.id }}">{{ d.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
       <div class="relative">
         <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">search</span>
         <input type="text" id="assignSearchInput" placeholder="بحث بالاسم أو الرقم الكلية..."
@@ -153,10 +234,10 @@ window.TEACHERS_ASSIGN_BOOT = {
       pool: {{ url_for('teachers.teacher_pool') | tojson }},
       assign: {{ url_for('teachers.dept_assign') | tojson }}
     },
-  csrfToken: {{ csrf_token() | tojson }}
+  csrfToken: {{ csrf_token() | tojson }},
+  defaultDept: {{ (assign_default_dept) | default(None) | tojson }}
 };
 </script>
 <script src="{{ url_for('static', filename='js/teachers_assign.js') }}"></script>
-
 {% endif %}
 {% endblock %}

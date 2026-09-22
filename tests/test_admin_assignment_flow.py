@@ -19,7 +19,7 @@ def _mkdb(dirname):
     with open('database/schema.sql', encoding='utf-8') as f:
         conn.executescript(f.read())
     ensure_schema(conn)
-    conn.execute("INSERT OR IGNORE INTO users (username,password,role,label) VALUES ('superadmin','x','super_admin','مدير')")
+    conn.execute("INSERT OR IGNORE INTO users (username,password,role,label) VALUES ('office_manager','x','faculty_affairs','مدير مكتب أعضاء هيئة التدريس')")
     conn.execute("INSERT OR IGNORE INTO departments (name,semesters,majors,hidden,has_sections,type) VALUES ('قسم',4,4,0,1,'academic')")
     conn.execute("INSERT INTO teachers (name, department_id) VALUES ('مدرس', (SELECT id FROM departments LIMIT 1))")
     conn.commit()
@@ -51,8 +51,8 @@ def setup(tmp_path, monkeypatch, app_fx):
     c = app_fx.test_client()
     with c.session_transaction() as s:
         s['user_id'] = 1
-        s['role'] = 'super_admin'
-        s['username'] = 'superadmin'
+        s['role'] = 'faculty_affairs'
+        s['username'] = 'office_manager'
         s['department_id'] = None
         s['_csrf_token'] = 't'
     return c, db_path, tid

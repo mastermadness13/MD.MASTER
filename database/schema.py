@@ -17,8 +17,10 @@ from __future__ import annotations
 
 import datetime
 import os
+import re
 import secrets
 import sqlite3
+from pathlib import Path
 
 from database.domains import sync_domain_registry
 from database.seed_data import (
@@ -75,6 +77,85 @@ def _ensure_periods_table(conn: sqlite3.Connection) -> None:
 
 # /     /     >---- نتأكد جداول القوائم المرجعية موجودة ومتعبّاة بالبيانات
 def _ensure_lookup_tables(conn: sqlite3.Connection) -> None:
+    existing_tables = {
+        row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'").fetchall()
+    }
+
+    table_defs = {
+        'room_types': '''
+            CREATE TABLE IF NOT EXISTS room_types (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name_ar TEXT NOT NULL,
+                name_en TEXT NOT NULL,
+                icon TEXT,
+                css_class TEXT,
+                sort_order INTEGER DEFAULT 0,
+                UNIQUE(name_ar),
+                UNIQUE(name_en)
+            )
+        ''',
+        'room_statuses': '''
+            CREATE TABLE IF NOT EXISTS room_statuses (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name_ar TEXT NOT NULL,
+                name_en TEXT NOT NULL,
+                css_class TEXT,
+                sort_order INTEGER DEFAULT 0,
+                UNIQUE(name_ar),
+                UNIQUE(name_en)
+            )
+        ''',
+        'floors': '''
+            CREATE TABLE IF NOT EXISTS floors (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name_ar TEXT NOT NULL,
+                name_en TEXT NOT NULL,
+                sort_order INTEGER DEFAULT 0,
+                UNIQUE(name_ar),
+                UNIQUE(name_en)
+            )
+        ''',
+        'qualifications': '''
+            CREATE TABLE IF NOT EXISTS qualifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name_ar TEXT NOT NULL,
+                name_en TEXT NOT NULL,
+                UNIQUE(name_ar),
+                UNIQUE(name_en)
+            )
+        ''',
+        'academic_ranks': '''
+            CREATE TABLE IF NOT EXISTS academic_ranks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name_ar TEXT NOT NULL,
+                name_en TEXT NOT NULL,
+                sort_order INTEGER DEFAULT 0,
+                UNIQUE(name_ar),
+                UNIQUE(name_en)
+            )
+        ''',
+        'classifications': '''
+            CREATE TABLE IF NOT EXISTS classifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name_ar TEXT NOT NULL,
+                name_en TEXT NOT NULL,
+                UNIQUE(name_ar),
+                UNIQUE(name_en)
+            )
+        ''',
+        'rank_rules': '''
+            CREATE TABLE IF NOT EXISTS rank_rules (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                qualification_id INTEGER NOT NULL REFERENCES qualifications(id) ON DELETE CASCADE,
+                rank_id INTEGER NOT NULL REFERENCES academic_ranks(id) ON DELETE CASCADE,
+                UNIQUE(qualification_id, rank_id)
+            )
+        '''
+    }
+    for table_name, ddl in table_defs.items():
+        if table_name not in existing_tables:
+            conn.execute(ddl)
+
     # /     /     >---- الجداول الافتراضية (الأنواع، الحالات، الطوابق، المؤهلات، الرتب، التصنيفات)
     tables_data = [
         ('room_types', ['name_ar', 'name_en', 'icon', 'css_class', 'sort_order'],
@@ -316,27 +397,38 @@ def _backfill_teacher_fks(conn: sqlite3.Connection) -> None:
 
 # /     /     >---- نتأكد فهارس التشغيل الأساسية موجودة
 def _ensure_runtime_indexes(conn: sqlite3.Connection) -> None:
+    existing_tables = {
+        row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'").fetchall()
+    }
+
     # /     /     >---- فهارس الأساتذة والمقررات
-    conn.execute('CREATE INDEX IF NOT EXISTS idx_teachers_department ON teachers(department)')
-    conn.execute('CREATE INDEX IF NOT EXISTS idx_courses_department_year ON courses(department, year)')
-    conn.execute('CREATE INDEX IF NOT EXISTS idx_courses_code ON courses(code)')
+    if 'teachers' in existing_tables:
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_teachers_department ON teachers(department)')
+    if 'courses' in existing_tables:
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_courses_department_year ON courses(department, year)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_courses_code ON courses(code)')
     # /     /     >---- فهارس الجدول الدراسي
-    conn.execute('CREATE INDEX IF NOT EXISTS idx_timetable_day_semester ON timetable(day, semester)')
-    conn.execute('CREATE INDEX IF NOT EXISTS idx_timetable_course_id ON timetable(course_id)')
-    conn.execute('CREATE INDEX IF NOT EXISTS idx_timetable_teacher_id ON timetable(teacher_id)')
-    conn.execute('CREATE INDEX IF NOT EXISTS idx_timetable_room_id ON timetable(room_id)')
-    conn.execute('CREATE INDEX IF NOT EXISTS idx_timetable_created_at ON timetable(created_at DESC)')
+    if 'timetable' in existing_tables:
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_timetable_day_semester ON timetable(day, semester)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_timetable_course_id ON timetable(course_id)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_timetable_teacher_id ON timetable(teacher_id)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_timetable_room_id ON timetable(room_id)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_timetable_created_at ON timetable(created_at DESC)')
     # /     /     >---- فهارس المتطلبات السابقة
-    conn.execute('CREATE INDEX IF NOT EXISTS idx_course_prerequisites_course ON course_prerequisites(course_id)')
-    conn.execute('CREATE INDEX IF NOT EXISTS idx_course_prerequisites_prereq ON course_prerequisites(prerequisite_id)')
+    if 'course_prerequisites' in existing_tables:
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_course_prerequisites_course ON course_prerequisites(course_id)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_course_prerequisites_prereq ON course_prerequisites(prerequisite_id)')
     # /     /     >---- فهارس المستخدمين
-    conn.execute('CREATE INDEX IF NOT EXISTS idx_teachers_user_id ON teachers(user_id)')
-    conn.execute('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)')
-    conn.execute('CREATE INDEX IF NOT EXISTS idx_users_department_id ON users(department_id)')
+    if 'teachers' in existing_tables:
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_teachers_user_id ON teachers(user_id)')
+    if 'users' in existing_tables:
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_users_department_id ON users(department_id)')
     # /     /     >---- فهارس جدول الامتحانات
-    conn.execute('CREATE INDEX IF NOT EXISTS idx_exam_schedule_department_id ON exam_schedule(department_id)')
-    conn.execute('CREATE INDEX IF NOT EXISTS idx_exam_schedule_exam_date ON exam_schedule(exam_date)')
-    conn.execute('CREATE INDEX IF NOT EXISTS idx_exam_schedule_course_id ON exam_schedule(course_id)')
+    if 'exam_schedule' in existing_tables:
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_exam_schedule_department_id ON exam_schedule(department_id)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_exam_schedule_exam_date ON exam_schedule(exam_date)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_exam_schedule_course_id ON exam_schedule(course_id)')
 
 
 # /     /     >---- نعيد بناء الجداول اللي حرجتها department_id مش SET NULL
@@ -586,6 +678,10 @@ def _migrate_single_active_timetable_version(conn: sqlite3.Connection) -> None:
     left several rows marked 'active', keep the newest one active and mark
     the rest 'superseded' so the timetable page stays predictable.
     """
+    if 'timetable_versions' not in {
+        row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'").fetchall()
+    }:
+        return
     # /     /     >---- نجيب المجموعات اللي فيها أكثر من نسخة فعالة
     groups = conn.execute(
         'SELECT department_id, semester '
@@ -611,6 +707,37 @@ def _migrate_single_active_timetable_version(conn: sqlite3.Connection) -> None:
             'WHERE department_id = ? AND semester = ? AND status = \'active\' AND id != ?',
             (group['department_id'], group['semester'], keep_id),
         )
+
+
+# /     /     >---- نضمن أن الأقسام الأكاديمية تصل للفصل الثامن (مرة وحدة بس)
+def _migrate_department_semesters_eight(conn: sqlite3.Connection) -> None:
+    """Raise academic departments' semester count to 8.
+
+    التدريب الميداني ومشروع التخرج يقعان في الفصل الثامن، لذلك كل قسم أكاديمي
+    (``semesters > 1``) يجب أن يعرض ثمانية فصول. القواعد القديمة بقيت على 7،
+    فهذه الهجرة مرة واحدة ترفعها إلى 8 حتى يظهر الفصل الثامن في نماذج
+    إضافة/تعديل المادة وفي عرض الخطة الدراسية.
+    """
+    _DEPT_SEMESTERS_MIGRATION = 'migrate_department_semesters_eight_v1'
+    # /     /     >---- لو تمت قبل، نرجع فوراً
+    if _migration_done(conn, _DEPT_SEMESTERS_MIGRATION):
+        return
+
+    if 'departments' not in {
+        row[0] for row in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table'"
+        ).fetchall()
+    }:
+        _mark_migration_done(conn, _DEPT_SEMESTERS_MIGRATION)
+        return
+
+    conn.execute(
+        'UPDATE departments SET semesters = 8 '
+        'WHERE semesters IS NOT NULL AND semesters > 1 AND semesters < 8 '
+        "AND (type IS NULL OR type != 'administrative') "
+        'AND (hidden IS NULL OR hidden = 0)'
+    )
+    _mark_migration_done(conn, _DEPT_SEMESTERS_MIGRATION)
 
 
 # /     /     >---- هجرة من السنة القديمة للفصول المسمّاة (مرة وحدة بس)
@@ -1240,114 +1367,143 @@ def _cleanup_legacy_user_data(conn: sqlite3.Connection) -> None:
 
     from werkzeug.security import generate_password_hash
 
-    # /     /     >---- 1. إعادة تعيين الأدوار: sub_admin ← support_admin ← super_admin
-    conn.execute("UPDATE users SET role = 'support_admin' WHERE role = 'sub_admin'")
-    conn.execute("UPDATE users SET role = 'super_admin' WHERE role = 'support_admin'")
+    tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'").fetchall()}
+    has_users = 'users' in tables
+    has_teachers = 'teachers' in tables
+    has_user_roles = 'user_roles' in tables
+    user_cols = _get_column_names(conn, 'users') if has_users else set()
+    teacher_cols = _get_column_names(conn, 'teachers') if has_teachers else set()
+
+    # /     /     >---- 1. ننظف روابط الأدوار القديمة المحذوفة من النظام
+    if has_user_roles:
+        conn.execute(
+            "DELETE FROM user_roles WHERE role NOT IN "
+            "('research_development', 'faculty_affairs', 'head_of_department', 'teacher', 'exam')"
+        )
 
     # /     /     >---- 2. نحذف مستخدمي الطلاب ونفصل FKs للأساتذة
-    conn.execute(
-        'UPDATE teachers SET user_id = NULL '
-        "WHERE user_id IN (SELECT id FROM users WHERE role = 'student')"
-    )
-    conn.execute("DELETE FROM users WHERE role = 'student'")
+    if has_users and has_teachers and 'role' in user_cols and 'user_id' in teacher_cols:
+        conn.execute(
+            'UPDATE teachers SET user_id = NULL '
+            "WHERE user_id IN (SELECT id FROM users WHERE role = 'student')"
+        )
+        conn.execute("DELETE FROM users WHERE role = 'student'")
 
     # /     /     >---- 3. الأدوار الإدارية ما تحملش قسم أكاديمي
-    conn.execute(
-        "UPDATE users SET department_id = NULL "
-        "WHERE role IN ('super_admin', 'faculty_affairs', 'research_development', 'exam')"
-    )
+    if has_users and 'department_id' in user_cols and 'role' in user_cols:
+        conn.execute(
+            "UPDATE users SET department_id = NULL "
+            "WHERE role IN ('faculty_affairs', 'research_development', 'exam')"
+        )
 
     # /     /     >---- 4. ننشف تكرار رؤساء الأقسام: نحتفظ بالأقدم والباقي مدرّس
-    duplicates = conn.execute(
-        """
-        SELECT department_id, MIN(id) AS keep_id
-        FROM users
-        WHERE role = 'head_of_department' AND department_id IS NOT NULL
-        GROUP BY department_id
-        HAVING COUNT(*) > 1
-        """
-    ).fetchall()
-    for row in duplicates:
-        conn.execute(
-            "UPDATE users SET role = 'teacher' "
-            "WHERE role = 'head_of_department' AND department_id = ? AND id != ?",
-            (row['department_id'], row['keep_id']),
-        )
+    if has_users and 'department_id' in user_cols and 'role' in user_cols:
+        duplicates = conn.execute(
+            """
+            SELECT department_id, MIN(id) AS keep_id
+            FROM users
+            WHERE role = 'head_of_department' AND department_id IS NOT NULL
+            GROUP BY department_id
+            HAVING COUNT(*) > 1
+            """
+        ).fetchall()
+        for row in duplicates:
+            conn.execute(
+                "UPDATE users SET role = 'teacher' "
+                "WHERE role = 'head_of_department' AND department_id = ? AND id != ?",
+                (row['department_id'], row['keep_id']),
+            )
 
     # /     /     >---- 5. نفصل روابط أساتذة تشير لحسابات غير أستاذ/رئيس قسم
-    conn.execute('''
-        UPDATE teachers SET user_id = NULL
-        WHERE user_id IS NOT NULL
-        AND NOT EXISTS (
-            SELECT 1 FROM users u
-            LEFT JOIN user_roles ur ON ur.user_id = u.id
-            WHERE u.id = teachers.user_id
-              AND (u.role IN ('teacher', 'head_of_department')
-                   OR ur.role IN ('teacher', 'head_of_department'))
-        )
-    ''')
+    if has_users and has_teachers and has_user_roles and 'user_id' in teacher_cols and 'role' in user_cols:
+        conn.execute('''
+            UPDATE teachers SET user_id = NULL
+            WHERE user_id IS NOT NULL
+            AND NOT EXISTS (
+                SELECT 1 FROM users u
+                LEFT JOIN user_roles ur ON ur.user_id = u.id
+                WHERE u.id = teachers.user_id
+                  AND (u.role IN ('teacher', 'head_of_department')
+                       OR ur.role IN ('teacher', 'head_of_department'))
+            )
+        ''')
 
-    # /     /     >---- 6. نتأكد من وجود مدير نظام واحد بالضبط
-    sa = conn.execute(
-        "SELECT id FROM users WHERE role = 'super_admin'"
-    ).fetchone()
-    if sa:
-        conn.execute(
-            "UPDATE users SET username = 'superadmin' WHERE id = ?",
-            (sa['id'],)
-        )
-    else:
-        # /     /     >---- ما فيش مدير: ننشئه (بكلمة مرور من البيئة أو مولّدة)
-        admin_pw = os.environ.get('ADMIN_PASSWORD')
-        if not admin_pw:
-            admin_pw = secrets.token_urlsafe(12)
-            print(f'[schema] No ADMIN_PASSWORD env set - generated super_admin password: {admin_pw}')
-            print('[schema] Store it now; it will not be shown again.\n')
-        conn.execute(
-            "INSERT INTO users (username, password, role, label) VALUES (?, ?, ?, ?)",
-            ('superadmin', generate_password_hash(admin_pw), 'super_admin', 'مدير النظام')
-        )
+    # /     /     >---- 6. نتأكد من وجود حساب مدير المكتب الأساسي بالضبط
+    if has_users and 'username' in user_cols and 'label' in user_cols:
+        om = conn.execute(
+            "SELECT id, label FROM users WHERE username = 'office_manager'"
+        ).fetchone()
+        if om and 'role' in user_cols:
+            conn.execute(
+                "UPDATE users SET role = 'faculty_affairs', label = 'مدير مكتب أعضاء هيئة التدريس' "
+                "WHERE id = ?",
+                (om['id'],),
+            )
+        elif 'role' in user_cols and 'password' in user_cols and 'label' in user_cols:
+            # /     /     >---- ما فيش مدير: ننشئه (بكلمة مرور من البيئة أو مولّدة)
+            # /     /     >---- ونحذف أي حسابات قديمة بدور super_admin نهائياً
+            if has_teachers and 'user_id' in teacher_cols and 'role' in user_cols:
+                conn.execute(
+                    'UPDATE teachers SET user_id = NULL '
+                    "WHERE user_id IN (SELECT id FROM users WHERE role = 'super_admin')"
+                )
+            if has_user_roles:
+                conn.execute("DELETE FROM user_roles WHERE role = 'super_admin'")
+            if 'role' in user_cols:
+                conn.execute("DELETE FROM users WHERE role = 'super_admin'")
+            admin_pw = os.environ.get('ADMIN_PASSWORD')
+            if not admin_pw:
+                admin_pw = secrets.token_urlsafe(12)
+                print(f'[schema] No ADMIN_PASSWORD env set - generated office_manager password: {admin_pw}')
+                print('[schema] Store it now; it will not be shown again.\n')
+            conn.execute(
+                "INSERT INTO users (username, password, role, label) VALUES (?, ?, ?, ?)",
+                ('office_manager', generate_password_hash(admin_pw), 'faculty_affairs',
+                 'مدير مكتب أعضاء هيئة التدريس'),
+            )
 
     # /     /     >---- 7. نعيد تسمية أسماء مستخدمين teacher.* للأسماء العربية
-    teacher_users = conn.execute(
-        "SELECT u.id, u.username, t.name FROM users u "
-        "JOIN teachers t ON t.user_id = u.id "
-        "WHERE u.username LIKE 'teacher.%'"
-    ).fetchall()
-    teacher_pw_hash = generate_password_hash(os.environ.get('TEACHER_DEFAULT_PASSWORD', '123456'))
-    for tu in teacher_users:
-        arabic_name = tu['name']
-        if arabic_name and arabic_name != tu['username']:
-            already = conn.execute(
-                'SELECT id FROM users WHERE username = ? AND id != ?',
-                (arabic_name, tu['id'])
-            ).fetchone()
-            if not already:
-                conn.execute(
-                    'UPDATE users SET username = ? WHERE id = ?',
+    if has_users and has_teachers and 'username' in user_cols and 'user_id' in teacher_cols and 'name' in teacher_cols:
+        teacher_users = conn.execute(
+            "SELECT u.id, u.username, t.name FROM users u "
+            "JOIN teachers t ON t.user_id = u.id "
+            "WHERE u.username LIKE 'teacher.%'"
+        ).fetchall()
+        teacher_pw_hash = generate_password_hash(os.environ.get('TEACHER_DEFAULT_PASSWORD', '123456'))
+        for tu in teacher_users:
+            arabic_name = tu['name']
+            if arabic_name and arabic_name != tu['username']:
+                already = conn.execute(
+                    'SELECT id FROM users WHERE username = ? AND id != ?',
                     (arabic_name, tu['id'])
-                )
-                conn.execute(
-                    'UPDATE users SET password = ? WHERE id = ?',
-                    (teacher_pw_hash, tu['id'])
-                )
+                ).fetchone()
+                if not already:
+                    conn.execute(
+                        'UPDATE users SET username = ? WHERE id = ?',
+                        (arabic_name, tu['id'])
+                    )
+                    conn.execute(
+                        'UPDATE users SET password = ? WHERE id = ?',
+                        (teacher_pw_hash, tu['id'])
+                    )
 
     # /     /     >---- 8. ننظف حسابات الاختبار والسجلات اليتيمة
-    t1_user = conn.execute(
-        "SELECT id FROM users WHERE username = 'teacher1'"
-    ).fetchone()
-    if t1_user:
-        conn.execute('DELETE FROM users WHERE id = ?', (t1_user['id'],))
-    orphan_fake = conn.execute(
-        "SELECT id FROM teachers WHERE name = 'أستاذ تجريبي'"
-    ).fetchone()
-    if orphan_fake:
-        conn.execute('DELETE FROM teachers WHERE id = ?', (orphan_fake['id'],))
-    orphan_pytest = conn.execute(
-        "SELECT id FROM teachers WHERE name = 'Pytest Teacher' AND user_id IS NULL"
-    ).fetchall()
-    for op in orphan_pytest:
-        conn.execute('DELETE FROM teachers WHERE id = ?', (op['id'],))
+    if has_users and has_teachers and 'username' in user_cols and 'name' in teacher_cols and 'user_id' in teacher_cols:
+        t1_user = conn.execute(
+            "SELECT id FROM users WHERE username = 'teacher1'"
+        ).fetchone()
+        if t1_user:
+            conn.execute('DELETE FROM users WHERE id = ?', (t1_user['id'],))
+        orphan_fake = conn.execute(
+            "SELECT id FROM teachers WHERE name = 'أستاذ تجريبي'"
+        ).fetchone()
+        if orphan_fake:
+            conn.execute('DELETE FROM teachers WHERE id = ?', (orphan_fake['id'],))
+        orphan_pytest = conn.execute(
+            "SELECT id FROM teachers WHERE name = 'Pytest Teacher' AND user_id IS NULL"
+        ).fetchall()
+        for op in orphan_pytest:
+            conn.execute('DELETE FROM teachers WHERE id = ?', (op['id'],))
 
     conn.commit()
     _mark_migration_done(conn, _CLEANUP_MIGRATION_NAME)
@@ -1360,7 +1516,7 @@ _DEDUP_MIGRATION_NAME = 'deduplicate_teachers_v1'
 _FK_TABLES_NO_UNIQUE = [
     'timetable', 'faculty_attendance', 'course_files',
     'course_content_submissions', 'teacher_messages', 'teacher_documents',
-    'teacher_materials', 'teacher_requests', 'classroom_change_requests',
+    'teacher_materials', 'teacher_requests',
     'faculty_research_activities', 'faculty_admin_assignments', 'faculty_leaves',
 ]
 _FK_TABLES_WITH_UNIQUE = [
@@ -1642,6 +1798,10 @@ def _ensure_academic_number_index(conn: sqlite3.Connection) -> None:
     if 'teachers' not in existing_tables:
         return
 
+    teacher_cols = _get_column_names(conn, 'teachers')
+    if 'academic_number' not in teacher_cols:
+        return
+
     # /     /     >---- نحول القيم الوهمية إلى NULL
     conn.execute('''
         UPDATE teachers SET academic_number = NULL
@@ -1661,6 +1821,23 @@ def _ensure_academic_number_index(conn: sqlite3.Connection) -> None:
 # /     /     >---- جداول تقييم أداء هيئة التدريس (كشف العبء التدريسي)
 def _ensure_faculty_performance_tables(conn: sqlite3.Connection, existing_tables: set) -> None:
     """Create tables for the faculty performance evaluation (كشف العبء التدريسي)."""
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS faculty_course_student_counts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+            course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+            academic_year TEXT NOT NULL,
+            semester INTEGER NOT NULL,
+            student_count INTEGER NOT NULL DEFAULT 0,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(teacher_id, course_id, academic_year, semester)
+        )
+    """)
+    conn.execute(
+        'CREATE INDEX IF NOT EXISTS idx_fcsc_teacher_term '
+        'ON faculty_course_student_counts(teacher_id, academic_year, semester)'
+    )
 
     # /     /     >---- قواعد العبء التدريسي
     if 'faculty_workload_rules' not in existing_tables:
@@ -1812,6 +1989,20 @@ def _seed_admin_assignment_types(conn: sqlite3.Connection) -> None:
         ('مدير مكتب أعضاء هيئة التدريس', 12, 4),
         ('مدير مكتب الشؤون العلمية', 12, 5),
         ('منسق القاعات', 6, 6),
+        ('عميد الكلية', 18, 7),
+        ('مدير مكتب الجودة', 12, 8),
+        ('مدير مكتب الدراسة العالية', 12, 9),
+        ('رئيس القسم العلمي', 18, 10),
+        ('رئيس قسم الشؤون الفنية والمعامل', 12, 11),
+        ('رئيس قسم البحث والتطوير والمناهج', 18, 12),
+        ('رئيس قسم التدريب الميداني', 12, 13),
+        ('رئيس قسم الدبلوم المهني', 12, 14),
+        ('منسق الشعبة العلمية', 6, 15),
+        ('منسق الجودة بالقسم', 6, 16),
+        ('منسق الدراسة العالية بالقسم', 6, 17),
+        ('منسق المواد العامة بالقسم العلمي', 6, 18),
+        ('منسق تدريب ميداني', 6, 19),
+        ('عضو تحرير مجلة علمية', 6, 20),
     ]
     for name, hours, order in types:
         conn.execute(
@@ -2071,8 +2262,232 @@ def _migrate_teacher_taught_courses(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+# /     /     >---- رمز الدخول المؤقت لأعضاء هيئة التدريس (ينشئه مكتب أعضاء الهيئة)
+def _migrate_initial_login_columns(conn: sqlite3.Connection) -> None:
+    """Add temporary initial-login columns to ``users``.
+
+    When the Faculty Office creates a new faculty member, the system mints a
+    one-time initial login code that is emailed to the member.  The code is
+    stored in hashed form (never plain text), expires after a short window,
+    and is invalidated on the first successful login (``initial_login_code_used``).
+    """
+    cols = _get_column_names(conn, 'users')
+    if not cols:
+        return
+    for col, ddl in [
+        # /     /     >---- رمز الدخول المؤقت (يُحفظ مُشفّراً — لا نصوص صريحة)
+        ('initial_login_code_hash', 'TEXT'),
+        # /     /     >---- هل استعمل الرمز فعلاً؟ (يفسد بعد أول دخول ناجح)
+        ('initial_login_code_used', 'INTEGER NOT NULL DEFAULT 0'),
+        # /     /     >---- تنتهي صلاحية الرمز بعد هذه اللحظة
+        ('initial_login_code_expires', 'TIMESTAMP'),
+        # /     /     >---- هل أُرسل البريد بالرمز؟ (لمنع إعادة إرسال متكررة)
+        ('initial_login_code_email_sent_at', 'TIMESTAMP'),
+    ]:
+        if col not in cols:
+            _safe_add_column(conn, 'users', col, ddl)
+
+
+# /     /     >---- الشعبة (A/B/C) للقسم العام في الجدول الدراسي
+def _migrate_timetable_section(conn: sqlite3.Connection) -> None:
+    """Add ``section`` to ``timetable`` for General Department sections A/B/C.
+
+    The General Department (``القسم العام``) has ONE main semester but several
+    parallel sections (شعبة أ/ب/ج); those are SECTIONS, not additional
+    semesters.  The column is nullable and only meaningful for that department.
+    """
+    cols = _get_column_names(conn, 'timetable')
+    if not cols:
+        return
+    if 'section' not in cols:
+        _safe_add_column(conn, 'timetable', 'section', "TEXT DEFAULT ''")
+
+
+# /     /     >---- توسيع جدول الامتحانات: شعب/مجموعات وموقع وتعدد أسابيع
+def _migrate_exam_schedule_columns(conn: sqlite3.Connection) -> None:
+    """Extend ``exam_schedule`` for the second administrative exam stage.
+
+    After the department creates its exam timetable, the examination
+    administration can edit it: change course/date/day/time/room/location,
+    split exams into groups/parts, and spread schedules over 2+ weeks.
+    These columns support that workflow.
+    """
+    cols = _get_column_names(conn, 'exam_schedule')
+    if not cols:
+        return
+    for col, ddl in [
+        # /     /     >---- قسمة الامتحان لمجموعات/أجزاء
+        ('group_number', 'INTEGER NOT NULL DEFAULT 1'),
+        ('group_label', "TEXT DEFAULT ''"),
+        # /     /     >---- الموقع (مبنى/قاعة بديلة عند التعديل)
+        ('location', "TEXT DEFAULT ''"),
+        # /     /     >---- أسبوع الامتحان (دعم جدول يمتد لأسبوعين أو أكثر)
+        ('week_number', 'INTEGER NOT NULL DEFAULT 1'),
+        # /     /     >---- مدة الامتحان بالدقائق (قابلة للتعديل)
+        ('duration_minutes', 'INTEGER DEFAULT 0'),
+        # /     /     >---- جهة/مكتب آخر تعديل (تدقيق سير العمل)
+        ('last_edited_by', "TEXT DEFAULT ''"),
+        ('last_edited_at', 'TIMESTAMP'),
+    ]:
+        if col not in cols:
+            _safe_add_column(conn, 'exam_schedule', col, ddl)
+
+
+# /     /     >---- تحصين الرموز: إخفاء أي رمز دخول مؤقت قديم غير مهشم
+def _migrate_obscure_legacy_initial_codes(conn: sqlite3.Connection) -> None:
+    """Best-effort cleanup: never leave plain initial codes visible.
+
+    If a legacy path stored a raw code string (in case it was ever written),
+    blank it out here so the Faculty Office view can never display a plain
+    credential again.  Idempotent and additive — no user data is touched.
+    """
+    cols = _get_column_names(conn, 'users')
+    if not cols or 'initial_login_code_hash' not in cols:
+        return
+    for legacy in ('initial_login_code', 'initial_code', 'initial_login_code_plain_latest'):
+        if legacy in cols:
+            conn.execute(
+                f'UPDATE users SET {legacy} = NULL WHERE {legacy} IS NOT NULL'
+            )
+
+
+def _split_top_level_commas(sql: str) -> list[str]:
+    """Split SQL declarations on commas at the top level only."""
+    parts: list[str] = []
+    current = []
+    depth = 0
+    in_single = False
+    in_double = False
+    i = 0
+    while i < len(sql):
+        ch = sql[i]
+        if ch == "'" and not in_double:
+            in_single = not in_single
+        elif ch == '"' and not in_single:
+            in_double = not in_double
+        elif not in_single and not in_double:
+            if ch in '([':
+                depth += 1
+            elif ch in ')]':
+                depth = max(0, depth - 1)
+            elif ch == ',' and depth == 0:
+                part = ''.join(current).strip()
+                if part:
+                    parts.append(part)
+                current = []
+                i += 1
+                continue
+        current.append(ch)
+        i += 1
+    tail = ''.join(current).strip()
+    if tail:
+        parts.append(tail)
+    return parts
+
+
+def _schema_column_map() -> dict[str, dict[str, str]]:
+    """Extract column definitions from database/schema.sql for legacy backfills."""
+    schema_path = Path(__file__).with_name('schema.sql')
+    if not schema_path.exists():
+        return {}
+
+    text = schema_path.read_text(encoding='utf-8')
+    tables: dict[str, dict[str, str]] = {}
+    matches = re.finditer(
+        r'CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*\((.*?)\)\s*;',
+        text,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    for match in matches:
+        table_name = match.group(1).lower()
+        body = match.group(2)
+        columns: dict[str, str] = {}
+        for chunk in _split_top_level_commas(body):
+            stripped = chunk.strip()
+            if not stripped or stripped.upper().startswith(('PRIMARY', 'UNIQUE', 'FOREIGN', 'CHECK', 'CONSTRAINT')):
+                continue
+            column_match = re.match(r'"?([A-Za-z_][A-Za-z0-9_]*)"?\s+(.+)', stripped, flags=re.IGNORECASE)
+            if not column_match:
+                continue
+            columns[column_match.group(1).lower()] = column_match.group(2).strip()
+        tables[table_name] = columns
+    return tables
+
+
+_SCHEMA_COLUMN_MAP = _schema_column_map()
+
+
+def _ensure_core_identity_schema(conn: sqlite3.Connection) -> None:
+    """Backfill core identity tables for older SQLite databases created before
+    the full schema.sql was applied.
+    """
+    existing_tables = {
+        row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'").fetchall()
+    }
+
+    if 'users' not in existing_tables:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE,
+                password TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'teacher',
+                label TEXT DEFAULT '',
+                department_id INTEGER REFERENCES departments(id) ON DELETE SET NULL,
+                email TEXT,
+                phone TEXT,
+                password_changed_at TIMESTAMP,
+                is_active INTEGER NOT NULL DEFAULT 1,
+                force_password_change INTEGER NOT NULL DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+    if 'user_roles' not in existing_tables:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS user_roles (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                role TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(user_id, role)
+            )
+        """)
+    if 'teachers' not in existing_tables:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS teachers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                email TEXT,
+                phone TEXT,
+                department TEXT,
+                academic_number TEXT,
+                national_id TEXT,
+                qualification TEXT,
+                academic_rank TEXT,
+                classification TEXT,
+                contract_date TEXT,
+                tasks TEXT,
+                department_id INTEGER REFERENCES departments(id) ON DELETE SET NULL,
+                hod_department_id INTEGER REFERENCES departments(id) ON DELETE SET NULL,
+                qualification_id INTEGER REFERENCES qualifications(id) ON DELETE SET NULL,
+                rank_id INTEGER REFERENCES academic_ranks(id) ON DELETE SET NULL,
+                classification_id INTEGER REFERENCES classifications(id) ON DELETE SET NULL,
+                user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+    for table_name, columns in _SCHEMA_COLUMN_MAP.items():
+        if table_name not in {t.lower() for t in existing_tables}:
+            continue
+        for column_name, ddl in columns.items():
+            if column_name.lower() not in {c.lower() for c in _get_column_names(conn, table_name)}:
+                _safe_add_column(conn, table_name, column_name, ddl)
+
+
 # /     /     >---- الوظيفة الرئيسية: نضمن كل الجداول والهجرات
 def ensure_schema(conn: sqlite3.Connection) -> None:
+    _ensure_core_identity_schema(conn)
     _ensure_migration_log(conn)
     _cleanup_legacy_user_data(conn)
     _deduplicate_teachers_v1(conn)
@@ -2291,6 +2706,8 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
             _safe_add_column(conn, 'teachers', 'position', 'TEXT')
         if 'semester' not in teacher_columns:
             _safe_add_column(conn, 'teachers', 'semester', 'TEXT')
+        if 'section' not in teacher_columns:
+            _safe_add_column(conn, 'teachers', 'section', 'TEXT')
         if 'first_lecture_date' not in teacher_columns:
             _safe_add_column(conn, 'teachers', 'first_lecture_date', 'TEXT')
         if 'work_start_date' not in teacher_columns:
@@ -2313,6 +2730,9 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
             _safe_add_column(conn, 'users', 'email', 'TEXT')
         if 'password_changed_at' not in user_columns:
             _safe_add_column(conn, 'users', 'password_changed_at', 'TIMESTAMP')
+        if 'force_password_change' not in user_columns:
+            _safe_add_column(conn, 'users', 'force_password_change',
+                             'INTEGER NOT NULL DEFAULT 0')
         if 'phone' not in user_columns:
             _safe_add_column(conn, 'users', 'phone', 'TEXT')
         if 'theme' not in user_columns:
@@ -2335,6 +2755,9 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
         # /     /     >---- نموذج الأدوار الجديد
         _migrate_role_model(conn)
         _migrate_user_roles(conn)
+        # /     /     >---- رمز الدخول المؤقت لأعضاء هيئة التدريس
+        _migrate_initial_login_columns(conn)
+        _migrate_obscure_legacy_initial_codes(conn)
 
     # /     /     >---- طلبات استرجاع كلمة المرور
     if 'password_resets' not in existing_tables:
@@ -2384,10 +2807,10 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
 
     _ensure_periods_table(conn)
 
-    # /     /     >---- القسم العام فصل واحد، والباقي أقصى 7
+    # /     /     >---- القسم العام فصل واحد، والباقي أقصى 8 (حق التدريب الميداني ومشروع التخرج)
     if 'departments' in existing_tables:
         conn.execute("UPDATE departments SET semesters = 1 WHERE name = 'القسم العام'")
-        conn.execute("UPDATE departments SET semesters = 7 WHERE name != 'القسم العام' AND semesters > 7")
+        conn.execute("UPDATE departments SET semesters = 8 WHERE name != 'القسم العام' AND semesters > 8")
 
     # /     /     >---- نضيف أعمدة الأقسام الناقصة
     if 'departments' in existing_tables:
@@ -2411,6 +2834,9 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
             _safe_add_column(conn, 'departments', 'display_name', 'TEXT')
         if 'abbreviation' not in dept_columns:
             _safe_add_column(conn, 'departments', 'abbreviation', 'TEXT')
+        # /     /     >---- ترحيل الأنظمة القديمة: الأقسام الأكاديمية المقيدة بـ 7 فصول تُرفع إلى 8
+        if 'type' in _get_column_names(conn, 'departments'):
+            conn.execute("UPDATE departments SET semesters = 8 WHERE name != 'القسم العام' AND type = 'academic' AND semesters = 7")
 
     # /     /     >---- ملفات الأقسام العامة (نبذة/رؤية/رسالة...)
     if 'department_profiles' not in existing_tables:
@@ -2455,6 +2881,8 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
             _safe_add_column(conn, 'timetable', 'start_time', 'TEXT DEFAULT ""')
         if 'end_time' not in tt_columns:
             _safe_add_column(conn, 'timetable', 'end_time', 'TEXT DEFAULT ""')
+        # /     /     >---- شعبة أ/ب/ج للقسم العام (شعب وليست فصولاً)
+        _migrate_timetable_section(conn)
 
     # /     /     >---- أعمدة التوقيع لجدول الامتحانات
     if 'exam_schedule' in existing_tables:
@@ -2478,6 +2906,9 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
         if 'day_ar' not in es_columns:
             _safe_add_column(conn, 'exam_schedule', 'day_ar', "TEXT NOT NULL DEFAULT ''")
 
+    # /     /     >---- المرحلة الإدارية الثانية لجدول الامتحانات (تعديل/تقسيم/توزيع)
+    _migrate_exam_schedule_columns(conn)
+
     # /     /     >---- نملأ يوم الأسبوع العربي من تاريخ الامتحان
     if 'exam_schedule' in existing_tables:
         conn.execute("""UPDATE exam_schedule SET day_ar = CASE CAST(strftime('%w', exam_date) AS INTEGER)
@@ -2487,10 +2918,15 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
             WHERE exam_date != '' AND day_ar = ''""")
 
     _migrate_department_fks(conn)
+    # /     /     >---- كل قسم أكاديمي يوصل للفصل الثامن (تدريب ميداني/مشروع تخرج)
+    _migrate_department_semesters_eight(conn)
     _ensure_runtime_indexes(conn)
     conn.execute('CREATE INDEX IF NOT EXISTS idx_history_created_at ON history(created_at DESC)')
-    conn.execute('CREATE INDEX IF NOT EXISTS idx_faculty_attendance_teacher ON faculty_attendance(teacher_id)')
-    conn.execute('CREATE INDEX IF NOT EXISTS idx_faculty_attendance_date ON faculty_attendance(date)')
+    if 'faculty_attendance' in {
+        row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'").fetchall()
+    }:
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_faculty_attendance_teacher ON faculty_attendance(teacher_id)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_faculty_attendance_date ON faculty_attendance(date)')
 
     # ── Messaging / Objection System tables ──────────────────────────
     # /     /     >---- رسائل/اعتراضات الأساتذة
@@ -2626,30 +3062,10 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
         """)
         conn.execute('CREATE INDEX IF NOT EXISTS idx_dept_announcements_dept ON department_announcements(department_id)')
 
-    # /     /     >---- طلبات تبديل القاعات
-    if 'classroom_change_requests' not in existing_tables:
-        conn.execute("""
-            CREATE TABLE classroom_change_requests (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
-                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                department_id INTEGER REFERENCES departments(id) ON DELETE SET NULL,
-                schedule_id INTEGER NOT NULL REFERENCES timetable(id) ON DELETE CASCADE,
-                current_classroom_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
-                requested_classroom_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
-                reason TEXT NOT NULL,
-                status TEXT NOT NULL DEFAULT 'Pending',
-                hod_comment TEXT DEFAULT '',
-                reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
-                reviewed_at TIMESTAMP,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        conn.execute('CREATE INDEX IF NOT EXISTS idx_ccr_teacher ON classroom_change_requests(teacher_id)')
-        conn.execute('CREATE INDEX IF NOT EXISTS idx_ccr_dept ON classroom_change_requests(department_id)')
-        conn.execute('CREATE INDEX IF NOT EXISTS idx_ccr_status ON classroom_change_requests(status)')
-        conn.execute('CREATE INDEX IF NOT EXISTS idx_ccr_timetable ON classroom_change_requests(schedule_id)')
+    # /     /     >---- إزالة طلبات تبديل القاعات (ميزة محذوفة من النظام)
+    if 'classroom_change_requests' in existing_tables:
+        conn.execute('DROP TABLE IF EXISTS classroom_change_requests')
+        conn.execute("DELETE FROM history WHERE entity_type = 'classroom_change_request'")
 
     # /     /     >---- إعدادات الامتحانات
     if 'exam_settings' not in existing_tables:
@@ -2753,21 +3169,27 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
             'WHERE department_id IS NOT NULL AND deleted_at IS NULL'
         )
         # /     /     >---- (ب) الأقسام المستنتجة من السجل التدريسي
-        conn.execute(
-            'INSERT OR IGNORE INTO teacher_departments (teacher_id, department_id) '
-            'SELECT DISTINCT teacher_id, department_id FROM teacher_taught_courses '
-            'WHERE department_id IS NOT NULL AND teacher_id IS NOT NULL'
-        )
+        if 'teacher_taught_courses' in {
+            row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'").fetchall()
+        }:
+            conn.execute(
+                'INSERT OR IGNORE INTO teacher_departments (teacher_id, department_id) '
+                'SELECT DISTINCT teacher_id, department_id FROM teacher_taught_courses '
+                'WHERE department_id IS NOT NULL AND teacher_id IS NOT NULL'
+            )
         # /     /     >---- (ب) الأقسام من حصص الجدول الفعّال
-        conn.execute(
-            'INSERT OR IGNORE INTO teacher_departments (teacher_id, department_id) '
-            'SELECT DISTINCT t.teacher_id, t.department_id '
-            'FROM timetable t '
-            'WHERE t.teacher_id IS NOT NULL AND t.department_id IS NOT NULL '
-            'AND t.deleted_at IS NULL '
-            'AND (t.version_id IS NULL OR t.version_id IN '
-            '(SELECT id FROM timetable_versions WHERE status = \'active\'))'
-        )
+        if 'timetable' in {
+            row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'").fetchall()
+        }:
+            conn.execute(
+                'INSERT OR IGNORE INTO teacher_departments (teacher_id, department_id) '
+                'SELECT DISTINCT t.teacher_id, t.department_id '
+                'FROM timetable t '
+                'WHERE t.teacher_id IS NOT NULL AND t.department_id IS NOT NULL '
+                'AND t.deleted_at IS NULL '
+                'AND (t.version_id IS NULL OR t.version_id IN '
+                '(SELECT id FROM timetable_versions WHERE status = \'active\'))'
+            )
         # /     /     >---- (ج) رؤساء الأقسام دائماً ضمن قسمهم
         conn.execute(
             'INSERT OR IGNORE INTO teacher_departments (teacher_id, department_id) '

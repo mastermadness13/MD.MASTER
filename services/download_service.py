@@ -39,8 +39,8 @@ def _send_course_file(file_row):
 
 
 # /     /     >---- التحميل الأساسي: يبعث ملفات course_files المعتمدة/المنشورة فقط
-def serve_course_file(db, file_id, status=('published',)):
-    """Canonical download — serves published ``course_files`` rows."""
+def serve_course_file(db, file_id, status=('approved', 'published')):
+    """Canonical public download for approved or published course files."""
     return _send_course_file(public_service.get_course_file(db, file_id, status=status))
 
 

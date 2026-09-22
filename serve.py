@@ -18,6 +18,11 @@ Environment knobs:
                                                        behind HTTPS offload). Only set
                                                        when the app is NOT directly
                                                        internet-facing.
+     TRUSTED_PROXY_IPS=1.2.3.4,10.0.0.0/8              comma-separated source IPs of the
+                                                       fronting proxy(ies). REQUIRED
+                                                       together with TRUST_PROXY_HEADERS;
+                                                       without it proxy headers are
+                                                       ignored (fail-safe).
 """
 
 from __future__ import annotations
@@ -26,8 +31,8 @@ import argparse
 import os
 
 from waitress import serve
-from werkzeug.middleware.proxy_fix import ProxyFix
 
+from core.wsgi_proxy import build_wsgi_chain
 from flask_db import init_db, bootstrap_defaults
 from app import create_app
 
@@ -37,9 +42,14 @@ bootstrap_defaults()
 # /     /     >---- نصنع التطبيق
 app = create_app()
 
-# /     /     >---- إذا السيرفر وراء بروكسي (مثل Nginx)، نضبط الهيدرز
-if os.environ.get('TRUST_PROXY_HEADERS', '').strip().lower() in ('1', 'true', 'yes'):
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+# /     /     >---- إذا السيرفر وراء بروكسي (مثل Nginx)، نثق بالهيدرز
+# /     /     >---- فقط من مصدر موثوق (TRUSTED_PROXY_IPS) — البقية تُقدَّم دون تعديل
+trust_proxy = os.environ.get('TRUST_PROXY_HEADERS', '').strip().lower() in ('1', 'true', 'yes')
+app.wsgi_app = build_wsgi_chain(
+    app.wsgi_app,
+    trust_proxy_headers=trust_proxy,
+    trusted_proxy_ips=os.environ.get('TRUSTED_PROXY_IPS', ''),
+)
 
 # ─────────────────────────────────────────────
 

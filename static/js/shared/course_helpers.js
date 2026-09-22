@@ -31,6 +31,57 @@
     'rejected': 'bg-red-100 text-red-700'
   };
 
+  var PDF_STATE_LABELS = {
+    'available': 'الملف متاح للتحميل',
+    'approved': 'معتمد/منشور',
+    'pending_review': 'قيد المراجعة',
+    'draft': 'مسودة',
+    'rejected': 'مرفوض',
+    'none': 'لا يوجد ملف'
+  };
+
+  var PDF_STATE_COLORS = {
+    'available': 'bg-green-100 text-green-700',
+    'approved': 'bg-green-100 text-green-700',
+    'pending_review': 'bg-blue-100 text-blue-700',
+    'draft': 'bg-surface-dim text-on-surface-variant',
+    'rejected': 'bg-red-100 text-red-700',
+    'none': 'bg-surface-zebra text-text-muted'
+  };
+
+  var PDF_STATE_ICONS = {
+    'available': 'download_done',
+    'approved': 'verified',
+    'pending_review': 'hourglass_top',
+    'draft': 'edit_document',
+    'rejected': 'block',
+    'none': 'file_off'
+  };
+
+  /**
+   * Render a unified pdf_state badge (the file-status column).
+   * @param {string} state - pdf_state key (available/approved/pending_review/draft/rejected/none)
+   * @returns {string} HTML string
+   */
+  function pdfStateBadge(state) {
+    var key = state || 'none';
+    var label = PDF_STATE_LABELS[key] || key;
+    var color = PDF_STATE_COLORS[key] || 'bg-surface-zebra text-text-muted';
+    var icon = PDF_STATE_ICONS[key] || 'insert_drive_file';
+    return '<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold whitespace-nowrap ' + color + '" title="' + esc(label) + '">' +
+      '<span class="material-symbols-outlined text-[14px]">' + icon + '</span>' + esc(label) + '</span>';
+  }
+
+/**
+   * True when a course row has any file/submission state (has-file filter).
+   * @param {string} state - pdf_state key
+   * @returns {boolean}
+   */
+  function pdfStateHasFile(state) {
+    var key = state || 'none';
+    return key !== 'none';
+  }
+
   /**
    * Render a form status badge.
    * @param {string} status - The status key
@@ -96,10 +147,14 @@
   window.CourseHelpers = {
     esc: esc,
     formStatusBadge: formStatusBadge,
+    pdfStateBadge: pdfStateBadge,
+    pdfStateHasFile: pdfStateHasFile,
     teachersCell: teachersCell,
     deptBadges: deptBadges,
     prereqBadges: prereqBadges,
     STATUS_LABELS: STATUS_LABELS,
-    STATUS_COLORS: STATUS_COLORS
+    STATUS_COLORS: STATUS_COLORS,
+    PDF_STATE_LABELS: PDF_STATE_LABELS,
+    PDF_STATE_COLORS: PDF_STATE_COLORS
   };
 })();

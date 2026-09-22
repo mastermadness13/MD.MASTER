@@ -132,7 +132,7 @@
                     {% if e.course_code %}<span class="text-[10px] text-on-surface-variant font-normal">({{ e.course_code }})</span>{% endif %}
                   </div>
                   <div class="flex items-center gap-1 text-xs text-on-surface-variant mb-0.5">
-                    <span class="material-symbols-outlined text-[14px]">person</span>{{ e.teacher_name or '—' }}
+                    <span class="material-symbols-outlined text-[14px]">person</span>{{ teacher_label(e.teacher_name) if e.teacher_name else 'محاضرة بدون أستاذ' }}
                   </div>
                   <div class="flex items-center gap-1 text-xs text-on-surface-variant mb-0.5">
                     <span class="material-symbols-outlined text-[14px]">meeting_room</span>{{ e.room_name or '—' }}
@@ -140,8 +140,8 @@
                     {% if e.student_section %}<span class="text-on-surface-variant">· ش{{ e.student_section }}</span>{% endif %}
                   </div>
                   <div class="flex flex-wrap items-center gap-1.5 mt-1">
-                    <span class="{% if frm and frm.url %}text-green-600{% else %}text-red-400{% endif %} text-[10px] font-bold">● مقرر</span>
-                    <span class="{% if syk and syk.url %}text-green-600{% else %}text-red-400{% endif %} text-[10px] font-bold">● منهاج</span>
+                    <span class="{% if frm and frm.url %}status-ok{% else %}status-missing{% endif %} text-xs font-bold">● مقرر</span>
+                    <span class="{% if syk and syk.url %}status-ok{% else %}status-missing{% endif %} text-xs font-bold">● منهاج</span>
                     {% if frm and frm.url %}
                     <a href="{{ frm.url }}{% if '?' in frm.url %}&{% else %}?{% endif %}download=1"
                        class="inline-flex items-center gap-1 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-2 py-1 rounded-md text-[11px] font-bold transition no-underline">
@@ -213,8 +213,8 @@
                 <span>{{ e.course_name }}</span>
                 {% if e.course_code %}<span class="code">({{ e.course_code }})</span>{% endif %}
                 <span class="tt-mday-count" style="margin-inline-start:auto">
-                  <span class="{% if frm and frm.url %}text-green-600{% else %}text-red-400{% endif %}">● مقرر</span>
-                  <span class="{% if syk and syk.url %}text-green-600{% else %}text-red-400{% endif %} ms-1">● منهاج</span>
+                  <span class="{% if frm and frm.url %}status-ok{% else %}status-missing{% endif %}">● مقرر</span>
+                  <span class="{% if syk and syk.url %}status-ok{% else %}status-missing{% endif %} ms-1">● منهاج</span>
                 </span>
               </div>
               <div class="tt-mrow tt-mtime">
@@ -222,7 +222,7 @@
                 <span dir="ltr">{% if e.start_time %}{{ format_time12(e.start_time) }}{% if e.end_time %} ← {{ format_time12(e.end_time) }}{% endif %}{% endif %}</span>
               </div>
               <div class="tt-mrow">
-                <span class="material-symbols-outlined">person</span> {{ e.teacher_name or '—' }}
+                <span class="material-symbols-outlined">person</span> {{ teacher_label(e.teacher_name) if e.teacher_name else 'محاضرة بدون أستاذ' }}
               </div>
               <div class="tt-mrow">
                 <span class="material-symbols-outlined">meeting_room</span> {{ e.room_name or '—' }}
@@ -276,5 +276,5 @@ window.TIMETABLE_LIST_BOOT = {
   urls: { deleteEntry: {{ url_for('timetable.timetable_delete_entry') | tojson }} }
 };
 </script>
-<script src="{{ url_for('static', filename='js/timetable_list.js') }}"></script>
+<script src="{{ url_for('static', filename='js/timetable_pages.js') }}"></script>
 {% endblock %}

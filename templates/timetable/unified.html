@@ -1,0 +1,239 @@
+{% extends 'shared/layouts/base.html' %}
+{% set page_title = 'الجدول الموحد' %}
+{% set sidebar_active = nav_active | default('timetable.timetable') %}
+
+{% block head_extra %}
+<style>
+  .tt-cell { border: 1px solid transparent; }
+  .tt-cell.dragging { opacity: .5; }
+  .tt-empty.drop-hover, .tt-cell.drop-hover { outline: 2px dashed var(--primary); outline-offset: -2px; }
+  .tt-mempty { text-align:center; padding: 40px 16px; color: var(--text-muted); font-weight: 700; }
+  .tt-mday-head { display:flex; align-items:center; gap:8px; font-weight:700; margin-bottom:8px; }
+  .tt-mday-count { margin-inline-start:auto; font-size:12px; color:var(--text-muted); }
+  .tt-mcard { border:1px solid var(--border); border-radius:14px; padding:12px; margin-bottom:10px; }
+  .tt-mcard-title { display:flex; align-items:center; gap:6px; font-weight:800; font-size:14px; flex-wrap:wrap; }
+  .tt-mrow { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-muted); margin-top:4px; }
+  .tt-actions { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .tt-chip { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; padding:4px 8px; border-radius:8px; }
+  .tt-chip-primary { background:var(--primary); color:var(--text-on-primary); }
+  .tt-chip-soft { background:var(--surface-container-high); color:var(--text-on-surface); }
+  .tt-chip-danger { background:#fee2e2; color:#b91c1c; }
+  .tt-no-teacher { display:inline-flex; align-items:center; gap:4px; font-weight:800; font-style:italic; }
+  .tt-mrow-warn { color:#b45309; }
+  .tt-mday-add { margin-top:8px; width:100%; padding:10px; border-radius:12px; border:1px dashed var(--border); color:var(--primary); font-weight:700; }
+  @media print { .app-header, .sidebar, .tt-toolbar { display:none !important; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="tt-toolbar flex items-center justify-between gap-3 flex-wrap mb-4">
+  <div class="flex items-center gap-2 flex-wrap">
+    <h1 class="text-lg font-bold">الجدول الموحد</h1>
+    <span id="currentBadge"></span>
+    <span id="liveBadge" class="hidden items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-green-50 text-green-700 border border-green-200"
+          title="تم تحديث الجدول من مصدر مؤقت">
+      <span class="material-symbols-outlined text-sm">sync</span>
+      تم تحديث الجدول
+    </span>
+  </div>
+  <div class="flex items-center gap-2 flex-wrap">
+    {% if payload.can_switch_department and payload.departments %}
+    <select id="deptFilter" onchange="window.__ttSetDept(this.value)"
+            class="rounded-xl border border-outline bg-surface px-3 py-2 text-sm font-bold">
+      {% for d in payload.departments %}
+      <option value="{{ d.id }}" {% if payload.dept and d.id == payload.dept.id %}selected{% endif %}>{{ d.name }}</option>
+      {% endfor %}
+    </select>
+    {% endif %}
+    <select id="semFilter" onchange="window.__ttSetSem(this.value)"
+            class="rounded-xl border border-outline bg-surface px-3 py-2 text-sm font-bold">
+      {% for s in payload.available_semesters %}
+      <option value="{{ s }}" {% if s == payload.selected_semester %}selected{% endif %}>{{ semester_label(s) }}</option>
+      {% endfor %}
+    </select>
+    <button id="printBtn" type="button" title="طباعة الجدول الحالي"
+            class="inline-flex items-center gap-1.5 rounded-xl bg-primary text-on-primary px-4 py-2 text-sm font-bold shadow-sm">
+      <span class="material-symbols-outlined text-base">print</span>
+      طباعة الجدول
+    </button>
+    <button id="addLecBtn" type="button" onclick="window.openAdd()"
+            class="inline-flex items-center gap-1.5 rounded-xl bg-surface-container-high border border-outline px-3 py-2 text-sm font-bold">
+      <span class="material-symbols-outlined text-base">add</span>
+      إضافة محاضرة
+    </button>
+    <button id="nextYearBtn" type="button" onclick="window.openNextYear()" title="إنشاء نسخة العام القادم"
+            class="inline-flex items-center gap-1.5 rounded-xl bg-surface-container-high border border-outline px-3 py-2 text-sm font-bold">
+      <span class="material-symbols-outlined text-base">calendar_month</span>
+      نسخة العام القادم
+    </button>
+  </div>
+</div>
+{% if payload.can_manage %}
+<p class="text-sm text-on-surface-variant mb-3">أضِف/عدّل الحصص في الجدول، ثم أنشئ نسخة العام القادم</p>
+{% endif %}
+
+<div class="hidden lg:block">
+  <div class="overflow-x-auto rounded-2xl border border-outline-variant bg-surface shadow-sm">
+    <table class="w-full min-w-[700px] text-sm" style="table-layout:fixed">
+      <thead>
+        <tr class="bg-surface-dim text-on-surface-variant border-b border-outline-variant">
+          <th class="px-3 py-3 font-bold w-[90px]">اليوم</th>
+          {% for p in payload.periods %}
+          <th data-period-header class="px-2 py-3 font-bold text-center"></th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody id="gridBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="mobileGrid" class="tt-mobile-grid lg:hidden mt-4"></div>
+
+<div id="toast" class="hidden fixed bottom-6 left-6 z-50 items-center gap-2 px-4 py-3 rounded-xl shadow-lg text-sm font-semibold text-on-primary bg-primary"></div>
+{% endblock %}
+
+{% block modals %}
+<div id="popupOverlay" class="hidden fixed inset-0 bg-black/40 z-40" onclick="window.closePopup()"></div>
+<div id="popupMenu" class="hidden fixed inset-x-4 top-1/2 -translate-y-1/2 mx-auto max-w-lg z-50 bg-surface rounded-2xl shadow-xl p-5 max-h-[85vh] overflow-y-auto">
+  <div id="popupContent"></div>
+  <div id="popupActions" class="flex flex-wrap gap-2 mt-4">
+    <button type="button" onclick="window.openEdit(window.__ttPopupId())"
+            class="inline-flex items-center gap-1.5 rounded-xl bg-primary text-on-primary px-3 py-2 text-sm font-bold">تعديل</button>
+    <button type="button" onclick="window.duplicateEntry(window.__ttPopupId())"
+            class="inline-flex items-center gap-1.5 rounded-xl bg-surface-container-high border border-outline px-3 py-2 text-sm font-bold">تكرار</button>
+    <button type="button" onclick="window.deleteEntry(window.__ttPopupId())"
+            class="inline-flex items-center gap-1.5 rounded-xl bg-red-50 text-red-600 border border-red-200 px-3 py-2 text-sm font-bold">حذف</button>
+    <button type="button" onclick="window.closePopup()"
+            class="inline-flex items-center rounded-xl bg-surface-container-high border border-outline px-3 py-2 text-sm font-bold">إغلاق</button>
+  </div>
+</div>
+
+<div id="nyOverlay" class="hidden fixed inset-0 bg-black/40 z-40" onclick="window.closeNextYear()"></div>
+<div id="nyModal" class="hidden fixed inset-x-4 top-1/2 -translate-y-1/2 mx-auto max-w-md z-50 bg-surface rounded-2xl shadow-xl p-5">
+  <h3 class="text-lg font-bold mb-2">إنشاء نسخة العام القادم</h3>
+  <p id="nyInfo" class="text-sm text-on-surface-variant mb-3"></p>
+  <div id="nyWarn" class="hidden items-center gap-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 px-3 py-2 text-sm mb-3">
+    <span class="material-symbols-outlined text-base">warning</span><span></span>
+  </div>
+  <div class="grid grid-cols-2 gap-3 mb-3">
+    <label class="text-sm font-bold">الفصل
+      <select id="nySeason" class="mt-1 w-full rounded-xl border border-outline bg-surface px-3 py-2 text-sm">
+        <option value="">(تلقائي)</option>
+        <option value="fall">خريفي</option>
+        <option value="spring">ربيعي</option>
+      </select>
+    </label>
+    <label class="text-sm font-bold">السنة
+      <input id="nyYear" type="text" inputmode="numeric" placeholder="مثال: 2027"
+             class="mt-1 w-full rounded-xl border border-outline bg-surface px-3 py-2 text-sm">
+    </label>
+  </div>
+  <label class="flex items-center gap-2 text-sm font-bold mb-4">
+    <input id="nyCopy" type="checkbox" class="accent-primary w-4 h-4">
+    نسخ حصص الجدول الحالي إلى النسخة الجديدة
+  </label>
+  <div class="flex gap-2 justify-end">
+    <button type="button" onclick="window.closeNextYear()"
+            class="rounded-xl bg-surface-container-high border border-outline px-4 py-2 text-sm font-bold">إلغاء</button>
+    <button type="button" onclick="window.createNextYear()"
+            class="rounded-xl bg-primary text-on-primary px-4 py-2 text-sm font-bold">إنشاء النسخة</button>
+  </div>
+</div>
+
+<div id="lecOverlay" class="hidden fixed inset-0 bg-black/40 z-40" onclick="window.closeModal()"></div>
+<div id="lecModal" class="hidden fixed inset-x-4 top-1/2 -translate-y-1/2 mx-auto max-w-2xl z-50 bg-surface rounded-2xl shadow-xl p-5 max-h-[90vh] overflow-y-auto">
+  <h3 id="lecTitle" class="text-lg font-bold mb-4"></h3>
+  <div class="grid grid-cols-2 gap-3">
+    <label class="text-sm font-bold">القسم
+      <select id="lecDept" class="mt-1 w-full rounded-xl border border-outline bg-surface px-3 py-2 text-sm"></select>
+    </label>
+    <label class="text-sm font-bold">الفصل
+      <select id="lecSemester" class="mt-1 w-full rounded-xl border border-outline bg-surface px-3 py-2 text-sm"></select>
+    </label>
+  </div>
+  <div id="lecSlotRow" class="grid grid-cols-2 gap-3 mt-3">
+    <label class="text-sm font-bold">اليوم
+      <select id="lecDay" class="mt-1 w-full rounded-xl border border-outline bg-surface px-3 py-2 text-sm"></select>
+    </label>
+    <label class="text-sm font-bold">الفترة
+      <select id="lecPeriod" class="mt-1 w-full rounded-xl border border-outline bg-surface px-3 py-2 text-sm"></select>
+    </label>
+  </div>
+  <div class="grid grid-cols-2 gap-3 mt-3">
+    <label class="text-sm font-bold">وقت البداية
+      <input id="lecStartTime" type="time" class="mt-1 w-full rounded-xl border border-outline bg-surface px-3 py-2 text-sm">
+    </label>
+    <label class="text-sm font-bold">وقت النهاية
+      <input id="lecEndTime" type="time" class="mt-1 w-full rounded-xl border border-outline bg-surface px-3 py-2 text-sm">
+    </label>
+  </div>
+  <div class="grid grid-cols-2 gap-3 mt-3">
+    <label class="text-sm font-bold">الساعات
+      <input id="lecHours" type="number" min="1" max="6" value="3"
+             class="mt-1 w-full rounded-xl border border-outline bg-surface px-3 py-2 text-sm">
+    </label>
+    <label class="text-sm font-bold">القاعة
+      <select id="lecRoom" class="mt-1 w-full rounded-xl border border-outline bg-surface px-3 py-2 text-sm"></select>
+    </label>
+  </div>
+  <div class="mt-3">
+    <span class="text-sm font-bold">عضو هيئة التدريس <span class="font-normal text-on-surface-variant">(اختياري)</span></span>
+    <input id="lecTeacher" type="hidden">
+    <div id="lecTeacherCtl" class="relative mt-1">
+      <input id="lecTeacherSearch" autocomplete="off" placeholder="محاضرة بدون أستاذ — أو اختر أستاذًا"
+             onfocus="window.openTeacherList()" oninput="window.filterTeacherList()"
+             class="w-full rounded-xl border border-outline bg-surface px-3 py-2 text-sm">
+      <div id="lecTeacherList" class="hidden absolute z-10 mt-1 w-full rounded-xl border border-outline bg-surface shadow-lg max-h-52 overflow-y-auto"></div>
+    </div>
+  </div>
+  <div class="mt-3">
+    <span class="text-sm font-bold">المقرر</span>
+    <input id="lecCourse" type="hidden">
+    <div id="lecCourseCtl" class="relative mt-1">
+      <input id="lecCourseSearch" autocomplete="off"
+             onfocus="window.openCourseList()" oninput="window.filterCourseList()"
+             class="w-full rounded-xl border border-outline bg-surface px-3 py-2 text-sm">
+      <div id="lecCourseList" class="hidden absolute z-10 mt-1 w-full rounded-xl border border-outline bg-surface shadow-lg max-h-52 overflow-y-auto"></div>
+    </div>
+  </div>
+  <div class="flex items-center gap-4 mt-4">
+    <span class="text-sm font-bold">النوع</span>
+    <label class="flex items-center gap-1.5 text-sm font-bold">
+      <input type="radio" name="lecType" value="theory" checked class="accent-primary w-4 h-4"> نظري
+    </label>
+    <label class="flex items-center gap-1.5 text-sm font-bold">
+      <input type="radio" name="lecType" value="practical" class="accent-primary w-4 h-4"> عملي
+    </label>
+  </div>
+  <div id="lecWarn" class="hidden items-center gap-2 rounded-xl bg-red-50 border border-red-200 text-red-700 px-3 py-2 text-sm mt-4">
+    <span class="material-symbols-outlined text-base">error</span><span></span>
+  </div>
+  <div id="lecHint" class="hidden items-center gap-2 rounded-xl bg-primary-container border border-primary/30 text-on-surface px-3 py-2 text-sm mt-3">
+    <span class="material-symbols-outlined text-base">info</span><span></span>
+  </div>
+  <div class="flex gap-2 justify-end mt-4">
+    <button type="button" onclick="window.closeModal()"
+            class="rounded-xl bg-surface-container-high border border-outline px-4 py-2 text-sm font-bold">إلغاء</button>
+    <button type="button" onclick="window.saveLecture()"
+            class="rounded-xl bg-primary text-on-primary px-4 py-2 text-sm font-bold">حفظ</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+window.TIMETABLE_UNIFIED_BOOT = {
+  payload: {{ payload | tojson }},
+  base: {{ url_for('timetable.timetable_department_view') | tojson }},
+  api: {{ url_for('timetable.timetable') | tojson }},
+  printUrl: {{ url_for('print_routes.print_timetable_department') | tojson }},
+  isRd: {{ 'true' if is_rd else 'false' }},
+  currentTeacherId: {{ current_teacher_id | tojson }},
+  syllabusUrls: {{ syllabus_urls | tojson }},
+  initialToken: {{ initial_token | tojson }}
+};
+</script>
+<script src="{{ url_for('static', filename='js/shared/timetable_helpers.js') }}"></script>
+<script src="{{ url_for('static', filename='js/timetable_live.js') }}"></script>
+{% endblock %}

@@ -124,7 +124,7 @@
                 <a href="{{ url_for('hod_pages.hod_material_download', material_id=m.id) }}"
                    class="material-symbols-outlined text-primary hover:bg-primary/10 transition-colors no-underline rounded-md" title="تحميل">download</a>
                 <form method="post" action="{{ url_for('hod_pages.hod_material_delete', material_id=m.id) }}" style="display:inline"
-                      onsubmit="return confirm('هل أنت متأكد من حذف هذا الملف؟')">
+                      data-confirm-message="هل أنت متأكد من حذف هذا الملف؟">
                   <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                   <button type="submit" class="material-symbols-outlined text-red-600 hover:text-red-700 transition-colors bg-transparent border-0 cursor-pointer rounded-md" title="حذف">delete</button>
                 </form>

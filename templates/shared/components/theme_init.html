@@ -3,6 +3,12 @@
   var KEY = 'ropely-theme';
   var saved = null;
   try { saved = localStorage.getItem(KEY); } catch (e) { saved = null; }
-  document.documentElement.setAttribute('data-theme', saved === 'dark' ? 'dark' : 'light');
+  var theme = 'light';
+  if (saved === 'dark') {
+    theme = 'dark';
+  } else if (saved === null && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    theme = 'dark';
+  }
+  document.documentElement.setAttribute('data-theme', theme);
 })();
 </script>

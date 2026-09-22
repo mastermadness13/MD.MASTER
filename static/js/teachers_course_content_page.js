@@ -15,35 +15,35 @@
     form.addEventListener('submit', function (e) {
       var btn = e.submitter;
       if (btn && btn.dataset.action) {
-        if (btn.dataset.action === 'send') {
-          var ok = window.confirm('سيتم نشر المقرر وإظهاره في الجدول الدراسي مباشرة. متابعة؟');
-          if (!ok) {
-            e.preventDefault();
-            return;
-          }
-        }
+        e.preventDefault();
         form.elements['action'].value = btn.dataset.action;
+        if (btn.dataset.action === 'send') {
+          window.askConfirm({
+            message: 'سيتم حفظ مفردات المقرر ونشرها في الجدول الدراسي مباشرة. متابعة؟',
+            onConfirm: function () { form.submit(); }
+          });
+        } else {
+          form.submit();
+        }
       }
     });
   }
 
-  var fileInput = document.getElementById('formFileInput');
-  if (fileInput) {
-    fileInput.addEventListener('change', function () {
-      var f = fileInput.files && fileInput.files[0];
-      if (!f) return;
-      var isPdf = (f.type && f.type === 'application/pdf') || /\.pdf$/i.test(f.name);
-      if (!isPdf) {
-        if (window.showNotification) window.showNotification('يجب أن يكون الملف بصيغة PDF', 'error');
-        fileInput.value = '';
+  var replaceForm = document.getElementById('courseContentReplaceForm');
+  if (replaceForm) {
+    replaceForm.addEventListener('submit', function (e) {
+      var fileInput = replaceForm.elements['file'];
+      if (!fileInput || !fileInput.files || !fileInput.files.length) {
+        e.preventDefault();
+        window.alert('يرجى اختيار ملف PDF أولاً');
         return;
       }
-      if (f.size > 10 * 1024 * 1024) {
-        if (window.showNotification) window.showNotification('حجم الملف يتجاوز 10 ميغابايت', 'error');
-        fileInput.value = '';
-        return;
-      }
-      if (window.showNotification) window.showNotification('تم اختيار الملف: ' + f.name, 'info', 3000);
+      if (replaceForm.getAttribute('data-confirm-replace') !== '1') return;
+      e.preventDefault();
+      window.askConfirm({
+        message: 'يوجد ملف حالي لهذا النموذج وسيُستبدل بالنسخة الجديدة. متابعة الاستبدال؟',
+        onConfirm: function () { replaceForm.submit(); }
+      });
     });
   }
 
@@ -52,7 +52,7 @@
     courseSelect.addEventListener('change', function () {
       var val = courseSelect.value;
       if (val) {
-        window.location.href = URLS.create + '?course_id=' + val;
+        window.location.href = URLS.create + '&course_id=' + val;
       }
     });
   }

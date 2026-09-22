@@ -1,5 +1,5 @@
 """Regression: teachers list page shows the full admin table for every role
-with ``teachers.view`` (faculty_affairs, super_admin, research_development,
+with ``teachers.view`` (faculty_affairs, research_development,
 head_of_department), and the compact Quick Member Search / All Members List
 has been removed entirely."""
 
@@ -11,7 +11,6 @@ from database.schema import ensure_schema
 
 ROLES_WITH_VIEW = [
     'faculty_affairs',
-    'super_admin',
     'research_development',
     'head_of_department',
 ]

@@ -42,6 +42,11 @@ body .text-gray-800 { color: var(--text-primary); }
 
 /* === TEXT COLORS === */
 
+/* Semantic status text that stays readable on tinted fills in both themes
+   (e.g. ● مقرر / ● منهاج markers inside --primary-container cells) */
+body .status-ok { color: var(--success-text); }
+body .status-missing { color: var(--error-text); }
+
 body .text-on-surface { color: var(--text-primary); }
 body .text-on-surface-variant { color: var(--text-secondary); }
 body .text-on-background { color: var(--text-primary); }

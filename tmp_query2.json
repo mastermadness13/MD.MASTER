@@ -1,0 +1,1429 @@
+{
+ "departments": [
+  {
+   "id": 1,
+   "name": "القسم العام",
+   "abbreviation": null,
+   "display_name": null,
+   "deleted_at": null
+  },
+  {
+   "id": 2,
+   "name": "قسم الاتصالات",
+   "abbreviation": null,
+   "display_name": null,
+   "deleted_at": null
+  },
+  {
+   "id": 3,
+   "name": "قسم الحاسوب",
+   "abbreviation": null,
+   "display_name": null,
+   "deleted_at": null
+  },
+  {
+   "id": 4,
+   "name": "قسم المدني",
+   "abbreviation": null,
+   "display_name": null,
+   "deleted_at": null
+  },
+  {
+   "id": 5,
+   "name": "قسم المعماري",
+   "abbreviation": null,
+   "display_name": null,
+   "deleted_at": null
+  },
+  {
+   "id": 6,
+   "name": "قسم النفط",
+   "abbreviation": null,
+   "display_name": null,
+   "deleted_at": null
+  },
+  {
+   "id": 7,
+   "name": "شعبة هندسة البرمجيات",
+   "abbreviation": null,
+   "display_name": null,
+   "deleted_at": "2026-09-21 05:10:30"
+  },
+  {
+   "id": 8,
+   "name": "قسم البحث والتطوير",
+   "abbreviation": null,
+   "display_name": null,
+   "deleted_at": null
+  },
+  {
+   "id": 9,
+   "name": "إدارة الامتحانات",
+   "abbreviation": null,
+   "display_name": null,
+   "deleted_at": null
+  }
+ ],
+ "courses": [
+  {
+   "id": 1,
+   "code": "ع101",
+   "name": "هندسة وصفية",
+   "department_id": 1,
+   "year": 1,
+   "semester": 1
+  },
+  {
+   "id": 2,
+   "code": "ع102",
+   "name": "أسس كهرباء",
+   "department_id": 1,
+   "year": 1,
+   "semester": 1
+  },
+  {
+   "id": 3,
+   "code": "ع103",
+   "name": "استاتيكا",
+   "department_id": 1,
+   "year": 1,
+   "semester": 1
+  },
+  {
+   "id": 4,
+   "code": "ع104",
+   "name": "تقنية ورش",
+   "department_id": 1,
+   "year": 1,
+   "semester": 1
+  },
+  {
+   "id": 5,
+   "code": "ع105",
+   "name": "رياضة 2، 3",
+   "department_id": 1,
+   "year": 1,
+   "semester": 1
+  },
+  {
+   "id": 6,
+   "code": "ع106",
+   "name": "كتابة تقارير",
+   "department_id": 1,
+   "year": 1,
+   "semester": 1
+  },
+  {
+   "id": 7,
+   "code": "ع107",
+   "name": "مصطلحات فنية",
+   "department_id": 1,
+   "year": 1,
+   "semester": 1
+  },
+  {
+   "id": 8,
+   "code": "ع108",
+   "name": "فيزياء نسبية",
+   "department_id": 1,
+   "year": 1,
+   "semester": 1
+  },
+  {
+   "id": 9,
+   "code": "ه101",
+   "name": "مقدمة هندسة نفط",
+   "department_id": 6,
+   "year": 1,
+   "semester": 1
+  },
+  {
+   "id": 10,
+   "code": "ه102",
+   "name": "جيولوجيا عامة",
+   "department_id": 6,
+   "year": 1,
+   "semester": 1
+  },
+  {
+   "id": 11,
+   "code": "ه103",
+   "name": "كيمياء عضوية",
+   "department_id": 6,
+   "year": 1,
+   "semester": 1
+  },
+  {
+   "id": 12,
+   "code": "ه104",
+   "name": "جيولوجيا نفط",
+   "department_id": 6,
+   "year": 1,
+   "semester": 1
+  },
+  {
+   "id": 13,
+   "code": "ه201",
+   "name": "ديناميكا حرارية",
+   "department_id": 6,
+   "year": 2,
+   "semester": 1
+  },
+  {
+   "id": 14,
+   "code": "ه202",
+   "name": "ميكانيكا موائع",
+   "department_id": 6,
+   "year": 2,
+   "semester": 1
+  },
+  {
+   "id": 15,
+   "code": "ه203",
+   "name": "سريان الموائع",
+   "department_id": 6,
+   "year": 2,
+   "semester": 1
+  },
+  {
+   "id": 16,
+   "code": "ه204",
+   "name": "خواص موائع المكمن",
+   "department_id": 6,
+   "year": 2,
+   "semester": 1
+  },
+  {
+   "id": 17,
+   "code": "ه205",
+   "name": "خواص صخور المكمن",
+   "department_id": 6,
+   "year": 2,
+   "semester": 1
+  },
+  {
+   "id": 18,
+   "code": "ه206",
+   "name": "صخور رسوبية",
+   "department_id": 6,
+   "year": 2,
+   "semester": 1
+  },
+  {
+   "id": 19,
+   "code": "ه207",
+   "name": "جيولوجيا تركيبية",
+   "department_id": 6,
+   "year": 2,
+   "semester": 1
+  },
+  {
+   "id": 20,
+   "code": "ه208",
+   "name": "معدات حقول النفط",
+   "department_id": 6,
+   "year": 2,
+   "semester": 1
+  },
+  {
+   "id": 21,
+   "code": "ه301",
+   "name": "حفر وتصميم الابار",
+   "department_id": 6,
+   "year": 3,
+   "semester": 1
+  },
+  {
+   "id": 22,
+   "code": "ه302",
+   "name": "تقنية سوائل الحفر",
+   "department_id": 6,
+   "year": 3,
+   "semester": 1
+  },
+  {
+   "id": 23,
+   "code": "ه303",
+   "name": "هندسة انتاج",
+   "department_id": 6,
+   "year": 3,
+   "semester": 1
+  },
+  {
+   "id": 24,
+   "code": "ه304",
+   "name": "هندسة غاز",
+   "department_id": 6,
+   "year": 3,
+   "semester": 1
+  },
+  {
+   "id": 25,
+   "code": "ه305",
+   "name": "تطبيقات الحاسوب في الهندسة النفطية",
+   "department_id": 6,
+   "year": 3,
+   "semester": 1
+  },
+  {
+   "id": 26,
+   "code": "ه306",
+   "name": "التآكل في الصناعات النفطية",
+   "department_id": 6,
+   "year": 3,
+   "semester": 1
+  },
+  {
+   "id": 27,
+   "code": "ه401",
+   "name": "طرق تحسين ابار النفط",
+   "department_id": 6,
+   "year": 4,
+   "semester": 1
+  },
+  {
+   "id": 28,
+   "code": "ه402",
+   "name": "صيانة واصلاح الابار",
+   "department_id": 6,
+   "year": 4,
+   "semester": 1
+  },
+  {
+   "id": 29,
+   "code": "ه403",
+   "name": "تقييم المكامن النفطية",
+   "department_id": 6,
+   "year": 4,
+   "semester": 1
+  },
+  {
+   "id": 30,
+   "code": "ه404",
+   "name": "استكمال ابار النفط",
+   "department_id": 6,
+   "year": 4,
+   "semester": 1
+  },
+  {
+   "id": 31,
+   "code": "ه405",
+   "name": "اقتصاديات هندسة نفط",
+   "department_id": 6,
+   "year": 4,
+   "semester": 1
+  },
+  {
+   "id": 32,
+   "code": "ت101",
+   "name": "برمجة حاسوب",
+   "department_id": 3,
+   "year": 1,
+   "semester": 1
+  },
+  {
+   "id": 33,
+   "code": "ت102",
+   "name": "عمارة الحاسوب",
+   "department_id": 3,
+   "year": 1,
+   "semester": 1
+  },
+  {
+   "id": 34,
+   "code": "ت201",
+   "name": "نظم قواعد البيانات",
+   "department_id": 3,
+   "year": 2,
+   "semester": 1
+  },
+  {
+   "id": 35,
+   "code": "ت202",
+   "name": "البرمجة المرئية",
+   "department_id": 3,
+   "year": 2,
+   "semester": 1
+  },
+  {
+   "id": 36,
+   "code": "ت203",
+   "name": "وسائط متعددة",
+   "department_id": 3,
+   "year": 2,
+   "semester": 1
+  },
+  {
+   "id": 37,
+   "code": "ت204",
+   "name": "نظم التشغيل",
+   "department_id": 3,
+   "year": 2,
+   "semester": 1
+  },
+  {
+   "id": 38,
+   "code": "ت205",
+   "name": "تراكيب البيانات والخوارزميات",
+   "department_id": 3,
+   "year": 2,
+   "semester": 1
+  },
+  {
+   "id": 39,
+   "code": "ت206",
+   "name": "تحليل البيانات باستخدام Excel",
+   "department_id": 3,
+   "year": 2,
+   "semester": 1
+  },
+  {
+   "id": 40,
+   "code": "ت207",
+   "name": "إحصاء واحتمالات",
+   "department_id": 3,
+   "year": 2,
+   "semester": 1
+  },
+  {
+   "id": 41,
+   "code": "ت301",
+   "name": "أسس هندسة البرمجيات",
+   "department_id": 3,
+   "year": 3,
+   "semester": 1
+  },
+  {
+   "id": 42,
+   "code": "ت302",
+   "name": "تحليل متطلبات البرمجيات",
+   "department_id": 3,
+   "year": 3,
+   "semester": 1
+  },
+  {
+   "id": 43,
+   "code": "ت303",
+   "name": "شبكات الحاسوب",
+   "department_id": 3,
+   "year": 3,
+   "semester": 1
+  },
+  {
+   "id": 44,
+   "code": "ت304",
+   "name": "قواعد بيانات متقدمة",
+   "department_id": 3,
+   "year": 3,
+   "semester": 1
+  },
+  {
+   "id": 45,
+   "code": "ت305",
+   "name": "برمجة الانترنت",
+   "department_id": 3,
+   "year": 3,
+   "semester": 1
+  },
+  {
+   "id": 46,
+   "code": "ت306",
+   "name": "تصميم منطقي",
+   "department_id": 3,
+   "year": 3,
+   "semester": 1
+  },
+  {
+   "id": 47,
+   "code": "ت401",
+   "name": "أمن البرمجيات",
+   "department_id": 3,
+   "year": 4,
+   "semester": 1
+  },
+  {
+   "id": 48,
+   "code": "ت402",
+   "name": "التجارة الالكترونية",
+   "department_id": 3,
+   "year": 4,
+   "semester": 1
+  },
+  {
+   "id": 49,
+   "code": "ت403",
+   "name": "اختبار وجودة البرمجيات",
+   "department_id": 3,
+   "year": 4,
+   "semester": 1
+  },
+  {
+   "id": 50,
+   "code": "ت404",
+   "name": "مواضيع مختارة",
+   "department_id": 3,
+   "year": 4,
+   "semester": 1
+  },
+  {
+   "id": 51,
+   "code": "ت405",
+   "name": "معالجات دقيقة",
+   "department_id": 2,
+   "year": 4,
+   "semester": 2
+  },
+  {
+   "id": 52,
+   "code": "ت103",
+   "name": "دوائر كهربائية",
+   "department_id": 2,
+   "year": 1,
+   "semester": 1
+  },
+  {
+   "id": 53,
+   "code": "ت104",
+   "name": "دوائر الكترونية",
+   "department_id": 2,
+   "year": 1,
+   "semester": 1
+  },
+  {
+   "id": 54,
+   "code": "ت105",
+   "name": "ورشة الكترونية",
+   "department_id": 2,
+   "year": 1,
+   "semester": 1
+  },
+  {
+   "id": 55,
+   "code": "ت106",
+   "name": "مبادئ هندسة الكترونية",
+   "department_id": 2,
+   "year": 1,
+   "semester": 1
+  },
+  {
+   "id": 56,
+   "code": "ت208",
+   "name": "الكترونات رقمية",
+   "department_id": 2,
+   "year": 2,
+   "semester": 1
+  },
+  {
+   "id": 57,
+   "code": "ت209",
+   "name": "أجهزة قياس كهربائية",
+   "department_id": 2,
+   "year": 2,
+   "semester": 1
+  },
+  {
+   "id": 58,
+   "code": "ت210",
+   "name": "فيزياء 2",
+   "department_id": 2,
+   "year": 2,
+   "semester": 2
+  },
+  {
+   "id": 59,
+   "code": "ت211",
+   "name": "كهرومغناطيسية",
+   "department_id": 2,
+   "year": 2,
+   "semester": 2
+  },
+  {
+   "id": 60,
+   "code": "ت212",
+   "name": "انظمة تحكم",
+   "department_id": 2,
+   "year": 2,
+   "semester": 2
+  },
+  {
+   "id": 61,
+   "code": "ت213",
+   "name": "وسائط نقل",
+   "department_id": 2,
+   "year": 2,
+   "semester": 1
+  },
+  {
+   "id": 62,
+   "code": "ت307",
+   "name": "نظم اتصالات",
+   "department_id": 2,
+   "year": 3,
+   "semester": 2
+  },
+  {
+   "id": 63,
+   "code": "ت308",
+   "name": "هوائيات",
+   "department_id": 2,
+   "year": 3,
+   "semester": 2
+  },
+  {
+   "id": 64,
+   "code": "ت309",
+   "name": "معالجة اشارة رقمية",
+   "department_id": 2,
+   "year": 3,
+   "semester": 2
+  },
+  {
+   "id": 65,
+   "code": "ت310",
+   "name": "اتصالات رقمية",
+   "department_id": 2,
+   "year": 3,
+   "semester": 2
+  },
+  {
+   "id": 66,
+   "code": "ت311",
+   "name": "انظمة مقسمات والهواتف",
+   "department_id": 2,
+   "year": 3,
+   "semester": 2
+  },
+  {
+   "id": 67,
+   "code": "ت312",
+   "name": "انظمة الهواتف المحمولة",
+   "department_id": 2,
+   "year": 3,
+   "semester": 2
+  },
+  {
+   "id": 68,
+   "code": "ه105",
+   "name": "مواد الانشاء",
+   "department_id": 4,
+   "year": 1,
+   "semester": 1
+  },
+  {
+   "id": 69,
+   "code": "ه106",
+   "name": "ميكانيكا الجوامد",
+   "department_id": 4,
+   "year": 1,
+   "semester": 1
+  },
+  {
+   "id": 70,
+   "code": "ه209",
+   "name": "خرسانة مسلحة",
+   "department_id": 4,
+   "year": 2,
+   "semester": 1
+  },
+  {
+   "id": 71,
+   "code": "ه210",
+   "name": "انشاء مباني",
+   "department_id": 4,
+   "year": 2,
+   "semester": 1
+  },
+  {
+   "id": 72,
+   "code": "ه307",
+   "name": "كميات والمواصفات",
+   "department_id": 4,
+   "year": 3,
+   "semester": 1
+  },
+  {
+   "id": 73,
+   "code": "ه308",
+   "name": "ادارة مشاريع هندسية",
+   "department_id": 4,
+   "year": 3,
+   "semester": 1
+  },
+  {
+   "id": 74,
+   "code": "ه107",
+   "name": "تاريخ عمارة",
+   "department_id": 5,
+   "year": 1,
+   "semester": 1
+  },
+  {
+   "id": 75,
+   "code": "ه108",
+   "name": "قوانين المباني",
+   "department_id": 5,
+   "year": 1,
+   "semester": 1
+  },
+  {
+   "id": 76,
+   "code": "ه211",
+   "name": "تنسيق مواقع",
+   "department_id": 5,
+   "year": 2,
+   "semester": 1
+  },
+  {
+   "id": 77,
+   "code": "ه212",
+   "name": "تخطيط اقليمي",
+   "department_id": 5,
+   "year": 2,
+   "semester": 1
+  },
+  {
+   "id": 78,
+   "code": "ه213",
+   "name": "انظمة تكيف",
+   "department_id": 5,
+   "year": 2,
+   "semester": 1
+  },
+  {
+   "id": 79,
+   "code": "ه309",
+   "name": "تصميم معماري",
+   "department_id": 5,
+   "year": 3,
+   "semester": 1
+  },
+  {
+   "id": 80,
+   "code": "ه310",
+   "name": "اسكان وتصميم حضري",
+   "department_id": 5,
+   "year": 3,
+   "semester": 1
+  },
+  {
+   "id": 81,
+   "code": "ع109",
+   "name": "برمجة 1",
+   "department_id": 7,
+   "year": 1,
+   "semester": 1
+  },
+  {
+   "id": 82,
+   "code": "ع110",
+   "name": "أسس هندسة كهربائية",
+   "department_id": 7,
+   "year": 1,
+   "semester": 1
+  },
+  {
+   "id": 83,
+   "code": "ع201",
+   "name": "رياضة 2",
+   "department_id": 7,
+   "year": 2,
+   "semester": 1
+  },
+  {
+   "id": 84,
+   "code": "ع202",
+   "name": "تطبيقات الحاسوب",
+   "department_id": 7,
+   "year": 2,
+   "semester": 1
+  },
+  {
+   "id": 85,
+   "code": "ع301",
+   "name": "برمجة 2",
+   "department_id": 7,
+   "year": 3,
+   "semester": 1
+  }
+ ],
+ "course_depts": [
+  {
+   "course_id": 51,
+   "department_id": 2,
+   "semester": 2
+  },
+  {
+   "course_id": 58,
+   "department_id": 2,
+   "semester": 2
+  },
+  {
+   "course_id": 59,
+   "department_id": 2,
+   "semester": 2
+  },
+  {
+   "course_id": 60,
+   "department_id": 2,
+   "semester": 2
+  },
+  {
+   "course_id": 62,
+   "department_id": 2,
+   "semester": 2
+  },
+  {
+   "course_id": 63,
+   "department_id": 2,
+   "semester": 2
+  },
+  {
+   "course_id": 64,
+   "department_id": 2,
+   "semester": 2
+  },
+  {
+   "course_id": 65,
+   "department_id": 2,
+   "semester": 2
+  },
+  {
+   "course_id": 66,
+   "department_id": 2,
+   "semester": 2
+  },
+  {
+   "course_id": 67,
+   "department_id": 2,
+   "semester": 2
+  }
+ ],
+ "timetable_count": 0,
+ "teachers": [
+  {
+   "id": 1,
+   "name": "د. طارق العطوشي",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 2,
+   "name": "أ . أحمد ابوسروال",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 3,
+   "name": "د. جلال المنصوري",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 4,
+   "name": "أ . انتصار الغالى",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 5,
+   "name": "أ . نسيم الكحلاء",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 6,
+   "name": "أ . فخرى الزواغى",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 7,
+   "name": "أ . غادة ابوالسعود",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 8,
+   "name": "أ . نورية أبو الشواشي",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 9,
+   "name": "أ . هناء الهاميسي",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 10,
+   "name": "ابو بكر صالح",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 11,
+   "name": "أ . رمزي دهان",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 12,
+   "name": "د. توفيق التلوع",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 13,
+   "name": "أ . أسامة ابو رويس",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 14,
+   "name": "أ . شريهان ابوخناتة",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 15,
+   "name": "يسين ابوسنوقة",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 16,
+   "name": "أ . نعيمة باكير",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 17,
+   "name": "أ . ماجدة المالطي",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 18,
+   "name": "د.طارق المالطي",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 19,
+   "name": "أ . كامل خمير",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 20,
+   "name": "أ . مهند الخلاص",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 21,
+   "name": "أ . عذارى الادريسي",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 22,
+   "name": "أ . حنان معمر",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 23,
+   "name": "شكري غميض",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 24,
+   "name": "أ . دانيا دباب",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 25,
+   "name": "أ . نادر الغالي",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 26,
+   "name": "أ . باسم الحطاب",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 27,
+   "name": "م . كريمة عطية",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 28,
+   "name": "أ . أصالة العزابي",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 29,
+   "name": "د.حسين الاسود",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 30,
+   "name": "أ . منيرة صاكي",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 31,
+   "name": "أ . الهام ابو الشواشي",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 32,
+   "name": "أ . صفاء قطس",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 33,
+   "name": "ابو بكر نصر",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 34,
+   "name": "هاتي الطوشي",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 35,
+   "name": "عنود الدريس",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 36,
+   "name": "هنيدة العطوشي",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 37,
+   "name": "أ . وفاء عطية",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 38,
+   "name": "سلطان غرية",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 39,
+   "name": "م . راحيل المنصوري",
+   "department_id": 1,
+   "academic_number": null
+  },
+  {
+   "id": 40,
+   "name": "دينا بكة",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 41,
+   "name": "مودة فطيس",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 42,
+   "name": "أ . هالا الهاميسي",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 43,
+   "name": "Pytest Teacher",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 44,
+   "name": "Pytest Teacher",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 45,
+   "name": "قسم الاتصالات",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 46,
+   "name": "Pytest Teacher",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 47,
+   "name": "أ . هاجر أبو علي",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 48,
+   "name": "أ . نعيعة المسخوط",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 49,
+   "name": "أ . فوزي أبو الشواشي",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 50,
+   "name": "أ . أميرة أبو علي",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 51,
+   "name": "أ . عبد الله أبو قحص",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 52,
+   "name": "أ . توفيق دهان",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 53,
+   "name": "أ . نسيبة أبو علي",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 54,
+   "name": "أ . أبو بكر صالح",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 55,
+   "name": "أ . أحمد الهاميسي",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 56,
+   "name": "د . فاضل غميض",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 57,
+   "name": "أ . أمال شلغم",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 58,
+   "name": "أ . ياسمين أبو سنوقة",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 59,
+   "name": "أ . غالية مالطي",
+   "department_id": null,
+   "academic_number": "123123"
+  },
+  {
+   "id": 60,
+   "name": "أ . ليلى خمير",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 61,
+   "name": "أ . هاني العطوشي",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 62,
+   "name": "أ . زيدان الرابع",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 63,
+   "name": "م . فوائد الفوناس",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 64,
+   "name": "أ . أكرم حلب",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 65,
+   "name": "ناصر فنص",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 66,
+   "name": "أ . ناصر فنص",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 67,
+   "name": "أ . أسامة سعود",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 68,
+   "name": "أ . ياسر جرافة",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 69,
+   "name": "أ . علاء الحلاق",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 70,
+   "name": "أ . أسامة الحجاجي",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 71,
+   "name": "أ . عبد الرؤف غريبة",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 72,
+   "name": "أ . مسعود الأدريسي",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 73,
+   "name": "أ . فوائد الكيلاني",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 74,
+   "name": "أ . هدى الادريسي",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 75,
+   "name": "أ . نهى العمراني",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 76,
+   "name": "أ . عبد المنعم طرنبة",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 77,
+   "name": "أ . حافض نانيس",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 78,
+   "name": "م . سلطان غريبة",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 79,
+   "name": "أ . آلاء العزابي",
+   "department_id": null,
+   "academic_number": "265"
+  },
+  {
+   "id": 80,
+   "name": "أ . طارق خليفة فنص",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 81,
+   "name": "أ . إسماعيل أبو ديب",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 82,
+   "name": "د . مراد الفنطازي",
+   "department_id": null,
+   "academic_number": null
+  },
+  {
+   "id": 83,
+   "name": "أ . عائشة عيسى",
+   "department_id": null,
+   "academic_number": null
+  }
+ ],
+ "rooms": [
+  {
+   "id": 1,
+   "name": "قاعة 1",
+   "code": null
+  },
+  {
+   "id": 2,
+   "name": "قاعة 2",
+   "code": null
+  },
+  {
+   "id": 3,
+   "name": "قاعة 3",
+   "code": null
+  },
+  {
+   "id": 4,
+   "name": "قاعة 4",
+   "code": null
+  },
+  {
+   "id": 5,
+   "name": "قاعة 5",
+   "code": null
+  },
+  {
+   "id": 6,
+   "name": "قاعة 6",
+   "code": null
+  },
+  {
+   "id": 7,
+   "name": "قاعة 7",
+   "code": null
+  },
+  {
+   "id": 8,
+   "name": "قاعة 8",
+   "code": null
+  },
+  {
+   "id": 9,
+   "name": "قاعة 9",
+   "code": null
+  },
+  {
+   "id": 10,
+   "name": "قاعة 10",
+   "code": null
+  },
+  {
+   "id": 11,
+   "name": "قاعة 11",
+   "code": null
+  },
+  {
+   "id": 12,
+   "name": "قاعة 12",
+   "code": null
+  },
+  {
+   "id": 13,
+   "name": "قاعة 13",
+   "code": null
+  },
+  {
+   "id": 14,
+   "name": "قاعة 14",
+   "code": null
+  },
+  {
+   "id": 15,
+   "name": "معمل حاسوب 1",
+   "code": null
+  },
+  {
+   "id": 16,
+   "name": "معمل حاسوب 2",
+   "code": null
+  },
+  {
+   "id": 17,
+   "name": "معمل حاسوب 3",
+   "code": null
+  },
+  {
+   "id": 18,
+   "name": "معمل حاسوب 4",
+   "code": null
+  },
+  {
+   "id": 19,
+   "name": "معمل حاسوب 5",
+   "code": null
+  },
+  {
+   "id": 20,
+   "name": "معمل إلكترونيات 1",
+   "code": null
+  },
+  {
+   "id": 21,
+   "name": "معمل إلكترونيات 2",
+   "code": null
+  },
+  {
+   "id": 22,
+   "name": "مرسم 1",
+   "code": null
+  },
+  {
+   "id": 23,
+   "name": "مرسم 2",
+   "code": null
+  },
+  {
+   "id": 24,
+   "name": "مرسم 3",
+   "code": null
+  },
+  {
+   "id": 25,
+   "name": "مسرح",
+   "code": null
+  }
+ ]
+}

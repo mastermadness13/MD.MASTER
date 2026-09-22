@@ -168,7 +168,7 @@
   var periodEnd = document.getElementById('period-end');
   var periodSave = document.getElementById('period-save');
   var periodHint = document.getElementById('period-hint');
-  var canManagePeriod = role === 'exam' || role === 'super_admin';
+  var canManagePeriod = role === 'exam';
 
   function refreshPeriodEditor() {
     if (!canManagePeriod || !periodStart || !periodEnd) return;

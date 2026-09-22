@@ -11,6 +11,9 @@ Covers (in order):
   5. The lecture-form course list is scoped to the department (no full
      master list) while keeping the current course in the edit form.
   6. The sidebar follows the active role, not the union of granted roles.
+  7. A HOD linked to a teacher record gains the ``teacher`` face at login
+     (header role switcher → صفحة المحاضر) even when ``user_roles`` was
+     never backfilled; a HOD without a teacher record does not.
 """
 
 import sqlite3
@@ -117,6 +120,93 @@ def test_authenticate_resolves_hod_department(db_fx):
     assert session_dict['hod_department_id'] == db_fx['dept_id']
     assert session_dict['teacher_id'] == db_fx['hod_teacher_id']
     assert session_dict['department_id'] == db_fx['dept_id']
+
+
+def test_login_preserves_csrf_token(db_fx):
+    """Login must not rotate the CSRF token.
+
+    Forms rendered before login (and browser Back/Forward re-submissions)
+    carry a per-session token; wiping it on login makes those replays fail
+    with "خطأ في التحقق الأمني (CSRF)". The token must survive the session
+    rebuild (the user pressing Back after login is the exact repro).
+    """
+    from database.repositories.user_repository import UserRepository
+    from services.user_service import UserService
+
+    conn = _open_conn()
+    svc = UserService(conn, UserRepository(conn))
+
+    session_dict = {'_csrf_token': 'token-before-login'}
+    ok, _user = svc.authenticate('abubakr', 'secret', False, session_dict)
+    assert ok is True
+    assert session_dict['_csrf_token'] == 'token-before-login'
+
+    # A fresh session still generates a token (no prior value to preserve).
+    session_dict2 = {}
+    ok2, _user2 = svc.authenticate('abubakr', 'secret', False, session_dict2)
+    assert ok2 is True
+    assert len(session_dict2['_csrf_token']) == 64
+    conn.close()
+
+
+def test_hod_with_teacher_record_gains_teacher_face(db_fx):
+    """A HOD linked to a teacher record gets the 'teacher' face (صفحة المحاضر).
+
+    Even when the DB was never backfilled (user_roles holds only
+    'head_of_department'), login must grant 'teacher' too so the header role
+    switcher offers the member face — with which he sees his timetable and
+    uploads his course syllabi/materials. The landing role stays HOD.
+    """
+    from database.repositories.user_repository import UserRepository
+    from services.user_service import UserService
+
+    conn = _open_conn()
+    # /     /     >---- نحاكي قاعدة بيانات ما فيهاش 'teacher' في جدول الأدوار
+    conn.execute(
+        "DELETE FROM user_roles WHERE user_id = ? AND role = 'teacher'",
+        (db_fx['user_id'],),
+    )
+    conn.commit()
+
+    svc = UserService(conn, UserRepository(conn))
+    session_dict = {}
+    ok, _user = svc.authenticate('abubakr', 'secret', False, session_dict)
+    conn.close()
+
+    assert ok is True
+    assert 'head_of_department' in session_dict['roles']
+    assert 'teacher' in session_dict['roles']
+    assert session_dict['role'] == 'head_of_department'
+
+
+def test_hod_without_teacher_record_has_no_teacher_face(db_fx):
+    """A HOD with no linked teacher record does NOT get the teacher face."""
+    from database.repositories.user_repository import UserRepository
+    from services.user_service import UserService
+
+    conn = _open_conn()
+    # /     /     >---- قسم ثاني لرئيس قسم ثاني بدون ملف أستاذ
+    conn.execute(
+        "INSERT INTO departments (name, type) VALUES ('قسم الحاسوب', 'academic')"
+    )
+    dept_id = conn.execute(
+        "SELECT id FROM departments WHERE name='قسم الحاسوب'"
+    ).fetchone()['id']
+    conn.execute(
+        "INSERT INTO users (username, password, role, department_id, label) "
+        "VALUES (?, ?, 'head_of_department', ?, 'رئيس قسم بدون ملف')",
+        ('barek', generate_password_hash('secret'), dept_id),
+    )
+    conn.commit()
+
+    svc = UserService(conn, UserRepository(conn))
+    session_dict = {}
+    ok, _user = svc.authenticate('barek', 'secret', False, session_dict)
+    conn.close()
+
+    assert ok is True
+    assert session_dict['roles'] == ['head_of_department']
+    assert session_dict['teacher_id'] is None
 
 
 # ── 2. schema backfill builds memberships and mirrors departments ─────────
@@ -303,7 +393,7 @@ def test_nav_items_follow_active_role(app_fx, db_fx):
         session['role'] = 'head_of_department'
         hod_eps = {i['endpoint'] for i in inject_navigation()['nav_items']}
 
-    assert 'classroom_requests.pending' in hod_eps
-    assert 'hod_pages.hod_materials' in hod_eps
+    assert 'classroom_requests.pending' not in hod_eps, 'classroom change requests feature removed'
+    assert 'hod_pages.hod_materials' not in hod_eps, 'material management is no longer a HOD feature'
     assert 'classroom_requests.pending' not in teacher_eps
     assert 'hod_pages.hod_materials' not in teacher_eps

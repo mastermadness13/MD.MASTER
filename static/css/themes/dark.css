@@ -19,7 +19,7 @@
   --text-secondary: #c9c0d9;
   --text-muted: #a298b8;
   --text-faint: #847a98;
-  --text-on-primary: #ffffff;
+  --text-on-primary: #1a1424;
 
   --primary: #c080fa;
   --primary-dark: #7d3fb5;
@@ -69,8 +69,8 @@
 
   --border: #38304a;
   --border-subtle: #2a233a;
-  --border-accent: #4a4060;
-  --border-input: #4a4060;
+  --border-accent: #5b5175;
+  --border-input: #8a7ba5;
   --border-input-focus: #c080fa;
 
   --table-header: #1a1524;
@@ -143,6 +143,9 @@
 }
 
 /* ===== Tailwind gray utilities not covered by theme-overrides.css ===== */
+
+[data-theme="dark"] body .bg-surface-dim { background-color: var(--surface-alt); }
+[data-theme="dark"] body .bg-surface-dim\/60 { background-color: var(--surface-alt); }
 
 [data-theme="dark"] body .text-gray-300 { color: #cfc2d3; }
 [data-theme="dark"] body .text-gray-400 { color: #9b94ad; }
@@ -257,7 +260,7 @@
 [data-theme="dark"] .planning-main .session-select { background: var(--surface-card); }
 
 [data-theme="dark"] .auth-submit-btn {
-  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  background: var(--primary);
 }
 
 /* .btn-* fallbacks (currently unused by templates) — keep white text readable */

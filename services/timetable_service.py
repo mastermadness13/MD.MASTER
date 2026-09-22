@@ -12,6 +12,11 @@ import contextvars
 import logging
 from typing import Any, Dict, List, Optional
 
+from services.timetable_scope import (
+    InvalidSemesterError,
+    allowed_semesters_for,
+    validate_semester_allowed,
+)
 from utils.format import semester_code_next, semester_display_name
 
 logger = logging.getLogger(__name__)
@@ -108,9 +113,9 @@ class TimetableService:
                 dept_semesters = row['semesters']
                 has_sections = bool(row['has_sections'])
 
-        available_semesters = list(range(2, min(dept_semesters, 8) + 1))
-        if not available_semesters:
-            available_semesters = [1]
+        available_semesters = self.available_semesters_for(
+            {'name': selected_dept_name, 'semesters': dept_semesters}
+        )
 
         # /     /     >---- تثبيت الفصل إذا كان القسم بفصل وحدة
         semester_fixed = len(available_semesters) == 1
@@ -177,12 +182,9 @@ class TimetableService:
             'section_fixed': section_fixed,
         }
 
-    # /     /     >---- الفصول المتاحة للقسم حسب عدد سنوات الدراسة
-    def available_semesters_for(self, dept: Dict[str, Any]) -> List[int]:
-        total = dept.get('semesters') or 1
-        if total <= 1:
-            return [1]
-        return list(range(2, min(total, 8) + 1))
+    # /     /     >---- الفصول المتاحة للقسم (قاعدة موحّدة من timetable_scope)
+    def available_semesters_for(self, dept) -> List[int]:
+        return allowed_semesters_for(dept)
 
     # /     /     >---- هل توجد نسخة جاهزة لهذا الفصل؟
     def _version_exists(self, dept_id: int, semester: int, semester_code: str) -> bool:
@@ -703,17 +705,19 @@ class TimetableService:
         /     /     >---- الحفظ لازم ما يتحجبش، التنبيهات معلومة فقط والجوار يتم تجاهله.
         """
         warnings: List[str] = []
-        conflict_rows = self._repo.get_conflicting_entries(
-            'teacher', teacher_id, day, period_code, exclude_id=entry_id,
-            start_time=start_time, end_time=end_time, hours=hours,
-        )
-        for row in conflict_rows:
-            window = (row.get('start_time') and row.get('end_time')
-                      and f"من {row['start_time']} إلى {row['end_time']}" or '')
-            warnings.append(
-                f"المحاضر {row['teacher_name']} لديه حصة متعارضة يوم {row['day']} "
-                f"في {row['room_name'] or 'قاعة غير محددة'} {window}".strip()
+        # /     /     >---- حصة بلا أستاذ (لم يُحدد بعد): لا يوجد محاضر ليتعارض معه
+        if teacher_id:
+            conflict_rows = self._repo.get_conflicting_entries(
+                'teacher', teacher_id, day, period_code, exclude_id=entry_id,
+                start_time=start_time, end_time=end_time, hours=hours,
             )
+            for row in conflict_rows:
+                window = (row.get('start_time') and row.get('end_time')
+                          and f"من {row['start_time']} إلى {row['end_time']}" or '')
+                warnings.append(
+                    f"المحاضر {row['teacher_name']} لديه حصة متعارضة يوم {row['day']} "
+                    f"في {row['room_name'] or 'قاعة غير محددة'} {window}".strip()
+                )
         conflict_rows = self._repo.get_conflicting_entries(
             'room', room_id, day, period_code, exclude_id=entry_id,
             start_time=start_time, end_time=end_time, hours=hours,
@@ -739,6 +743,7 @@ class TimetableService:
                      version_id=None, lecture_type='theory', hours=0):
         """Insert a timetable entry, link teacher→department, record the taught
         course, and collect advisory conflict warnings."""
+        validate_semester_allowed(self.db, department_id, semester)
         entry_id = self._repo.create({
             'day': day, 'semester': semester, 'period': period_code,
             'course_id': course_id, 'teacher_id': teacher_id, 'room_id': room_id,
@@ -769,6 +774,7 @@ class TimetableService:
         if not existing:
             return False
         dept_id = existing.get('department_id')
+        validate_semester_allowed(self.db, dept_id, semester)
         ok = self._repo.update(entry_id, {
             'day': day, 'semester': semester, 'period': period_code,
             'course_id': course_id, 'teacher_id': teacher_id, 'room_id': room_id,

@@ -1,48 +1,111 @@
-{% macro admin_tasks_options(selected='') %}
-{% for task in ['عضو تدريس','رئيس قسم', 'رئيس قسم البحث والتطوير', 'رئيس قسم الامتحانات', 'مدير مكتب أعضاء هيئة التدريس', 'مدير مكتب الشؤون العلمية', 'منسق القاعات', 'قسم البحث والتطوير المناهج ', 'قسم الإدارة والامتحانات', 'رئيس قسم الدراسة والامتحانات', 'مكتب إدارة أعضاء هيئة التدريس'] %}
-<option value="{{ task }}" {{ 'selected' if selected == task }}>{{ task }}</option>
+{% macro admin_tasks_options(selected='', extra=None) %}
+{% set tasks = [
+    'عضو تدريس',
+    'رئيس قسم',
+    'رئيس قسم البحث والتطوير',
+    'مدير مكتب أعضاء هيئة التدريس',
+    'مدير مكتب الشؤون العلمية',
+    'منسق القاعات',
+    'رئيس قسم الدراسة والامتحانات',
+    'مكتب إدارة أعضاء هيئة التدريس',
+    'عميد الكلية',
+    'مدير مكتب الجودة',
+    'مدير مكتب الدراسة العالية',
+    'رئيس القسم العلمي',
+    'رئيس قسم الشؤون الفنية والمعامل',
+    'رئيس قسم البحث والتطوير والمناهج',
+    'رئيس قسم التدريب الميداني',
+    'رئيس قسم الدبلوم المهني',
+    'منسق الشعبة العلمية',
+    'منسق الجودة بالقسم',
+    'منسق الدراسة العالية بالقسم',
+    'منسق المواد العامة بالقسم العلمي',
+    'منسق تدريب ميداني',
+    'عضو تحرير مجلة علمية'
+] %}
+{% if extra %}
+  {% for item in extra %}
+    {% if item not in tasks %}{% set _ = tasks.append(item) %}{% endif %}
+  {% endfor %}
+{% endif %}
+{% set gold = ['رئيس قسم', 'رئيس قسم البحث والتطوير', 'مدير مكتب أعضاء هيئة التدريس',
+               'رئيس قسم الدراسة والامتحانات', 'مكتب إدارة أعضاء هيئة التدريس'] %}
+{% for task in tasks %}
+<option value="{{ task }}" {{ 'class="text-amber-600 font-bold"' if task in gold else '' }} {{ 'selected' if selected == task else '' }}>{{ task }}</option>
 {% endfor %}
 {% endmacro %}
 
+
 {% macro error_banner(message) %}
 {% if message %}
-<div class="mb-4 p-3.5 rounded-xl bg-error-container text-on-error-container text-sm font-bold flex items-center gap-2 border border-error/20">
+<div role="alert" class="mb-4 p-3.5 rounded-xl bg-error-container text-on-error-container text-sm font-bold flex items-center gap-2 border border-error/20">
   <span class="material-symbols-outlined text-lg">error</span>
   {{ message }}
 </div>
 {% endif %}
 {% endmacro %}
 
-{% macro academic_select(sel, options, selected, label, name, placeholder='اختر', required=false, col_class='flex flex-col gap-1.5') %}
+
+{% macro editable_select_widget(name, add_label='الاسم غير موجود؟ أضفه', custom_value='') %}
+<div class="flex items-center justify-between mt-1 min-h-6">
+  <button type="button" data-editable-toggle="{{ name }}"
+          class="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:text-primary/80 transition-colors cursor-pointer">
+    <span class="material-symbols-outlined text-[13px]">add_circle</span><span>{{ add_label }}</span>
+  </button>
+</div>
+<div data-editable-wrap="{{ name }}" class="mt-1.5 flex-col" style="display: {{ 'flex' if custom_value else 'none' }}">
+  <div class="relative">
+    <span class="absolute inset-y-0 right-0 flex items-center pr-2.5 pointer-events-none text-primary/70">
+      <span class="material-symbols-outlined text-[15px]">edit_note</span>
+    </span>
+    <input type="text" name="custom_{{ name }}" data-editable-input="{{ name }}" value="{{ custom_value or '' }}"
+           class="w-full h-9 rounded-lg border border-primary/30 bg-surface-container-lowest focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm text-on-surface pr-9 pl-3 transition-all"
+           placeholder="اكتب القيمة الجديدة ثم احفظ" autocomplete="off">
+  </div>
+  <p class="text-[10px] text-on-surface-variant mt-1 pr-9">ستُضاف إلى القائمة في النظام تلقائياً عند الحفظ.</p>
+</div>
+{% endmacro %}
+
+
+{% macro academic_select(sel, options, selected, label, name, placeholder='اختر', required=false, col_class='flex flex-col gap-1.5', custom_value='') %}
 <div class="{{ col_class }}">
   <label class="text-xs font-bold text-on-surface-variant">
     {{ label }}{% if required %} <span class="text-error">*</span>{% endif %}
   </label>
-  <select class="{{ sel }}" name="{{ name }}"{% if required %} required=""{% endif %}>
+  <select class="{{ sel }}" data-editable-select="{{ name }}" name="{{ name }}"{% if required %} required=""{% endif %}>
     <option value="">{{ placeholder }}</option>
     {% for o in options %}
-    <option value="{{ o.id }}" {{ 'selected' if selected|string == o.id|string }}>{{ o.name_ar }}</option>
+    {% set _o_id = o.id if o.id is defined else o.get('id') %}
+    {% set _o_name = o.name_ar if o.name_ar is defined else o.get('name_ar') %}
+    <option value="{{ _o_id }}" {{ 'selected' if selected|string == _o_id|string }}>{{ _o_name }}</option>
     {% endfor %}
   </select>
+  {{ editable_select_widget(name, custom_value=custom_value) }}
 </div>
 {% endmacro %}
 
-{% macro specialization_select(sel, field_id, options, selected, note='يُرشّح التخصص تلقائياً حسب الأقسام المرتبطة المحددة.') %}
+
+{% macro specialization_select(sel, field_id, options, selected, note='يُرشّح التخصص تلقائياً حسب الأقسام المرتبطة المحددة.', custom_value='') %}
 <div class="pt-2 border-t border-outline-variant/40 flex flex-col gap-1.5">
   <label class="text-xs font-bold text-on-surface-variant">التخصص العلمي الدقيق</label>
-  <select class="{{ sel }}" id="{{ field_id }}" name="specialization_id">
+  <select class="{{ sel }}" id="{{ field_id }}" data-editable-select="specialization_id" name="specialization_id">
     <option value="">اختر التخصص الدقيق (اختياري)</option>
     {% for s in options %}
-    <option value="{{ s.id }}" data-dept="{{ s.department_id }}"
-            {{ 'selected' if selected|string == s.id|string }}>{{ s.name }}</option>
+    {% set _s_id = s.id if s.id is defined else s.get('id') %}
+    {% set _s_name = s.name if s.name is defined else s.get('name') %}
+    {% set _s_dept = s.department_id if s.department_id is defined else s.get('department_id') %}
+    <option value="{{ _s_id }}" data-dept="{{ _s_dept }}"
+            {{ 'selected' if selected|string == _s_id|string }}>{{ _s_name }}</option>
     {% endfor %}
   </select>
+  {{ editable_select_widget('specialization_id', add_label='التخصص غير موجود؟ أضفه', custom_value=custom_value) }}
   <p class="text-[11px] text-on-surface-variant flex items-center gap-1">
     <span class="material-symbols-outlined text-[14px] text-primary">info</span>
     {{ note }}
   </p>
 </div>
 {% endmacro %}
+
 
 {% macro official_dates_fields(inp, fv, grid_class='grid grid-cols-1 sm:grid-cols-3 gap-3', label_class='text-xs font-semibold text-on-surface-variant') %}
 <div class="{{ grid_class }}">
@@ -61,31 +124,37 @@
 </div>
 {% endmacro %}
 
+
 {% macro dept_checklist(departments, checked_ids, grid_class='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5') %}
 {% set _checked = (checked_ids | default([])) | map('string') | list %}
 {% for d in departments %}
+{% set _d_id = d.id if d.id is defined else d.get('id') %}
+{% set _d_name = d.name if d.name is defined else d.get('name') %}
 <label class="relative flex items-center gap-2.5 p-2.5 rounded-xl border border-outline-variant/70 hover:border-primary/40 hover:bg-primary/5 cursor-pointer transition-all has-[:checked]:bg-primary-container/50 has-[:checked]:border-primary/60 select-none group">
-  <input class="w-4 h-4 rounded text-primary border-outline-variant focus:ring-primary accent-primary" name="department_ids[]" type="checkbox" value="{{ d.id }}" {{ 'checked' if d.id|string in _checked }}>
-  <span class="text-xs font-semibold text-on-surface group-hover:text-primary">{{ d.name }}</span>
+  <input class="w-4 h-4 rounded text-primary border-outline-variant focus:ring-primary accent-primary" name="department_ids[]" type="checkbox" value="{{ _d_id }}" {{ 'checked' if _d_id|string in _checked }}>
+  <span class="text-xs font-semibold text-on-surface group-hover:text-primary">{{ _d_name }}</span>
 </label>
 {% endfor %}
 {% endmacro %}
 
-{% macro position_hod_fields(inp, sel, departments, selected_position='', hod_value='', assignment_date='', department_hods=None, confirm_replace=False) %}
+
+{% macro position_hod_fields(inp, sel, departments, selected_position='', hod_value='', assignment_date='', department_hods=None, confirm_replace=False, custom_value='', admin_tasks=None) %}
 {% set _hods = department_hods | default({}) %}
-{% set _selected_occupied = _hods.get(hod_value | int) if hod_value else none %}
+{% set _hod_key = hod_value | int if hod_value else none %}
+{% set _selected_occupied = _hods.get(_hod_key) if _hod_key else none %}
 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
   <div class="flex flex-col gap-1.5">
     <label class="text-xs font-semibold text-on-surface-variant">نوع التكليف الإداري</label>
     <div class="relative">
-      <select class="{{ sel }} appearance-none cursor-pointer" id="positionSelect" name="position">
+      <select class="{{ sel }} appearance-none cursor-pointer" id="positionSelect" data-editable-select="position" name="position">
         <option value="">لا يوجد تكليف إداري</option>
-        {{ admin_tasks_options(selected_position) }}
+        {{ admin_tasks_options(selected_position, extra=admin_tasks) }}
       </select>
       <span class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-on-surface-variant/70">
         <span class="material-symbols-outlined text-[18px]">expand_more</span>
       </span>
     </div>
+    {{ editable_select_widget('position', add_label='التكليف غير موجود؟ أضفه', custom_value=custom_value) }}
   </div>
 
   <div class="flex flex-col gap-1.5">
@@ -101,9 +170,14 @@
   </div>
   <select class="w-full h-9 rounded-lg border border-secondary/30 bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary text-sm text-on-surface px-3 font-semibold" name="hod_department_id" id="hodDepartmentSelect">
     <option value="" data-occupied="0">اختر القسم الأكاديمي المسؤول عنه</option>
-    {% for d in departments if d.get('type') == 'academic' %}
-    {% set _hod = _hods.get(d.id) %}
-    <option value="{{ d.id }}" data-occupied="{{ '1' if _hod else '0' }}" {{ 'selected' if hod_value|string == d.id|string }}>{{ d.name }}{% if _hod %} — الرئيس الحالي: {{ _hod.name }}{% endif %}</option>
+    {% for d in departments %}
+    {% set _d_id = d.id if d.id is defined else d.get('id') %}
+    {% set _d_name = d.name if d.name is defined else d.get('name') %}
+    {% set _d_type = d.type if d.type is defined else d.get('type') %}
+    {% if _d_type == 'academic' %}
+    {% set _hod = _hods.get(_d_id | int) %}
+    <option value="{{ _d_id }}" data-occupied="{{ '1' if _hod else '0' }}" {{ 'selected' if hod_value|string == _d_id|string }}>{{ _d_name }}{% if _hod %} — الرئيس الحالي: {{ _hod.name }}{% endif %}</option>
+    {% endif %}
     {% endfor %}
   </select>
 
@@ -127,6 +201,7 @@
 </div>
 {% endmacro %}
 
+
 {% macro identity_fields(fv, name_cell='sm:col-span-2 flex flex-col gap-1.5', cell='flex flex-col gap-1.5') %}
 {% set inp = 'w-full h-10 rounded-xl border border-outline-variant bg-surface-container-lowest focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm text-on-surface placeholder:text-on-surface-variant/50 transition-all pr-9 pl-3' %}
 <div class="{{ name_cell }}">
@@ -143,13 +218,13 @@
 
 <div class="{{ cell }}">
   <label class="text-xs font-bold text-on-surface-variant">
-    الرقم الأكاديمي / الكلية <span class="text-error">*</span>
+    الرقم التعريفي / الكلية <span class="text-error">*</span>
   </label>
   <div class="relative">
     <span class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-on-surface-variant/70">
       <span class="material-symbols-outlined text-[18px]">tag</span>
     </span>
-    <input class="{{ inp }} font-mono text-left" placeholder="أدخل الرقم الأكاديمي" type="text" name="academic_number" value="{{ fv.academic_number or '' }}" dir="ltr" required="">
+    <input class="{{ inp }} font-mono text-left" placeholder="أدخل الرقم التعريفي" type="text" name="academic_number" value="{{ fv.academic_number or '' }}" dir="ltr" required="">
   </div>
 </div>
 

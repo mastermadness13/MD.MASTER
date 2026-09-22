@@ -112,34 +112,66 @@ SearchComponent.init({
     });
   }
 
+  function buildSelectedIds() {
+    if (selectAllActive) return allIds.slice();
+    var ids = [];
+    checks.forEach(function (c) {
+      if (c.checked) ids.push(c.value);
+    });
+    return ids;
+  }
+
+  function appendHiddenIds(ids) {
+    ids.forEach(function (id) {
+      var hidden = document.createElement('input');
+      hidden.type = 'hidden';
+      hidden.name = 'teacher_ids';
+      hidden.value = id;
+      form.appendChild(hidden);
+    });
+  }
+
   if (headerDeleteBtn) {
     headerDeleteBtn.addEventListener('click', function () {
-      if (!confirm('حذف الأعضاء المحددين؟')) return;
-      if (form) form.submit();
+      var ids = buildSelectedIds();
+      if (ids.length === 0) return;
+      appendHiddenIds(ids);
+      window.askConfirm({
+        message: 'حذف الأعضاء المحددين؟',
+        onConfirm: function () {
+          if (form.dataset.submitted) return;
+          form.dataset.submitted = '1';
+          form.submit();
+        }
+      });
+    });
+  }
+
+  if (deleteBtn) {
+    deleteBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      var ids = buildSelectedIds();
+      if (ids.length === 0) return;
+      appendHiddenIds(ids);
+      window.askConfirm({
+        message: 'حذف الأعضاء المحددين؟',
+        onConfirm: function () {
+          if (form.dataset.submitted) return;
+          form.dataset.submitted = '1';
+          form.submit();
+        }
+      });
     });
   }
 
   if (form) {
     form.addEventListener('submit', function (e) {
-      var selectedIds = [];
-      if (selectAllActive) {
-        selectedIds = allIds;
-      } else {
-        checks.forEach(function (c) {
-          if (c.checked) selectedIds.push(c.value);
-        });
-      }
+      var selectedIds = buildSelectedIds();
       if (selectedIds.length === 0) {
         e.preventDefault();
         return false;
       }
-      selectedIds.forEach(function (id) {
-        var hidden = document.createElement('input');
-        hidden.type = 'hidden';
-        hidden.name = 'teacher_ids';
-        hidden.value = id;
-        form.appendChild(hidden);
-      });
+      appendHiddenIds(selectedIds);
     });
   }
 

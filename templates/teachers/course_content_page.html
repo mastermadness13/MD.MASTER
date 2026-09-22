@@ -1,12 +1,13 @@
 {% extends 'shared/layouts/base.html' %}
 {% set page_mode = page_mode | default('view') %}
+{% set public_view = public_view | default(false) %}
 {% set is_form = page_mode in ('create', 'edit') %}
 {% set is_view = page_mode == 'view' %}
 {% set is_readonly = page_mode == 'readonly' %}
 {% set is_admin_list = page_mode == 'admin_list' %}
 {% set is_teacher_list = page_mode == 'teacher_list' %}
 {% set sidebar_active = sidebar_active | default('course_content' if (is_teacher_list or is_readonly) else 'course_content_admin') %}
-{% set page_title = page_title | default('نشر نموذج المقرر' if is_form else ('تفاصيل محتوى المقرر' if is_view else ('رفع المقرر' if is_admin_list else 'المقررات المكلف بها'))) %}
+{% set page_title = page_title | default('نشر نموذج المقرر' if is_form else ('تفاصيل محتوى المقرر' if is_view else ('رفع محتوى المقرر' if is_admin_list else 'المقررات المكلف بها'))) %}
 {% set doc = doc | default({}) %}
 {% set submission = submission | default(doc | default({})) %}
 {% set curriculum = curriculum | default([]) %}
@@ -33,7 +34,7 @@
     <div class="page-header-info">
       <span class="material-symbols-outlined page-header-icon">description</span>
       <div>
-        <h1 class="page-title">رفع المقرر</h1>
+        <h1 class="page-title">رفع محتوى المقرر</h1>
         <p class="page-subtitle">رفع ومراجعة نماذج المقررات الدراسية حسب الأقسام والفصول الدراسية</p>
       </div>
     </div>
@@ -82,7 +83,7 @@
         {{ status_labels.get(submission.status, submission.status or '—') }}
       </span>
       {% endif %}
-      <a href="{{ url_for('teacher_pages.teacher_course_content' if is_readonly else 'teacher_pages.super_admin_course_content_list') }}"
+      <a href="{{ '/index.html#courses' if public_view else url_for('teacher_pages.teacher_course_content' if is_readonly else 'teacher_pages.super_admin_course_content_list') }}"
          class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm no-underline">
         <span class="material-symbols-outlined text-lg">arrow_forward</span>
         العودة
@@ -246,7 +247,7 @@
     <div class="bg-white rounded-2xl border border-border shadow-sm p-4 sm:p-5 mb-5 no-print">
       <div class="flex flex-col md:flex-row gap-3">
         <div class="relative flex-1">
-          <span class="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-text-faint">search</span>
+          <span class="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-muted">search</span>
           <input id="ccListSearch" type="text" placeholder="ابحث بالرمز أو اسم المادة..." class="w-full pr-11 pl-9 py-2.5 rounded-xl border border-border bg-surface-hover text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition">
           <button type="button" id="ccListSearchClear" class="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg text-text-muted hover:text-text-primary hover:bg-surface-hover transition bg-transparent border-0 cursor-pointer" style="display:none" title="مسح البحث">
             <span class="material-symbols-outlined text-lg">close</span>
@@ -255,6 +256,7 @@
         <select id="ccListDeptFilter" class="px-4 py-2.5 rounded-xl border border-border bg-surface-hover text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary md:w-56 transition"></select>
         <select id="ccListStatusFilter" class="px-4 py-2.5 rounded-xl border border-border bg-surface-hover text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary md:w-56 transition">
           <option value="">كل الحالات</option>
+          <option value="__has_file__">لديها ملف</option>
           <option value="draft">مسودة</option>
           <option value="published">منشور</option>
           <option value="approved">منشور</option>
@@ -270,8 +272,8 @@
           <span id="ccCourseCount" class="bg-primary-faint text-primary text-xs font-bold px-2.5 py-0.5 rounded-full">0</span>
         </div>
       </div>
-      <div class="overflow-x-auto">
-        <table class="w-full min-w-[820px] text-sm">
+      <div class="w-full overflow-x-visible">
+        <table class="w-full text-sm">
           <thead class="bg-surface-zebra">
             <tr>
               <th class="px-2 py-2 text-center font-semibold text-text-secondary text-xs w-10">
@@ -326,7 +328,7 @@
     <div class="bg-white rounded-2xl border border-border shadow-sm p-4 sm:p-5 mb-5 no-print">
       <div class="flex flex-col md:flex-row gap-3">
         <div class="relative flex-1">
-          <span class="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-text-faint">search</span>
+          <span class="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-muted">search</span>
           <input id="ccPlanSearch" type="text" placeholder="ابحث عن القسم بالاسم..." class="w-full pr-11 pl-4 py-2.5 rounded-xl border border-border bg-surface-hover text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition">
         </div>
         <select id="ccPlanDeptSelect" class="px-4 py-2.5 rounded-xl border border-border bg-surface-hover text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary md:w-64 transition"></select>
@@ -398,17 +400,11 @@
 
     <!-- Action bar -->
     <div class="flex flex-wrap items-center gap-3 mt-6 pt-5 border-t border-outline-variant/30 no-point">
-      <label class="flex items-center gap-1.5 text-xs font-bold text-on-surface-variant cursor-printeo">
-        <span class="material-symbols-outlined text-base">upload_file</span>
-        ملف المقرر (PDF)
-        <input type="file" name="form_file" id="formFileInput" accept=".pdf,application/pdf"
-               class="text-sm text-on-surface-variant file:mo-2 file:ml-0 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-primary/10 file:text-primary file:font-bold file:cursor-pointer cursor-pointer max-w-[180px]">
-      </label>
       <div class="flex-1"></div>
       <button type="submit" data-action="send"
               class="flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm cursor-pointer">
-        <span class="material-symbols-outlined text-lg">publish</span>
-        حفظ ونشر المقرر
+        <span class="material-symbols-outlined text-lg">save</span>
+        حفظ مفردات المقرر
       </button>
     </div>
   </form>
@@ -450,8 +446,8 @@
       يُستبدل ملف PDF المرفق بهذا النموذج فقط{% if submission.period_label %} ({{ submission.period_label }}){% endif %} —
       تُحفظ نسخة من الملف السابق تلقائياً عند الاستبدال.
     </p>
-    <form method="POST" action="{{ url_for('teacher_pages.super_admin_course_content_update_form') }}" enctype="multipart/form-data"
-          onsubmit="var f=this.elements['file']; if(!f || !f.files || !f.files.length){ alert('يرجى اختيار ملف PDF أولاً'); return false; }{% if submission.filename %} if(!confirm('يوجد ملف حالي لهذا النموذج وسيُستبدل بالنسخة الجديدة. متابعة الاستبدال؟')){ return false; }{% endif %}">
+    <form id="courseContentReplaceForm" method="POST" action="{{ url_for('teacher_pages.super_admin_course_content_update_form') }}" enctype="multipart/form-data"
+          data-confirm-replace="{{ '1' if submission.filename else '0' }}">
       <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="submission_id" value="{{ submission.id }}">
       <div class="flex flex-wrap items-end gap-3">
@@ -488,7 +484,7 @@
           <span class="material-symbols-outlined">edit_note</span>
           تعديل محتوى النموذج
         </h2>
-        <p class="text-sm text-on-surface-variant">تعبئة أو تعديل بيانات النموذج والمنهاج ثم حفظه كمسودة أو نشره.</p>
+        <p class="text-sm text-on-surface-variant">تعبئة أو تعديل بيانات النموذج والمنهاج ثم احفظ مفردات المقرر لنشرها في الجدول الدراسي.</p>
       </div>
       <a href="{{ url_for('teacher_pages.super_admin_course_content_create', course_id=submission.course_id, submission_id=submission.id) }}"
          class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-5 py-2.5 rounded-lg text-sm font-bold transition shadow-sm no-underline">
@@ -510,13 +506,15 @@
 {% endblock %}
 
 {% block scripts %}
-{% if is_admin_list %}
+{% if public_view %}
+{% elif is_admin_list %}
 <script>
 window.TEACHERS_SUPER_ADMIN_COURSE_CONTENT_BOOT = {
     csrfToken: {{ csrf_token() | tojson }},
     courses: {{ courses | tojson }},
     syllabusByCourse: {{ syllabus_by_course | tojson | default({}) }},
     formByCourse: {{ form_by_course | tojson | default({}) }},
+    vocabByCourse: {{ vocab_by_course | tojson | default({}) }},
     departmentNames: [{% for d in departments %}{{ d.name | tojson }},{% endfor %}],
     total: {{ total | default(0) }},
     page: {{ page | default(1) }},

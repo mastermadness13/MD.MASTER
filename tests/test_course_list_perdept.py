@@ -28,7 +28,7 @@ def db_fx(tmp_path, monkeypatch):
     ensure_schema(conn)
     conn.execute(
         "INSERT OR IGNORE INTO users (username, password, role, label) "
-        "VALUES ('superadmin', 'x', 'super_admin', 'مدير')"
+        "VALUES ('office_manager', 'x', 'faculty_affairs', 'مدير مكتب أعضاء هيئة التدريس')"
     )
     for name, semesters in [('قسم الاتصالات', 7), ('قسم الحاسوب', 7)]:
         conn.execute(
@@ -56,8 +56,8 @@ def client(app_fx, db_fx):
     c = app_fx.test_client()
     with c.session_transaction() as sess:
         sess['user_id'] = 1
-        sess['role'] = 'super_admin'
-        sess['username'] = 'superadmin'
+        sess['role'] = 'faculty_affairs'
+        sess['username'] = 'office_manager'
         sess['department_id'] = None
         sess['_csrf_token'] = 't'
     return c

@@ -67,7 +67,7 @@
     <div class="bg-white rounded-2xl border border-border shadow-sm p-4 sm:p-5 mb-5 no-print">
       <div class="flex flex-col md:flex-row gap-3">
         <div class="relative flex-1">
-          <span class="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-text-faint">search</span>
+          <span class="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-muted">search</span>
           <input id="listSearch" type="text" placeholder="ابحث بالرمز أو اسم المادة..." class="w-full pr-11 pl-4 py-2.5 rounded-xl border border-border bg-surface-hover text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition">
         </div>
         <select id="listDeptFilter" class="px-4 py-2.5 rounded-xl border border-border bg-surface-hover text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary md:w-56 transition"></select>
@@ -120,7 +120,7 @@
     <div class="bg-white rounded-2xl border border-border shadow-sm p-4 sm:p-5 mb-5 no-print">
       <div class="flex flex-col md:flex-row gap-3">
         <div class="relative flex-1">
-          <span class="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-text-faint">search</span>
+          <span class="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-muted">search</span>
           <input id="planSearch" type="text" placeholder="ابحث عن القسم بالاسم..." class="w-full pr-11 pl-4 py-2.5 rounded-xl border border-border bg-surface-hover text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition">
         </div>
         <select id="planDeptSelect" class="px-4 py-2.5 rounded-xl border border-border bg-surface-hover text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary md:w-64 transition"></select>
@@ -149,6 +149,117 @@
 
     <div id="planTablesContainer"></div>
   </div>
+
+  <!-- ============ CODES VIEW ============ -->
+  {% if false %}
+  <div id="viewCodes" class="hidden">
+    <div class="bg-white rounded-2xl border border-border shadow-sm p-4 sm:p-5 mb-5 no-print">
+      <div class="flex flex-col md:flex-row gap-3">
+        <div class="relative flex-1">
+          <span class="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-muted">search</span>
+          <input id="codesSearch" type="text" placeholder="ابحث بالكود أو اسم المادة..." class="w-full pr-11 pl-4 py-2.5 rounded-xl border border-border bg-surface-hover text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition">
+        </div>
+        <select id="codesDeptFilter" class="px-4 py-2.5 rounded-xl border border-border bg-surface-hover text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary md:w-56 transition">
+          <option value="">كافة الأقسام</option>
+          {% for d in codes_departments %}
+          <option value="{{ d['id'] }}">{{ d['name'] }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="flex items-center justify-between gap-2 mb-4">
+      <span id="codesCount" class="text-sm text-text-muted">عدد المقررات: {{ codes_courses | length }}</span>
+      <div class="bg-white rounded-2xl border border-border shadow-sm p-1.5 inline-flex gap-1.5">
+        <button type="button" id="tabCodesInlineBtn" onclick="switchCodesEditorMode('inline')" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all">
+          <span class="material-symbols-outlined text-lg">edit_square</span>
+          تعديل مباشر
+        </button>
+        <button type="button" id="tabCodesPasteBtn" onclick="switchCodesEditorMode('paste')" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all">
+          <span class="material-symbols-outlined text-lg">content_paste</span>
+          لصق قائمة
+        </button>
+      </div>
+    </div>
+
+    <!-- INLINE MODE -->
+    <form id="codesInlineForm" method="post" action="#" onsubmit="return false">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="embed" value="1">
+      <div class="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[760px] text-sm">
+            <thead class="bg-surface-zebra">
+              <tr>
+                <th class="px-3 py-2 text-center font-semibold text-text-secondary text-xs w-10">ت</th>
+                <th class="px-3 py-2 text-right font-semibold text-text-secondary text-xs">المادة</th>
+                <th class="px-3 py-2 text-right font-semibold text-text-secondary text-xs">القسم</th>
+                <th class="px-3 py-2 text-center font-semibold text-text-secondary text-xs w-32">الكود الحالي</th>
+                <th class="px-3 py-2 text-center font-semibold text-text-secondary text-xs w-44">الكود الجديد</th>
+              </tr>
+            </thead>
+            <tbody id="codesTableBody" class="divide-y divide-border-subtle">
+              {% for c in codes_courses %}
+              <tr class="codes-row" data-dept-ids="{{ c['dept_ids'] or '' }}" data-code="{{ c['code'] or '' }}" data-name="{{ c['name'] or '' }}">
+                <td class="px-3 py-2 text-center text-text-muted">{{ loop.index }}</td>
+                <td class="px-3 py-2">
+                  <div class="font-semibold text-text-primary">{{ c['name'] }}</div>
+                  <div class="text-xs text-text-muted">السنة {{ c['year'] }}</div>
+                </td>
+                <td class="px-3 py-2 text-text-secondary text-xs">{{ c['depts'] or '—' }}</td>
+                <td class="px-3 py-2 text-center">
+                  <span class="inline-block bg-surface-hover border border-border rounded-lg px-2.5 py-1 text-xs font-bold text-text-secondary" dir="ltr">{{ c['code'] or '—' }}</span>
+                </td>
+                <td class="px-3 py-2 text-center">
+                  <input name="code_{{ c['id'] }}" value="{{ c['code'] or '' }}" dir="ltr"
+                         placeholder="SWE402"
+                         class="w-full px-3 py-2 rounded-xl border border-border bg-surface-hover text-sm text-center focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition">
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="5" class="px-4 py-10 text-center text-text-muted">لا توجد مقررات</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% if codes_courses %}
+        <div class="px-4 py-3 border-t border-border-subtle flex items-center justify-between gap-2 no-print">
+          <span class="text-xs text-text-muted">تعديل الكود فقط — بقية بيانات المقرر تبقى كما هي</span>
+          <button type="submit" class="flex items-center gap-2 bg-primary text-on-primary px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-primary/90 transition-all shadow-sm">
+            <span class="material-symbols-outlined text-lg">save</span>
+            حفظ الأكواد
+          </button>
+        </div>
+        {% endif %}
+      </div>
+    </form>
+
+    <!-- PASTE MODE -->
+    <form id="codesPasteForm" method="post" action="#" onsubmit="return false" style="display:none">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="embed" value="1">
+      <div class="bg-white rounded-xl border border-border shadow-sm p-4 sm:p-5">
+        <div class="flex items-start gap-2 mb-3">
+          <span class="material-symbols-outlined text-primary mt-0.5">info</span>
+          <p class="text-xs text-text-secondary leading-relaxed">
+            الصق كل سطر بصيغة: <b>الكود ثم اسم المادة</b> مفصولين بفاصلة أو تبويب أو "|" —
+            مثال: <span dir="ltr">MATH201 ، رياضيات متقدمة</span>
+          </p>
+        </div>
+        <textarea name="bulk_text" rows="10" dir="ltr" placeholder="MATH201 ، رياضيات متقدمة&#10;PHY102 ، فيزياء عامة&#10;..."
+                  class="w-full px-4 py-3 rounded-xl border border-border bg-surface-hover text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition"></textarea>
+        <div class="flex justify-end mt-4">
+          <button type="submit" class="flex items-center gap-2 bg-primary text-on-primary px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-primary/90 transition-all shadow-sm">
+            <span class="material-symbols-outlined text-lg">content_paste_go</span>
+            تطبيق الأكواد
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+  {% endif %}
 </div>
 
 {% endblock %}
@@ -300,7 +411,7 @@ window.COURSES_LIST_BOOT = {
   statusMeta: {{ payload.statusMeta | tojson }},
   courses: {{ payload.courses | tojson }},
   canManage: {{ 'true' if can_manage else 'false' }},
-  isRd: {{ 'true' if user and user.role in ('research_development', 'super_admin') else 'false' }},
+  isRd: {{ 'true' if user and user.role == 'research_development' else 'false' }},
   isTeacher: {{ 'true' if user and user.role == 'teacher' else 'false' }},
   view: {{ _view | tojson }},
   page: {{ _page or 1 }},

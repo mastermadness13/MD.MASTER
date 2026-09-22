@@ -8,6 +8,13 @@ from flask_db import get_db
 from security import csrf_required, login_required, permission_required
 from security import current_user, has_permission
 from services import timetable_service, notification_service, public_service
+from services.timetable_scope import (
+    INVALID_SEMESTER_MESSAGE,
+    InvalidSemesterError,
+    allowed_semesters_for,
+    semester_token,
+    validate_semester_allowed,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -28,38 +35,36 @@ def _hod_dept():
     return session.get('hod_department_id')
 
 
-@bp.route('')
-@bp.route('/')
-@login_required
-@permission_required('timetable.view')
-def timetable():
-    role = session.get('role', '')
-    user_dept = _user_dept()
-    db = get_db()
+def _first_department_id(db):
+    first = db.execute(
+        'SELECT id FROM departments WHERE hidden=0 AND deleted_at IS NULL ORDER BY name LIMIT 1'
+    ).fetchone()
+    return first['id'] if first else None
 
-    dept_id = request.args.get('department_id', type=int)
-    if user_dept:
-        dept_id = user_dept
-    if not dept_id:
-        first = db.execute(
-            'SELECT id FROM departments WHERE hidden=0 AND deleted_at IS NULL ORDER BY name LIMIT 1'
-        ).fetchone()
-        if first:
-            dept_id = first['id']
 
-    semester = request.args.get('semester', type=int)
-    version_id = request.args.get('version_id', type=int)
-
-    payload = timetable_service.get_department_view(db, dept_id, semester, version_id)
-    payload['can_manage'] = has_permission(role, 'timetable.edit')
-    payload['can_switch_department'] = not user_dept
-
+def _file_maps(db):
+    """form / vocab / syllabus maps shared by every unified timetable view."""
     forms, vocab, syllabi_files = public_service.get_course_content_files(db)
-    payload['form'] = {
-        cid: {'id': item['id'], 'url': url_for('public_library.course_file', file_id=item['id'])}
+    form = {
+        cid: {
+            'id': item['id'],
+            'url': url_for('public_library.course_file', file_id=item['id']),
+            'submission_id': item.get('submission_id'),
+        }
         for cid, item in forms.items()
     }
-    payload['vocab'] = {
+    published_contents = public_service.get_published_course_contents(db)
+    for cid, item in published_contents.items():
+        form.setdefault(cid, {
+            'id': item['id'],
+            'url': url_for(
+                'public_library.course_content',
+                submission_id=item['id'],
+            ),
+            'submission_id': item['id'],
+            'is_document': True,
+        })
+    vocab_map = {
         cid: {
             'id': item['id'],
             'originalFilename': item['original_filename'],
@@ -78,20 +83,104 @@ def timetable():
         syllabi[key] = entry
         if item.get('teacher_id') is None:
             syllabi['*:{}'.format(item['course_id'])] = entry
+    return form, vocab_map, syllabi
+
+
+def _teacher_id_for_user(db, uid):
+    if not uid:
+        return None
+    trow = db.execute('SELECT id FROM teachers WHERE user_id = ?', (uid,)).fetchone()
+    return trow['id'] if trow else None
+
+
+def _render_unified(db, role, user_data, dept_id, semester, version_id,
+                    can_manage, can_switch_department, nav_active,
+                    is_rd=False, current_teacher_id=None):
+    """Shared renderer for all timetable personas — one unified page that is
+    a full editor (can_manage), a locked read-only table (old version), or a
+    read-only R&D/audit view (can_manage=False). With ``?format=json`` it
+    returns the same payload as JSON for the live-sync poller."""
+    payload = timetable_service.get_department_view(db, dept_id, semester, version_id)
+    payload['can_manage'] = can_manage
+    payload['can_switch_department'] = can_switch_department
+
+    form, vocab_map, syllabi = _file_maps(db)
+    payload['form'] = form
+    payload['vocab'] = vocab_map
     payload['syllabus'] = syllabi
 
-    current_teacher_id = None
-    uid = session.get('user_id')
-    if uid:
-        trow = db.execute(
-            'SELECT id FROM teachers WHERE user_id = ?', (uid,)
-        ).fetchone()
-        if trow:
-            current_teacher_id = trow['id']
+    if request.args.get('format') == 'json':
+        return ok(payload)
 
-    return render_template('timetable/combined.html', payload=payload, user=current_user(),
-                           current_teacher_id=current_teacher_id,
-                           is_rd=(role == 'research_development'))
+    initial_token = ''
+    if dept_id:
+        try:
+            initial_token = semester_token(
+                db, dept_id, payload.get('selected_semester') or 1)
+        except InvalidSemesterError:
+            initial_token = ''
+    payload['fingerprint'] = initial_token
+
+    rd_upload = url_for('teacher_pages.super_admin_course_syllabus_upload', course_id=0)
+    rd_delete = url_for('teacher_pages.super_admin_course_syllabus_delete', course_id=0)
+    tf_delete = url_for('teacher_pages.teacher_syllabus_delete', tf_id=0)
+    syllabus_urls = {
+        'rdUpload': rd_upload.replace('/course/0/', '/course/{cid}/'),
+        'rdDelete': rd_delete.replace('/course/0/', '/course/{cid}/'),
+        'teacherUpload': url_for('teacher_pages.teacher_syllabus_upload'),
+        'teacherDelete': tf_delete.replace('/syllabus/0', '/syllabus/{tfid}'),
+    }
+
+    return render_template(
+        'timetable/unified.html',
+        payload=payload,
+        user=user_data,
+        nav_active=nav_active,
+        is_rd=is_rd,
+        current_teacher_id=current_teacher_id,
+        initial_token=initial_token,
+        syllabus_urls=syllabus_urls,
+    )
+
+
+@bp.route('')
+@bp.route('/')
+@login_required
+@permission_required('timetable.view')
+def timetable():
+    role = session.get('role', '')
+    user_dept = _user_dept()
+    db = get_db()
+
+    dept_id = request.args.get('department_id', type=int)
+    if user_dept:
+        dept_id = user_dept
+    if not dept_id:
+        dept_id = _first_department_id(db)
+
+    semester = request.args.get('semester', type=int)
+    version_id = request.args.get('version_id', type=int)
+
+    if dept_id:
+        dept_row = db.execute(
+            'SELECT name, semesters FROM departments WHERE id = ?', (dept_id,)
+        ).fetchone()
+        if dept_row:
+            allowed = allowed_semesters_for(dept_row)
+            if semester is not None and semester not in allowed:
+                return redirect(url_for('timetable.timetable',
+                                        department_id=dept_id,
+                                        semester=allowed[0],
+                                        version_id=version_id))
+
+    return _render_unified(
+        db, role, current_user(), dept_id, semester, version_id,
+        can_manage=has_permission(role, 'timetable.edit'),
+        can_switch_department=not user_dept,
+        nav_active='timetable.timetable',
+        is_rd=(role == 'research_development'),
+        current_teacher_id=_teacher_id_for_user(db, session.get('user_id')),
+    )
 
 
 @bp.route('/department')
@@ -109,45 +198,31 @@ def timetable_department_view():
         dept_id = user_dept_id
 
     if not dept_id:
-        first = db.execute(
-            'SELECT id FROM departments WHERE hidden=0 AND deleted_at IS NULL ORDER BY name LIMIT 1'
-        ).fetchone()
-        if first:
-            dept_id = first['id']
+        dept_id = _first_department_id(db)
 
     semester = request.args.get('semester', type=int)
     version_id = request.args.get('version_id', type=int)
 
-    payload = timetable_service.get_department_view(db, dept_id, semester, version_id)
-    payload['can_manage'] = can_manage
-    payload['can_switch_department'] = not user_dept_id
+    if dept_id:
+        dept_row = db.execute(
+            'SELECT name, semesters FROM departments WHERE id = ?', (dept_id,)
+        ).fetchone()
+        if dept_row:
+            allowed = allowed_semesters_for(dept_row)
+            if semester is not None and semester not in allowed:
+                return redirect(url_for('timetable.timetable_department_view',
+                                        department_id=dept_id,
+                                        semester=allowed[0],
+                                        version_id=version_id))
 
-    forms, vocab, syllabi_files = public_service.get_course_content_files(db)
-    payload['form'] = {
-        cid: {'id': item['id'], 'url': url_for('public_library.course_file', file_id=item['id'])}
-        for cid, item in forms.items()
-    }
-    payload['vocab'] = {
-        cid: {
-            'id': item['id'],
-            'originalFilename': item['original_filename'],
-            'url': url_for('public_library.course_file', file_id=item['id']),
-        }
-        for cid, item in vocab.items()
-    }
-    syllabi = {}
-    for key, item in syllabi_files.items():
-        entry = {
-            'id': item['id'],
-            'url': url_for('public_library.course_file', file_id=item['id']),
-            'teacher_id': item.get('teacher_id'),
-            'course_id': item['course_id'],
-        }
-        syllabi[key] = entry
-        if item.get('teacher_id') is None:
-            syllabi['*:{}'.format(item['course_id'])] = entry
-    payload['syllabus'] = syllabi
-    return render_template('timetable/department.html', payload=payload, user=user_data)
+    return _render_unified(
+        db, role, user_data, dept_id, semester, version_id,
+        can_manage=can_manage,
+        can_switch_department=not user_dept_id,
+        nav_active='timetable.timetable',
+        is_rd=(role == 'research_development'),
+        current_teacher_id=_teacher_id_for_user(db, session.get('user_id')),
+    )
 
 
 @bp.route('/rnd')
@@ -156,46 +231,38 @@ def timetable_department_view():
 def rnd_timetable():
     """Read-only single-table timetable view for the research & development role."""
     role = session.get('role', '')
-    if role not in ('research_development', 'super_admin'):
+    if role != 'research_development':
         return redirect(url_for('timetable.timetable'))
     db = get_db()
     user_data = current_user()
 
     dept_id = request.args.get('department_id', type=int)
     if not dept_id:
-        first = db.execute(
-            'SELECT id FROM departments WHERE hidden=0 AND deleted_at IS NULL ORDER BY name LIMIT 1'
-        ).fetchone()
-        if first:
-            dept_id = first['id']
+        dept_id = _first_department_id(db)
 
     semester = request.args.get('semester', type=int)
     version_id = request.args.get('version_id', type=int)
 
-    payload = timetable_service.get_department_view(db, dept_id, semester, version_id)
-    payload['can_manage'] = False
-    payload['can_switch_department'] = True
+    if dept_id:
+        dept_row = db.execute(
+            'SELECT name, semesters FROM departments WHERE id = ?', (dept_id,)
+        ).fetchone()
+        if dept_row:
+            allowed = allowed_semesters_for(dept_row)
+            if semester is not None and semester not in allowed:
+                return redirect(url_for('timetable.rnd_timetable',
+                                        department_id=dept_id,
+                                        semester=allowed[0],
+                                        version_id=version_id))
 
-    forms, _vocab, syllabi_files = public_service.get_course_content_files(db)
-    payload['form'] = {
-        cid: {'id': item['id'], 'url': url_for('public_library.course_file', file_id=item['id']),
-              'submission_id': item.get('submission_id')}
-        for cid, item in forms.items()
-    }
-    syllabi = {}
-    for key, item in syllabi_files.items():
-        entry = {
-            'id': item['id'],
-            'url': url_for('public_library.course_file', file_id=item['id']),
-            'teacher_id': item.get('teacher_id'),
-            'course_id': item['course_id'],
-        }
-        syllabi[key] = entry
-        if item.get('teacher_id') is None:
-            syllabi['*:{}'.format(item['course_id'])] = entry
-    payload['syllabus'] = syllabi
-
-    return render_template('timetable/rnd.html', payload=payload, user=user_data)
+    return _render_unified(
+        db, role, user_data, dept_id, semester, version_id,
+        can_manage=False,
+        can_switch_department=True,
+        nav_active='timetable.rnd_timetable',
+        is_rd=(role == 'research_development'),
+        current_teacher_id=_teacher_id_for_user(db, session.get('user_id')),
+    )
 
 
 @bp.route('/create', methods=['GET', 'POST'])
@@ -217,10 +284,9 @@ def timetable_create():
             timetable_service.get_create_form_data(db, dept_id, day, semester, period_code, user_dept)
         available_semesters = [1]
         if dept_id:
-            dept_row = db.execute('SELECT semesters FROM departments WHERE id=?', (dept_id,)).fetchone()
+            dept_row = db.execute('SELECT name, semesters FROM departments WHERE id=?', (dept_id,)).fetchone()
             if dept_row:
-                total = dept_row['semesters']
-                available_semesters = [1] if total == 1 else list(range(2, min(total, 8) + 1))
+                available_semesters = allowed_semesters_for(dept_row)
         return dict(entry=None, days=timetable_service.DAYS,
                     default_day=day, default_semester=semester, default_period_code=period_code,
                     enabled_periods=enabled_periods, courses=courses_list,
@@ -248,8 +314,17 @@ def timetable_create():
         start_time = request.form.get('start_time', '').strip()
         end_time = request.form.get('end_time', '').strip()
 
-        if not day or not course_id or not teacher_id or not room_id or not period_code or not department_id:
-            msg = 'جميع الحقول المطلوبة يجب ملؤها (بما في ذلك القسم)'
+        if not day or not course_id or not room_id or not period_code or not department_id:
+            msg = 'جميع الحقول المطلوبة يجب ملؤها (بما في ذلك القسم). يمكن حفظ الحصة بدون تعيين عضو هيئة تدريس، ويمكن تعيينه لاحقًا من تعديل الحصة.'
+            if is_modal:
+                return jsonify({'ok': False, 'message': msg})
+            return render_template('timetable/form.html', **_form_context(
+                day, semester, period_code, department_id, start_time, end_time, msg))
+
+        try:
+            validate_semester_allowed(db, department_id, semester)
+        except InvalidSemesterError:
+            msg = INVALID_SEMESTER_MESSAGE
             if is_modal:
                 return jsonify({'ok': False, 'message': msg})
             return render_template('timetable/form.html', **_form_context(
@@ -339,8 +414,17 @@ def timetable_edit(entry_id):
         room_id = request.form.get('room_id', type=int)
         start_time = request.form.get('start_time', '').strip()
         end_time = request.form.get('end_time', '').strip()
-        if not day or not course_id or not teacher_id or not room_id or not period_code:
-            msg = 'جميع الحقول المطلوبة يجب ملؤها'
+        if not day or not course_id or not room_id or not period_code:
+            msg = 'جميع الحقول المطلوبة يجب ملؤها. يمكن حفظ الحصة بدون تعيين عضو هيئة تدريس، ويمكن تعيينه لاحقًا.'
+            if is_modal:
+                return jsonify({'ok': False, 'message': msg})
+            flash(msg, 'error')
+            return redirect(url_for('timetable.timetable'))
+
+        try:
+            validate_semester_allowed(db, entry.get('department_id'), semester)
+        except InvalidSemesterError:
+            msg = INVALID_SEMESTER_MESSAGE
             if is_modal:
                 return jsonify({'ok': False, 'message': msg})
             flash(msg, 'error')
@@ -412,10 +496,9 @@ def timetable_edit(entry_id):
 
     available_semesters = [1]
     if dept_id:
-        dept_row = db.execute('SELECT semesters FROM departments WHERE id=?', (dept_id,)).fetchone()
+        dept_row = db.execute('SELECT name, semesters FROM departments WHERE id=?', (dept_id,)).fetchone()
         if dept_row:
-            total = dept_row['semesters']
-            available_semesters = [1] if total == 1 else list(range(2, min(total, 8) + 1))
+            available_semesters = allowed_semesters_for(dept_row)
 
     return render_template('timetable/form.html', entry=entry, days=timetable_service.DAYS,
                           default_day=entry.get('day'), default_semester=entry.get('semester'),
@@ -681,42 +764,15 @@ def department_exam_view():
         dept_id = user_dept_id
 
     if not dept_id:
-        first = db.execute(
-            'SELECT id FROM departments WHERE hidden=0 AND deleted_at IS NULL ORDER BY name LIMIT 1'
-        ).fetchone()
-        if first:
-            dept_id = first['id']
+        dept_id = _first_department_id(db)
 
     semester = request.args.get('semester', type=int)
     version_id = request.args.get('version_id', type=int)
 
-    payload = timetable_service.get_department_view(db, dept_id, semester, version_id)
-    payload['can_manage'] = False
-    payload['can_switch_department'] = not user_dept_id
-
-    forms, vocab, syllabi_files = public_service.get_course_content_files(db)
-    payload['form'] = {
-        cid: {'id': item['id'], 'url': url_for('public_library.course_file', file_id=item['id'])}
-        for cid, item in forms.items()
-    }
-    payload['vocab'] = {
-        cid: {
-            'id': item['id'],
-            'originalFilename': item['original_filename'],
-            'url': url_for('public_library.course_file', file_id=item['id']),
-        }
-        for cid, item in vocab.items()
-    }
-    syllabi = {}
-    for key, item in syllabi_files.items():
-        entry = {
-            'id': item['id'],
-            'url': url_for('public_library.course_file', file_id=item['id']),
-            'teacher_id': item.get('teacher_id'),
-            'course_id': item['course_id'],
-        }
-        syllabi[key] = entry
-        if item.get('teacher_id') is None:
-            syllabi['*:{}'.format(item['course_id'])] = entry
-    payload['syllabus'] = syllabi
-    return render_template('timetable/department.html', payload=payload, user=user_data)
+    return _render_unified(
+        db, session.get('role', ''), user_data, dept_id, semester, version_id,
+        can_manage=False,
+        can_switch_department=not user_dept_id,
+        nav_active='timetable.timetable',
+        is_rd=False,
+    )

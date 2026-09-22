@@ -1,0 +1,86 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'dashboard.dashboard' %}
+{% set page_title = 'بوابة الزائر' %}
+
+{% set stats = stats | default({}) %}
+{% set recent_activity = stats.get('recent_activity', []) | default([]) %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+
+  <!-- Page Header -->
+  <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <div class="flex items-center gap-3">
+      <span class="material-symbols-outlined text-primary text-3xl">travel_explore</span>
+      <div>
+        <h1 class="text-2xl font-bold text-on-surface">بوابة الزائر العام</h1>
+        <p class="page-subtitle">مرحباً {{ user.label or user.username }}، تصفح النشرات العلنية للكلية.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Public info cards -->
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+    <a href="{{ url_for('timetable.timetable') }}" class="bg-white rounded-xl border border-outline-variant p-5 hover:border-primary hover:bg-primary/5 transition-colors shadow-sm flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined">calendar_today</span>
+      </div>
+      <div>
+        <div class="text-lg font-bold text-on-surface">الجدول الدراسي</div>
+        <div class="text-xs text-on-surface-variant mt-0.5">تصفح جداول الأقسام ونشرات الفصول</div>
+      </div>
+    </a>
+    <a href="{{ url_for('exams.exams') }}" class="bg-white rounded-xl border border-outline-variant p-5 hover:border-primary hover:bg-primary/5 transition-colors shadow-sm flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined">grading</span>
+      </div>
+      <div>
+        <div class="text-lg font-bold text-on-surface">الجدول الامتحانات</div>
+        <div class="text-xs text-on-surface-variant mt-0.5">مواعيد الامتحانات المعلنة</div>
+      </div>
+    </a>
+    <a href="{{ url_for('courses.courses_list') }}" class="bg-white rounded-xl border border-outline-variant p-5 hover:border-primary hover:bg-primary/5 transition-colors shadow-sm flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined">menu_book</span>
+      </div>
+      <div>
+        <div class="text-lg font-bold text-on-surface">المقررات الدراسية</div>
+        <div class="text-xs text-on-surface-variant mt-0.5">قائمة المقررات حسب الأقسام</div>
+      </div>
+    </a>
+  </div>
+
+  <!-- Latest public activity -->
+  <div class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
+    <div class="px-5 py-4 border-b border-primary/10 bg-surface-dim flex items-center gap-2">
+      <span class="material-symbols-outlined text-primary">receipt_long</span>
+      <h3 class="font-bold text-primary">آخر النشاطات المعلنة</h3>
+    </div>
+    <div class="overflow-x-auto">
+      {% if recent_activity %}
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>التاريخ</th>
+            <th>المستخدم</th>
+            <th>النشاط</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in recent_activity %}
+          <tr>
+            <td class="whitespace-nowrap text-on-surface-variant" dir="ltr">{{ (a.created_at or '')[:16] }}</td>
+            <td class="font-bold text-on-surface">{{ a.username }}</td>
+            <td class="text-on-surface-variant">{{ a.description }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="px-5 py-4 text-sm text-on-surface-variant">لا توجد نشاطات معلنة بعد</div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

@@ -27,6 +27,7 @@ from core.constants.roles import ROLE_LABELS, ROLE_NAMES
 
 # ── إعادة تصدير ثوابت النظام (الأمان، الترقيم، الدرجات) ────────────
 from core.constants.system import (
+    INITIAL_CODE_EXPIRY_DAYS,
     LOGIN_RATE_LIMIT_MAX,
     LOGIN_RATE_WINDOW_SECONDS,
     PASSWORD_MIN_LENGTH,
@@ -74,6 +75,7 @@ __all__ = [
     'PASS_THRESHOLD',
     'PASSWORD_MIN_LENGTH',
     'PASSWORD_RESET_EXPIRY_HOURS',
+    'INITIAL_CODE_EXPIRY_DAYS',
     'LOGIN_RATE_LIMIT_MAX',
     'LOGIN_RATE_WINDOW_SECONDS',
     'PER_PAGE',

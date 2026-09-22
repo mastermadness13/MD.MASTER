@@ -127,9 +127,12 @@
         <button type="button" class="bn-item-row" onclick="toggleTheme()">
           <span class="material-symbols-outlined">dark_mode</span> الوضع الليلي
         </button>
-        <a href="{{ url_for('auth.logout') }}" class="bn-item-row bn-danger">
-          <span class="material-symbols-outlined">logout</span> تسجيل الخروج
-        </a>
+        <form action="{{ url_for('auth.logout') }}" method="post" class="bn-item-row bn-danger">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="bg-transparent border-0 cursor-pointer text-inherit font-inherit flex items-center gap-1.5 w-full">
+            <span class="material-symbols-outlined">logout</span> تسجيل الخروج
+          </button>
+        </form>
       </div>
     </section>
   </div>

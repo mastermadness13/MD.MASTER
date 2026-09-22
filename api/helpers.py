@@ -121,5 +121,7 @@ def api_permission_required(permission):
             if not has_permission(role, permission, dept_id):
                 return err('ليس لديك صلاحية للوصول', 403)
             return f(*args, **kwargs)
+        # Store required permission for deny-by-default before_request hook
+        decorated._required_permission = permission
         return decorated
     return decorator

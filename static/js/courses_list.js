@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   var BOOT = window.COURSES_LIST_BOOT || {};
   var URLS = BOOT.urls || {};
   // ===== DATA (server-rendered) =====
@@ -203,19 +203,59 @@
 
   // ===== NEW: Compact table helpers =====
   var _openClDrop = null;
-  function clCloseAllDropdowns() {
-    document.querySelectorAll('.cl-actions-menu.open').forEach(function (m) { m.classList.remove('open'); });
-    _openClDrop = null;
+  var _clFloating = null;
+  function clOnViewportChange() {
+    clCloseAllDropdowns();
   }
-  document.addEventListener('click', function (e) { if (!e.target.closest('.cl-actions-dropdown')) clCloseAllDropdowns(); });
+  function clCloseAllDropdowns() {
+    if (_clFloating && _clFloating.parentNode) {
+      _clFloating.parentNode.removeChild(_clFloating);
+    }
+    _clFloating = null;
+    _openClDrop = null;
+    window.removeEventListener('scroll', clOnViewportChange, true);
+    window.removeEventListener('resize', clOnViewportChange);
+  }
+  document.addEventListener('click', function (e) {
+    if (e.target.closest('.cl-actions-dropdown')) return;
+    if (_clFloating && _clFloating.contains(e.target)) return;
+    clCloseAllDropdowns();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' || e.key === 'Esc') clCloseAllDropdowns();
+  });
 
   window.clToggleDropdown = function (id, e) {
     e.stopPropagation();
-    var menu = document.getElementById(id);
-    if (!menu) return;
-    var isOpen = menu.classList.contains('open');
+    var source = document.getElementById(id);
+    if (!source) return;
+    var wasOpen = !!(_openClDrop && _openClDrop === id);
     clCloseAllDropdowns();
-    if (!isOpen) menu.classList.add('open');
+    if (wasOpen) return;
+
+    // قائمة عائمة في body — خارج أي حاوية مقتطعة (overflow)
+    var menu = document.createElement('div');
+    menu.className = 'cl-actions-menu open cl-menu-floating';
+    menu.innerHTML = source.innerHTML;
+    document.body.appendChild(menu);
+    _clFloating = menu;
+    _openClDrop = id;
+
+    var btn = e.currentTarget || e.target;
+    var rect = btn.getBoundingClientRect();
+    var menuH = menu.offsetHeight;
+    var spaceBelow = window.innerHeight - rect.bottom;
+    if (spaceBelow < menuH + 8) {
+      menu.style.bottom = (window.innerHeight - rect.top + 4) + 'px';
+    } else {
+      menu.style.top = (rect.bottom + 4) + 'px';
+    }
+    menu.style.right = Math.max(8, window.innerWidth - rect.right) + 'px';
+    menu.style.left = 'auto';
+    menu.style.position = 'fixed';
+
+    window.addEventListener('scroll', clOnViewportChange, true);
+    window.addEventListener('resize', clOnViewportChange);
   };
 
   function clMaterialCell(c) {
@@ -524,24 +564,31 @@
   }
 
   // ===== VIEW SWITCHING =====
+  function tabBtnClasses(active) {
+    return 'tab-btn flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ' +
+      (active ? 'bg-primary text-white shadow-sm' : 'bg-surface-hover text-text-secondary hover:bg-primary-faint hover:text-primary');
+  }
+
   function switchView(view) {
     var activeViewChanged = activeView !== view;
     activeView = view;
     var isList = view === 'list';
-    document.getElementById('viewList').classList.toggle('hidden', !isList);
-    document.getElementById('viewPlan').classList.toggle('hidden', isList);
+    var isPlan = view === 'plan';
+
+    var vList = document.getElementById('viewList');
+    var vPlan = document.getElementById('viewPlan');
+    if (vList) vList.classList.toggle('hidden', !isList);
+    if (vPlan) vPlan.classList.toggle('hidden', !isPlan);
 
     var b1 = document.getElementById('tabListBtn');
     var b2 = document.getElementById('tabPlanBtn');
-    var activeCls = 'bg-primary text-white shadow-sm';
-    var idleCls = 'bg-surface-hover text-text-secondary hover:bg-primary-faint hover:text-primary';
-    b1.className = 'tab-btn flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ' + (isList ? activeCls : idleCls);
-    b2.className = 'tab-btn flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ' + (isList ? idleCls : activeCls);
+    if (b1) b1.className = tabBtnClasses(isList);
+    if (b2) b2.className = tabBtnClasses(isPlan);
 
     if (isList) {
       if (activeViewChanged) currentPage = 1;
       renderList();
-    } else {
+    } else if (isPlan) {
       if (!currentDeptId && departments.length) currentDeptId = departments[0].id;
       document.getElementById('planDeptSelect').value = currentDeptId || '';
       renderDeptGrid(departments.filter(function (d) { return !planSearchQuery() || d.name.indexOf(planSearchQuery()) !== -1; }));
@@ -1311,7 +1358,7 @@
   function renderAll() {
     if (activeView === 'list') {
       renderList();
-    } else {
+    } else if (activeView === 'plan') {
       renderDeptGrid(departments.filter(function (d) { return !planSearchQuery() || d.name.indexOf(planSearchQuery()) !== -1; }));
       renderPlan();
     }

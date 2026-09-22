@@ -22,7 +22,7 @@ def db_fx(tmp_path, monkeypatch):
         conn.executescript(f.read())
     ensure_schema(conn)
     conn.execute(
-        "INSERT OR IGNORE INTO users (username, password, role, label) VALUES ('superadmin', 'x', 'super_admin', 'مدير')"
+        "INSERT OR IGNORE INTO users (username, password, role, label) VALUES ('rnd', 'x', 'research_development', 'البحث والتطوير')"
     )
     conn.execute(
         "INSERT OR IGNORE INTO departments (name, semesters, majors, hidden, has_sections, type) VALUES ('قسم الحاسوب', 8, 8, 0, 1, 'academic')"
@@ -64,8 +64,8 @@ def client(app_fx, db_fx):
     c = app_fx.test_client()
     with c.session_transaction() as sess:
         sess['user_id'] = 1
-        sess['role'] = 'super_admin'
-        sess['username'] = 'superadmin'
+        sess['role'] = 'research_development'
+        sess['username'] = 'rnd'
         sess['department_id'] = None
         sess['_csrf_token'] = 't'
     return c
@@ -133,7 +133,7 @@ def test_page_renders_courses_table(client):
     r = client.get('/teacher/super-admin/course-content')
     body = r.get_data(as_text=True)
     assert r.status_code == 200
-    assert 'رفع المقرر' in body
+    assert 'رفع محتوى المقرر' in body
     assert '<table' in body
     for header in ['المادة', 'القسم', 'الفصل', 'المدرّس', 'النموذج', 'الساعات', 'الإجراءات']:
         assert header in body
@@ -173,13 +173,14 @@ def test_action_cells_reflect_status(client):
     assert 'إنشاء النموذج' not in js
     assert 'متابعة النموذج' not in js
     assert 'تعديل النموذج' not in js
-    assert 'تحميل النموذج' not in js
+    # زر تحميل النموذج موجود داخل pdfCell (بجانب شارة الحالة في عمود النموذج)، لا في قائمة الإجراءات
+    assert 'تحميل النموذج' in js, 'download for the form lives in the pdf cell next to the badge'
     assert 'عرض النموذج' not in js
     assert 'عرض المنهج' not in js
     # لا أزرار رفع منهاج أو نموذج في قائمة المقررات (المنهاج عرض فقط)
     assert "'+ c.id + '/syllabus/upload" not in js
     assert "'+ c.id + '/form/upload" not in js
-    assert 'رفع المقرر' in body
+    assert 'رفع محتوى المقرر' in body
     # docs تحت التدقيق في مُصيّر الإجراءات
     assert "'+ c.id + '\" class=\"w-7 h-7 flex items-center justify-center rounded-lg hover:bg-blue-50" not in js
 
@@ -278,30 +279,30 @@ def test_send_edit_rewrites_curriculum(client, app_fx, tmp_path, monkeypatch):
     assert [x['topic'] for x in rows] == ['أساسيات', 'الحلقات']
 
 
-def test_create_page_prefills_stored_submission(client):
+def test_codes_tab_prefills_stored_submission(client):
     cid = _course_id('CS101')
     sid = _q("SELECT id FROM course_content_submissions WHERE course_id=?", (cid,))[0]['id']
-    body = client.get(f'/teacher/super-admin/course-content/create?course_id={cid}&submission_id={sid}').get_data(as_text=True)
+    body = client.get(f'/courses/codes?tab=content&course_id={cid}&submission_id={sid}').get_data(as_text=True)
     assert 'name="course_name"' in body
 
 
-def test_create_page_for_course_without_submission(client):
+def test_codes_tab_for_course_without_submission(client):
     cid = _course_id('CS103')
-    body = client.get(f'/teacher/super-admin/course-content/create?course_id={cid}').get_data(as_text=True)
+    body = client.get(f'/courses/codes?tab=content&course_id={cid}').get_data(as_text=True)
     assert 'name="course_name"' in body
     assert 'name="submission_id"' not in body, 'new form has no submission id yet'
 
 
-def test_create_page_is_sheet_only(client):
+def test_codes_tab_is_sheet_only(client):
     cid = _course_id('CS103')
-    body = client.get(f'/teacher/super-admin/course-content/create?course_id={cid}').get_data(as_text=True)
+    body = client.get(f'/courses/codes?tab=content&course_id={cid}').get_data(as_text=True)
     # Floating action bar retains the essential controls
     assert 'name="academic_period_id"' in body
-    assert 'id="formFileInput"' in body
+    assert 'id="formFileInput"' not in body, 'end-of-form PDF file picker removed'
     # Single combined button: save + publish (data-action="send") with default send
     assert 'data-action="send"' in body
     assert 'data-action="save"' not in body, 'draft-only button removed'
-    assert 'حفظ ونشر المقرر' in body
+    assert 'حفظ مفردات المقرر' in body
     assert 'value="send" id="formAction"' in body
     # Old heavy cards/header are gone
     assert 'id="ccCourseSelect"' not in body
@@ -353,9 +354,9 @@ def test_send_persists_curriculum_sections(client, app_fx, tmp_path, monkeypatch
     assert sub['practical_content_en'] == 'Practical applications'
 
 
-def test_create_page_shows_period_picker(client):
+def test_codes_tab_shows_period_picker(client):
     cid = _course_id('CS103')
-    body = client.get(f'/teacher/super-admin/course-content/create?course_id={cid}').get_data(as_text=True)
+    body = client.get(f'/courses/codes?tab=content&course_id={cid}').get_data(as_text=True)
     assert 'name="academic_period_id"' in body
 
 
@@ -491,3 +492,64 @@ def test_public_library_serves_published_forms(client, app_fx, tmp_path, monkeyp
     payload = json.loads(body)
     courses = {c['id']: c for c in payload['courses']}
     assert courses[cid].get('formFile') is not None, 'published form visible publicly'
+
+
+# ── قيم None / فارغة في حقول العدد (credits و hours) ──────────────────────
+
+
+def test_codes_tab_never_renders_none_or_undefined_for_null_credits(client):
+    """courses.accreditation = NULL → credits input renders value="0", never
+    "None" nor "undefined" (float and JS both stay clean)."""
+    cid = _course_id('CS103')
+    _q('UPDATE courses SET accreditation = NULL WHERE id = ?', (cid,))
+    body = client.get(f'/courses/codes?tab=content&course_id={cid}').get_data(as_text=True)
+    assert 'value="None"' not in body
+    assert 'undefined' not in body
+    assert 'name="credits" min="0" value="0"' in body
+    # الساعات تبقى كما هي من بيانات المقرر (ليست None)
+    assert 'name="theory_hours" min="0" value="3"' in body
+    assert 'name="practical_hours" min="0" value="1"' in body
+
+
+def test_submission_view_never_renders_none_for_null_credits(client):
+    """course_content_submissions.credits = NULL → view mode renders value="0"."""
+    cid = _course_id('CS101')
+    sid = _q("SELECT id FROM course_content_submissions WHERE course_id=?", (cid,))[0]['id']
+    _q('UPDATE course_content_submissions SET credits = NULL WHERE id = ?', (sid,))
+    body = client.get(f'/teacher/super-admin/course-content/{sid}').get_data(as_text=True)
+    assert 'value="None"' not in body
+    assert 'undefined' not in body
+    assert 'name="credits" min="0" value="0"' in body
+
+
+def test_send_with_empty_credits_stores_zero(client, app_fx, tmp_path, monkeypatch):
+    """POST credits='' يخزّن 0 وليس '' ولا 'None' (مسار إنشاء جديد)."""
+    import routes.teacher_pages as tp
+    monkeypatch.setattr(tp, '_translate_course_content_en', lambda db, sid: None)
+    cid = _course_id('CS103')
+    data = {'_csrf_token': 't', 'action': 'save', 'course_id': str(cid), 'credits': ''}
+    r = client.post('/teacher/super-admin/course-content/send', data=data)
+    assert r.status_code == 302
+    sub = _q("SELECT credits FROM course_content_submissions "
+             "WHERE course_id=? ORDER BY id DESC LIMIT 1", (cid,))[0]
+    assert sub['credits'] == 0
+    assert sub['credits'] != ''
+    assert sub['credits'] != 'None'
+
+
+def test_send_empty_credits_on_edit_updates_row_to_zero(client, app_fx, tmp_path, monkeypatch):
+    """تعديل نفس السجل مع credits='' يحوّل القيمة إلى 0 في نفس الصف."""
+    import routes.teacher_pages as tp
+    monkeypatch.setattr(tp, '_translate_course_content_en', lambda db, sid: None)
+    cid = _course_id('CS101')
+    sid = _q("SELECT id FROM course_content_submissions WHERE course_id=?", (cid,))[0]['id']
+    data = {'_csrf_token': 't', 'action': 'save', 'course_id': str(cid),
+            'submission_id': str(sid), 'credits': ''}
+    r = client.post('/teacher/super-admin/course-content/send', data=data)
+    assert r.status_code == 302
+    subs = _q("SELECT id, credits FROM course_content_submissions WHERE course_id=?", (cid,))
+    assert len(subs) == 1, 'edit must UPDATE the same row, not insert'
+    assert subs[0]['id'] == sid
+    assert subs[0]['credits'] == 0
+    assert subs[0]['credits'] != ''
+    assert subs[0]['credits'] != 'None'

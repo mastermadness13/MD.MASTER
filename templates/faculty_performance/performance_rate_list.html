@@ -17,6 +17,12 @@
   </div>
 
   <!-- Members Table -->
+  <div class="relative mb-4">
+    <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">search</span>
+    <input type="text" id="rateListSearch" placeholder="ابحث بالاسم أو القسم أو الرقم الكلية..."
+           class="w-full bg-white border border-outline-variant rounded-lg pr-10 pl-4 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+  </div>
+
   <div class="page-card overflow-hidden overflow-x-auto">
     <table class="w-full text-right border-collapse text-sm min-w-[760px]">
       <thead>
@@ -33,7 +39,7 @@
           <th class="px-4 py-3 border-b border-outline-variant text-center">إجراء</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody id="rateListTbody">
         {% if rows %}
         {% for m in rows %}
         <tr class="hover:bg-primary/5 transition-colors border-b border-outline-variant last:border-b-0">
@@ -103,4 +109,22 @@
   </p>
 
 </div>
+
+<script>
+(function () {
+  'use strict';
+  var input = document.getElementById('rateListSearch');
+  if (!input) return;
+  var body = document.getElementById('rateListTbody');
+  if (!body) return;
+  var rows = Array.prototype.slice.call(body.querySelectorAll('tr'));
+  input.addEventListener('input', function () {
+    var q = input.value.trim().toLowerCase();
+    rows.forEach(function (tr) {
+      var hit = !q || (tr.textContent || '').toLowerCase().indexOf(q) !== -1;
+      tr.classList.toggle('hidden', !hit);
+    });
+  });
+})();
+</script>
 {% endblock %}

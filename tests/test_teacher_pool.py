@@ -84,7 +84,7 @@ def db_fx(tmp_path, monkeypatch):
     )
     conn.execute(
         "INSERT INTO users (username, password, role, label) "
-        "VALUES ('admin', 'x', 'super_admin', 'مدير')"
+        "VALUES ('admin', 'x', 'faculty_affairs', 'مدير')"
     )
     conn.commit()
     conn.close()

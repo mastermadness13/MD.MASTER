@@ -176,7 +176,7 @@
                     <span>{% if e.start_time and e.end_time %}{{ format_time12(e.start_time) }} ← {{ format_time12(e.end_time) }}{% elif e.start_time %}{{ format_time12(e.start_time) }}{% endif %}</span>
                   </div>
                   <div class="flex items-center gap-1.5 text-on-surface-variant mb-1">
-                    <span class="material-symbols-outlined text-[14px]">person</span> {{ teacher_label(e.teacher_name) }}
+                    <span class="material-symbols-outlined text-[14px]">person</span> {{ teacher_label(e.teacher_name) if e.teacher_name else 'محاضرة بدون أستاذ' }}
                   </div>
                   <div class="flex items-center gap-1.5 text-on-surface-variant mb-1">
                     <span class="material-symbols-outlined text-[14px]">meeting_room</span> {{ e.room_name or '—' }}
@@ -187,12 +187,12 @@
                   </div>
                   <div class="flex flex-wrap gap-1">
                     {% if form_file and form_file.url %}
-                    <a href="{{ form_file.url }}{% if '?' in form_file.url %}&amp;{% else %}?{% endif %}download=1" target="_blank" rel="noopener" title="تحميل المقرر" aria-label="تحميل المقرر" class="w-6 h-6 flex items-center justify-center rounded bg-primary text-white hover:bg-primary/90 transition no-underline"><span class="material-symbols-outlined text-sm">description</span></a>
+                    <a href="{{ form_file.url }}{% if '?' in form_file.url %}&amp;{% else %}?{% endif %}download=1" target="_blank" rel="noopener" title="تحميل المقرر" aria-label="تحميل المقرر" class="w-6 h-6 flex items-center justify-center rounded bg-primary text-on-primary hover:bg-primary/90 transition no-underline"><span class="material-symbols-outlined text-sm">description</span></a>
                     {% else %}
                     <button disabled title="لا يوجد ملف المقرر" class="w-6 h-6 flex items-center justify-center rounded bg-outline-variant text-on-surface-variant opacity-50"><span class="material-symbols-outlined text-sm">description</span></button>
                     {% endif %}
                     {% if syllabus_file and syllabus_file.url %}
-                    <a href="{{ syllabus_file.url }}{% if '?' in syllabus_file.url %}&amp;{% else %}?{% endif %}download=1" target="_blank" rel="noopener" title="تحميل المنهج" aria-label="تحميل المنهج" class="w-6 h-6 flex items-center justify-center rounded bg-primary text-white hover:bg-primary/90 transition no-underline"><span class="material-symbols-outlined text-sm">download</span></a>
+                    <a href="{{ syllabus_file.url }}{% if '?' in syllabus_file.url %}&amp;{% else %}?{% endif %}download=1" target="_blank" rel="noopener" title="تحميل المنهج" aria-label="تحميل المنهج" class="w-6 h-6 flex items-center justify-center rounded bg-primary text-on-primary hover:bg-primary/90 transition no-underline"><span class="material-symbols-outlined text-sm">download</span></a>
                     {% else %}
                     <button disabled title="لا يوجد ملف المنهج" class="w-6 h-6 flex items-center justify-center rounded bg-outline-variant text-on-surface-variant opacity-50"><span class="material-symbols-outlined text-sm">download</span></button>
                     {% endif %}
@@ -204,13 +204,13 @@
                       <form action="{{ upload_ep }}" method="POST" enctype="multipart/form-data" class="inline-flex m-0">
                         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                         {% if not is_rd %}<input type="hidden" name="course_id" value="{{ e.course_id }}">{% endif %}
-                        <label class="w-6 h-6 flex items-center justify-center rounded bg-primary text-white hover:bg-primary/90 transition cursor-pointer" title="{% if has_syllabus %}تحديد المنهج{% else %}رفع المنهج{% endif %}">
+                        <label class="w-6 h-6 flex items-center justify-center rounded bg-primary text-on-primary hover:bg-primary/90 transition cursor-pointer" title="{% if has_syllabus %}تحديد المنهج{% else %}رفع المنهج{% endif %}">
                           <input type="file" name="file" accept=".pdf" onchange="this.form.submit()" class="hidden">
                           <span class="material-symbols-outlined text-sm">{{ 'swap_vert' if has_syllabus else 'upload_file' }}</span>
                         </label>
                       </form>
                       {% if delete_ep %}
-                      <form action="{{ delete_ep }}" method="POST" onsubmit="return confirm('حذف ملف المنهج هذا؟');" class="inline-flex m-0">
+                      <form action="{{ delete_ep }}" method="POST" data-confirm-message="حذف ملف المنهج هذا؟" class="inline-flex m-0">
                         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" title="حذف المنهج" class="w-6 h-6 flex items-center justify-center rounded bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition cursor-pointer"><span class="material-symbols-outlined text-sm">delete</span></button>
                       </form>
@@ -261,7 +261,7 @@
               <div class="tt-mcard-title">
                 <span>📘 {{ e.course_name or '—' }}</span>
                 {% if e.course_code %}<span class="code">({{ e.course_code }})</span>{% endif %}
-                <span class="tt-mday-count" style="margin-inline-start:auto">{% if form_file and form_file.url %}<span class="text-green-600">● مقرر</span>{% else %}<span class="text-red-400">● مقرر</span>{% endif %}</span>
+                <span class="tt-mday-count" style="margin-inline-start:auto">{% if form_file and form_file.url %}<span class="status-ok">● مقرر</span>{% else %}<span class="status-missing">● مقرر</span>{% endif %}</span>
               </div>
               <div class="tt-mrow tt-mtime">
                 <span class="material-symbols-outlined">schedule</span>
@@ -273,7 +273,7 @@
                 {% if duration_label(e.start_time, e.end_time) %}<span>· {{ duration_label(e.start_time, e.end_time) }}</span>{% endif %}
               </div>
               <div class="tt-mrow">
-                <span class="material-symbols-outlined">person</span> {{ teacher_label(e.teacher_name) }}
+                <span class="material-symbols-outlined">person</span> {{ teacher_label(e.teacher_name) if e.teacher_name else 'محاضرة بدون أستاذ' }}
               </div>
               <div class="tt-mrow">
                 <span class="material-symbols-outlined">meeting_room</span> {{ e.room_name or '—' }}
@@ -305,7 +305,7 @@
                     </label>
                   </form>
                   {% if delete_ep %}
-                  <form action="{{ delete_ep }}" method="POST" onsubmit="return confirm('حذف ملف المنهج هذا؟');" class="m-0">
+                  <form action="{{ delete_ep }}" method="POST" data-confirm-message="حذف ملف المنهج هذا؟" class="m-0">
                     <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="tt-chip tt-chip-danger"><span class="material-symbols-outlined">delete</span> حذف المنهج</button>
                   </form>
@@ -372,7 +372,7 @@
     </div>
     <div class="px-5 py-4 border-t border-border flex items-center justify-end gap-3 shrink-0">
       <button type="button" onclick="closeNextYear()" class="border border-outline-variant text-on-surface-variant hover:bg-surface-container rounded-xl px-4 py-2 text-sm font-bold transition">إلغاء</button>
-      <button type="button" onclick="createNextYear()" class="bg-primary hover:bg-primary/90 text-white rounded-xl px-6 py-2 text-sm font-bold transition shadow-sm">
+      <button type="button" onclick="createNextYear()" class="bg-primary hover:bg-primary/90 text-on-primary rounded-xl px-6 py-2 text-sm font-bold transition shadow-sm">
         <span class="material-symbols-outlined text-lg align-middle">save</span>
         إنشاء
       </button>

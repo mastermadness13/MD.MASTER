@@ -91,6 +91,61 @@ def valid_id(value: Any, field_name: str = 'المعرف') -> Optional[str]:
 
 # ─────────────────────────────────────────────
 
+# /     /     >---- عدد صحيح داخل نطاق [min, max]
+def integer_between(value: Any, min_num: int, max_num: int, field_name: str) -> Optional[str]:
+    """Reject non-integers and out-of-range numbers (silent coercion killed).
+
+    Floats and bools are rejected even when ``int()`` could truncate them;
+    missing values (``None``/empty) are treated as "not provided" and pass.
+    """
+    if value is None or value == '':
+        return None
+    if isinstance(value, (bool, float)):
+        return f'{field_name} يجب أن يكون رقماً صحيحاً'
+    try:
+        num = int(value)
+    except (ValueError, TypeError):
+        return f'{field_name} يجب أن يكون رقماً صحيحاً'
+    if not min_num <= num <= max_num:
+        return f'{field_name} يجب أن يكون بين {min_num} و {max_num}'
+    return None
+
+# ─────────────────────────────────────────────
+
+# /     /     >---- وقت بصيغة HH:MM على مدار 24 ساعة
+_TIME_RE = re.compile(r'^([01]?\d|2[0-3]):[0-5]\d$')
+
+
+def valid_time(value: Any, field_name: str = 'الوقت') -> Optional[str]:
+    if value in (None, ''):
+        return None
+    value = str(value).strip()
+    if not _TIME_RE.match(value):
+        return f'{field_name} يجب أن يكون بتنسيق HH:MM (24 ساعة)'
+    return None
+
+# ─────────────────────────────────────────────
+
+# /     /     >---- القيمة ضمن قائمة مسموحة (whitelist)
+def in_choices(value: Any, choices, field_name: str) -> Optional[str]:
+    if value in (None, ''):
+        return None
+    if str(value) not in {str(c) for c in choices}:
+        return f'{field_name} غير مسموح'
+    return None
+
+# ─────────────────────────────────────────────
+
+# /     /     >---- مجال تاريخ صحيح: نهاية بعد بداية (أو لا يقرأ أصلاً)
+def valid_date_range(start, end, start_name: str = 'تاريخ البداية', end_name: str = 'تاريخ النهاية') -> Optional[str]:
+    if not start or not end:
+        return None
+    if str(end) < str(start):
+        return f'{end_name} يجب أن يكون بعد {start_name}'
+    return None
+
+# ─────────────────────────────────────────────
+
 # /     /     >---- نشغّل قائمة قواعد التحقق ونجمع كل الأخطاء
 def validate(data: Dict[str, Any], rules: List) -> List[str]:
     """Run a list of validation rules and return all error messages.

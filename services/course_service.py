@@ -144,7 +144,7 @@ SEMESTER_TITLES = {
 }
 
 # /     /     >---- الأقسام غير العامة تبدؤ من الفصل الثاني (السنة → الفصل)
-_YEAR_TO_SEMESTER = {1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7}
+_YEAR_TO_SEMESTER = {1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8}
 
 # /     /     >---- شرط الجدول الفعّال: نأخدو صفوفه النشطة فقط
 _ACTIVE_TIMETABLE_WHERE = (
@@ -268,8 +268,9 @@ def get_department_course_tables(db, dept_id: Optional[int]):
 
     The semester range comes from ``departments.semesters``: the general
     department (semesters=1) shows a single ``الفصل الأول`` table; academic
-    departments (semesters=7) show ``الفصل الثاني``..``الفصل السابع`` derived
-    from ``courses.year``.
+    departments show every semester ``1..semesters`` (e.g. ``1..8``) even when
+    a semester has no courses yet, so الفصل الثامن (تدريب ميداني/مشروع تخرج)
+    stays visible and can receive new courses.
     """
     if not dept_id:
         return {'department': None, 'semesters': []}
@@ -349,8 +350,18 @@ def get_department_course_tables(db, dept_id: Optional[int]):
         })
 
     semesters = []
-    for sem in sorted(tables):
-        items = sorted(tables[sem], key=lambda x: (x['code'] or ''))
+    # كل الأقسام الأكاديمية تعرض فصولها كاملة (1..عدد الفصول المكوّن)، حتى لو
+    # كان الفصل فارغاً — مثل الفصل الثامن (تدريب ميداني/مشروع تخرج) — ليبقى
+    # ظاهراً مع زر الإضافة وأهداف السحب والنقل.
+    configured = int(dept.get('semesters') or 1)
+    if is_general:
+        semester_range = [1]
+    else:
+        highest = max(tables) if tables else 0
+        semester_range = list(range(1, max(configured, highest, 1) + 1))
+
+    for sem in semester_range:
+        items = sorted(tables.get(sem, []), key=lambda x: (x['code'] or ''))
         semesters.append({
             'semester': sem,
             'title': SEMESTER_TITLES.get(sem, f'الفصل {sem}'),

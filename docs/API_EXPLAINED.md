@@ -212,7 +212,7 @@ api_login_required ←── التحقق من تسجيل الدخول
     ▼
 يقرأ الدور من session: role = session.get('role', '')
     │
-    ├── admin / super_admin           → stats فقط
+    ├── exam / faculty_affairs    → stats فقط
     ├── head_of_department            → stats + hod data
     ├── teacher                       → stats + teacher data
     ├── exam                          → stats + exam dept data

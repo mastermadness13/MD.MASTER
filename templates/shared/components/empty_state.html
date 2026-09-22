@@ -1,0 +1,17 @@
+{# Shared empty state (Apple-style: calm invitation to act).
+   Usage:
+     {% import 'shared/components/empty_state.html' as empty_state %}
+     {{ empty_state.render(icon='inbox', title='لا توجد بيانات',
+                           text='لم يُضف أي عنصر بعد.',
+                           action_url=url_for('....'), action_label='إضافة عنصر') }}
+#}
+{% macro render(icon='inbox', title='لا توجد بيانات', text='', action_url='', action_label='', small=false) %}
+  <div class="empty-state{% if small %} empty-state-sm{% endif %}">
+    <span class="material-symbols-outlined empty-state-icon" aria-hidden="true">{{ icon }}</span>
+    <p class="empty-state-title">{{ title }}</p>
+    {% if text %}<p class="empty-state-text">{{ text }}</p>{% endif %}
+    {% if action_url and action_label %}
+      <a href="{{ action_url }}" class="btn btn-primary">{{ action_label }}</a>
+    {% endif %}
+  </div>
+{% endmacro %}

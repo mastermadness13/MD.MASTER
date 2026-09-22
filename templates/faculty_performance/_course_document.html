@@ -3,6 +3,9 @@
    (print_course.html). Expects `fd` = get_course_report_data(...). #}
 <div class="official-doc">
 
+    <!-- الترويسة الرسمية: دولة ليبيا / الوزارة + شعار الكلية -->
+    {% include 'faculty_performance/_official_letterhead.html' %}
+
     <!-- العنوان الرئيسي -->
     <div class="header-title">
         محضر معدل الأداء الموحد لمقرر: {{ fd.course.name }}{% if fd.course.code %} ({{ fd.course.code }}){% endif %}<br>

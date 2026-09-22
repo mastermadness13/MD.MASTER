@@ -104,7 +104,8 @@ class UserRepository(BaseRepository):
     # /     /     >---- نحدّث كلمة المرور (مع تسجيل وقت التغيير)
     def update_password(self, user_id: int, hashed_password: str) -> None:
         self.db.execute(
-            'UPDATE users SET password = ?, password_changed_at = CURRENT_TIMESTAMP WHERE id = ?',
+            'UPDATE users SET password = ?, password_changed_at = CURRENT_TIMESTAMP, '
+            'force_password_change = 0 WHERE id = ?',
             (hashed_password, user_id),
         )
         self.db.commit()

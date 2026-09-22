@@ -30,7 +30,19 @@ from security.authorization import (
 )
 
 # ── استيراد دوال CSRF ──────────────────────────────────────────
-from security.csrf import csrf_required, generate_csrf_token
+from security.csrf import (
+    csrf_exempt,
+    csrf_required,
+    generate_csrf_token,
+    is_request_protected,
+)
+
+# ── استيراد بوابات التنظيف (bleach / defusedxml) ──────────────
+from security.sanitize import (
+    clean_html,
+    parse_xml_safe,
+    sanitize_string,
+)
 
 # ─────────────────────────────────────────────
 
@@ -67,10 +79,14 @@ __all__ = [
     'any_role_required',
     'get_granted_roles',
     'highest_priority_role',
-    'get_nav_items',
     'get_header_messages_url',
     'inject_navigation',
     'generate_csrf_token',
     'csrf_required',
+    'csrf_exempt',
+    'is_request_protected',
+    'clean_html',
+    'sanitize_string',
+    'parse_xml_safe',
     'validate_password',
 ]

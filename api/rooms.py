@@ -56,6 +56,9 @@ def _room_form(data, defaults=None):
     }
 
 
+MAX_ROOM_CAPACITY = 500
+
+
 @bp.route('')
 @api_permission_required('rooms.view')
 def api_rooms_list():
@@ -84,6 +87,8 @@ def api_room_create():
         return err('اسم القاعة مطلوب', 422)
     if form['capacity'] < 1:
         return err('سعة القاعة يجب أن تكون 1 أو أكثر.', 422)
+    if form['capacity'] > MAX_ROOM_CAPACITY:
+        return err(f'سعة القاعة يجب ألا تتجاوز {MAX_ROOM_CAPACITY}.', 422)
     db = get_db()
     room_id = classroom_service.create_room(db, form)
     log_history(db, 'create', 'room', room_id, f'إنشاء قاعة: {form["name"]}')
@@ -115,6 +120,8 @@ def api_room_update(room_id):
         return err('اسم القاعة مطلوب', 422)
     if form['capacity'] < 1:
         return err('سعة القاعة يجب أن تكون 1 أو أكثر.', 422)
+    if form['capacity'] > MAX_ROOM_CAPACITY:
+        return err(f'سعة القاعة يجب ألا تتجاوز {MAX_ROOM_CAPACITY}.', 422)
     classroom_service.update_room(db, room_id, form)
     log_history(db, 'update', 'room', room_id, f'تعديل قاعة: {form["name"]}')
     return ok(True)

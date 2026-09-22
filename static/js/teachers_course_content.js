@@ -24,6 +24,10 @@
   };
 
   window.openUploadModal = function (btn) {
+    if (!overlay || !form || !fileInput || !courseId || !submissionId ||
+        !nameEl || !codeEl || !metaEl || !fileRow) {
+      return;
+    }
     courseId.value = btn.getAttribute('data-course-id') || '';
     submissionId.value = btn.getAttribute('data-submission-id') || '';
     nameEl.textContent = btn.getAttribute('data-course-name') || '—';

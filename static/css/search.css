@@ -150,7 +150,7 @@
   border: none;
   border-radius: 8px;
   background: var(--primary);
-  color: var(--on-primary, #fff);
+  color: var(--text-on-primary, #fff);
   font-family: inherit;
   font-size: 14px;
   font-weight: 600;

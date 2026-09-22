@@ -1,108 +1,159 @@
 {% extends 'shared/layouts/base.html' %}
 {% set sidebar_active = 'profile' %}
-{% set page_title = 'ملفي الشخصي' %}
+{% set page_title = 'الملف الشخصي' %}
 
-{% set user = user | default({}) %}
-{% set teacher = teacher | default(None) %}
-{% set department = department | default(None) %}
-{% set responsibilities = responsibilities | default([]) %}
-{% set form_error = form_error | default(None) %}
-{% set role_labels = {'super_admin': 'مدير النظام', 'research_development': 'البحث والتطوير', 'faculty_affairs': 'مكتب إدارة أعضاء هيئة التدريس', 'head_of_department': 'رئيس القسم', 'teacher': 'عضو هيئة التدريس', 'exam': 'شؤون الامتحانات'} %}
+{% set usr = user | default({}) %}
+{% set tch = teacher | default(none) %}
+{% set dept = department | default(none) %}
+{% set resp = responsibilities | default([]) %}
+{% set err = form_error | default(none) %}
+
+{% set srole = session.get('role') or usr.get('role') or '' %}
+{% set srole_label = role_labels.get(srole, srole) if role_labels else srole %}
+
+{% set teacher_base_name = (tch.get('name') or '').strip() if tch else '' %}
+{% set display_name = teacher_base_name or usr.get('label') or usr.get('username') or '—' %}
+{% if tch and teacher_base_name %}
+  {% set name_full = teacher_display_name(tch.get('name'), tch.get('rank_name'), tch.get('qualification_name')) %}
+{% else %}
+  {% set name_full = display_name %}
+{% endif %}
+{% set dept_name = (tch.get('department_name') if tch and tch.get('department_name') else '') or usr.get('department_name') or (dept.get('name') if dept else '') %}
+{% set academic_line = [] %}
+{% if tch and tch.get('rank_name') %}{% set _ = academic_line.append(tch.get('rank_name')) %}{% endif %}
+{% if tch and tch.get('qualification_name') %}{% set _ = academic_line.append(tch.get('qualification_name')) %}{% endif %}
 
 {% block content %}
 <div class="max-w-5xl mx-auto">
 
   <!-- Page Header -->
-  <div class="flex items-center gap-3 mb-6">
-    <span class="material-symbols-outlined text-primary text-3xl">person</span>
-    <div>
-      <h1 class="text-2xl font-bold text-on-surface">ملفي الشخصي</h1>
-      <p class="page-subtitle">إدارة حسابك{% if department %} ومعلومات القسم المسؤول عنه{% endif %}</p>
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+    <div class="flex items-center gap-3">
+      <span class="material-symbols-outlined text-primary text-3xl">manage_accounts</span>
+      <div>
+        <h1 class="text-2xl font-bold text-on-surface">الملف الشخصي والإعدادات</h1>
+        <p class="page-subtitle">إدارة بيانات حسابك في منصة الكلية{% if dept %} وقسم البحث والتطوير{% endif %}</p>
+      </div>
     </div>
+    {% if srole == 'teacher' %}
+    <a href="{{ url_for('teacher_pages.teacher_profile') }}"
+       class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm no-underline">
+      <span class="material-symbols-outlined text-lg">badge</span>
+      عرض الملف التدريسي
+    </a>
+    {% endif %}
   </div>
 
-  {% if form_error %}
+  {% if err %}
   <div class="mb-4 flex items-center gap-2 px-4 py-3 rounded-lg text-sm bg-error-container text-error">
     <span class="material-symbols-outlined shrink-0 text-[18px]">error</span>
-    <span>{{ form_error }}</span>
+    <span>{{ err }}</span>
   </div>
   {% endif %}
 
   <!-- Identity Card -->
   <div class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden mb-6">
-    <div class="px-5 py-4 border-b border-primary/10 bg-primary/5 flex items-center gap-3">
-      <div class="w-14 h-14 rounded-xl bg-primary text-on-primary flex items-center justify-center text-xl font-bold shrink-0">
-        {{ (user.label or user.username or '?')[:1] }}
-      </div>
-      <div>
-        <h2 class="font-bold text-on-surface">{{ user.label or user.username }}</h2>
-        <p class="text-xs text-on-surface-variant">
-          {{ role_labels.get(user.role, user.role) }}{% if user.department_name %} — {{ user.department_name }}{% endif %}
-        </p>
-      </div>
+    <div class="h-16 bg-gradient-to-l from-primary via-primary-container to-surface-tint relative">
+      <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
     </div>
-    <div class="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-      <div>
-        <div class="text-xs font-bold text-on-surface-variant mb-1">اسم المستخدم</div>
-        <div class="font-bold text-on-surface" dir="ltr">{{ user.username }}</div>
+    <div class="px-5 pb-5">
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-8 relative">
+        <div class="flex items-end gap-4">
+          <div class="w-20 h-20 rounded-2xl bg-primary text-on-primary flex items-center justify-center text-3xl font-bold shadow-xl ring-4 ring-white shrink-0">
+            {{ (name_full or '?')[:1] }}
+          </div>
+          <div class="pb-1">
+            <h2 class="font-bold text-on-surface text-lg">{{ name_full }}</h2>
+            <p class="text-xs text-on-surface-variant mt-0.5">
+              {% if academic_line %}{{ academic_line | join(' • ') }}{% if dept_name %} — {% endif %}{% endif %}{{ dept_name }}
+            </p>
+          </div>
+        </div>
       </div>
-      <div>
-        <div class="text-xs font-bold text-on-surface-variant mb-1">الدور</div>
-        <div class="text-on-surface">{{ role_labels.get(user.role, user.role) }}</div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-5 text-sm">
+        <div class="bg-surface-container rounded-xl p-3">
+          <div class="text-xs font-bold text-on-surface-variant mb-1 flex items-center gap-1">
+            <span class="material-symbols-outlined text-[14px]">alternate_email</span>
+            الاسم الرباعي
+          </div>
+          <div class="font-bold text-on-surface truncate">{{ name_full }}{% if academic_line %} • {{ academic_line | join(' • ') }}{% endif %}</div>
+        </div>
+        <div class="bg-surface-container rounded-xl p-3">
+          <div class="text-xs font-bold text-on-surface-variant mb-1 flex items-center gap-1">
+            <span class="material-symbols-outlined text-[14px]">assignment_ind</span>
+            الرقم الوظيفي
+          </div>
+          <div class="text-on-surface font-mono" dir="ltr">{{ tch.get('academic_number') if tch and tch.get('academic_number') else '—' }}</div>
+        </div>
+        <div class="bg-surface-container rounded-xl p-3">
+          <div class="text-xs font-bold text-on-surface-variant mb-1 flex items-center gap-1">
+            <span class="material-symbols-outlined text-[14px]">account_tree</span>
+            الدور الحالي
+          </div>
+          <div class="font-bold text-on-surface truncate">{{ srole_label }}</div>
+        </div>
+        <div class="bg-surface-container rounded-xl p-3">
+          <div class="text-xs font-bold text-on-surface-variant mb-1 flex items-center gap-1">
+            <span class="material-symbols-outlined text-[14px]">psychology</span>
+            التخصص الدقيق
+          </div>
+          <div class="text-on-surface truncate">{{ tch.get('specialization_name') if tch and tch.get('specialization_name') else '—' }}</div>
+        </div>
       </div>
-      {% if teacher %}
-      <div>
-        <div class="text-xs font-bold text-on-surface-variant mb-1">الرقم الكلية</div>
-        <div class="text-on-surface" dir="ltr">{{ teacher.academic_number or '—' }}</div>
-      </div>
-      <div>
-        <div class="text-xs font-bold text-on-surface-variant mb-1">التخصص</div>
-        <div class="text-on-surface">{{ teacher.specialization_name or teacher.specialization or '—' }}</div>
-      </div>
-      {% endif %}
     </div>
   </div>
 
   <!-- Two-column grid: forms left, sidebar right -->
   <div class="grid grid-cols-1 lg:grid-cols-6 gap-6">
 
-    <!-- LEFT COLUMN: editable forms -->
+    <!-- LEFT COLUMN -->
     <div class="lg:col-span-4 space-y-6">
 
-      <!-- حسميع -->
+      <!-- Account form -->
       <div class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
         <div class="px-5 py-4 border-b border-primary/10 bg-primary/5 flex items-center gap-2">
           <span class="material-symbols-outlined text-primary">badge</span>
-          <h2 class="font-bold text-on-surface">حسابي</h2>
+          <div>
+            <h2 class="font-bold text-on-surface">بيانات الحساب</h2>
+            <p class="text-xs text-on-surface-variant">
+              تُعدَّل بيانات الحساب منك مباشرة — نيك نيم الدخول والاسم الرباعي والبريد والهاتف{% if can_edit_account %} — ولديك صلاحية مكتب إدارة أعضاء هيئة التدريس{% endif %}
+            </p>
+          </div>
         </div>
         <form method="POST" action="{{ url_for('profile.profile') }}" class="p-5 space-y-4">
           <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
           <input type="hidden" name="form_type" value="account">
           <div>
             <label class="text-xs font-bold text-on-surface-variant mb-1.5 block flex items-center gap-1.5">
-              <span class="material-symbols-outlined text-[15px] text-primary">person</span>
-              اسم الدخول
+              <span class="material-symbols-outlined text-[15px] text-primary">alternate_email</span>
+              نيك نيم (اسم الدخول)
             </label>
-            <input type="text" name="username" value="{{ user.username or '' }}" dir="ltr"
+            <input type="text" name="username" value="{{ usr.get('username') or '' }}" dir="ltr"
                    class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40 text-left"
                    minlength="2" required>
-            <p class="text-xs text-on-surface-variant mt-1">الاسم الذي تستخدمه لتسجيل الدخول</p>
+            <p class="text-[11px] text-on-surface-variant mt-1 flex items-center gap-1">
+              <span class="material-symbols-outlined text-[13px]">info</span>
+              اسم الدخول إلى النظام فقط — لا يؤثر على اسمك الحقيقي المعروض
+            </p>
           </div>
           <div>
             <label class="text-xs font-bold text-on-surface-variant mb-1.5 block flex items-center gap-1.5">
               <span class="material-symbols-outlined text-[15px] text-primary">badge</span>
-              الاسم المعروض
+              الاسم الرباعي
             </label>
-            <input type="text" name="label" value="{{ user.label or '' }}"
+            <input type="text" name="label" value="{{ usr.get('label') or '' }}" placeholder="أدخل الاسم الرباعي كاملاً"
                    class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
-            <p class="text-xs text-on-surface-variant mt-1">الاسم الذي يظهر للمستخدمين</p>
+            <p class="text-[11px] text-on-surface-variant mt-1 flex items-center gap-1">
+              <span class="material-symbols-outlined text-[13px]">info</span>
+              هذا الاسم هو ما يُعرض لك في النظام — لا يؤثر على اسمك الرباعي الرسمي في سجل هيئة التدريس
+            </p>
           </div>
           <div>
             <label class="text-xs font-bold text-on-surface-variant mb-1.5 block flex items-center gap-1.5">
               <span class="material-symbols-outlined text-[15px] text-primary">mail</span>
               البريد الإلكتروني
             </label>
-            <input type="email" name="email" value="{{ user.email or '' }}" dir="ltr"
+            <input type="email" name="email" value="{{ usr.get('email') or '' }}" dir="ltr"
                    class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40 text-left">
           </div>
           <div>
@@ -110,7 +161,7 @@
               <span class="material-symbols-outlined text-[15px] text-primary">phone</span>
               رقم الهاتف
             </label>
-            <input type="tel" name="phone" value="{{ user.phone or '' }}" dir="ltr"
+            <input type="tel" name="phone" value="{{ usr.get('phone') or '' }}" dir="ltr"
                    class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40 text-left">
           </div>
           <div class="flex flex-wrap items-center gap-3">
@@ -123,123 +174,139 @@
         </form>
       </div>
 
+      {% if dept %}
+      <!-- Department section (R&D) -->
+      <div class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
+        <div class="px-5 py-4 border-b border-primary/10 bg-primary/5 flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary">corporate_fare</span>
+          <div>
+            <h2 class="font-bold text-on-surface">بيانات قسم البحث والتطوير</h2>
+            <p class="text-xs text-on-surface-variant">البيانات الرسمية للقسم المسؤول عنه</p>
+          </div>
+        </div>
+        <form method="POST" action="{{ url_for('profile.profile') }}" class="p-5 space-y-4">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="form_type" value="department">
+          <div>
+            <label class="text-xs font-bold text-on-surface-variant mb-1.5 block flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[15px] text-primary">account_tree</span>
+              اسم القسم الرسمي
+            </label>
+            <input type="text" value="{{ dept.get('name') or '' }}" readonly disabled
+                   class="w-full bg-surface-container-highest border border-outline-variant rounded-lg px-3 py-2 text-sm text-on-surface-variant cursor-not-allowed">
+            <p class="text-xs text-on-surface-variant mt-1">هوية القسم في النظام — لا يمكن تغييرها</p>
+          </div>
+          <div>
+            <label class="text-xs font-bold text-on-surface-variant mb-1.5 block flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[15px] text-primary">badge</span>
+              الاسم الظاهر في بوابة الكلية
+            </label>
+            <input type="text" name="dept_display_name" value="{{ dept.get('display_name') or dept.get('name') or '' }}"
+                   class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+          </div>
+          <div>
+            <label class="text-xs font-bold text-on-surface-variant mb-1.5 block flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[15px] text-primary">short_text</span>
+              رمز واختصار القسم
+            </label>
+            <input type="text" name="dept_abbreviation" value="{{ dept.get('abbreviation') or '' }}" dir="ltr"
+                   class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40 text-left"
+                   maxlength="20">
+          </div>
+          <div>
+            <label class="text-xs font-bold text-on-surface-variant mb-1.5 block flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[15px] text-primary">description</span>
+              رسالة ورؤية القسم
+            </label>
+            <textarea name="dept_description" rows="3"
+                      class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40 resize-y">{{ dept.get('description') or '' }}</textarea>
+          </div>
+          <div class="flex flex-wrap items-center gap-3">
+            <button type="submit"
+                    class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-5 py-2.5 rounded-lg text-sm font-bold transition shadow-sm">
+              <span class="material-symbols-outlined text-lg">publish</span>
+              تحديث بيانات القسم
+            </button>
+          </div>
+        </form>
+      </div>
+      {% endif %}
+
     </div>
 
-    <!-- RIGHT COLUMN: sidebar -->
+    <!-- RIGHT COLUMN -->
     <div class="lg:col-span-2 space-y-6">
 
-      {% if responsibilities %}
-      <!-- مسؤولياتي -->
+      {% if resp %}
+      <!-- Responsibilities -->
       <div class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
         <div class="px-4 py-3 border-b border-primary/10 bg-primary/5 flex items-center gap-2">
-          <span class="material-symbols-outlined text-primary text-[18px]">checklist</span>
-          <h2 class="text-sm font-bold text-on-surface">مسؤولياتي</h2>
-        </div>
-        <div class="p-3">
-          <div class="space-y-1.5">
-            {% for icon, label in responsibilities %}
-            <div class="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-surface-container">
-              <span class="material-symbols-outlined text-primary text-[16px]">{{ icon }}</span>
-              <span class="text-xs font-bold text-on-surface">{{ label }}</span>
-            </div>
-            {% endfor %}
+          <span class="material-symbols-outlined text-primary text-[18px]">policy</span>
+          <div>
+            <h2 class="text-sm font-bold text-on-surface">مسؤولياتي الإدارية</h2>
+            <p class="text-[11px] text-on-surface-variant">المهام المناطة بدورك الحالي في الكلية</p>
           </div>
+        </div>
+        <div class="p-3 space-y-1.5">
+          {% for icon, label in resp %}
+          <div class="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-surface-container">
+            <span class="material-symbols-outlined text-primary text-[16px]">{{ icon }}</span>
+            <span class="text-xs font-bold text-on-surface">{{ label }}</span>
+          </div>
+          {% endfor %}
         </div>
       </div>
       {% endif %}
 
-      <!-- الأمان -->
+      <!-- Security / password -->
       <div class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
         <div class="px-4 py-3 border-b border-primary/10 bg-primary/5 flex items-center gap-2">
           <span class="material-symbols-outlined text-primary text-[18px]">lock</span>
-          <h2 class="text-sm font-bold text-on-surface">الأمان</h2>
-        </div>
-        <div class="p-4">
-          <div class="flex items-center justify-between gap-3">
-            <div class="min-w-0">
-              <div class="text-sm font-bold text-on-surface">كلمة المرور</div>
-              {% if user.password_changed_at %}
-              <p class="text-xs text-on-surface-variant mt-0.5 truncate">آخر تغيير: {{ user.password_changed_at }}</p>
-              {% else %}
-              <p class="text-xs text-on-surface-variant mt-0.5">لم تُغيَّر بعد</p>
-              {% endif %}
-            </div>
-            <a href="{{ url_for('auth.change_password') }}"
-               class="flex items-center gap-1.5 bg-surface-container text-on-surface px-3 py-2 rounded-lg text-xs font-bold hover:bg-surface-container-highest transition whitespace-nowrap shrink-0">
-              <span class="material-symbols-outlined text-[16px]">key</span>
-              تغيير
-            </a>
+          <div>
+            <h2 class="text-sm font-bold text-on-surface">الأمان وكلمة المرور</h2>
+            <p class="text-[11px] text-on-surface-variant">حراسة حساب الكلية</p>
           </div>
         </div>
+        <div class="p-4">
+          {% if usr.get('password_changed_at') %}
+          <div class="flex items-center justify-between gap-3 mb-3 text-xs">
+            <span class="text-on-surface-variant">آخر تغيير لكلمة المرور:</span>
+            <span class="text-on-surface font-semibold">{{ usr.get('password_changed_at') }}</span>
+          </div>
+          {% endif %}
+          <form method="POST" action="{{ url_for('profile.profile') }}" class="space-y-3">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="form_type" value="security">
+            <div>
+              <label class="text-xs font-bold text-on-surface-variant mb-1 block">كلمة المرور الحالية</label>
+              <input type="password" name="current_password" required autocomplete="current-password"
+                     placeholder="••••••••••••"
+                     class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+            </div>
+            <div>
+              <label class="text-xs font-bold text-on-surface-variant mb-1 block">كلمة المرور الجديدة</label>
+              <input type="password" name="new_password" required minlength="8" autocomplete="new-password"
+                     placeholder="8 أحرف على الأقل"
+                     class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+            </div>
+            <div>
+              <label class="text-xs font-bold text-on-surface-variant mb-1 block">تأكيد كلمة المرور الجديدة</label>
+              <input type="password" name="confirm_password" required minlength="8" autocomplete="new-password"
+                     placeholder="أعد إدخال كلمة المرور"
+                     class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+            </div>
+            <button type="submit"
+                    class="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-4 py-2.5 rounded-lg text-sm font-bold transition shadow-sm">
+              <span class="material-symbols-outlined text-lg">lock_reset</span>
+              تغيير كلمة المرور
+            </button>
+          </form>
+        </div>
       </div>
 
     </div>
 
   </div>
-
-  {% if department %}
-  <!-- معلومات القسم — full width below grid -->
-  <div class="mt-6 bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
-    <div class="px-5 py-4 border-b border-primary/10 bg-primary/5 flex items-center gap-2">
-      <span class="material-symbols-outlined text-primary">corporate_fare</span>
-      <h2 class="font-bold text-on-surface">معلومات القسم</h2>
-    </div>
-    <form method="POST" action="{{ url_for('profile.profile') }}" class="p-5 space-y-4">
-      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-      <input type="hidden" name="form_type" value="department">
-      <div>
-        <label class="text-xs font-bold text-on-surface-variant mb-1.5 block flex items-center gap-1.5">
-          <span class="material-symbols-outlined text-[15px] text-primary">account_tree</span>
-          اسم القسم
-        </label>
-        <input type="text" value="{{ department.name }}" readonly disabled
-               class="w-full bg-surface-container-highest border border-outline-variant rounded-lg px-3 py-2 text-sm text-on-surface-variant cursor-not-allowed">
-        <p class="text-xs text-on-surface-variant mt-1">هوية القسم في النظام — لا يمكن تغييرها</p>
-      </div>
-      <div>
-        <label class="text-xs font-bold text-on-surface-variant mb-1.5 block flex items-center gap-1.5">
-          <span class="material-symbols-outlined text-[15px] text-primary">badge</span>
-          الاسم الظاهر للقسم
-        </label>
-        <input type="text" name="dept_display_name" value="{{ department.display_name or department.name or '' }}"
-               class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
-        <p class="text-xs text-on-surface-variant mt-1">الاسم الذي يظهر في واجهة النظام</p>
-      </div>
-      <div>
-        <label class="text-xs font-bold text-on-surface-variant mb-1.5 block flex items-center gap-1.5">
-          <span class="material-symbols-outlined text-[15px] text-primary">short_text</span>
-          اختصار القسم
-        </label>
-        <input type="text" name="dept_abbreviation" value="{{ department.abbreviation or '' }}" dir="ltr"
-               class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40 text-left"
-               maxlength="20">
-        <p class="text-xs text-on-surface-variant mt-1">مثال: R&D</p>
-      </div>
-      <div>
-        <label class="text-xs font-bold text-on-surface-variant mb-1.5 block flex items-center gap-1.5">
-          <span class="material-symbols-outlined text-[15px] text-primary">description</span>
-          وصف القسم
-        </label>
-        <textarea name="dept_description" rows="3"
-                  class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40 resize-y">{{ department.description or '' }}</textarea>
-      </div>
-      <div>
-        <label class="text-xs font-bold text-on-surface-variant mb-1.5 block flex items-center gap-1.5">
-          <span class="material-symbols-outlined text-[15px] text-primary">person</span>
-          المسؤول
-        </label>
-        <div class="text-on-surface font-bold">{{ user.label or user.username }}</div>
-      </div>
-      <div class="flex flex-wrap items-center gap-3">
-        <button type="submit"
-                class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-5 py-2.5 rounded-lg text-sm font-bold transition shadow-sm">
-          <span class="material-symbols-outlined text-lg">save</span>
-          حفظ معلومات القسم
-        </button>
-      </div>
-    </form>
-  </div>
-  {% endif %}
 
 </div>
 {% endblock %}

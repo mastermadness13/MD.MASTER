@@ -20,7 +20,7 @@ def db_fx(tmp_path, monkeypatch):
         conn.executescript(f.read())
     ensure_schema(conn)
     conn.execute(
-        "INSERT OR IGNORE INTO users (username, password, role, label) VALUES ('superadmin', 'x', 'super_admin', 'مدير')"
+        "INSERT OR IGNORE INTO users (username, password, role, label) VALUES ('office_manager', 'x', 'faculty_affairs', 'مدير مكتب أعضاء هيئة التدريس')"
     )
     conn.execute(
         "INSERT OR IGNORE INTO users (username, password, role, label) VALUES ('t1', 'x', 'teacher', 'أ. أحمد')"
@@ -31,7 +31,7 @@ def db_fx(tmp_path, monkeypatch):
     conn.execute(
         "INSERT OR IGNORE INTO departments (name, semesters, majors, hidden, has_sections, type) VALUES ('قسم الحاسوب', 8, 8, 0, 1, 'academic')"
     )
-    super_id = conn.execute("SELECT id FROM users WHERE username='superadmin'").fetchone()['id']
+    super_id = conn.execute("SELECT id FROM users WHERE username='office_manager'").fetchone()['id']
     t1_uid = conn.execute("SELECT id FROM users WHERE username='t1'").fetchone()['id']
     t2_uid = conn.execute("SELECT id FROM users WHERE username='t2'").fetchone()['id']
     dept_id = conn.execute("SELECT id FROM departments WHERE name='قسم الحاسوب'").fetchone()['id']
@@ -169,7 +169,7 @@ def test_teacher_page_rnd_form_link_only_when_course_form_exists(client):
     assert 'نموذج المقرر موجود' in body, 'CS101 has a form → green badge shown'
     # CS102 gets a personal (teacher-created) submission WITHOUT course_id —
     # the R&D form link must still not appear for it.
-    super_id = _q("SELECT id FROM users WHERE username='superadmin'")[0]['id']
+    super_id = _q("SELECT id FROM users WHERE username='office_manager'")[0]['id']
     tid = _q("SELECT id FROM teachers WHERE name='أ. أحمد'")[0]['id']
     dept_id = _q("SELECT id FROM departments WHERE name='قسم الحاسوب'")[0]['id']
     _q('''INSERT INTO course_content_submissions
@@ -263,6 +263,29 @@ def test_form_upload_requires_existing_submission(client, app_fx, tmp_path, monk
         'file': (_pdf(), 'form.pdf'),
     }, content_type='multipart/form-data')
     assert r.status_code == 302
+
+
+def test_form_upload_rejects_disallowed_extension(client, app_fx, tmp_path, monkeypatch):
+    """H2: arbitrary extensions (e.g. .html → same-origin stored XSS) must be
+    rejected before any file is written or the submission status advanced."""
+    import routes.teacher_pages as tp
+    monkeypatch.setattr(tp, '_translate_course_content_en', lambda db, sid: None)
+    monkeypatch.setitem(app_fx.config, 'UPLOAD_FOLDER', str(tmp_path))
+    cid = _course_id('CS101')
+    sid = _q("SELECT id FROM course_content_submissions WHERE course_id=?", (cid,))[0]['id']
+    r = client.post('/teacher/course-content', data={
+        '_csrf_token': 't',
+        'action': 'send_rnd',
+        'course_id': str(cid),
+        'submission_id': str(sid),
+        'file': (_pdf(b'<script>alert(1)</script>'), 'payload.html'),
+    }, content_type='multipart/form-data')
+    assert r.status_code == 302
+    sub = _q("SELECT status, filename FROM course_content_submissions WHERE id=?", (sid,))[0]
+    assert sub['filename'] == '', 'disallowed extension must not be persisted'
+    assert sub['status'] == 'pending_teacher', 'rejected upload must not advance the workflow'
+    assert not [p for p in tmp_path.iterdir() if p.name != 'teacher_cc.db'], (
+        'nothing may be written to the upload folder')
 
 
 # ── عرض نموذج R&D (وضع القراءة) ───────────────────────────────────────────

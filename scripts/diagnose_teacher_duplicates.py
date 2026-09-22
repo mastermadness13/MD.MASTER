@@ -47,7 +47,6 @@ FK_TABLES = [
     ("teacher_documents", "teacher_id"),
     ("teacher_materials", "teacher_id"),
     ("teacher_requests", "teacher_id"),
-    ("classroom_change_requests", "teacher_id"),
     ("faculty_research_activities", "teacher_id"),
     ("faculty_admin_assignments", "teacher_id"),
     ("faculty_leaves", "teacher_id"),

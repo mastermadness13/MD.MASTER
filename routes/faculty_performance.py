@@ -3,7 +3,7 @@
 from flask import Blueprint, session, request, render_template, redirect, url_for, flash, jsonify, abort
 
 from flask_db import get_db
-from security import login_required, permission_required, csrf_required
+from security import login_required, permission_required, role_required, csrf_required
 from security import current_user
 from security.authorization import get_granted_roles, has_permission
 from services import faculty_performance_service as fps
@@ -28,7 +28,7 @@ def _check_teacher_access(db, teacher_id):
     teacher even if their fallback DB role says otherwise.
 
     Rules:
-    - any granted role in (super_admin, faculty_affairs, research_development)
+    - any granted role in (faculty_affairs, research_development)
       may access any teacher
     - head_of_department: only teachers in their own department
     - teacher: only themselves (granted even when also holding another role)
@@ -38,7 +38,7 @@ def _check_teacher_access(db, teacher_id):
         abort(401)
 
     roles = get_granted_roles()
-    if any(r in ('super_admin', 'faculty_affairs', 'research_development')
+    if any(r in ('faculty_affairs', 'research_development')
            for r in roles):
         return
 
@@ -71,11 +71,54 @@ def _check_teacher_access(db, teacher_id):
     abort(403)
 
 
-@bp.route('/preview/<int:teacher_id>')
+def _save_inline_profile(db, teacher_id, academic_year, semester):
+    repo = fps._repo(db)
+
+    def _id_for(table, value, column='name'):
+        value = (value or '').strip()
+        if not value:
+            return None
+        row = db.execute(
+            f'SELECT id FROM {table} WHERE {column} = ? LIMIT 1', (value,)
+        ).fetchone()
+        return row['id'] if row else None
+
+    specialization = request.form.get('specialization', '').strip()
+    repo.update_teacher_profile(teacher_id, {
+        'name': request.form.get('name', '').strip(),
+        'academic_number': request.form.get('academic_number', '').strip(),
+        'national_id': request.form.get('national_id', '').strip(),
+        'specialization': specialization,
+        'section': request.form.get('section', '').strip(),
+        'first_lecture_date': request.form.get('first_lecture_date', '').strip() or None,
+        'work_start_date': request.form.get('work_start_date', '').strip() or None,
+        'department_id': _id_for('departments', request.form.get('department')),
+        'qualification_id': _id_for('qualifications', request.form.get('qualification'), 'name_ar'),
+        'rank_id': _id_for('academic_ranks', request.form.get('rank'), 'name_ar'),
+        'specialization_id': _id_for('specializations', specialization),
+    })
+
+    data = fps.get_performance_form_data(db, teacher_id, academic_year, semester) or {}
+    course_ids = {
+        row['course_id']
+        for key in ('basic_teaching', 'additional_teaching')
+        for row in data.get(key, [])
+        if row.get('course_id')
+    }
+    counts = {}
+    for course_id in course_ids:
+        raw = request.form.get(f'student_count_{course_id}', '').strip()
+        if raw.isdigit():
+            counts[course_id] = int(raw)
+    repo.save_student_counts(teacher_id, academic_year, semester, counts)
+
+
+@bp.route('/preview/<int:teacher_id>', methods=['GET', 'POST'])
 @login_required
 @permission_required('faculty_performance.view')
+@csrf_required
 def preview(teacher_id):
-    """Preview the performance form (read-only)."""
+    """Preview the performance form, with optional inline editing."""
     db = get_db()
     _check_teacher_access(db, teacher_id)
     academic_year = request.args.get('year', '')
@@ -90,6 +133,18 @@ def preview(teacher_id):
     if semester is None:
         semester = 1
 
+    edit_mode = request.args.get('edit') == '1'
+    if request.method == 'POST':
+        if not has_permission('faculty_performance.edit_research'):
+            abort(403)
+        _save_inline_profile(db, teacher_id, academic_year, semester)
+        flash('تم حفظ بيانات الأستاذ وأعداد الطلبة بنجاح', 'success')
+        return redirect(url_for(
+            'faculty_performance.preview', teacher_id=teacher_id,
+            year=academic_year, semester=semester,
+            dept=request.form.get('dept') or None,
+        ))
+
     data = fps.get_performance_form_data(
         db, teacher_id, academic_year, semester,
         department_id=department_id)
@@ -100,6 +155,16 @@ def preview(teacher_id):
     _leaves_out_of_semester_warning(
         db, data, teacher_id, academic_year, semester)
     select_data = fps.get_select_data(db)
+    options = {
+        'department': [r['name'] for r in db.execute(
+            'SELECT name FROM departments ORDER BY name').fetchall()],
+        'qualification': [r['name_ar'] for r in db.execute(
+            'SELECT name_ar FROM qualifications ORDER BY name_ar').fetchall()],
+        'rank': [r['name_ar'] for r in db.execute(
+            'SELECT name_ar FROM academic_ranks ORDER BY name_ar').fetchall()],
+        'specialization': [r['name'] for r in db.execute(
+            'SELECT name FROM specializations ORDER BY name').fetchall()],
+    }
 
     return render_template(
         'faculty_performance/preview.html',
@@ -109,6 +174,8 @@ def preview(teacher_id):
         admin_task_types=select_data['admin_task_types'],
         admin_task_hours=select_data['admin_task_hours'],
         leave_types=select_data['leave_types'],
+        edit_mode=edit_mode,
+        profile_options=options,
     )
 
 
@@ -371,6 +438,7 @@ def course_report(course_id):
 @bp.route('/member-reports')
 @login_required
 @permission_required('faculty_performance.view')
+@role_required('faculty_affairs')
 def member_reports():
     """التقارير: قائمة أعضاء + بحث + عرض التقرير لكل عضو."""
     db = get_db()
@@ -415,6 +483,20 @@ def performance_rate_list():
         semester_label=fps.SEMESTER_LABELS.get(semester, ''),
         academic_year_label=fps.academic_year_label(academic_year),
         academic_years=fps.get_select_data(db)['academic_years'],
+    )
+
+
+@bp.route('/assignments')
+@login_required
+@permission_required('faculty_performance.edit_assignments')
+def assignments_index():
+    """المهام الإدارية: اختيار عضو لإضافة/تعديل تكليفاته الإدارية."""
+    db = get_db()
+    members = fps.list_members_summary(db)
+    return render_template(
+        'faculty_performance/assignments_index.html',
+        user=current_user(),
+        members=members,
     )
 
 

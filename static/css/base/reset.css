@@ -8,7 +8,7 @@
 }
 
 html {
-  font-size: 14px;
+  font-size: 16px;
   -webkit-text-size-adjust: 100%;
 }
 
@@ -59,4 +59,16 @@ button {
 ::selection {
   background: var(--primary-glow);
   color: var(--text-primary);
+}
+
+/* Respect OS-level "reduce motion": collapse decorative animation/transitions.
+   Covers auth background floats, spinners, sheet/drawer slides, and hover
+   transitions app-wide. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

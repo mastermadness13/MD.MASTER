@@ -33,7 +33,7 @@
     delete: 'حذف', delete_forever: 'حذف نهائي',
     print: 'طباعة', download: 'تنزيل', upload_file: 'المرفق',
     description: 'التفاصيل', science: 'البحث', work: 'التكليفات',
-    event_busy: 'الإجازات', quiz: 'الامتحانات', settings: 'إعدادات',
+    event_busy: 'الإجازات العلمية', quiz: 'الامتحانات', settings: 'إعدادات',
     assignment: 'التفاصيل', folder: 'الملفات', link: 'فتح'
   };
 

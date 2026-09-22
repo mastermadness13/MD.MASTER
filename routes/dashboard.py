@@ -24,7 +24,16 @@ def switch_role():
     if requested in granted:
         session['role'] = requested
         if is_ajax:
-            return jsonify({'ok': True, 'message': 'تم تغيير الواجهة'})
+            landing_endpoints = {
+                'faculty_affairs': 'teachers.teachers_list',
+                'exam': 'exams.exams',
+            }
+            redirect_endpoint = landing_endpoints.get(requested, 'dashboard.dashboard')
+            return jsonify({
+                'ok': True,
+                'message': 'تم تغيير الواجهة',
+                'redirect_url': url_for(redirect_endpoint),
+            })
         flash('تم تغيير الواجهة', 'success')
     else:
         if is_ajax:
@@ -52,12 +61,13 @@ def dashboard():
 
     # /     /     >---- قالب اللوحة حسب الدور (الافتراضي للأساتذة)
     role_templates = {
-        'super_admin': 'dashboard/super_admin.html',
         'research_development': 'dashboard/rnd.html',
         'faculty_affairs': 'dashboard/faculty_affairs.html',
         'head_of_department': 'dashboard/hod.html',
         'teacher': 'dashboard/teacher.html',
         'exam': 'dashboard/exam_dept.html',
+        'dean': 'dashboard/dean.html',
+        'visitor': 'dashboard/visitor.html',
     }
     template = role_templates.get(role, 'dashboard/teacher.html')
 
@@ -73,7 +83,9 @@ def dashboard():
     if role == 'head_of_department':
         db = get_db()
         dept_id = session.get('hod_department_id')
-        hod_data = dashboard_service.get_hod_dashboard_data(db, dept_id)
+        semester = request.args.get('semester', type=int)
+        hod_data = dashboard_service.get_hod_dashboard_data(
+            db, dept_id, semester=semester or None)
 
     teacher_data = {}
     if role == 'teacher':

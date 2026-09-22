@@ -6,6 +6,7 @@ import os
 import uuid
 
 from flask_db import get_db
+from core.constants import INITIAL_CODE_EXPIRY_DAYS
 from core.exceptions import ProtectedAccountError
 from database.history import add_history
 from security import csrf_required, login_required, permission_required
@@ -21,9 +22,8 @@ _PHOTO_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp'}
 _PHOTO_MAX_BYTES = 4 * 1024 * 1024
 
 # Roles an admin may add (via the teacher form, into user_roles) on top of the
-# teacher's landing 'teacher' role.  'super_admin' is never grantable here and
-# 'teacher' is the implicit landing role.
-_GRANTABLE_ROLES = ('head_of_department', 'exam', 'faculty_affairs', 'research_development')
+# teacher's landing 'teacher' role.  'teacher' is the implicit landing role.
+_GRANTABLE_ROLES = ('head_of_department', 'exam', 'faculty_affairs', 'research_development', 'dean')
 
 
 def _safe_extra_roles(form) -> list:
@@ -41,6 +41,7 @@ _POSITION_ROLE_MAP = {
     'رئيس قسم الدراسة والامتحانات': 'exam',
     'مكتب إدارة أعضاء هيئة التدريس': 'faculty_affairs',
     'مدير مكتب أعضاء هيئة التدريس': 'faculty_affairs',
+    'العميد': 'dean',
 }
 
 
@@ -54,14 +55,25 @@ _DEFAULT_ADMIN_TASKS = [
     'عضو تدريس',
     'رئيس قسم',
     'رئيس قسم البحث والتطوير',
-    'رئيس قسم الامتحانات',
     'مدير مكتب أعضاء هيئة التدريس',
     'مدير مكتب الشؤون العلمية',
     'منسق القاعات',
-    'قسم البحث والتطوير',
-    'قسم الإدارة والامتحانات',
     'رئيس قسم الدراسة والامتحانات',
     'مكتب إدارة أعضاء هيئة التدريس',
+    'عميد الكلية',
+    'مدير مكتب الجودة',
+    'مدير مكتب الدراسة العالية',
+    'رئيس القسم العلمي',
+    'رئيس قسم الشؤون الفنية والمعامل',
+    'رئيس قسم البحث والتطوير والمناهج',
+    'رئيس قسم التدريب الميداني',
+    'رئيس قسم الدبلوم المهني',
+    'منسق الشعبة العلمية',
+    'منسق الجودة بالقسم',
+    'منسق الدراسة العالية بالقسم',
+    'منسق المواد العامة بالقسم العلمي',
+    'منسق تدريب ميداني',
+    'عضو تحرير مجلة علمية',
 ]
 
 
@@ -208,6 +220,90 @@ def _safe_fk(value):
         return None
 
 
+def _ensure_lookup(db, table, name_ar):
+    """Return the id of an existing dropdown row by its Arabic name, creating
+    one on the spot when the name is new (the English column is mirrored so
+    the NOT NULL constraint holds)."""
+    name_ar = (name_ar or '').strip()
+    if not name_ar:
+        return None
+    row = db.execute(
+        f'SELECT id FROM {table} WHERE name_ar = ?', (name_ar,)
+    ).fetchone()
+    if row:
+        return row['id']
+    cur = db.execute(
+        f'INSERT INTO {table} (name_ar, name_en) VALUES (?, ?)',
+        (name_ar, name_ar),
+    )
+    return cur.lastrowid
+
+
+def _ensure_specialization(db, name_ar, department_id):
+    """Return a specialization id, creating one under the chosen department."""
+    name_ar = (name_ar or '').strip()
+    if not name_ar or not department_id:
+        return None
+    row = db.execute(
+        'SELECT id FROM specializations WHERE department_id = ? AND name = ?',
+        (department_id, name_ar),
+    ).fetchone()
+    if row:
+        return row['id']
+    cur = db.execute(
+        'INSERT INTO specializations (department_id, name) VALUES (?, ?)',
+        (department_id, name_ar),
+    )
+    return cur.lastrowid
+
+
+def _ensure_admin_task(db, name_ar):
+    """Register a new administrative-assignment type when a custom one is typed."""
+    name_ar = (name_ar or '').strip()
+    if not name_ar:
+        return None
+    row = db.execute(
+        'SELECT id FROM admin_assignment_types WHERE name = ?', (name_ar,)
+    ).fetchone()
+    if row:
+        return row['id']
+    cur = db.execute(
+        'INSERT INTO admin_assignment_types (name, default_hours, is_active, sort_order) '
+        'VALUES (?, 0, 1, 0)',
+        (name_ar,),
+    )
+    return cur.lastrowid
+
+
+def _resolve_custom_lookups(db, form, department_id=None):
+    """Apply typed-in custom dropdown values to the lookup tables.
+
+    Each custom field (``custom_<name>``) creates/reuses the matching row in
+    the reference table and stores its id in the form, so a free-text value
+    behaves exactly like a pre-existing option everywhere else in the system.
+    """
+    custom_rank = _ensure_lookup(db, 'academic_ranks', form.get('custom_rank_id'))
+    if custom_rank:
+        form['rank_id'] = custom_rank
+    custom_qual = _ensure_lookup(db, 'qualifications', form.get('custom_qualification_id'))
+    if custom_qual:
+        form['qualification_id'] = custom_qual
+    custom_class = _ensure_lookup(db, 'classifications', form.get('custom_classification_id'))
+    if custom_class:
+        form['classification_id'] = custom_class
+    custom_spec = _ensure_specialization(db, form.get('custom_specialization_id'),
+                                         department_id)
+    if custom_spec:
+        form['specialization_id'] = custom_spec
+    elif (form.get('custom_specialization_id') or '').strip():
+        form['specialization'] = form.get('custom_specialization_id').strip()
+        form['specialization_id'] = None
+    custom_pos = (form.get('custom_position') or '').strip()
+    if custom_pos:
+        _ensure_admin_task(db, custom_pos)
+        form['position'] = custom_pos
+
+
 def _parse_whole_hours(value):
     """Parse research/teaching hours as a whole number only (no decimals).
 
@@ -342,6 +438,8 @@ def teachers_list():
     return render_template('teachers/list.html', teachers=rows, total=total, page=page,
                           per_page=per_page, search=search, department_id=dept_filter,
                           departments=departments,
+                          assign_default_dept=session.get('hod_department_id')
+                          or session.get('department_id'),
                           user=user_data, print_teachers=_full_teacher_list())
 
 
@@ -407,6 +505,10 @@ def teachers_create():
             'extra_roles': extra_roles,
             'hod_department_id': hod_department_id,
         }
+        for _ck in ('custom_rank_id', 'custom_qualification_id', 'custom_classification_id',
+                    'custom_specialization_id', 'custom_position'):
+            form[_ck] = request.form.get(_ck, '').strip()
+        _resolve_custom_lookups(db, form, department_id)
         if not name:
             return render_template('teachers/create.html',
                                   departments=departments, qualifications=qualifications,
@@ -453,14 +555,22 @@ form=form, form_error=spec_error,
             creds = teacher_service.create_teacher(db, form, department_ids=department_ids,
                                                    additional_roles=sorted(effective_roles))
         except ValueError as exc:
+            message = str(exc)
+            if 'academic_number' in message:
+                form_error = 'الرقم الكلية مستخدم مسبقاً'
+            elif 'Username' in message:
+                form_error = 'نيك نيم الدخول مستخدم مسبقاً — اختر نيك نيم آخر'
+            elif 'too short' in message:
+                form_error = 'نيك نيم الدخول قصير جداً — حرفان على الأقل'
+            else:
+                form_error = message
             return render_template('teachers/create.html',
                                   departments=departments, qualifications=qualifications,
                                   ranks=ranks, classifications=classifications,
                                   specializations=specializations,
                                   department_hods=department_hods,
                                   confirm_replace=confirmed_replace,
-                                  form=form, form_error=('الرقم الكلية مستخدم مسبقاً' if 'academic_number' in str(exc)
-else str(exc)),
+                                  form=form, form_error=form_error,
                                    grantable_roles=_GRANTABLE_ROLES,
                                    admin_tasks=admin_tasks,
                                    user=current_user())
@@ -470,7 +580,11 @@ else str(exc)),
                 (request.form.get('supervisor_admin_dept').strip(), creds['id']),
             )
             db.commit()
-        flash(f'تم إضافة عضو هيئة التدريس — اسم المستخدم: {creds["username"]}', 'success')
+        flash(
+            f'تم إضافة عضو هيئة التدريس — نيك نيم: {creds["username"]} — '
+            f'رمز الدخول المؤقت: {creds["password"]} (أُرسل أيضاً إلى بريده، صالح {INITIAL_CODE_EXPIRY_DAYS} أيام)',
+            'success',
+        )
         return redirect(url_for('teachers.teachers_list'))
     return render_template('teachers/create.html',
                           departments=departments, qualifications=qualifications,
@@ -541,7 +655,12 @@ def teachers_edit(id):
             'general_notes': request.form.get('general_notes', '').strip(),
             'extra_roles': extra_roles,
             'hod_department_id': hod_department_id,
+            'username': request.form.get('username', '').strip(),
         }
+        for _ck in ('custom_rank_id', 'custom_qualification_id', 'custom_classification_id',
+                    'custom_specialization_id', 'custom_position'):
+            form[_ck] = request.form.get(_ck, '').strip()
+        _resolve_custom_lookups(db, form, department_id)
         # Profile photo: replace / remove while keeping the previous file on
         # validation failures so nothing is lost.
         photo_filename = t['photo_filename']
@@ -671,7 +790,47 @@ form_error='الرقم الكلية موجود مسبقاً لعضو آخر',
                                            assignment_date=assignment_date,
                                            admin_tasks=admin_tasks,
                                            user=current_user())
+        # Validate username uniqueness (in users table)
+        new_username = form.get('username', '').strip()
+        if new_username:
+            dup = db.execute(
+                'SELECT id FROM users WHERE username = ? AND id != (SELECT user_id FROM teachers WHERE id = ?)',
+                (new_username, id),
+            ).fetchone()
+            if dup:
+                return render_template('teachers/edit.html',
+                                      teacher=form,
+                                      teacher_id=id,
+                                      teacher_dept_ids=[did for did in department_ids if did],
+                                      departments=departments, qualifications=qualifications,
+                                      ranks=ranks, classifications=classifications,
+                                      specializations=specializations,
+                                      teacher_course_ids=[],
+                                      department_hods=department_hods,
+                                      confirm_replace=confirmed_replace,
+                                      form_error='اسم المستخدم مستخدم مسبقاً',
+                                      grantable_roles=_GRANTABLE_ROLES,
+                                      extra_roles=form.get('extra_roles', []),
+                                      research_types=edit_research_types,
+                                      research=edit_research,
+                                      assignment_date=assignment_date,
+                                      admin_tasks=admin_tasks,
+                                      user=current_user())
+
         teacher_service.update_teacher(db, id, form)
+
+        # Update login credentials (username / password) if provided
+        new_password = request.form.get('new_password', '').strip()
+        if new_username or new_password:
+            success = teacher_service.update_teacher_credentials(db, id, new_username or None, new_password or None)
+            if success:
+                flash('تم تحديث بيانات الدخول بنجاح', 'success')
+            else:
+                flash('تعذر تحديث بيانات الدخول — لا يوجد حساب مرتبط بهذا العضو', 'error')
+        # The credentials update may have just created + linked a login account,
+        # so re-read the link for the role/supervisor sync below.
+        linked_user_id = t.get('user_id') or (teacher_service.get_teacher(db, id) or {}).get('user_id')
+
         db.execute('DELETE FROM teacher_departments WHERE teacher_id = ?', (id,))
         if department_ids:
             db.executemany(
@@ -713,9 +872,9 @@ form_error='الرقم الكلية موجود مسبقاً لعضو آخر',
             activities,
         )
 
-        if t.get('user_id'):
+        if linked_user_id:
             teacher_service.set_teacher_extra_roles(db, id, sorted(effective_roles))
-            if t['user_id'] == session.get('user_id'):
+            if linked_user_id == session.get('user_id'):
                 # تحديث نطاق رئيس القسم فوراً عندما يعدّل المستخدم بيانات نفسه
                 session['hod_department_id'] = hod_department_id
                 if 'head_of_department' not in effective_roles:
@@ -723,41 +882,18 @@ form_error='الرقم الكلية موجود مسبقاً لعضو آخر',
         add_history(db, 'update', 'teacher', id, session['user_id'],
                     session['username'], f'تعديل بيانات عضو هيئة التدريس: {form["name"]}')
         supervisor_admin_dept = request.form.get('supervisor_admin_dept', '').strip()
-        if form['position'] == 'مشرف' and supervisor_admin_dept and t.get('user_id'):
+        if form['position'] == 'مشرف' and supervisor_admin_dept and linked_user_id:
             db.execute(
                 'UPDATE users SET supervisor_admin_dept = ? WHERE id = ?',
-                (supervisor_admin_dept, t['user_id']),
+                (supervisor_admin_dept, linked_user_id),
             )
             db.commit()
-        elif form['position'] != 'مشرف' and t.get('user_id'):
+        elif form['position'] != 'مشرف' and linked_user_id:
             db.execute(
                 'UPDATE users SET supervisor_admin_dept = NULL WHERE id = ?',
-                (t['user_id'],),
+                (linked_user_id,),
             )
             db.commit()
-        new_username = request.form.get('username', '').strip()
-        new_password = request.form.get('new_password', '').strip()
-        if new_username or new_password:
-            if new_username:
-                existing = db.execute(
-                    'SELECT 1 FROM users WHERE username = ? AND id != ?',
-                    (new_username, t['user_id'])
-).fetchone()
-                if existing:
-                    flash('اسم المستخدم موجود مسبقاً — تم تحديث بيانات العضو فقط', 'error')
-                    return redirect(url_for('teachers.teachers_edit', id=id))
-            try:
-                teacher_service.update_teacher_credentials(db, id, new_username or None, new_password or None)
-                cred_changes = []
-                if new_username:
-                    cred_changes.append('اسم المستخدم')
-                if new_password:
-                    cred_changes.append('كلمة المرور')
-                add_history(db, 'update', 'teacher_credentials', id, session['user_id'],
-                            session['username'], f'تحديث بيانات الدخول لـ {t["name"]}: {", ".join(cred_changes)}')
-                flash('تم تحديث بيانات الدخول', 'success')
-            except Exception:
-                flash('تم تحديث بيانات العضو لكن فشل تحديث بيانات الدخول', 'error')
         flash('تم تحديث عضو هيئة التدريس', 'success')
         return redirect(url_for('teachers.teachers_list'))
     teacher_course_rows = db.execute(
@@ -799,10 +935,10 @@ def teachers_reset_password(id):
     new_password = teacher_service.reset_teacher_password(db, id)
     if new_password:
         add_history(db, 'reset_password', 'teacher', id, session['user_id'],
-                    session['username'], f'إعادة تعيين كلمة المرور لـ {t["name"]}')
-        flash(f'تم إعادة تعيين كلمة المرور لـ {t["name"]}', 'success')
+                    session['username'], f'إعادة تعيين كلمة مرور عضو هيئة التدريس: {t["name"]}')
+        flash(f'تم توليد كلمة مرور جديدة لعضو هيئة التدريس: {t["name"]}', 'success')
     else:
-        flash('لا يمكن إعادة تعيين كلمة المرور', 'error')
+        flash('تعذر توليد كلمة مرور جديدة — لا يوجد حساب مرتبط بهذا العضو', 'error')
     return redirect(url_for('teachers.teachers_edit', id=id))
 
 
@@ -1069,13 +1205,15 @@ def teachers_delete(id):
 @login_required
 @permission_required('teachers.assign')
 def teacher_pool():
-    """Return teachers NOT already in the current HOD's department."""
+    """Return teachers NOT already in the target department."""
     db = get_db()
-    user_dept_id = session.get('hod_department_id') or session.get('department_id')
-    if not user_dept_id:
+    dept_id = (request.args.get('dept_id', type=int)
+               or session.get('hod_department_id')
+               or session.get('department_id'))
+    if not dept_id:
         return jsonify([])
     search = request.args.get('search', '').strip()
-    params = [user_dept_id]
+    params = [dept_id]
     where = [
         't.deleted_at IS NULL',
         'NOT EXISTS (SELECT 1 FROM teacher_departments tdx '
@@ -1098,10 +1236,12 @@ def teacher_pool():
 @permission_required('teachers.assign')
 @csrf_required
 def dept_assign():
-    """Add a teacher to the current HOD's department."""
+    """Add a teacher to the target department."""
     db = get_db()
-    user_dept_id = session.get('hod_department_id') or session.get('department_id')
-    if not user_dept_id:
+    dept_id = (request.form.get('department_id', type=int)
+               or session.get('hod_department_id')
+               or session.get('department_id'))
+    if not dept_id:
         flash('لا يمكن التعيين بدون قسم', 'error')
         return redirect_back('teachers.teachers_list')
     teacher_id = request.form.get('teacher_id', type=int)
@@ -1118,14 +1258,14 @@ def dept_assign():
     existing = db.execute(
         'SELECT 1 FROM teacher_departments '
         'WHERE teacher_id = ? AND department_id = ?',
-        (teacher_id, user_dept_id),
+        (teacher_id, dept_id),
     ).fetchone()
     if existing:
         flash(f'{teacher["name"]} عضو بالفعل في هذا القسم', 'error')
         return redirect_back('teachers.teachers_list')
     db.execute(
         'INSERT OR IGNORE INTO teacher_departments (teacher_id, department_id) VALUES (?, ?)',
-        (teacher_id, user_dept_id),
+        (teacher_id, dept_id),
     )
     _reconcile_primary_dept(db, teacher_id)
     db.commit()
@@ -1141,10 +1281,12 @@ def dept_assign():
 @permission_required('teachers.assign')
 @csrf_required
 def dept_unassign():
-    """Remove a teacher from the current HOD's department."""
+    """Remove a teacher from the target department."""
     db = get_db()
-    user_dept_id = session.get('hod_department_id') or session.get('department_id')
-    if not user_dept_id:
+    dept_id = (request.form.get('department_id', type=int)
+               or session.get('hod_department_id')
+               or session.get('department_id'))
+    if not dept_id:
         flash('لا يمكن الإزالة بدون قسم', 'error')
         return redirect_back('teachers.teachers_list')
     teacher_id = request.form.get('teacher_id', type=int)
@@ -1161,7 +1303,7 @@ def dept_unassign():
     membership = db.execute(
         'SELECT 1 FROM teacher_departments '
         'WHERE teacher_id = ? AND department_id = ?',
-        (teacher_id, user_dept_id),
+        (teacher_id, dept_id),
     ).fetchone()
     if not membership:
         flash(f'{teacher["name"]} ليس عضواً في هذا القسم', 'error')
@@ -1169,7 +1311,7 @@ def dept_unassign():
     remaining = db.execute(
         'SELECT COUNT(*) AS cnt FROM teacher_departments '
         'WHERE teacher_id = ? AND department_id != ?',
-        (teacher_id, user_dept_id),
+        (teacher_id, dept_id),
     ).fetchone()
     if remaining and remaining['cnt'] == 0:
         flash(f'لا يمكن إزالة {teacher["name"]} — يجب أن ينتمي لأقل قسم واحد', 'error')
@@ -1177,7 +1319,7 @@ def dept_unassign():
     db.execute(
         'DELETE FROM teacher_departments '
         'WHERE teacher_id = ? AND department_id = ?',
-        (teacher_id, user_dept_id),
+        (teacher_id, dept_id),
     )
     _reconcile_primary_dept(db, teacher_id)
     db.commit()

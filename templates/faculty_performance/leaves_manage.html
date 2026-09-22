@@ -1,6 +1,6 @@
 {% extends 'shared/layouts/base.html' %}
 {% set sidebar_active = 'faculty_leaves' %}
-{% set page_title = 'إدارة الإجازات' %}
+{% set page_title = 'إدارة الإجازات العلمية' %}
 
 {% block content %}
 <div class="max-w-4xl mx-auto">
@@ -8,7 +8,7 @@
   <div class="flex items-center gap-3 mb-6">
     <span class="material-symbols-outlined text-primary text-3xl">event_busy</span>
     <div>
-      <h1 class="text-2xl font-bold text-on-surface">إدارة الإجازات</h1>
+      <h1 class="text-2xl font-bold text-on-surface">إدارة الإجازات العلمية</h1>
       <p class="text-sm text-on-surface-variant mt-0.5">{{ teacher.name }} — {{ teacher.dept_name or 'قسم غير محدد' }}</p>
     </div>
   </div>

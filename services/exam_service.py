@@ -288,7 +288,7 @@ class ExamService:
         self._repo = exam_repo
 
     # /     /     >---- بناء بيانات امتحانات الأقسام: فترات مخزنّة + خلايا زمنية + تواريخ
-    def build_dept_exam_data(self, filter_dept_id=None):
+    def build_dept_exam_data(self, filter_dept_id=None, published_only=False):
         if filter_dept_id:
             departments = [self._repo.find_department(filter_dept_id)]
             departments = [d for d in departments if d]
@@ -336,18 +336,25 @@ class ExamService:
         for dept in departments:
             dept_name = dept['name']
             is_general = ('عام' in dept_name)
-            sem_start, sem_end = (1, 1) if is_general else (2, 7)
+            if is_general:
+                sem_start, sem_end = (1, 1)
+            else:
+                sem_start, sem_end = (2, int(dept.get('semesters') or 7))
 
             # /     /     >---- سجلات الامتحانات المخزنة للقسم
+            status_filter = ''
+            params = [dept['id']]
+            if published_only:
+                status_filter = " AND es.status IN ('published', 'completed')"
             rows = self.db.execute(
-                '''SELECT es.*, c.name as course_name, c.code as course_code,
+                f'''SELECT es.*, c.name as course_name, c.code as course_code,
                           r.name as room_name, c.practical_hours
                    FROM exam_schedule es
                    LEFT JOIN courses c ON es.course_id = c.id
                    LEFT JOIN rooms r ON es.room_id = r.id
-                   WHERE es.department_id = ?
+                   WHERE es.department_id = ?{status_filter}
                    ORDER BY es.week, es.day_ar, es.start_time, es.semester''',
-                (dept['id'],),
+                params,
             ).fetchall()
 
             # /     /     >---- فهرسة السجلات حسب الخلية (أسبوع، يوم، فصل)
@@ -1001,9 +1008,9 @@ class ExamService:
 # /     /     >---- دوال مستوى الوحدة للتوافق مع المسارات القديمة
 
 
-def build_dept_exam_data(db, filter_dept_id=None):
+def build_dept_exam_data(db, filter_dept_id=None, published_only=False):
     from database.repositories.exam_repository import ExamRepository
-    return ExamService(db, ExamRepository(db)).build_dept_exam_data(filter_dept_id)
+    return ExamService(db, ExamRepository(db)).build_dept_exam_data(filter_dept_id, published_only)
 
 
 def update_exam_room(db, schedule_id, room_id):

@@ -5,6 +5,10 @@ teacher gets a matching ``teachers`` row (name derived from its label),
 so the department head appears in /teachers with the proper heads-up badge
 and receives message notifications correctly.
 
+It also grants the linked account the ``teacher`` role in ``user_roles`` so
+the header role switcher offers the "member" (المحاضر) face — letting the
+HOD view his own timetable and upload his course syllabi/materials.
+
 Idempotent: accounts already linked to a teacher are skipped.
 
 Usage:  python scripts/link_hod_accounts_to_teachers.py
@@ -72,6 +76,11 @@ def main() -> None:
                 academic_number, position, user_id)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
             (name, email, '', dept_id, dept_id, an, 'رئيس قسم', user_id),
+        )
+        # /     /     >---- نمنح الحساب واجهة "المحاضر" (جدوله ومحتوى مقرراته)
+        db.execute(
+            "INSERT OR IGNORE INTO user_roles (user_id, role) VALUES (?, 'teacher')",
+            (user_id,),
         )
         created += 1
         print(f'[ربط] {row["username"]} → أستاذ "{name}" في {row["dept_name"]}')

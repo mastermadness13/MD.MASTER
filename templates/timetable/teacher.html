@@ -112,17 +112,8 @@
                   {% set frm = content_maps.form.get(e.course_id) if content_maps else none %}
                   {% set has_own_syllabus = syk and syk.teacher_id and syk.teacher_id == current_teacher_id %}
                   <div class="flex flex-wrap items-center gap-1.5">
-                    <span class="{% if frm and frm.url %}text-green-600{% else %}text-red-400{% endif %} text-[10px] font-bold">● مقرر</span>
-                    <span class="{% if syk and syk.url %}text-green-600{% else %}text-red-400{% endif %} text-[10px] font-bold">● منهاج</span>
-                    <form action="{{ url_for('teacher_pages.teacher_syllabus_upload') }}" method="POST" enctype="multipart/form-data" class="inline-flex items-center gap-1">
-                      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                      <input type="hidden" name="course_id" value="{{ e.course_id }}">
-                      <label class="inline-flex items-center gap-1 bg-primary/10 hover:bg-primary/20 text-primary px-2.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer">
-                        <input type="file" name="file" accept=".pdf" onchange="this.form.submit()" class="hidden">
-                        <span class="material-symbols-outlined text-sm">upload_file</span>
-                        {% if has_own_syllabus %}تحديد المنهج{% else %}رفع المنهج{% endif %}
-                      </label>
-                    </form>
+                    <span class="{% if frm and frm.url %}status-ok{% else %}status-missing{% endif %} text-xs font-bold">● مقرر</span>
+                    <span class="{% if syk and syk.url %}status-ok{% else %}status-missing{% endif %} text-xs font-bold">● منهاج</span>
                     {% if syk and syk.url %}
                     <a href="{{ syk.url }}{% if '?' in syk.url %}&{% else %}?{% endif %}download=1"
                        class="inline-flex items-center gap-1 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-2.5 py-1.5 rounded-lg text-xs font-bold transition no-underline">
@@ -136,15 +127,6 @@
                       <span class="material-symbols-outlined text-sm">description</span>
                       تحميل المقرر
                     </a>
-                    {% endif %}
-                    {% if has_own_syllabus %}
-                    <form action="{{ url_for('teacher_pages.teacher_syllabus_delete', tf_id=syk.id) }}" method="POST" onsubmit="return confirm('حذف ملف المنهج هذا؟');" class="inline-flex">
-                      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                      <button type="submit" class="inline-flex items-center gap-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-2.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer">
-                        <span class="material-symbols-outlined text-sm">delete</span>
-                        حذف
-                      </button>
-                    </form>
                     {% endif %}
                   </div>
                 </td>
@@ -174,8 +156,8 @@
                 <span>{{ e.course_name }}</span>
                 {% if e.course_code %}<span class="code">({{ e.course_code }})</span>{% endif %}
                 <span class="tt-mday-count" style="margin-inline-start:auto">
-                  <span class="{% if frm and frm.url %}text-green-600{% else %}text-red-400{% endif %}">● مقرر</span>
-                  <span class="{% if syk and syk.url %}text-green-600{% else %}text-red-400{% endif %} ms-1">● منهاج</span>
+                  <span class="{% if frm and frm.url %}status-ok{% else %}status-missing{% endif %}">● مقرر</span>
+                  <span class="{% if syk and syk.url %}status-ok{% else %}status-missing{% endif %} ms-1">● منهاج</span>
                 </span>
               </div>
               <div class="tt-mrow tt-mtime">
@@ -186,26 +168,11 @@
               <div class="tt-mrow"><span class="material-symbols-outlined">domain</span> {{ e.department_name or '—' }}</div>
               <div class="tt-mrow"><span class="material-symbols-outlined">meeting_room</span> {{ e.room_name or '—' }}{% if e.room_capacity %} · السعة {{ e.room_capacity }}{% endif %}</div>
               <div class="tt-actions">
-                <form action="{{ url_for('teacher_pages.teacher_syllabus_upload') }}" method="POST" enctype="multipart/form-data" class="m-0 inline-flex">
-                  <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                  <input type="hidden" name="course_id" value="{{ e.course_id }}">
-                  <label class="tt-chip tt-chip-soft cursor-pointer">
-                    <input type="file" name="file" accept=".pdf" onchange="this.form.submit()" class="hidden">
-                    <span class="material-symbols-outlined">upload_file</span>
-                    {% if has_own_syllabus %}تحديد المنهج{% else %}رفع المنهج{% endif %}
-                  </label>
-                </form>
                 {% if syk and syk.url %}
                 <a class="tt-chip tt-chip-primary" href="{{ syk.url }}{% if '?' in syk.url %}&amp;{% else %}?{% endif %}download=1"><span class="material-symbols-outlined">download</span> تحميل المنهج</a>
                 {% endif %}
                 {% if frm and frm.url %}
                 <a class="tt-chip tt-chip-primary" href="{{ frm.url }}{% if '?' in frm.url %}&amp;{% else %}?{% endif %}download=1"><span class="material-symbols-outlined">description</span> تحميل المقرر</a>
-                {% endif %}
-                {% if has_own_syllabus %}
-                <form action="{{ url_for('teacher_pages.teacher_syllabus_delete', tf_id=syk.id) }}" method="POST" onsubmit="return confirm('حذف ملف المنهج هذا؟');" class="m-0 inline-flex">
-                  <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                  <button type="submit" class="tt-chip tt-chip-danger"><span class="material-symbols-outlined">delete</span> حذف</button>
-                </form>
                 {% endif %}
               </div>
             </div>
@@ -235,5 +202,11 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/pages/timetable_teacher.js') }}"></script>
+<script>
+window.TIMETABLE_TEACHER_BOOT = {
+  teacherName: {% if teacher %}{{ teacher.name | tojson }}{% else %}null{% endif %},
+  deleteEntry: {{ url_for('timetable.timetable_delete_entry') | tojson }}
+};
+</script>
+<script src="{{ url_for('static', filename='js/timetable_pages.js') }}"></script>
 {% endblock %}

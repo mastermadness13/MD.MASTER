@@ -54,7 +54,17 @@
       });
     }).then(function (res) {
       if (res.data && res.data.ok) {
-        window.location.reload();
+        var loading = document.getElementById('roleSwitchLoading');
+        if (loading) {
+          loading.classList.remove('hidden');
+          loading.classList.add('flex');
+        }
+        var redirectUrl = res.data.redirect_url;
+        if (redirectUrl) {
+          window.location.assign(redirectUrl);
+        } else {
+          window.location.reload();
+        }
         return;
       }
       if (btn) setRoleSwitchLoading(btn, false);

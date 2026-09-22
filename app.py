@@ -5,15 +5,17 @@ from datetime import datetime
 from logging.handlers import RotatingFileHandler
 
 from flask import (
-    Flask, session, redirect, url_for, render_template, request, make_response, jsonify, flash
+    Flask, session, redirect, url_for, render_template, request, jsonify, flash
 )
 from jinja2 import FileSystemLoader
 
 from config import Config
+from core.constants import INITIAL_CODE_EXPIRY_DAYS
 from flask_db import get_db, close_db, init_app as db_init_app
 
 from security import generate_csrf_token
 from security import current_user, inject_navigation
+from security.csrf import is_request_protected, csrf_failure_response
 from utils.format import semester_label, teacher_label, duration_label, format_time12
 from utils.format import submission_status_label, submission_status_color
 from utils.format import academic_title_prefix, teacher_display_name
@@ -73,11 +75,11 @@ from routes.exams import bp as exams_bp
 from routes.history import bp as history_bp
 from routes.teacher_pages import bp as teacher_pages_bp
 from routes.hod_pages import bp as hod_pages_bp
+from routes.academic_calendar import bp as academic_calendar_bp
 from routes.spa import bp as spa_bp
 from routes.print_routes import bp as print_routes_bp
 from routes.uploads import bp as uploads_bp
 from routes.misc import bp as misc_bp
-from routes.classroom_requests import bp as classroom_requests_bp
 from routes.html_to_pdf import bp as html_to_pdf_bp
 from routes.public_library import bp as public_library_bp
 from routes.public import bp as public_bp
@@ -108,6 +110,7 @@ def create_app():
     app.jinja_env.globals['csrf_token'] = generate_csrf_token
     app.jinja_env.globals['now'] = datetime.now
     app.jinja_env.globals['app_version'] = lambda: app.config.get('APP_VERSION', '0')
+    app.jinja_env.globals['initial_code_expiry_days'] = INITIAL_CODE_EXPIRY_DAYS
     app.jinja_env.globals['semester_label'] = semester_label
     app.jinja_env.globals['teacher_label'] = teacher_label
     app.jinja_env.globals['duration_label'] = duration_label
@@ -123,11 +126,97 @@ def create_app():
     def inject_welcome():
         return {'welcome_user': session.pop('welcome_user', None)}
 
+    # /     /     >---- أول دخول برمز مؤقت: رسالة ترحيب + اقتراح تغييره
+    @app.context_processor
+    def inject_first_login_banner():
+        return {'first_login_temp_code': session.pop('first_login_temp_code', None)}
+
     # /     /     >---- نضيف حد الرفع الأقصى في القوالب
     @app.context_processor
     def inject_upload_limit():
         mb = (app.config.get('MAX_CONTENT_LENGTH') or 0) // (1024 * 1024)
         return {'max_upload_mb': mb}
+
+    # /     /     >---- نضيف أسماء المؤسسة والمكتب للوثائق الرسمية
+    @app.context_processor
+    def inject_org_names():
+        from services.faculty_performance_service import COLLEGE_NAME, MINISTRY_NAME, OFFICE_NAME
+        return {
+            'org_college_name': COLLEGE_NAME,
+            'org_ministry_name': MINISTRY_NAME,
+            'org_office_name': OFFICE_NAME,
+        }
+
+    # ── Deny-by-default: require permission for all non-public routes ────
+    PUBLIC_ENDPOINTS = {
+        'auth.login', 'auth.logout', 'auth.forgot_password', 'auth.reset_password',
+        'dashboard.dashboard',  # handled by permission_required on the view
+        'dashboard.switch_role',  # يتحقق داخلياً من الأدوار الممنوحة للمستخدم
+        'health_check',
+        'static',
+        'api_auth.api_me', 'api_auth.api_logout',
+        'public_library.course_file',
+        'public_library.library_file',
+        'public_library.vocabulary_file',
+        'public_library.teacher_file',
+        'public.departments',
+        'public.department_detail',
+        'public.timetables',
+        'public.public_timetables_api',
+        'public.public_courses_api',
+        'public.public_exams_api',
+        'public.public_exam_schedule_api',
+        'public.exams',
+        'public.courses',
+    }
+    PUBLIC_PREFIXES = ('/static/', '/uploads/', '/favicon.ico')
+
+    @app.before_request
+    def enforce_permissions():
+        """Deny access unless user has required permission for the endpoint."""
+        # Skip static and public assets
+        if request.path.startswith(PUBLIC_PREFIXES):
+            return None
+
+        # Skip if not authenticated (let login_required handle it)
+        if 'user_id' not in session:
+            return None
+
+        # Skip explicitly public endpoints
+        endpoint = request.endpoint
+        if endpoint in PUBLIC_ENDPOINTS:
+            return None
+
+        # Get required permission from endpoint's view function
+        view_func = app.view_functions.get(endpoint)
+        if view_func is None:
+            return None
+
+        required_perm = getattr(view_func, '_required_permission', None)
+        if required_perm is None:
+            # No permission declared — deny by default for safety
+            flash('هذا المسار غير مصرح به', 'error')
+            return redirect(url_for('dashboard.dashboard'))
+
+        # Check permission
+        from security.authorization import get_granted_roles, has_permission
+        roles = get_granted_roles()
+        dept_id = session.get('department_id')
+        if not has_permission(roles, required_perm, dept_id):
+            flash('ليس لديك صلاحية للوصول إلى هذه الصفحة', 'error')
+            return redirect(url_for('dashboard.dashboard'))
+
+        return None
+
+    # ── CSRF: deny-by-default at the framework level ──────────────
+    # Every state-changing request must carry a valid per-session token unless
+    # the endpoint is explicitly marked ``csrf_exempt``. This closes the gap
+    # where a newly added route could forget the per-view ``@csrf_required``.
+    @app.before_request
+    def enforce_csrf():
+        if not is_request_protected():
+            return csrf_failure_response()
+        return None
 
     # ── تسجيل البلوبرنتات ──────────────────────────────────────
     app.register_blueprint(auth_bp)
@@ -142,11 +231,11 @@ def create_app():
     app.register_blueprint(history_bp)
     app.register_blueprint(teacher_pages_bp)
     app.register_blueprint(hod_pages_bp)
+    app.register_blueprint(academic_calendar_bp)
     app.register_blueprint(spa_bp)
     app.register_blueprint(print_routes_bp)
     app.register_blueprint(uploads_bp)
     app.register_blueprint(misc_bp)
-    app.register_blueprint(classroom_requests_bp)
     app.register_blueprint(html_to_pdf_bp)
     app.register_blueprint(public_library_bp)
     app.register_blueprint(public_bp)
@@ -225,7 +314,10 @@ def create_app():
             "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
             "img-src 'self' data: blob:",
             "connect-src 'self'",
+            "base-uri 'self'",
             "frame-ancestors 'self'",
+            "object-src 'none'",
+            "form-action 'self'",
         ]
         response.headers['Content-Security-Policy'] = '; '.join(csp_parts)
 

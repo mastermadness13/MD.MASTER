@@ -80,4 +80,4 @@
 .auto-save-indicator.error { background: var(--error-faint); color: var(--error); }
 .filter-btn { padding: 4px 12px; border-radius: 16px; font-size: 12px; border: 1px solid var(--border-heavy); background: transparent; cursor: pointer; transition: all 0.15s; }
 .filter-btn:hover { background: var(--border-subtle); }
-.filter-btn.active { background: var(--primary); color: white; border-color: transparent; }
+.filter-btn.active { background: var(--primary); color: var(--text-on-primary); border-color: transparent; }

@@ -27,12 +27,18 @@ function closeAssignDrawer() {
   if (panel) panel.style.transform = 'translateX(100%)';
   setTimeout(function() { d.classList.add('hidden'); }, 300);
 }
+function currentDeptId() {
+  var sel = document.getElementById('assignDeptSelect');
+  return sel ? sel.value : (BOOT.defaultDept || '');
+}
 function searchPool(q) {
   var results = document.getElementById('assignResults');
   if (!results) return;
   if (!q || q.length < 2) { results.innerHTML = '<p class="text-sm text-on-surface-variant text-center py-12">اكتب للبحث...</p>'; return; }
+  var deptId = currentDeptId();
+  if (!deptId) { results.innerHTML = '<p class="text-sm text-on-surface-variant text-center py-12">حدد القسم المستهدف أولاً...</p>'; return; }
   results.innerHTML = '<p class="text-sm text-on-surface-variant text-center py-8">جاري البحث...</p>';
-  fetch(URLS.pool + '?search=' + encodeURIComponent(q), {
+  fetch(URLS.pool + '?search=' + encodeURIComponent(q) + '&dept_id=' + encodeURIComponent(deptId), {
     headers: { 'X-Requested-With': 'XMLHttpRequest' }
   }).then(function(r){ return r.json(); }).then(function(data) {
     if (!data.length) { results.innerHTML = '<p class="text-sm text-on-surface-variant text-center py-12">لا يوجد أساتذة متاحين</p>'; return; }
@@ -46,6 +52,7 @@ function searchPool(q) {
       html += '<form method="post" action="' + URLS.assign + '" style="display:inline">';
       html += '<input type="hidden" name="_csrf_token" value="' + (CSRF || '') + '">';
       html += '<input type="hidden" name="teacher_id" value="' + t.id + '">';
+      html += '<input type="hidden" name="department_id" value="' + deptId + '">';
       html += '<button type="submit" class="shrink-0 px-3 py-1.5 rounded-lg bg-primary text-on-primary text-xs font-bold hover:bg-primary/90 transition">إضافة</button>';
       html += '</form></div>';
     });
@@ -61,4 +68,13 @@ document.addEventListener('DOMContentLoaded', function() {
     clearTimeout(assignDebounce);
     assignDebounce = setTimeout(function() { searchPool(inp.value.trim()); }, 300);
   });
+  var sel = document.getElementById('assignDeptSelect');
+  if (sel) {
+    sel.addEventListener('change', function() {
+      if (inp.value.trim().length >= 2) {
+        clearTimeout(assignDebounce);
+        assignDebounce = setTimeout(function() { searchPool(inp.value.trim()); }, 200);
+      }
+    });
+  }
 });

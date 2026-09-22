@@ -154,15 +154,14 @@ def bootstrap_defaults(path: str) -> None:
         generated_pw = None
 
     users = [
-        ('superadmin', generate_password_hash(admin_pw)),
-        ('admin', generate_password_hash(admin_pw)),
+        ('office_manager', generate_password_hash(admin_pw), 'faculty_affairs',
+         'مدير مكتب أعضاء هيئة التدريس'),
+        ('admin', generate_password_hash(admin_pw), 'head_of_department', 'Default Department'),
     ]
     created_any = False
-    for username, password in users:
+    for username, password, role, label in users:
         exists = db.execute('SELECT 1 FROM users WHERE username = ?', (username,)).fetchone()
         if not exists:
-            role = 'super_admin' if username == 'superadmin' else 'head_of_department'
-            label = 'General Department' if username == 'superadmin' else 'Default Department'
             db.execute(
                 'INSERT INTO users (username, password, role, label) VALUES (?, ?, ?, ?)',
                 (username, password, role, label),
@@ -170,7 +169,7 @@ def bootstrap_defaults(path: str) -> None:
             created_any = True
 
     if created_any and generated_pw:
-        print(f'[seed] No ADMIN_PASSWORD env set - generated login superadmin/admin password: {generated_pw}')
+        print(f'[seed] No ADMIN_PASSWORD env set - generated login office_manager/admin password: {generated_pw}')
         print('[seed] Store it now; it will not be shown again.\n')
 
     for name, semesters, majors in DEFAULT_DEPARTMENTS:
@@ -186,12 +185,7 @@ def bootstrap_defaults(path: str) -> None:
         semesters = item[1] if len(item) > 1 else ''
         majors = item[2] if len(item) > 2 else ''
         exists = db.execute('SELECT 1 FROM departments WHERE name = ?', (name,)).fetchone()
-        if exists:
-            db.execute(
-                'UPDATE departments SET hidden=1, has_sections=0, type=? WHERE name=?',
-                ('administrative', name),
-            )
-        else:
+        if not exists:
             db.execute(
                 'INSERT INTO departments (name, semesters, majors, hidden, has_sections, type) VALUES (?, ?, ?, 1, 0, ?)',
                 (name, semesters, majors, 'administrative'),
@@ -230,9 +224,13 @@ def bootstrap_defaults(path: str) -> None:
                 (name, type_, status, capacity, location),
             )
 
+    courses_existed = db.execute('SELECT 1 FROM courses LIMIT 1').fetchone() is not None
     _seed_default_courses(db)
-    _rebalance_default_courses(db)
-    owner = db.execute("SELECT id FROM users WHERE username = 'superadmin'").fetchone()
+    # /     /     >---- لا نعيد توزيع المقررات إلا على قاعدة جديدة فارغة حتى لا نلغي
+    # أي تعديل من المسؤول (تغيير قسم/فصل مقرر) عند كل إقلاع.
+    if not courses_existed:
+        _rebalance_default_courses(db)
+    owner = db.execute("SELECT id FROM users WHERE username = 'office_manager'").fetchone()
     owner_user_id = owner['id'] if owner else 1
     _seed_default_teachers(db, owner_user_id)
 

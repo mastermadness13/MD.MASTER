@@ -1,18 +1,15 @@
 {% extends 'shared/layouts/base.html' %}
 {% set sidebar_active = 'dashboard.dashboard' %}
 {% set h = hod_data | default({}) %}
-{% set page_title = 'لوحة تحكم ' ~ (h.get('department_name') or user.department_name or 'رئيس القسم') %}
-
 {% set user = user | default({}) %}
+{% set page_title = 'لوحة تحكم ' ~ (h.get('department_name') or user.get('department_name') or 'رئيس القسم') %}
+
 {% set stats = stats | default({}) %}
 {% set weekly = h.get('weekly_timetable', {}) %}
 {% set periods = h.get('periods', []) %}
 {% set teachers_list = h.get('teachers_list', []) %}
 {% set departments = h.get('departments', []) %}
 {% set dept_courses = h.get('dept_courses', {}) %}
-{% set occupied_rooms = h.get('occupied_rooms', []) %}
-{% set faculty_attendance = h.get('faculty_attendance', []) %}
-{% set pending_changes = h.get('pending_classroom_changes', []) %}
 {% set pending_requests = h.get('pending_requests', []) %}
 {% set week_days = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'] %}
 
@@ -41,11 +38,7 @@
         <span class="material-symbols-outlined text-lg">school</span>
         أعضاء هيئة التدريس
       </a>
-      <a href="{{ url_for('courses.courses_list') }}"
-         class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm no-underline">
-        <span class="material-symbols-outlined text-lg">menu_book</span>
-        المقررات
-      </a>
+     
     </div>
   </div>
 
@@ -57,38 +50,6 @@
   </div>
   {% else %}
 
-  <!-- ===== Stat cards ===== -->
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-    {% set _pending_total = h.get('pending_classroom_changes_count', 0) + h.get('pending_requests_count', 0) %}
-    <div class="stat-card-acc bg-white rounded-2xl border border-primary/10 p-5 shadow-sm flex items-center gap-4">
-      <span class="stat-icon-acc rounded-xl bg-primary/10 text-primary p-3"><span class="material-symbols-outlined text-2xl">groups</span></span>
-      <div class="min-w-0">
-        <div class="text-2xl font-extrabold text-on-surface leading-none">{{ stats.get('teachers', 0) }}</div>
-        <div class="text-xs font-bold text-on-surface-variant mt-1.5">عضو هيئة تدريس</div>
-      </div>
-    </div>
-    <div class="stat-card-acc bg-white rounded-2xl border border-primary/10 p-5 shadow-sm flex items-center gap-4">
-      <span class="stat-icon-acc rounded-xl bg-secondary/10 text-secondary p-3"><span class="material-symbols-outlined text-2xl">library_books</span></span>
-      <div class="min-w-0">
-        <div class="text-2xl font-extrabold text-on-surface leading-none">{{ h.get('total_courses', 0) }}</div>
-        <div class="text-xs font-bold text-on-surface-variant mt-1.5">مقرر دراسي</div>
-      </div>
-    </div>
-    <div class="stat-card-acc bg-white rounded-2xl border border-primary/10 p-5 shadow-sm flex items-center gap-4">
-      <span class="stat-icon-acc rounded-xl bg-green-100 text-green-700 p-3"><span class="material-symbols-outlined text-2xl">event_available</span></span>
-      <div class="min-w-0">
-        <div class="text-2xl font-extrabold text-on-surface leading-none">{{ h.get('today_entries_count', 0) }}</div>
-        <div class="text-xs font-bold text-on-surface-variant mt-1.5">محاضرات اليوم</div>
-      </div>
-    </div>
-    <div class="stat-card-acc bg-white rounded-2xl border border-primary/10 p-5 shadow-sm flex items-center gap-4">
-      <span class="stat-icon-acc rounded-xl bg-amber-100 text-amber-700 p-3"><span class="material-symbols-outlined text-2xl">meeting_room</span></span>
-      <div class="min-w-0">
-        <div class="text-2xl font-extrabold text-on-surface leading-none">{{ h.get('occupied_rooms_count', 0) }}<span class="text-sm font-bold text-on-surface-variant"> / {{ h.get('total_rooms', 0) }}</span></div>
-        <div class="text-xs font-bold text-on-surface-variant mt-1.5">قاعات مشغولة</div>
-      </div>
-    </div>
-  </div>
 
   <!-- ===== Weekly timetable + right column ===== -->
   <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -99,7 +60,21 @@
         <h3 class="font-bold text-primary flex items-center gap-2">
           <span class="material-symbols-outlined">calendar_view_week</span>
           الجدول الأسبوعي للقسم
+          {% if h.get('selected_semester_label') %}
+          <span class="text-[11px] font-bold text-on-surface-variant px-2 py-0.5 rounded-full bg-white border border-primary/20">{{ h.get('selected_semester_label') }}</span>
+          {% endif %}
         </h3>
+        {% if h.get('semesters') %}
+        <form method="get" action="{{ url_for('dashboard.dashboard') }}" class="flex items-center gap-2 order-last md:order-none">
+          <select name="semester" onchange="this.form.submit()"
+                  class="text-xs font-bold bg-white border border-primary/20 rounded-lg px-2 py-1.5 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+            <option value="">كل الفصول</option>
+            {% for s in h.get('semesters', []) %}
+            <option value="{{ s.code }}" {% if h.get('selected_semester') == s.code %}selected{% endif %}>{{ s.label }}</option>
+            {% endfor %}
+          </select>
+        </form>
+        {% endif %}
         <a href="{{ url_for('timetable.timetable') }}"
            class="flex items-center gap-1 text-xs font-bold text-primary hover:text-primary/70 transition-colors no-underline">
           عرض الجدول الكامل
@@ -115,7 +90,7 @@
               {% for p in periods %}
               <th class="px-3 py-2.5 border-b border-outline-variant font-bold text-center text-sm">
                 <div>{{ p.label }}</div>
-                <div class="text-[10px] font-normal text-on-surface-variant mt-0.5" dir="ltr">{{ p.start_time }} - {{ p.end_time }}</div>
+                <div class="text-[11px] font-normal text-on-surface-variant mt-0.5" dir="ltr">{{ p.start_time }} - {{ p.end_time }}</div>
               </th>
               {% endfor %}
             </tr>
@@ -128,13 +103,16 @@
               {% for p in periods %}
               {% set entry = day_entries | selectattr('period', 'equalto', p.code) | first %}
               <td class="px-2 py-2 text-center align-top">
-                {% if entry %}
-                <div class="px-2 py-1.5 bg-primary/10 text-primary rounded-lg text-[11px] font-bold leading-snug"
-                     title="{{ entry.room_name or '' }} · {{ entry.teacher_name or '' }}">
+                {% set day_period_entries = day_entries | selectattr('period', 'equalto', p.code) | list %}
+                {% if day_period_entries %}
+                {% for entry in day_period_entries %}
+                <div class="px-2 py-1.5 mb-1 bg-primary/10 text-primary rounded-lg text-xs font-bold leading-snug"
+                     title="{{ entry.course_name or '—' }}{% if entry.teacher_name %} · {{ entry.teacher_name }}{% endif %}{% if entry.room_name %} · {{ entry.room_name }}{% endif %}">
                   {{ entry.course_name or '—' }}
                 </div>
+                {% endfor %}
                 {% else %}
-                <div class="px-2 py-1.5 bg-surface-container text-on-surface-variant rounded-lg text-[11px]">فارغ</div>
+                <div class="px-2 py-1.5 bg-surface-container text-on-surface-variant rounded-lg text-xs">فارغ</div>
                 {% endif %}
               </td>
               {% endfor %}
@@ -154,107 +132,51 @@
     <!-- Right column -->
     <div class="lg:col-span-4 space-y-6">
 
-      <!-- Occupied rooms now -->
+      <!-- Today's lectures -->
       <div class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
         <div class="px-4 py-3 border-b border-primary/10 bg-surface-dim flex items-center justify-between">
           <h3 class="font-bold text-primary flex items-center gap-2">
-            <span class="material-symbols-outlined">meeting_room</span>
-            القاعات المشغولة الآن
+            <span class="material-symbols-outlined">today</span>
+            محاضرات اليوم
+            <span class="text-[11px] font-bold text-on-surface-variant">{{ _ar_days.get(now().weekday(), '') }}</span>
           </h3>
-          <span class="text-[10px] font-bold px-2 py-1 rounded-full bg-error/10 text-error">{{ h.get('occupied_rooms_count', 0) }} قاعة</span>
+          <span class="text-[10px] font-bold px-2 py-1 rounded-full bg-error/10 text-error">{{ h.get('today_entries_count', 0) }} محاضرة</span>
         </div>
         <div class="p-3 space-y-2">
-          {% if occupied_rooms %}
-          {% for room in occupied_rooms[:5] %}
-          <div class="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-lg bg-surface-container border border-outline-variant">
+          {% set today_lectures = h.get('today_lectures', []) %}
+          {% if today_lectures %}
+          {% for lecture in today_lectures[:8] %}
+          <div class="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-surface-container border border-outline-variant">
             <div class="flex items-center gap-2 min-w-0">
-              <span class="w-2 h-2 rounded-full bg-error shrink-0"></span>
-              <span class="font-bold text-on-surface text-sm truncate">{{ room.room_name or '—' }}</span>
-            </div>
-            <div class="flex items-center gap-2 text-xs text-on-surface-variant min-w-0">
-              <span class="text-on-surface font-bold truncate">{{ room.teacher_name or '—' }}</span>
-              <span class="truncate">{{ room.course_name or '—' }}</span>
-            </div>
-          </div>
-          {% endfor %}
-          {% if occupied_rooms|length > 5 %}
-          <p class="text-xs text-on-surface-variant px-1">و {{ occupied_rooms|length - 5 }} قاعات أخرى...</p>
-          {% endif %}
-          {% else %}
-          <p class="text-xs text-on-surface-variant text-center py-4">لا توجد محاضرات مجدولة لليوم.</p>
-          {% endif %}
-        </div>
-      </div>
-
-      <!-- Attendance today -->
-      <div class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
-        <div class="px-4 py-3 border-b border-primary/10 bg-surface-dim">
-          <h3 class="font-bold text-primary flex items-center gap-2">
-            <span class="material-symbols-outlined">how_to_reg</span>
-            حضور هيئة التدريس اليوم
-          </h3>
-        </div>
-        <div class="p-4">
-          <div class="grid grid-cols-3 gap-2 text-center">
-            <div class="rounded-xl bg-green-50 border border-green-200 py-3">
-              <div class="text-xl font-extrabold text-green-700">{{ h.get('faculty_present', 0) }}</div>
-              <div class="text-[11px] font-bold text-green-700/70">حاضر</div>
-            </div>
-            <div class="rounded-xl bg-amber-50 border border-amber-200 py-3">
-              <div class="text-xl font-extrabold text-amber-700">{{ h.get('faculty_late', 0) }}</div>
-              <div class="text-[11px] font-bold text-amber-700/70">متأخر</div>
-            </div>
-            <div class="rounded-xl bg-red-50 border border-red-200 py-3">
-              <div class="text-xl font-extrabold text-red-700">{{ h.get('faculty_absent', 0) }}</div>
-              <div class="text-[11px] font-bold text-red-700/70">غائب</div>
-            </div>
-          </div>
-          {% if not faculty_attendance %}
-          <p class="text-xs text-on-surface-variant text-center mt-3">لا توجد سجلات حضور لليوم.</p>
-          {% endif %}
-        </div>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- ===== Pending requests + teachers ===== -->
-  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-    <!-- Pending classroom-change requests -->
-    <div class="lg:col-span-7 bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
-      <div class="px-4 py-3 border-b border-primary/10 bg-surface-dim flex items-center justify-between">
-        <h3 class="font-bold text-primary flex items-center gap-2">
-          <span class="material-symbols-outlined">pending_actions</span>
-          طلبات تغيير القاعات
-        </h3>
-        <a href="{{ url_for('classroom_requests.pending') }}"
-           class="text-xs font-bold text-primary hover:text-primary/70 transition-colors no-underline">عرض الكل</a>
-      </div>
-      <div class="p-3">
-        {% if pending_changes %}
-        <div class="space-y-2">
-          {% for req in pending_changes %}
-          <div class="flex items-center justify-between gap-3 p-3 rounded-lg bg-surface-container border border-outline-variant">
-            <div class="flex items-center gap-3 min-w-0">
-              <span class="stat-icon-acc rounded-full bg-primary/10 text-primary p-2 shrink-0"><span class="material-symbols-outlined text-lg">swap_horiz</span></span>
+              <span class="w-2 h-2 rounded-full bg-primary shrink-0"></span>
               <div class="min-w-0">
-                <div class="text-sm font-bold text-on-surface truncate">{{ req.teacher_name or '—' }}</div>
-                <div class="text-xs text-on-surface-variant truncate">{{ req.course_name or '—' }}</div>
+                <div class="font-bold text-on-surface text-sm truncate">{{ lecture.course_name or '—' }}</div>
+                <div class="text-[11px] text-on-surface-variant truncate">
+                  {{ lecture.room_name or '—' }}
+                  {% if lecture.start_time %}<span class="mx-1">·</span>
+                  <span dir="ltr">{{ lecture.start_time }} - {{ lecture.end_time }}</span>{% endif %}
+                  <a href="{{ url_for('courses.print_course', course_id=lecture.course_id, semester_id=lecture.semester_id) }}" target="_blank" onclick="ccPreparePrint(this)" data-cid="{{ lecture.course_id }}" data-sid="{{ lecture.semester_id }}" class="ml-2 text-primary hover:text-primary/70 transition-colors" aria-label="طباعة مقرر">
+                    <span class="material-symbols-outlined text-[14px]">print</span>
+                  </a>
+                  <a href="{{ url_for('courses.print_course', course_id=lecture.course_id, semester_id=lecture.semester_id) }}" target="_blank" onclick="ccPreparePrint(this)" data-cid="{{ lecture.course_id }}" data-sid="{{ lecture.semester_id }}" class="ml-2 text-primary hover:text-primary/70 transition-colors" aria-label="طباعة المنهج">
+                    <span class="material-symbols-outlined text-[14px]">download</span>
+                  </a>
+                </div>
               </div>
             </div>
-            <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 shrink-0">بانتظار المراجعة</span>
           </div>
           {% endfor %}
+          {% if today_lectures|length > 8 %}
+          <p class="text-xs text-on-surface-variant px-1">و {{ today_lectures|length - 8 }} محاضرات أخرى...</p>
+          {% endif %}
+          {% else %}
+          <p class="text-xs text-on-surface-variant text-center py-4">لا توجد محاضرات اليوم.</p>
+          {% endif %}
         </div>
-        {% else %}
-        <p class="text-xs text-on-surface-variant text-center py-6">لا توجد طلبات معلقة حالياً.</p>
-        {% endif %}
       </div>
-    </div>
 
-    <!-- Faculty list -->
-    <div class="lg:col-span-5 bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
+      <!-- Faculty list -->
+      <div class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
       <div class="px-4 py-3 border-b border-primary/10 bg-surface-dim flex items-center justify-between">
         <h3 class="font-bold text-primary flex items-center gap-2">
           <span class="material-symbols-outlined">groups</span>
@@ -262,6 +184,7 @@
         </h3>
         <a href="{{ url_for('teachers.teachers_list') }}"
            class="text-xs font-bold text-primary hover:text-primary/70 transition-colors no-underline">الكل</a>
+      </div>
       </div>
       <div class="p-3 max-h-72 overflow-y-auto space-y-2">
         {% if teachers_list %}
@@ -283,47 +206,20 @@
         {% endif %}
       </div>
     </div>
+    </div>
+  </div>
+
+  <!-- ===== Pending requests + teachers ===== -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- Pending staff requests -->
+    
+    <!-- Faculty list -->
+  
   </div>
 
   <!-- ===== Quick actions bar ===== -->
-  <div class="bg-white rounded-2xl shadow-sm border border-primary/10 p-4">
-    <h3 class="font-bold text-primary flex items-center gap-2 mb-3 px-1">
-      <span class="material-symbols-outlined">bolt</span>
-      إجراءات سريعة
-    </h3>
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-      <a href="{{ url_for('timetable.timetable') }}"
-         class="flex flex-col items-center gap-2 p-4 bg-surface-container hover:bg-primary/10 rounded-xl group transition no-underline">
-        <span class="material-symbols-outlined text-primary group-hover:scale-110 transition-transform">calendar_view_week</span>
-        <span class="text-xs font-bold text-on-surface group-hover:text-primary transition-colors">الجدول الدراسي</span>
-      </a>
-      <a href="{{ url_for('classroom_requests.pending') }}"
-         class="flex flex-col items-center gap-2 p-4 bg-surface-container hover:bg-primary/10 rounded-xl group transition no-underline">
-        <span class="material-symbols-outlined text-primary group-hover:scale-110 transition-transform">meeting_room</span>
-        <span class="text-xs font-bold text-on-surface group-hover:text-primary transition-colors">تغيير القاعات</span>
-      </a>
-      <a href="{{ url_for('hod_pages.hod_materials') }}"
-         class="flex flex-col items-center gap-2 p-4 bg-surface-container hover:bg-primary/10 rounded-xl group transition no-underline">
-        <span class="material-symbols-outlined text-primary group-hover:scale-110 transition-transform">folder_open</span>
-        <span class="text-xs font-bold text-on-surface group-hover:text-primary transition-colors">مرفقات القسم</span>
-      </a>
-      <a href="{{ url_for('hod_pages.hod_messages') }}"
-         class="flex flex-col items-center gap-2 p-4 bg-surface-container hover:bg-primary/10 rounded-xl group transition no-underline">
-        <span class="material-symbols-outlined text-primary group-hover:scale-110 transition-transform">mail</span>
-        <span class="text-xs font-bold text-on-surface group-hover:text-primary transition-colors">رسائل الموظفين</span>
-      </a>
-      <a href="{{ url_for('courses.courses_list') }}"
-         class="flex flex-col items-center gap-2 p-4 bg-surface-container hover:bg-primary/10 rounded-xl group transition no-underline">
-        <span class="material-symbols-outlined text-primary group-hover:scale-110 transition-transform">menu_book</span>
-        <span class="text-xs font-bold text-on-surface group-hover:text-primary transition-colors">المقررات</span>
-      </a>
-      <a href="{{ url_for('teachers.teachers_list') }}"
-         class="flex flex-col items-center gap-2 p-4 bg-surface-container hover:bg-primary/10 rounded-xl group transition no-underline">
-        <span class="material-symbols-outlined text-primary group-hover:scale-110 transition-transform">school</span>
-        <span class="text-xs font-bold text-on-surface group-hover:text-primary transition-colors">هيئة التدريس</span>
-      </a>
-    </div>
-  </div>
+
 
   {% endif %}
 </div>

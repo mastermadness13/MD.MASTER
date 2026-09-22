@@ -15,13 +15,22 @@
 {% set form_error = form_error | default(None) %}
 
 {% block content %}
+{% set _back_dept = selected_department_id if entry is none else (entry.department_id if entry else None) %}
+{% set _back_sem = default_semester if entry is none else (entry.semester if entry else 1) %}
 <div class="max-w-3xl mx-auto">
-  <div class="flex items-center gap-3 mb-6">
-    <span class="material-symbols-outlined text-primary text-3xl">calendar_today</span>
-    <div>
-      <h1 class="text-2xl font-bold text-on-surface">{% if entry is none %}إضافة حصة{% else %}تعديل حصة{% endif %}</h1>
-      <p class="page-subtitle">تسجيل محاضرة في الجدول الدراسي</p>
+  <div class="page-header">
+    <div class="page-header-info">
+      <span class="material-symbols-outlined page-header-icon">calendar_today</span>
+      <div>
+        <h1 class="page-title">{% if entry is none %}إضافة حصة{% else %}تعديل حصة{% endif %}</h1>
+        <p class="page-subtitle">تسجيل محاضرة في الجدول الدراسي</p>
+      </div>
     </div>
+    <a href="{{ url_for('timetable.timetable_department_view', department_id=_back_dept, semester=_back_sem) }}"
+       class="flex items-center gap-2 bg-surface-container-highest hover:bg-surface-container text-on-surface px-5 py-2.5 rounded-lg text-sm font-bold transition no-underline">
+      <span class="material-symbols-outlined text-lg">arrow_right</span>
+      رجوع
+    </a>
   </div>
 
   {% if form_error %}
@@ -100,14 +109,15 @@
           </div>
 
           <div>
-            <label for="teacher_id" class="text-xs font-bold text-on-surface-variant mb-1.5 block">عضو هيئة التدريس *</label>
-            <select id="teacher_id" name="teacher_id" required
+            <label for="teacher_id" class="text-xs font-bold text-on-surface-variant mb-1.5 block">عضو هيئة التدريس <span class="font-normal text-on-surface-variant/70">(اختياري)</span></label>
+            <select id="teacher_id" name="teacher_id"
                     class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
-              <option value="">— اختر عضو هيئة التدريس —</option>
+              <option value="">محاضرة بدون أستاذ — لم يتم تحديد عضو هيئة التدريس</option>
               {% for t in teachers %}
                 <option value="{{ t.id }}" {% if entry and entry.teacher_id == t.id %}selected{% endif %}>{{ t.name }}</option>
               {% endfor %}
             </select>
+            <p class="mt-1 text-xs text-on-surface-variant/80">يمكن تركها بدون أستاذ وحفظ الحصة، ثم تعيينه لاحقًا من إعدادات الحصة.</p>
           </div>
 
           <div>
@@ -141,7 +151,7 @@
             <span class="material-symbols-outlined text-lg">save</span>
             {% if entry is none %}حفظ الحصة{% else %}حفظ التعديلات{% endif %}
           </button>
-          <a href="{{ url_for('timetable.timetable') }}"
+          <a href="{{ url_for('timetable.timetable_department_view', department_id=_back_dept, semester=_back_sem) }}"
              class="flex items-center gap-2 bg-surface-container-highest hover:bg-surface-container text-on-surface px-5 py-2.5 rounded-lg text-sm font-bold transition">
             <span class="material-symbols-outlined text-lg">arrow_right</span>
             رجوع

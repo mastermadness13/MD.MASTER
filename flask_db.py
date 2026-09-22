@@ -142,9 +142,21 @@ def init_db_command(confirm):
 
 # ─────────────────────────────────────────────
 
+# /     /     >---- نضمن أن مخطط قاعدة البيانات محدث حتى في قواعد البيانات القديمة
+def ensure_database_schema() -> None:
+    """Apply any pending SQLite schema migrations for an existing DB."""
+    conn = connect(DATABASE)
+    try:
+        ensure_schema(conn)
+        conn.commit()
+    finally:
+        conn.close()
+
+
 # /     /     >---- نسجل الدوال مع تطبيق Flask
 def init_app(app) -> None:
     """Register database functions with the Flask app."""
+    ensure_database_schema()
     app.teardown_appcontext(close_db)
     app.cli.add_command(init_db_command)
 

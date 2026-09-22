@@ -1,9 +1,11 @@
 from flask import Blueprint, session, request, render_template, redirect, url_for, flash
+from werkzeug.security import check_password_hash
 
 from flask_db import get_db
 from database.history import add_history
 from security import csrf_required, login_required, permission_required
-from security import current_user
+from security import current_user, validate_password
+from services import user_service
 bp = Blueprint('profile', __name__, url_prefix='/profile')
 
 # /     /     >---- مسؤوليات كل دور تُعرض في صفحة الملف الشخصي
@@ -46,11 +48,23 @@ _ROLE_RESPONSIBILITIES = {
 
 # /     /     >---- قسم البحث والتطوير الإداري أو لا شيء إن لم يوجد
 def _resolve_rnd_department(db):
-    """Return the R&D department row, or None if not found."""
-    return db.execute(
+    """Return the R&D department row, or None if not found.
+
+    Prefers the administrative department whose name/display_name identifies
+    R&D so the profile panel never shows a different administrative department
+    (e.g. the exams department) merely because it sorts first.
+    """
+    rows = db.execute(
         "SELECT * FROM departments WHERE type = 'administrative' "
         "AND deleted_at IS NULL ORDER BY name"
-    ).fetchone()
+    ).fetchall()
+    if not rows:
+        return None
+    for row in rows:
+        hay = ' '.join(str(row[k] or '') for k in ('name', 'display_name'))
+        if 'بحث' in hay or 'تطوير' in hay:
+            return row
+    return rows[0]
 
 
 # /     /     >---- صفحة الملف الشخصي: تحديث الحساب أو بيانات قسم البحث والتطوير
@@ -70,28 +84,32 @@ def profile():
             return _handle_account_update(db, is_rnd)
         elif form_type == 'department' and is_rnd:
             return _handle_department_update(db)
+        elif form_type == 'security':
+            return _handle_password_update(db)
 
         flash('طلب غير صالح', 'error')
         return redirect(url_for('profile.profile'))
 
-    return _render_profile(db, is_rnd)
+    return _render_profile(db, is_rnd, can_edit_account=role == 'faculty_affairs')
 
 
-# /     /     >---- تحديث بيانات الحساب (اسم مستخدم/بريد/اسم/هاتف)
+# /     /     >---- تحديث بيانات الحساب (نيك نيم الدخول/بريد/اسم رباعي/هاتف)
+# /     /     >---- يعدّلها صاحب الحساب بنفسه (مثل كلمة المرور)؛ اسم الأستاذ الرسمي
+# /     /     >---- في سجل هيئة التدريس يبقى من مكتب إدارة أعضاء هيئة التدريس
 def _handle_account_update(db, is_rnd):
     username = request.form.get('username', '').strip()
     email = request.form.get('email', '').strip()
-    label = request.form.get('label', '').strip()
     phone = request.form.get('phone', '').strip()
+    label = request.form.get('label', '').strip()
 
-    # /     /     >---- تحقق من اسم المستخدم: مطلوب وطول كافٍ وعدم التكرار
+    # /     /     >---- تحقق من اسم الدخول: مطلوب وطول كافٍ وعدم التكرار
     if not username:
         return _render_profile(db, is_rnd,
-                               form_error='اسم المستخدم مطلوب')
+                               form_error='نيك نيم الدخول مطلوب')
 
     if len(username) < 2:
         return _render_profile(db, is_rnd,
-                               form_error='اسم المستخدم يجب أن يكون حرفين على الأقل')
+                               form_error='نيك نيم الدخول يجب أن يكون حرفين على الأقل')
 
     existing = db.execute(
         'SELECT id FROM users WHERE username = ? AND id != ?',
@@ -99,7 +117,7 @@ def _handle_account_update(db, is_rnd):
     ).fetchone()
     if existing:
         return _render_profile(db, is_rnd,
-                               form_error='اسم المستخدم مستخدم من حساب آخر')
+                               form_error='نيك نيم الدخول مستخدم من حساب آخر')
 
     try:
         db.execute(
@@ -151,8 +169,41 @@ def _handle_department_update(db):
     return redirect(url_for('profile.profile'))
 
 
+# /     /     >---- تغيير كلمة مرور الحساب من صفحة الملف الشخصي
+def _handle_password_update(db):
+    current = (request.form.get('current_password') or '').strip()
+    new_pass = request.form.get('new_password') or ''
+    confirm = request.form.get('confirm_password') or ''
+
+    user = user_service.get_user_by_id(db, session['user_id'])
+    error = None
+    if not user or not check_password_hash(user['password'], current):
+        error = 'كلمة المرور الحالية غير صحيحة'
+    elif new_pass != confirm:
+        error = 'كلمة المرور الجديدة وتأكيدها غير متطابقين'
+    elif validate_password(new_pass):
+        error = validate_password(new_pass)
+    elif check_password_hash(user['password'], new_pass):
+        error = 'كلمة المرور الجديدة يجب أن تختلف عن كلمة المرور الحالية'
+
+    if error:
+        flash(error, 'error')
+        return redirect(url_for('profile.profile'))
+
+    try:
+        user_service.change_user_password(db, session['user_id'], new_pass)
+        db.commit()
+    except Exception:
+        db.rollback()
+        flash('حدث خطأ أثناء تغيير كلمة المرور', 'error')
+        return redirect(url_for('profile.profile'))
+
+    flash('تم تغيير كلمة المرور بنجاح', 'success')
+    return redirect(url_for('profile.profile'))
+
+
 # /     /     >---- تجهيز بيانات صفحة الملف: حساب + ملف أستاذ + قسم + مسؤوليات
-def _render_profile(db, is_rnd, form_error=None):
+def _render_profile(db, is_rnd, form_error=None, can_edit_account=False):
     user = db.execute(
         'SELECT u.*, d.name AS department_name FROM users u '
         'LEFT JOIN departments d ON u.department_id = d.id WHERE u.id = ?',
@@ -161,9 +212,18 @@ def _render_profile(db, is_rnd, form_error=None):
     user = dict(user) if user else {}
 
     teacher = db.execute(
-        'SELECT t.*, s.name AS specialization_name FROM teachers t '
-        'LEFT JOIN specializations s ON t.specialization_id = s.id '
-        'WHERE t.user_id = ?',
+        '''SELECT t.*, s.name AS specialization_name,
+                  d.name AS department_name,
+                  q.name_ar AS qualification_name,
+                  r.name_ar AS rank_name,
+                  cl.name_ar AS classification_name
+           FROM teachers t
+           LEFT JOIN specializations s ON t.specialization_id = s.id
+           LEFT JOIN departments d ON t.department_id = d.id
+           LEFT JOIN qualifications q ON t.qualification_id = q.id
+           LEFT JOIN academic_ranks r ON t.rank_id = r.id
+           LEFT JOIN classifications cl ON t.classification_id = cl.id
+           WHERE t.user_id = ?''',
         (session['user_id'],)
     ).fetchone()
     teacher = dict(teacher) if teacher else None
@@ -185,4 +245,5 @@ def _render_profile(db, is_rnd, form_error=None):
         responsibilities=responsibilities,
         form_error=form_error,
         current_user=user,
+        can_edit_account=can_edit_account,
     )

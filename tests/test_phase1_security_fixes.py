@@ -240,7 +240,7 @@ def guard_db(tmp_path, monkeypatch):
         conn.executescript(f.read())
     conn.execute(
         "INSERT OR IGNORE INTO users (username, password, role, label) "
-        "VALUES ('superadmin', 'x', 'super_admin', 'مدير')"
+        "VALUES ('office_manager', 'x', 'faculty_affairs', 'مدير مكتب أعضاء هيئة التدريس')"
     )
     conn.execute(
         "INSERT OR IGNORE INTO users (username, password, role, label) "
@@ -251,16 +251,16 @@ def guard_db(tmp_path, monkeypatch):
     return str(db_path)
 
 
-def test_module_delete_user_rejects_superadmin(guard_db):
+def test_module_delete_user_rejects_office_manager(guard_db):
     conn = sqlite3.connect(guard_db)
     conn.row_factory = sqlite3.Row
-    super_id = conn.execute(
-        "SELECT id FROM users WHERE username = 'superadmin'"
+    om_id = conn.execute(
+        "SELECT id FROM users WHERE username = 'office_manager'"
     ).fetchone()['id']
     with pytest.raises(ProtectedAccountError):
-        user_service.delete_user(conn, super_id)
+        user_service.delete_user(conn, om_id)
     still_there = conn.execute(
-        "SELECT COUNT(*) AS c FROM users WHERE id = ?", (super_id,)
+        "SELECT COUNT(*) AS c FROM users WHERE id = ?", (om_id,)
     ).fetchone()['c']
     assert still_there == 1
     conn.close()

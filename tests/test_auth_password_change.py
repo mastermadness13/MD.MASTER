@@ -26,10 +26,10 @@ def _mkdb(dirname):
     ensure_schema(conn)
     conn.execute(
         "INSERT OR IGNORE INTO users (username,password,role,label) VALUES (?,?,?,?)",
-        ('superadmin', generate_password_hash(OLD_PW), 'super_admin', 'مدير'),
+        ('office_manager', generate_password_hash(OLD_PW), 'faculty_affairs', 'مدير مكتب أعضاء هيئة التدريس'),
     )
     conn.execute(
-        "UPDATE users SET password=?, role='super_admin', label='مدير' WHERE username='superadmin'",
+        "UPDATE users SET password=?, role='faculty_affairs', label='مدير مكتب أعضاء هيئة التدريس' WHERE username='office_manager'",
         (generate_password_hash(OLD_PW),),
     )
     conn.commit()
@@ -51,8 +51,8 @@ def setup(tmp_path, monkeypatch, app_fx):
     c = app_fx.test_client()
     with c.session_transaction() as s:
         s['user_id'] = 1
-        s['role'] = 'super_admin'
-        s['username'] = 'superadmin'
+        s['role'] = 'faculty_affairs'
+        s['username'] = 'office_manager'
         s['department_id'] = None
         s['_csrf_token'] = 't'
     return c, db_path

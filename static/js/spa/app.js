@@ -99,8 +99,8 @@
       '</div>' +
       '<button type="button" id="spa-theme-toggle" class="spa-icon-btn" title="تبديل المظهر">' +
       '<span class="material-symbols-outlined" id="spa-theme-icon">dark_mode</span></button>' +
-      '<a href="/logout" class="inline-flex items-center gap-1.5 text-sm font-bold text-error hover:opacity-80 no-underline">' +
-      '<span class="material-symbols-outlined text-lg">logout</span> خروج</a>' +
+      '<button type="button" onclick="logout()" class="inline-flex items-center gap-1.5 text-sm font-bold text-error hover:opacity-80 no-underline cursor-pointer bg-transparent border-0">' +
+      '<span class="material-symbols-outlined text-lg">logout</span> خروج</button>' +
       '</div></div>' +
       '</header>' +
       '<div class="flex">' +
@@ -141,10 +141,22 @@
     }).join('');
 
     html += '<div class="mt-4 pt-4 border-t border-outline-variant px-3">' +
-      '<a href="/logout" class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg text-error hover:bg-red-50 no-underline">' +
-      '<span class="material-symbols-outlined text-xl">logout</span><span>تسجيل الخروج</span></a></div>';
+      '<button type="button" onclick="logout()" class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg text-error hover:bg-red-50 no-underline cursor-pointer w-full text-left bg-transparent border-0">' +
+      '<span class="material-symbols-outlined text-xl">logout</span><span>تسجيل الخروج</span></button></div>';
 
     nav.innerHTML = html;
+  }
+
+  /* ---------------------------------------------------------------- logout */
+  function logout() {
+    var token = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+    fetch('/api/auth/logout', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': token, 'Accept': 'application/json' },
+      credentials: 'same-origin'
+    })
+      .then(function () { window.location.href = '/login'; })
+      .catch(function () { window.location.href = '/login'; });
   }
 
   function currentView() {

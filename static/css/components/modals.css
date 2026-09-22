@@ -31,20 +31,22 @@
 
 .modal {
   background: var(--surface-card);
-  border-radius: 16px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
   width: 100%;
   max-width: 540px;
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: 0 20px 60px var(--shadow-xl);
-  animation: modal-in 0.2s ease;
+  animation: modal-in 0.22s ease;
 }
 
 .modal-sheet {
   background: var(--surface-card);
   width: 90%;
   max-width: 600px;
-  border-radius: 20px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
   overflow: hidden;
   box-shadow: 0 20px 40px var(--shadow-xl);
   max-height: 90vh;
@@ -194,4 +196,86 @@
 
 .drawer-open {
   transform: translateX(0) !important;
+}
+
+/* ===== Shared confirmation dialog (action-sheet style) ===== */
+
+.confirm-overlay {
+  display: none;
+}
+
+.confirm-overlay.show {
+  display: flex;
+}
+
+.confirm-dialog {
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface-card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 28px 24px 24px;
+  text-align: center;
+  box-shadow: 0 24px 64px var(--shadow-xl);
+  animation: modal-in 0.22s ease;
+}
+
+.confirm-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  background: var(--error-faint);
+  color: var(--error);
+}
+
+.confirm-dialog.is-confirm .confirm-icon {
+  background: var(--primary-faint);
+  color: var(--primary);
+}
+
+.confirm-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 8px;
+}
+
+.confirm-message {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin: 0 0 20px;
+}
+
+.confirm-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.confirm-actions .btn {
+  width: 100%;
+}
+
+.modal-close:focus-visible,
+.btn:focus-visible,
+.confirm-actions .btn:focus-visible {
+  outline: 2px solid var(--border-input-focus);
+  outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal,
+  .modal-sheet,
+  .confirm-dialog,
+  .side-drawer,
+  .lecture-drawer {
+    animation: none;
+    transition: none;
+  }
 }

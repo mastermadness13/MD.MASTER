@@ -1,9 +1,10 @@
 # /     /     >---- خدمات لوحات المعلومات: تجهيز بيانات كل لوحة حسب الدور
 from datetime import datetime
 
-from services import classroom_request_service as crs
+from core.constants import SEMESTER_LABELS
 from services import notification_service
 from services import course_service
+from utils.format import semester_label
 
 
 # /     /     >---- بيانات لوحة إدارة الامتحانات
@@ -127,40 +128,29 @@ def get_rnd_dept_dashboard_data(db):
     return data
 
 
-# /     /     >---- بيانات لوحة رئيس القسم (الحضور، القاعات، الجدول، الطلبات)
-def get_hod_dashboard_data(db, dept_id):
+# /     /     >---- بيانات لوحة رئيس القسم (القاعات، الجدول، الطلبات)
+def get_hod_dashboard_data(db, dept_id, semester=None):
     hod_data = {}
     dept_row = db.execute('SELECT name FROM departments WHERE id = ?', (dept_id,)).fetchone()
     hod_data['department_name'] = dept_row['name'] if dept_row else None
     hod_data['department_id'] = dept_id
-    today_str = datetime.now().strftime('%Y-%m-%d')
     arabic_days = {0: 'الاثنين', 1: 'الثلاثاء', 2: 'الأربعاء', 3: 'الخميس', 4: 'الجمعة', 5: 'السبت', 6: 'الأحد'}
     today_day = arabic_days.get(datetime.now().weekday())
     if today_day == 'الجمعة':
         today_day = None
 
-    # /     /     >---- حضور أعضاء هيئة التدريس لليوم (غير الجمعة)
-    if today_day is not None:
-        rows = db.execute(
-            '''SELECT fa.*, t.name as teacher_name
-               FROM faculty_attendance fa
-               LEFT JOIN teachers t ON fa.teacher_id = t.id
-               WHERE fa.date = ? AND (
-                   SELECT COUNT(*) FROM teacher_departments td
-                   WHERE td.teacher_id = fa.teacher_id AND td.department_id = ?
-               ) > 0
-               ORDER BY fa.created_at DESC''',
-            (today_str, dept_id)
-        ).fetchall()
-        hod_data['faculty_attendance'] = [dict(r) for r in rows]
-        hod_data['faculty_present'] = sum(1 for r in rows if r['status'] == 'present')
-        hod_data['faculty_late'] = sum(1 for r in rows if r['status'] == 'late')
-        hod_data['faculty_absent'] = sum(1 for r in rows if r['status'] == 'absent')
-    else:
-        hod_data['faculty_attendance'] = []
-        hod_data['faculty_present'] = hod_data['faculty_late'] = hod_data['faculty_absent'] = 0
+    # /     /     >---- القاعات المشغولة الآن (الحصص الجارية حسب الوقت الحالي)
+    def _to_minutes(t):
+        if not t:
+            return None
+        try:
+            h, m = t.split(':')
+            return int(h) * 60 + int(m)
+        except (ValueError, AttributeError):
+            return None
 
-    # /     /     >---- القاعات المشغولة اليوم
+    now_time = datetime.now().strftime('%H:%M') if today_day is not None else None
+    now_min = _to_minutes(now_time)
     if today_day is not None:
         rows = db.execute(
             '''SELECT t.*, c.name as course_name, tc.name as teacher_name, r.name as room_name
@@ -169,36 +159,64 @@ def get_hod_dashboard_data(db, dept_id):
                LEFT JOIN teachers tc ON t.teacher_id = tc.id
                LEFT JOIN rooms r ON t.room_id = r.id
                WHERE t.day = ? AND (t.department_id = ? OR ? IS NULL)
+               AND (? IS NULL OR t.semester = ?)
                AND (t.version_id IS NULL OR t.version_id IN
                    (SELECT id FROM timetable_versions WHERE status = 'active'))
                ORDER BY t.period''',
-            (today_day, dept_id, dept_id)
+            (today_day, dept_id, dept_id, semester, semester)
         ).fetchall()
-        hod_data['occupied_rooms'] = [dict(r) for r in rows]
-        hod_data['occupied_rooms_count'] = len(rows)
+        today_entries = [dict(r) for r in rows]
+        occupied_now = []
+        for entry in today_entries:
+            st = _to_minutes(entry.get('start_time') or '')
+            et = _to_minutes(entry.get('end_time') or '')
+            if st is None or now_min is None:
+                continue
+            if et is None:
+                ongoing = now_min >= st
+            elif st <= et:
+                ongoing = st <= now_min <= et
+            else:
+                ongoing = now_min >= st or now_min <= et  # حصة عبر منتصف الليل
+            if ongoing:
+                occupied_now.append(entry)
+        hod_data['occupied_rooms'] = occupied_now
+        hod_data['today_entries_count'] = len(today_entries)
+        hod_data['today_lectures'] = today_entries
+        hod_data['occupied_rooms_count'] = len({
+            entry.get('room_id') for entry in occupied_now if entry.get('room_id')
+        })
     else:
         hod_data['occupied_rooms'] = []
         hod_data['occupied_rooms_count'] = 0
+        hod_data['today_entries_count'] = 0
+        hod_data['today_lectures'] = []
 
-    rows = db.execute('SELECT * FROM rooms WHERE deleted_at IS NULL ORDER BY name').fetchall()
+    rows = db.execute(
+        'SELECT * FROM rooms WHERE deleted_at IS NULL '
+        'AND (department_id = ? OR department_id IS NULL) ORDER BY name',
+        (dept_id,)
+    ).fetchall()
     hod_data['all_rooms'] = [dict(r) for r in rows]
     hod_data['total_rooms'] = len(rows)
     occupied_room_ids = {r['room_id'] for r in hod_data['occupied_rooms'] if r.get('room_id')}
     hod_data['occupied_room_ids'] = list(occupied_room_ids)
     hod_data['available_rooms'] = [r for r in hod_data['all_rooms'] if r['id'] not in occupied_room_ids]
 
-    # /     /     >---- الجدول الأسبوعي الكامل للقسم
+    # /     /     >---- الجدول الأسبوعي الكامل للقسم (حسب الفصل المختار)
     weekly_rows = db.execute(
-        '''SELECT t.day, t.period, t.room_id, c.name as course_name, tc.name as teacher_name, r.name as room_name
+        '''SELECT t.day, t.period, t.semester, t.room_id, c.name as course_name,
+                  tc.name as teacher_name, r.name as room_name
            FROM timetable t
            LEFT JOIN courses c ON t.course_id = c.id
            LEFT JOIN teachers tc ON t.teacher_id = tc.id
            LEFT JOIN rooms r ON t.room_id = r.id
            WHERE (t.department_id = ? OR ? IS NULL)
+           AND (? IS NULL OR t.semester = ?)
            AND (t.version_id IS NULL OR t.version_id IN
                (SELECT id FROM timetable_versions WHERE status = 'active'))
            ORDER BY t.day, t.period''',
-        (dept_id, dept_id)
+        (dept_id, dept_id, semester, semester)
     ).fetchall()
     weekly_timetable = {}
     for row in weekly_rows:
@@ -211,6 +229,14 @@ def get_hod_dashboard_data(db, dept_id):
         'SELECT * FROM period_settings ORDER BY sort_order'
     ).fetchall()]
     hod_data['active_days'] = list(hod_data['weekly_timetable'].keys())
+
+    # /     /     >---- الفصول الدراسية (1..8) للتبديل بين جداول الأقسام
+    hod_data['semesters'] = [
+        {'code': s, 'label': semester_label(s)}
+        for s in sorted(SEMESTER_LABELS)
+    ]
+    hod_data['selected_semester'] = semester
+    hod_data['selected_semester_label'] = semester_label(semester) if semester else ''
     # /     /     >---- جدول القاعات: لكل قاعة ولكل يوم مداخل الحصص
     room_schedule = {}
     for day_name, day_entries in hod_data['weekly_timetable'].items():
@@ -265,24 +291,11 @@ def get_hod_dashboard_data(db, dept_id):
     hod_data['total_courses'] = db.execute(
         'SELECT COUNT(*) FROM course_departments WHERE department_id = ?', (dept_id,)
     ).fetchone()[0]
-    if today_day is not None:
-        hod_data['today_entries_count'] = db.execute(
-            '''SELECT COUNT(*) FROM timetable t
-               WHERE t.day = ? AND (t.department_id = ? OR ? IS NULL)
-               AND (t.version_id IS NULL OR t.version_id IN
-                   (SELECT id FROM timetable_versions WHERE status = 'active'))''',
-            (today_day, dept_id, dept_id)
-        ).fetchone()[0]
-    else:
-        hod_data['today_entries_count'] = 0
     hod_data['pending_messages_count'] = db.execute(
         '''SELECT COUNT(*) FROM teacher_messages
            WHERE status = 'pending' AND (department_id = ? OR ? IS NULL)''',
         (dept_id, dept_id)
     ).fetchone()[0]
-
-    hod_data['pending_classroom_changes_count'] = crs.get_pending_count(db, dept_id)
-    hod_data['pending_classroom_changes'] = crs.get_recent_pending(db, dept_id)
 
     hod_data['teachers_list'] = [dict(r) for r in db.execute(
         '''SELECT tc.id, tc.name, d.name AS department_name,
@@ -376,7 +389,7 @@ def get_teacher_dashboard_data(db, user_id):
     if teacher_id:
         for day_name in days_order:
             day_entries = db.execute(
-                '''SELECT t.period, t.semester, c.name as course_name, c.year as course_year,
+                '''SELECT t.period, t.semester, t.course_id, c.name as course_name, c.year as course_year,
                           r.name as room_name, t.start_time, t.end_time
                    FROM timetable t
                    LEFT JOIN courses c ON t.course_id = c.id
@@ -390,6 +403,21 @@ def get_teacher_dashboard_data(db, user_id):
             weekly_schedule[day_name] = [dict(r) for r in day_entries]
     teacher_data['weekly_schedule'] = weekly_schedule
     teacher_data['days_order'] = days_order
+
+    teacher_data['course_files'] = {}
+    if teacher_id:
+        file_rows = db.execute(
+            '''SELECT cf.id, cf.course_id, cf.original_filename
+               FROM course_files cf
+               WHERE cf.teacher_id = ? AND cf.file_type = 'syllabus'
+                 AND cf.status IN ('approved', 'published')
+               ORDER BY cf.updated_at DESC, cf.id DESC''',
+            (teacher_id,),
+        ).fetchall()
+        for row in file_rows:
+            teacher_data['course_files'].setdefault(
+                row['course_id'], dict(row)
+            )
 
     # /     /     >---- تكليفات التدريس المميزة (المقررات مع قاعاتها وفصولها)
     if teacher_id:
@@ -409,34 +437,6 @@ def get_teacher_dashboard_data(db, user_id):
         teacher_data['assignments'] = [dict(r) for r in rows if r['id']]
     else:
         teacher_data['assignments'] = []
-
-    # /     /     >---- طلبات تغيير القاعة السابقة للأستاذ
-    if teacher_id:
-        rows = db.execute(
-            '''SELECT r.*, cr.name as current_room_name, rr.name as requested_room_name,
-                      c.name as course_name
-               FROM classroom_change_requests r
-               LEFT JOIN timetable t ON r.schedule_id = t.id
-               LEFT JOIN courses c ON t.course_id = c.id
-               LEFT JOIN rooms cr ON r.current_classroom_id = cr.id
-               LEFT JOIN rooms rr ON r.requested_classroom_id = rr.id
-               WHERE r.teacher_id = ?
-               ORDER BY r.created_at DESC LIMIT 5''',
-            (teacher_id,)
-        ).fetchall()
-        teacher_data['classroom_requests'] = [dict(r) for r in rows]
-
-        counts = db.execute(
-            '''SELECT status, COUNT(*) as cnt
-               FROM classroom_change_requests
-               WHERE teacher_id = ?
-               GROUP BY status''',
-            (teacher_id,)
-        ).fetchall()
-        teacher_data['classroom_request_counts'] = {r['status']: r['cnt'] for r in counts}
-    else:
-        teacher_data['classroom_requests'] = []
-        teacher_data['classroom_request_counts'] = {}
 
     # /     /     >---- الامتحانات القادمة للمقررات المتعلقة بالأستاذ
     if teacher_id:
@@ -482,12 +482,10 @@ def get_teacher_dashboard_data(db, user_id):
     if teacher_id:
         rows = db.execute(
             '''SELECT * FROM history
-               WHERE (entity_type = 'classroom_change_request'
-                      AND entity_id IN (SELECT id FROM classroom_change_requests WHERE teacher_id = ?))
-                  OR (entity_type = 'teacher' AND entity_id = ?)
+               WHERE (entity_type = 'teacher' AND entity_id = ?)
                   OR (actor_user_id = ?)
                ORDER BY created_at DESC LIMIT 10''',
-            (teacher_id, teacher_id, user_id)
+            (teacher_id, user_id)
         ).fetchall()
         teacher_data['recent_activity'] = [dict(r) for r in rows]
     else:

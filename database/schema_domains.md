@@ -28,7 +28,7 @@ Accounts, authentication and access.
 
 | Table | Purpose |
 |-------|---------|
-| `users` | System accounts (roles: super_admin, support_admin, research_development, faculty_affairs, head_of_department, teacher, exam) |
+| `users` | System accounts (roles: research_development, faculty_affairs, head_of_department, teacher, exam) |
 | `password_resets` | Password reset tokens |
 
 ## academic — االكلية 
@@ -63,7 +63,6 @@ Rooms, time periods, the weekly timetable and room-change requests.
 | `floors` | Lookup: الدور الأرضي … الرابع |
 | `period_settings` | Daily periods (A 09:00–12:00, B 12:00–15:00, C 15:00–18:00) |
 | `timetable` | Weekly lecture schedule |
-| `classroom_change_requests` | Classroom swap requests (teacher → HOD) |
 
 ## examinations — الامتحانات
 

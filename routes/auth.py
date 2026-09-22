@@ -1,12 +1,19 @@
+"""Authentication routes: login, logout, forgot/reset and change password."""
+
 import os
-import secrets
-from datetime import datetime, timedelta
 
-from flask import Blueprint, session, redirect, url_for, request, render_template, flash, jsonify, get_flashed_messages
-from werkzeug.security import generate_password_hash, check_password_hash
+from flask import (
+    Blueprint,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
+from werkzeug.security import check_password_hash
 
-from flask_db import get_db
-from database.history import add_history
 from core.auth_limits import (
     is_forgot_blocked,
     is_login_blocked,
@@ -16,11 +23,15 @@ from core.auth_limits import (
     record_reset,
     reset_login,
 )
-from security import csrf_required, login_required, validate_password
-from security import current_user, generate_csrf_token
-from services import user_service
-from services import notification_service
-from services import email_service
+from flask_db import get_db
+from security import (
+    csrf_required,
+    current_user,
+    login_required,
+    permission_required,
+    validate_password,
+)
+from services import email_service, user_service
 
 bp = Blueprint('auth', __name__)
 
@@ -38,12 +49,17 @@ def _reset_link_fallback_enabled() -> bool:
 @bp.route('/login', methods=['GET', 'POST'])
 @csrf_required
 def login():
+    """Render and handle the HTML login form."""
     if request.method == 'POST':
         client_ip = request.remote_addr
         username = request.form.get('username', '').strip()
         if is_login_blocked(client_ip, username):
-            return render_template('auth/login.html', username=username,
-                                   auth_warning='تم تجاوز الحد المسموح لمحاولات الدخول، يرجى المحاولة لاحقاً')
+            return render_template(
+                'auth/login.html',
+                username=username,
+                auth_warning='تم تجاوز الحد المسموح لمحاولات الدخول، '
+                             'يرجى المحاولة لاحقاً',
+            )
         password = request.form.get('password', '')
         remember = request.form.get('remember')
         db = get_db()
@@ -64,22 +80,40 @@ def login():
             session['landing_endpoint'] = 'dashboard.dashboard'
             return redirect(url_for('dashboard.dashboard'))
         record_login_failure(client_ip, username)
-        return render_template('auth/login.html', username=username, form_error='اسم المستخدم أو كلمة المرور غير صحيحة')
+        # /     /     >---- CWE-204: رسالة موحّدة لمن لا يملك اعتماداً صحيحاً حتى
+        # /     /     >---- لا يُكشف وجود الحساب؛ أما انتهاء رمز الدخول الأولي فيُعرض
+        # /     /     >---- فقط لمن أثبت معرفته بكلمة المرور الصحيحة أصلاً.
+        if user is not None and user.get('auth_error') == 'initial_code_expired':
+            return render_template(
+                'auth/login.html',
+                username=username,
+                form_error='انتهت صلاحية رمز الدخول الأولي ولم يُستعمل، '
+                           'يرجى مراجعة مدير المكتب لإعادة إرسال رمز جديد',
+            )
+        return render_template(
+            'auth/login.html',
+            username=username,
+            form_error='اسم المستخدم أو كلمة المرور غير صحيحة',
+        )
     return render_template('auth/login.html')
 
 
-@bp.route('/logout')
+@bp.route('/logout', methods=['POST'])
 @login_required
+@csrf_required
 def logout():
+    """Log the user out and clear the session."""
     session.clear()
     flash('تم تسجيل الخروج', 'success')
     return redirect(url_for('auth.login'))
 
 
-# /     /     >---- نسيت كلمة المرور: إنشاء رمز إعادة تعيين وإرسال بالبريد (أو عرض الرابط للتطوير فقط)
+# /     /     >---- نسيت كلمة المرور: إنشاء رمز إعادة تعيين + إرسال بالبريد
+# /     /     >---- (أو عرض الرابط للتطوير فقط)
 @bp.route('/forgot-password', methods=['GET', 'POST'])
 @csrf_required
 def forgot_password():
+    """Render and handle the forgot-password form."""
     if request.method == 'POST':
         client_ip = request.remote_addr or 'unknown'
         username = request.form.get('username', '').strip()
@@ -112,6 +146,7 @@ def forgot_password():
 @bp.route('/reset-password/<token>', methods=['GET', 'POST'])
 @csrf_required
 def reset_password(token):
+    """Render and handle the password-reset form for *token*."""
     if request.method == 'POST':
         client_ip = request.remote_addr or 'unknown'
         # /     /     >---- CWE-307: حد محاولات إعادة التعيين حسب IP وبحسب الرمز
@@ -150,8 +185,10 @@ def reset_password(token):
 # /     /     >---- تغيير كلمة المرور من داخل الجلسة (JSON أو نموذج HTML)
 @bp.route('/change-password', methods=['GET', 'POST'])
 @login_required
+@permission_required('profile.edit')
 @csrf_required
 def change_password():
+    """Change the active user's password (JSON or HTML form)."""
     if request.method == 'POST':
         payload = request.get_json(silent=True) or request.form
         is_json = request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
@@ -182,6 +219,10 @@ def change_password():
         user_service.change_user_password(db, session['user_id'], new_pass)
         if is_json:
             return jsonify({'ok': True, 'message': 'تم تغيير كلمة المرور بنجاح'})
+        # /     /     >---- تغيير كلمة المرور الإجباري الأول: مسح العلامة ثم الهبوط للوحة
+        if session.pop('force_password_change', None):
+            flash('تم تغيير كلمة المرور المؤقتة بنجاح — مرحباً بك', 'success')
+            return redirect(url_for('dashboard.dashboard'))
         return render_template('auth/change_password.html', user=current_user(),
                               success=True)
     return render_template('auth/change_password.html', user=current_user())

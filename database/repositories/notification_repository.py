@@ -77,10 +77,10 @@ class NotificationRepository(BaseRepository):
                 existing.add(row['id'])
         return ids
 
-    # /     /     >---- معرفات مديري النظام
+    # /     /     >---- معرفات مدير مكتب أعضاء هيئة التدريس
     def get_admin_user_ids(self) -> List[int]:
         return [r['id'] for r in self.db.execute(
-            "SELECT id FROM users WHERE role = 'super_admin'"
+            "SELECT id FROM users WHERE role = 'faculty_affairs'"
         ).fetchall()]
 
     # /     /     >---- معرفات قسم البحث والتطوير

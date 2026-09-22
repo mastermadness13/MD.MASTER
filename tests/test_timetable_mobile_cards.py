@@ -25,7 +25,7 @@ def db_fx(tmp_path, monkeypatch):
         conn.executescript(f.read())
     ensure_schema(conn)
     conn.execute(
-        "INSERT OR IGNORE INTO users (username, password, role, label) VALUES ('superadmin', 'x', 'super_admin', 'مدير')"
+        "INSERT OR IGNORE INTO users (username, password, role, label) VALUES ('hod', 'x', 'head_of_department', 'رئيس القسم')"
     )
     conn.execute(
         "INSERT OR IGNORE INTO departments (name, semesters, majors, hidden, has_sections, type) VALUES ('قسم الحاسوب', 8, 8, 0, 1, 'academic')"
@@ -58,12 +58,16 @@ def db_fx(tmp_path, monkeypatch):
 
 @pytest.fixture
 def client(app_fx, db_fx):
+    conn = sqlite3.connect(flask_db.DATABASE)
+    dept_id = conn.execute("SELECT id FROM departments WHERE name='قسم الحاسوب'").fetchone()[0]
+    conn.close()
     c = app_fx.test_client()
     with c.session_transaction() as sess:
         sess['user_id'] = 1
-        sess['role'] = 'super_admin'
-        sess['username'] = 'superadmin'
+        sess['role'] = 'head_of_department'
+        sess['username'] = 'hod'
         sess['department_id'] = None
+        sess['hod_department_id'] = dept_id
         sess['_csrf_token'] = 't'
     return c
 
@@ -74,26 +78,32 @@ def _read_js(name):
         return fh.read()
 
 
-def test_combined_page_has_mobile_cards_and_desktop_grid(client):
-    """الجدول الموحّد: كروت الموبايل موجودة مع بقاء شبكة سطح المكتب كما هي."""
+def test_combined_page_has_mobile_container_and_js_builder(client):
+    """الجدول الموحّد: حاوية كروت الموبايل في القالب + باني الكروت في ملف JS الموحّد."""
     body = client.get('/timetable').get_data(as_text=True)
+    assert 'id="mobileGrid"' in body
     assert 'tt-mobile-grid' in body
-    assert 'tt-mcard' in body, 'seeded entry must render a mobile card'
-    assert 'tt-mday-head' in body
     assert 'hidden lg:block' in body, 'desktop grid hidden on phones, not removed'
-    assert 'min-w-[760px]' in body, 'desktop grid table preserved'
+    assert 'min-w-[700px]' in body, 'desktop grid table preserved'
+    assert 'timetable_live.js' in body, 'the unified live-sync bundle is wired'
+    js = _read_js('timetable_live.js')
+    assert 'renderMobileGrid' in js
+    assert 'tt-mcard' in js
+    assert 'tt-mday-head' in js
 
 
 def test_combined_page_empty_state_uses_mobile_class(app_fx, db_fx, client):
-    """حين لا توجد حصص، تظهر حالة فارغة بكروت الموبايل لا سطح الجدول."""
+    """حين لا توجد حصص، يبني الباني الموحّد حالة فارغة لكروت الموبايل."""
     conn = sqlite3.connect(flask_db.DATABASE)
     conn.execute('DELETE FROM timetable')
     conn.commit()
     conn.close()
     body = client.get('/timetable').get_data(as_text=True)
+    assert 'id="mobileGrid"' in body
     assert 'tt-mobile-grid' in body
-    assert 'tt-mcard' not in body
-    assert 'tt-mempty' in body
+    js = _read_js('timetable_live.js')
+    assert 'tt-mempty' in js
+    assert 'لا توجد حصص مجدولة في هذا الجدول' in js
 
 
 def test_list_page_has_mobile_cards(client):
@@ -101,26 +111,34 @@ def test_list_page_has_mobile_cards(client):
     body = client.get('/print/timetable').get_data(as_text=True)
     assert 'tt-mobile-grid' in body
     assert 'hidden lg:block' in body
-    assert 'timetable_list.js' in body, 'list filters + delete handler still wired'
+    assert 'timetable_pages.js' in body, 'shared pages bundle wired'
+    assert 'TIMETABLE_LIST_BOOT' in body, 'list filters + delete handler boot config present'
 
 
 def test_department_page_has_mobile_container_and_js_builder(client):
-    """محرر القسم: حاوية الموبايل في القالب + باني الكروت في ملف JS المعني."""
+    """محرر القسم: حاوية الموبايل في القالب + باني الكروت في الملف الموحّد."""
     body = client.get('/timetable/department').get_data(as_text=True)
     assert 'id="mobileGrid"' in body
     assert 'hidden lg:block' in body
-    js = _read_js('timetable_department.js')
+    js = _read_js('timetable_live.js')
     assert 'renderMobileGrid' in js
     assert 'tt-mcard' in js
     assert 'لا توجد حصص مجدولة في هذا الجدول' in js
 
 
-def test_rnd_page_has_mobile_container_and_js_builder(client):
-    """جدول البحث والتطوير: حاوية الموبايل + باني كروت للقراءة فقط."""
-    body = client.get('/timetable/rnd').get_data(as_text=True)
+def test_rnd_page_has_mobile_container_and_js_builder(app_fx, db_fx):
+    """جدول البحث والتطوير: حاوية الموبايل + باني كروت للقراءة فقط في الملف الموحّد."""
+    c = app_fx.test_client()
+    with c.session_transaction() as sess:
+        sess['user_id'] = 1
+        sess['role'] = 'research_development'
+        sess['username'] = 'rd'
+        sess['department_id'] = None
+        sess['_csrf_token'] = 't'
+    body = c.get('/timetable/rnd').get_data(as_text=True)
     assert 'id="mobileGrid"' in body
     assert 'hidden lg:block' in body
-    js = _read_js('timetable_rnd.js')
+    js = _read_js('timetable_live.js')
     assert 'renderMobileGrid' in js
     assert 'tt-mcard' in js
 

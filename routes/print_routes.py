@@ -1,10 +1,16 @@
-from flask import Blueprint, request, session, render_template, url_for
+from flask import Blueprint, request, session, render_template, url_for, redirect, current_app
 
 from flask_db import get_db
 from security import login_required, permission_required
 from security import current_user
 from services import timetable_service, course_service, department_service, exam_service, public_service
 from services.search import build_course_search, build_teacher_search, build_room_search
+from services.timetable_scope import (
+    INVALID_SEMESTER_MESSAGE,
+    InvalidSemesterError,
+    allowed_semesters_for,
+    semester_token,
+)
 
 bp = Blueprint('print_routes', __name__, url_prefix='/print')
 
@@ -126,10 +132,37 @@ def print_exams_schedule():
 @permission_required('timetable.view')
 def print_timetable_department():
     db = get_db()
-    dept_id = request.args.get('department_id', type=int) or session.get('hod_department_id')
-    semester = request.args.get('semester', type=int) or 1
+    role = session.get('role', '')
+    dept_id = request.args.get('department_id', type=int)
+    if role == 'head_of_department':
+        dept_id = session.get('hod_department_id')
+    else:
+        dept_id = dept_id or session.get('department_id')
+    if not dept_id:
+        return redirect(url_for('timetable.timetable_department_view'))
+    dept_row = db.execute(
+        'SELECT name, semesters FROM departments WHERE id = ?', (dept_id,)
+    ).fetchone()
+    if not dept_row:
+        return redirect(url_for('timetable.timetable_department_view'))
+    semester = request.args.get('semester', type=int)
     version_id = request.args.get('version_id', type=int)
+    current_app.logger.debug(
+        '[TIMETABLE PRINT] dept=%s semester=%s version=%s', dept_id, semester, version_id)
+    if semester is None:
+        # لا فصل صريح في الرابط — نعيد إلى الجدول الموحّد ليقرر حالة الواجهة
+        return redirect(url_for('timetable.timetable_department_view',
+                                department_id=dept_id, version_id=version_id))
+    allowed = allowed_semesters_for(dept_row)
+    if semester not in allowed:
+        return redirect(url_for('print_routes.print_timetable_department',
+                                department_id=dept_id, semester=allowed[0],
+                                version_id=version_id))
     payload = timetable_service.get_department_view(db, dept_id, semester, version_id)
+    try:
+        payload['fingerprint'] = semester_token(db, dept_id, semester)
+    except InvalidSemesterError:
+        payload['fingerprint'] = ''
     return render_template('print/timetables/department.html', payload=payload,
                            user=current_user())
 

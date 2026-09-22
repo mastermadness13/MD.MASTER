@@ -3,6 +3,9 @@
    (print.html). Expects `fd` = get_performance_form_data(...). #}
 <div class="official-doc">
 
+    <!-- الترويسة الرسمية: دولة ليبيا / الوزارة + شعار الكلية -->
+    {% include 'faculty_performance/_official_letterhead.html' %}
+
     <!-- العنوان الرئيسي -->
     <div class="header-title">
         نموذج معدل الأداء الموحد لعضو هيئة تدريس قار خاص بنظامي (الفصل - السنة)
@@ -24,35 +27,35 @@
     <table>
         <tr>
             <td class="bg-gray" style="width: 12%;">الاسم</td>
-            <td style="width: 21%;">{{ fd.header.teacher_name }}</td>
+            <td style="width: 21%;">{% if edit_mode|default(false) %}<input name="name" value="{{ fd.teacher.name or '' }}" class="w-full text-center border rounded px-1">{% else %}{{ fd.header.teacher_name }}{% endif %}</td>
             <td class="bg-gray" style="width: 12%;">القسم</td>
-            <td style="width: 21%;">{{ fd.header.department or 'غير محدد' }}</td>
+            <td style="width: 21%;">{% if edit_mode|default(false) %}<input name="department" list="department-options" value="{{ fd.header.department or '' }}" class="w-full text-center border rounded px-1">{% else %}{{ fd.header.department or 'غير محدد' }}{% endif %}</td>
             <td class="bg-gray" style="width: 12%;">الشعبة</td>
-            <td style="width: 22%;">{{ fd.header.section or '' }}</td>
+            <td style="width: 22%;">{% if edit_mode|default(false) %}<input name="section" value="{{ fd.header.section or '' }}" class="w-full text-center border rounded px-1">{% else %}{{ fd.header.section or '' }}{% endif %}</td>
         </tr>
         <tr>
             <td class="bg-gray">المؤهل العلمي</td>
-            <td>{{ fd.header.qualification }}</td>
+            <td>{% if edit_mode|default(false) %}<input name="qualification" list="qualification-options" value="{{ fd.header.qualification or '' }}" class="w-full text-center border rounded px-1">{% else %}{{ fd.header.qualification }}{% endif %}</td>
             <td class="bg-gray">الرقم الكلية</td>
-            <td>{{ fd.header.academic_number }}</td>
+            <td>{% if edit_mode|default(false) %}<input name="academic_number" value="{{ fd.header.academic_number or '' }}" class="w-full text-center border rounded px-1">{% else %}{{ fd.header.academic_number }}{% endif %}</td>
             <td class="bg-gray">الرقم الوطني</td>
-            <td>{{ fd.header.national_id }}</td>
+            <td>{% if edit_mode|default(false) %}<input name="national_id" value="{{ fd.header.national_id or '' }}" class="w-full text-center border rounded px-1">{% else %}{{ fd.header.national_id }}{% endif %}</td>
         </tr>
         <tr>
             <td class="bg-gray">العام الجامعي</td>
             <td>{{ fd.header.academic_year_label }}</td>
             <td class="bg-gray">التخصص</td>
-            <td>{{ fd.header.specialization }}</td>
+            <td>{% if edit_mode|default(false) %}<input name="specialization" list="specialization-options" value="{{ fd.header.specialization or '' }}" class="w-full text-center border rounded px-1">{% else %}{{ fd.header.specialization }}{% endif %}</td>
             <td class="bg-gray">الدرجة العلمية</td>
-            <td>{{ fd.header.rank }}</td>
+            <td>{% if edit_mode|default(false) %}<input name="rank" list="rank-options" value="{{ fd.header.rank or '' }}" class="w-full text-center border rounded px-1">{% else %}{{ fd.header.rank }}{% endif %}</td>
         </tr>
         <tr>
             <td class="bg-gray">تاريخ أول محاضرة</td>
-            <td>{{ fd.header.first_lecture_date or '' }}</td>
+            <td>{% if edit_mode|default(false) %}<input type="date" name="first_lecture_date" value="{{ fd.header.first_lecture_date or '' }}" class="w-full text-center border rounded px-1">{% else %}{{ fd.header.first_lecture_date or '' }}{% endif %}</td>
             <td class="bg-gray">الفصل الدراسي</td>
             <td>{{ fd.header.semester_label }}</td>
             <td class="bg-gray">تاريخ مباشرة العمل</td>
-            <td>{{ fd.header.work_start_date or fd.header.contract_date or '' }}</td>
+            <td>{% if edit_mode|default(false) %}<input type="date" name="work_start_date" value="{{ fd.header.work_start_date or '' }}" class="w-full text-center border rounded px-1">{% else %}{{ fd.header.work_start_date or fd.header.contract_date or '' }}{% endif %}</td>
         </tr>
     </table>
 
@@ -67,7 +70,6 @@
                 <th rowspan="2" style="width: 8%;">نظري/عملي</th>
                 <th rowspan="2" style="width: 12%;">مرحلة المقرر</th>
                 <th rowspan="2" style="width: 12%;">القسم</th>
-                <th rowspan="2" style="width: 8%;">رقم المجموعة</th>
                 <th rowspan="2" style="width: 8%;">عدد الطلبة</th>
                 <th colspan="3">الجدول الدراسي</th>
                 <th rowspan="2" style="width: 8%;">عدد الساعات</th>
@@ -87,8 +89,7 @@
                 <td>{{ e.lecture_type }}</td>
                 <td>{{ e.course_phase }}</td>
                 <td>{{ e.department }}</td>
-                <td>{{ e.group_number }}</td>
-                <td>{{ e.student_count or '' }}</td>
+                <td>{% if edit_mode|default(false) %}<input type="number" min="0" name="student_count_{{ e.course_id }}" value="{{ e.student_count or '' }}" class="w-full text-center border rounded px-1">{% else %}{{ e.student_count or '' }}{% endif %}</td>
                 <td>{{ e.day }}</td>
                 <td>{{ e.start_time }}</td>
                 <td>{{ e.end_time }}</td>
@@ -96,7 +97,7 @@
             </tr>
             {% endfor %}
             <tr>
-                <td colspan="11" class="text-right bg-gray" style="font-weight: bold; padding-right: 15px;">إجمالي عدد الساعات الأساسية</td>
+                <td colspan="10" class="text-right bg-gray" style="font-weight: bold; padding-right: 15px;">إجمالي عدد الساعات الأساسية</td>
                 <td>{{ fd.basic_total }}</td>
             </tr>
         </tbody>

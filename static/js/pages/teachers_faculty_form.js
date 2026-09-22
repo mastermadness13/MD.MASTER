@@ -1,4 +1,48 @@
 document.addEventListener('DOMContentLoaded', function () {
+  // ── Editable selects: pick an existing option OR type a new value ──
+  document.querySelectorAll('[data-editable-toggle]').forEach(function (btn) {
+    var field = btn.getAttribute('data-editable-toggle');
+    var wrap = document.querySelector('[data-editable-wrap="' + field + '"]');
+    var input = document.querySelector('[data-editable-input="' + field + '"]');
+    var select = document.querySelector('[data-editable-select="' + field + '"]');
+    if (!wrap || !input || !select) return;
+
+    function sync() {
+      var has = (input.value || '').trim().length > 0;
+      if (has) {
+        select.value = '';
+        select.disabled = true;
+      } else {
+        select.disabled = false;
+      }
+    }
+
+    btn.addEventListener('click', function () {
+      var hidden = wrap.style.display === 'none';
+      wrap.style.display = hidden ? 'flex' : 'none';
+      if (hidden) input.focus();
+    });
+
+    input.addEventListener('input', function () {
+      if ((input.value || '').trim().length > 0) {
+        select.value = '';
+        select.disabled = true;
+      } else {
+        select.disabled = false;
+      }
+    });
+
+    select.addEventListener('change', function () {
+      if (select.value) {
+        input.value = '';
+        wrap.style.display = 'none';
+        select.disabled = false;
+      }
+    });
+
+    sync();
+  });
+
   // ── Specialization filtered by linked department checkboxes ──
   (function () {
     var specSel = document.getElementById('create_specialization') || document.getElementById('edit_specialization');
@@ -42,8 +86,19 @@ document.addEventListener('DOMContentLoaded', function () {
       if (hodWrap) hodWrap.style.display = posSel.value === 'رئيس قسم' ? '' : 'none';
       if (teachingDeptWrap) teachingDeptWrap.style.display = posSel.value === 'عضو تدريس' ? '' : 'none';
     }
+    // تلوين ذهبي للخيارات التي تمنح لوحة تحكم إدارية
+    var panelTasks = ['رئيس قسم', 'رئيس قسم البحث والتطوير', 'مدير مكتب أعضاء هيئة التدريس',
+                      'رئيس قسم الدراسة والامتحانات', 'مكتب إدارة أعضاء هيئة التدريس'];
+    function tintPanel() {
+      var gold = panelTasks.indexOf(posSel.value) !== -1;
+      posSel.classList.toggle('text-amber-600', gold);
+      posSel.classList.toggle('font-bold', gold);
+      posSel.classList.toggle('text-on-surface', !gold);
+    }
     posSel.addEventListener('change', toggleHead);
+    posSel.addEventListener('change', tintPanel);
     toggleHead();
+    tintPanel();
   })();
 
   // ── Confirm-replace row shown only for an occupied department ──

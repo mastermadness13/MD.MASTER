@@ -106,9 +106,9 @@ TRANSITIONS = {
 
 # /     /     >---- صلاحية مطلوبة لكل انتقال (دور ← صلاحية ← حالة)
 # /     /     >---- من أدوار إلى مجموعة أدوار (Role → Permissions → Transition)
-REVIEW_ROLES = {'research_development', 'super_admin'}   # /     /     >---- الاعتماد النهائي
-PUBLISH_ROLES = {'research_development', 'super_admin'}  # /     /     >---- نشر
-ARCHIVE_ROLES = {'super_admin'}                          # /     /     >---- أرشفة منشور
+REVIEW_ROLES = {'research_development'}             # /     /     >---- الاعتماد النهائي
+PUBLISH_ROLES = {'research_development'}            # /     /     >---- نشر
+ARCHIVE_ROLES = {'research_development'}            # /     /     >---- أرشفة منشور
 
 
 class CourseContentError(Exception):

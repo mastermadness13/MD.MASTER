@@ -41,7 +41,7 @@ class FacultyPerformanceRepository(BaseRepository):
         row = self.db.execute(
             '''SELECT t.id, t.name, t.email, t.phone, t.academic_number, t.national_id,
                       t.specialization, t.contract_date, t.tasks,
-                      t.first_lecture_date, t.work_start_date,
+                      t.first_lecture_date, t.work_start_date, t.section,
                       s.name AS specialization_name,
                       d.name AS dept_name, t.department_id,
                       q.name_ar AS qual_name, t.qualification_id,
@@ -59,6 +59,45 @@ class FacultyPerformanceRepository(BaseRepository):
             (teacher_id,),
         ).fetchone()
         return dict(row) if row else None
+
+    def get_student_counts(self, teacher_id: int, academic_year: str, semester: int):
+        rows = self.db.execute(
+            '''SELECT course_id, student_count
+               FROM faculty_course_student_counts
+               WHERE teacher_id = ? AND academic_year = ? AND semester = ?''',
+            (teacher_id, academic_year, semester),
+        ).fetchall()
+        return {row['course_id']: row['student_count'] for row in rows}
+
+    def save_student_counts(self, teacher_id: int, academic_year: str,
+                            semester: int, counts):
+        for course_id, value in counts.items():
+            self.db.execute(
+                '''INSERT INTO faculty_course_student_counts
+                   (teacher_id, course_id, academic_year, semester, student_count)
+                   VALUES (?, ?, ?, ?, ?)
+                   ON CONFLICT(teacher_id, course_id, academic_year, semester)
+                   DO UPDATE SET student_count = excluded.student_count,
+                                 updated_at = CURRENT_TIMESTAMP''',
+                (teacher_id, course_id, academic_year, semester, value),
+            )
+        self.db.commit()
+
+    def update_teacher_profile(self, teacher_id: int, values):
+        allowed = {
+            'name', 'academic_number', 'national_id', 'specialization',
+            'first_lecture_date', 'work_start_date', 'department_id',
+            'qualification_id', 'rank_id', 'specialization_id', 'section',
+        }
+        values = {key: value for key, value in values.items() if key in allowed}
+        if not values:
+            return
+        assignments = ', '.join(f'{key} = ?' for key in values)
+        self.db.execute(
+            f'UPDATE teachers SET {assignments} WHERE id = ?',
+            [*values.values(), teacher_id],
+        )
+        self.db.commit()
 
     # /     /     >---- الحصص الأسبوعية للأستاذ من سجل الإسناد التدريسي
     def get_timetable_entries(

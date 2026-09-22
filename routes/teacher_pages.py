@@ -8,6 +8,7 @@ from flask import Blueprint, session, request, render_template, redirect, url_fo
 from flask_db import get_db
 from database.history import add_history
 from core.constants import PER_PAGE
+from core.constants.uploads import ALLOWED_UPLOAD_EXTENSIONS
 from core.rate_limiter import RateLimiter
 from security import csrf_required, login_required, permission_required, role_required, any_role_required
 from security import current_user
@@ -22,8 +23,22 @@ bp = Blueprint('teacher_pages', __name__, url_prefix='/teacher')
 _messages_limiter = RateLimiter(max_requests=10, window_seconds=3600)
 
 
+def _to_int(value, default=0):
+    """Coerce a form/DB value to an int, storing ``default`` for empty/invalid.
+
+    Never returns ``None`` or stores an empty string in a numeric column.
+    """
+    try:
+        if value is None:
+            return default
+        return int(value)
+    except (ValueError, TypeError):
+        return default
+
+
 @bp.route('/profile')
 @login_required
+@permission_required('timetable.view')
 @any_role_required('teacher')
 def teacher_profile():
     db = get_db()
@@ -104,6 +119,7 @@ def teacher_profile():
 
 @bp.route('/my-schedule')
 @login_required
+@permission_required('timetable.view')
 @any_role_required('teacher')
 def teacher_my_schedule():
     db = get_db()
@@ -341,7 +357,7 @@ def _insert_course_content(db, payload):
     ''', (
         payload['teacher_id'], payload['user_id'], payload['department_id'],
         payload.get('course_id'), payload['course_name'], payload['course_code'],
-        payload.get('credits', 0), payload.get('semester', ''),
+        _to_int(payload.get('credits')), payload.get('semester', ''),
         theory, practical, tutorial, theory + practical + tutorial,
         payload.get('course_objective', ''), payload.get('prerequisites', ''),
         payload.get('textbooks', ''), payload.get('notes', ''),
@@ -437,7 +453,7 @@ def _course_context_from_db(db, course_id, teacher_id):
     row = db.execute('''
         SELECT c.id AS course_id, c.name AS course_name, c.code AS course_code,
                c.theoretical_hours, c.practical_hours, c.total_hours,
-               c.accreditation AS credits, c.semester,
+               COALESCE(c.accreditation, 0) AS credits, c.semester,
                tt.department_id, tt.student_section
         FROM timetable tt
         JOIN courses c ON tt.course_id = c.id
@@ -462,7 +478,7 @@ def _course_context_course_only(db, course_id):
     row = db.execute('''
         SELECT c.id AS course_id, c.name AS course_name, c.code AS course_code,
                c.theoretical_hours, c.practical_hours, c.total_hours,
-               c.accreditation AS credits, c.semester,
+               COALESCE(c.accreditation, 0) AS credits, c.semester,
                COALESCE(
                    (SELECT cd.department_id FROM course_departments cd
                     WHERE cd.course_id = c.id LIMIT 1),
@@ -777,7 +793,8 @@ def _render_course_content_page(db, teacher=None, **extra):
             ).fetchall()}
             syllabus_files = {f['course_id']: dict(f) for f in db.execute(
                 "SELECT * FROM course_files "
-                "WHERE teacher_id = ? AND file_type = 'syllabus'",
+                "WHERE teacher_id = ? AND file_type = 'syllabus' "
+                "AND status = 'approved'",
                 (teacher['id'],)
             ).fetchall()}
             form_files = {f['course_id']: dict(f) for f in db.execute(
@@ -913,8 +930,11 @@ def teacher_course_content():
         original_filename = None
         file_size = None
         if upload and upload.filename:
-            ext = os.path.splitext(upload.filename)[1].lower() or '.pdf'
-            filename = f'{uuid.uuid4().hex}{ext}'
+            ext = os.path.splitext(upload.filename)[1].lower().lstrip('.') or 'pdf'
+            if ext not in ALLOWED_UPLOAD_EXTENSIONS:
+                flash('صيغة الملف غير مسموح بها، اختر ملفاً من الصيغ المدعومة', 'error')
+                return redirect(url_for('teacher_pages.teacher_course_content'))
+            filename = f'{uuid.uuid4().hex}.{ext}'
             folder = current_app.config.get('UPLOAD_FOLDER') or os.path.join(
                 os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'uploads')
             os.makedirs(folder, exist_ok=True)
@@ -1180,7 +1200,7 @@ def super_admin_course_content_list():
     for r in db.execute('''
         SELECT v.id, v.course_id, v.original_filename, v.file_size, v.created_at
         FROM course_files v
-        WHERE v.file_type = 'vocabulary'
+        WHERE v.file_type = 'vocabulary' AND v.status = 'approved'
         ORDER BY v.created_at DESC
     ''').fetchall():
         v = dict(r)
@@ -1191,7 +1211,7 @@ def super_admin_course_content_list():
         SELECT syl.id, syl.course_id, syl.original_filename, syl.file_size,
                COALESCE(syl.updated_at, syl.created_at) AS file_date
         FROM course_files syl
-        WHERE syl.file_type = 'syllabus'
+        WHERE syl.file_type = 'syllabus' AND syl.status = 'approved'
         ORDER BY file_date DESC
     ''').fetchall():
         syl = dict(r)
@@ -1202,11 +1222,27 @@ def super_admin_course_content_list():
         SELECT cf.id, cf.course_id, cf.original_filename, cf.file_size,
                COALESCE(cf.updated_at, cf.created_at) AS file_date
         FROM course_files cf
-        WHERE cf.file_type = 'form'
+        WHERE cf.file_type = 'form' AND cf.status = 'published'
         ORDER BY file_date DESC
     ''').fetchall():
         f = dict(r)
         form_by_course.setdefault(f['course_id'], f)
+    for r in db.execute('''
+        SELECT s.id, s.course_id, s.course_name, s.course_code,
+               COALESCE(s.updated_at, s.created_at) AS file_date
+        FROM course_content_submissions s
+        JOIN courses c ON c.id = s.course_id AND c.deleted_at IS NULL
+        WHERE s.status = 'published'
+        ORDER BY file_date DESC, s.id DESC
+    ''').fetchall():
+        if r['course_id'] not in form_by_course:
+            form_by_course[r['course_id']] = {
+                'id': r['id'],
+                'course_id': r['course_id'],
+                'original_filename': 'نموذج توصيف المقرر',
+                'download_url': url_for(
+                    'public_library.course_content', submission_id=r['id']),
+            }
 
     # /     /     >---- pdfState لكل صف: الملف قابل للتحميل يسبق حالة آخر تسليم.
     # /     /     >---- قاعدة التصميم: الملف عمود في الجدول لا عنصر في قائمة منسدلة.
@@ -1215,9 +1251,8 @@ def super_admin_course_content_list():
         c['pdf_state'] = pdf_state_for(c.get('latest_status'), c['id'] in form_present)
 
     total = len(courses)
-    total_pages = max(1, -(-total // PER_PAGE))
-    page = min(max(1, page), total_pages)
-    courses = courses[(page - 1) * PER_PAGE: page * PER_PAGE]
+    total_pages = 1
+    page = 1
 
     academic_periods = _get_academic_periods(db)
 
@@ -1236,7 +1271,7 @@ def super_admin_course_content_list():
                            sem_filter=sem_filter,
                            status_filter=status_filter,
                            total=total, page=page,
-                           per_page=PER_PAGE, total_pages=total_pages)
+                           per_page=max(1, total), total_pages=total_pages)
 
 
 @bp.route('/super-admin/course-content/course/<int:course_id>')
@@ -1245,6 +1280,34 @@ def super_admin_course_content_list():
 def super_admin_course_content_history(course_id):
     """Redundant page — replaced by the course list view."""
     return redirect(url_for('teacher_pages.super_admin_course_content_list'))
+
+
+@bp.route('/super-admin/course-content/create')
+@login_required
+@permission_required('course_content.manage')
+def super_admin_course_content_create():
+    """Render a new course-content form for the selected course."""
+    db = get_db()
+    course_id = request.args.get('course_id', type=int)
+    submission_id = request.args.get('submission_id', type=int)
+    context = build_course_content_form_context(
+        db, course_id=course_id, submission_id=submission_id
+    )
+    if context is None:
+        return redirect(url_for('teacher_pages.super_admin_course_content_list'))
+
+    return render_template(
+        'teachers/course_content_page.html',
+        user=current_user(),
+        page_mode='create',
+        doc=context['doc'],
+        curriculum=context['curriculum'],
+        theoretical_curriculum=context['theoretical_curriculum'],
+        practical_curriculum=context['practical_curriculum'],
+        courses=context['courses'],
+        academic_periods=context['academic_periods'],
+        default_period_id=context['default_period_id'],
+    )
 
 
 @bp.route('/super-admin/course-content/vocabulary/<int:course_id>')
@@ -1477,7 +1540,7 @@ def super_admin_course_content_send():
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = ?''', (
             department_id, course_id, course['name'], course['code'],
-            request.form.get('credits', 0),
+            _to_int(request.form.get('credits')),
             context.get('semester') or request.form.get('semester', ''),
             theory, practical, tutorial, theory + practical + tutorial,
             request.form.get('course_objective', ''),
@@ -1519,7 +1582,7 @@ def super_admin_course_content_send():
             'course_id': course_id,
             'course_name': course['name'],
             'course_code': course['code'],
-            'credits': request.form.get('credits', 0),
+            'credits': _to_int(request.form.get('credits')),
             'semester': context.get('semester') or request.form.get('semester', ''),
             'theory_hours': theory,
             'practical_hours': practical,
@@ -1579,7 +1642,9 @@ def super_admin_course_content_send():
                 actor_user_id=actor_user_id)
     except CourseContentError as exc:
         flash(str(exc), 'error')
-        return redirect(url_for('teacher_pages.super_admin_course_content_list'))
+        return redirect(url_for(
+            'teacher_pages.super_admin_course_content_create', course_id=course_id,
+        ))
 
     if action != 'save':
         _sync_form_course_file(db, submission_id, session['user_id'])
@@ -1593,17 +1658,18 @@ def super_admin_course_content_send():
     else:
         flash(f'تم حفظ نموذج مقرر "{course["name"]}" كمسودة', 'success')
 
-    return redirect(url_for('teacher_pages.super_admin_course_content_list'))
+    return redirect(url_for(
+        'teacher_pages.super_admin_course_content_create',
+        course_id=course_id, submission_id=submission_id,
+    ))
 
 
-@bp.route('/super-admin/course-content/create')
-@login_required
-@permission_required('course_content.manage')
-def super_admin_course_content_create():
-    db = get_db()
-    course_id = request.form.get('course_id', type=int) if request.method == 'POST' else request.args.get('course_id', type=int)
-    submission_id = request.form.get('submission_id', type=int) if request.method == 'POST' else request.args.get('submission_id', type=int)
+def build_course_content_form_context(db, course_id=None, submission_id=None):
+    """Build the shared context of the course-description sheet form.
 
+    Resolve the shared doc/curriculum data for a chosen course or submission.
+    Returns ``None`` (after flashing) when the target does not exist.
+    """
     if submission_id:
         sub = db.execute(
             '''SELECT s.*, COALESCE(d.name, '') AS department_name
@@ -1614,7 +1680,7 @@ def super_admin_course_content_create():
         ).fetchone()
         if not sub:
             flash('النموذج غير موجود', 'error')
-            return redirect(url_for('teacher_pages.super_admin_course_content_list'))
+            return None
         doc = {
             'course_id': sub['course_id'],
             'course_name': sub['course_name'],
@@ -1654,7 +1720,7 @@ def super_admin_course_content_create():
         context = _course_context_course_only(db, course_id)
         if not context:
             flash('المقرر غير موجود', 'error')
-            return redirect(url_for('teacher_pages.super_admin_course_content_list'))
+            return None
 
         dept = db.execute(
             'SELECT name FROM departments WHERE id = ?', (context['department_id'],)
@@ -1720,7 +1786,7 @@ def super_admin_course_content_create():
         courses = [dict(r) for r in db.execute(
             '''SELECT c.id, c.name, c.code, c.semester,
                       c.theoretical_hours, c.practical_hours, c.total_hours,
-                      c.accreditation AS credits,
+                      COALESCE(c.accreditation, 0) AS credits,
                       COALESCE(d.name, '') AS department_name
                FROM courses c
                LEFT JOIN course_departments cd ON cd.course_id = c.id
@@ -1731,17 +1797,17 @@ def super_admin_course_content_create():
         ).fetchall()]
 
     academic_periods = _get_academic_periods(db)
-    return render_template('teachers/course_content_page.html',
-                           user=current_user(), doc=doc, courses=courses,
-                           curriculum=curriculum,
-                           theoretical_curriculum=theoretical_curriculum,
-                           practical_curriculum=practical_curriculum,
-                           page_mode='edit' if submission_id else 'create',
-                           edit_submission_id=submission_id,
-                           auto_print=request.args.get('print') == '1',
-                           academic_periods=academic_periods,
-                           default_period_id=_current_academic_period_id(
-                               academic_periods))
+    return {
+        'doc': doc,
+        'courses': courses,
+        'curriculum': curriculum,
+        'theoretical_curriculum': theoretical_curriculum,
+        'practical_curriculum': practical_curriculum,
+        'page_mode': 'edit' if submission_id else 'create',
+        'edit_submission_id': submission_id,
+        'academic_periods': academic_periods,
+        'default_period_id': _current_academic_period_id(academic_periods),
+    }
 
 
 @bp.route('/super-admin/course-content/<int:submission_id>/review', methods=['POST'])
@@ -2177,7 +2243,7 @@ def super_admin_course_syllabus_delete(course_id):
 
 @bp.route('/super-admin/course-content/course-file/<int:file_id>/delete', methods=['POST'])
 @login_required
-@role_required('super_admin')
+@role_required('research_development')
 @csrf_required
 def super_admin_course_file_delete(file_id):
     """حذف نسخة مقرر محددة (مادة + فصل دراسي) — المادة تبقى."""
@@ -2202,7 +2268,7 @@ def super_admin_course_file_delete(file_id):
 @bp.route('/super-admin/course-content/course/<int:course_id>/period/<int:period_id>/delete',
           methods=['POST'])
 @login_required
-@role_required('super_admin')
+@role_required('research_development')
 @csrf_required
 def super_admin_course_period_purge(course_id, period_id):
     """حذف محتوى فصل دراسي كامل (المقرر + النماذج) — المادة نفسها تبقى.
@@ -2470,6 +2536,7 @@ def teacher_syllabus_upload():
         (course_id,)
     ).fetchone()
     if existing:
+        old_filename = existing['filename']
         db.execute('''UPDATE course_files
                       SET filename = ?, original_filename = ?, file_size = ?,
                           status = 'approved', uploaded_by = ?,
@@ -2477,6 +2544,8 @@ def teacher_syllabus_upload():
                       WHERE id = ?''',
                    (filename, original_filename, file_size, session['user_id'],
                     existing['id']))
+        if old_filename and old_filename != filename:
+            _remove_uploaded_file(old_filename)
     else:
         db.execute('''INSERT INTO course_files
                       (course_id, file_type, filename, original_filename, file_size,

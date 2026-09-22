@@ -12,11 +12,8 @@
 {% set days_order = t.get('days_order', []) | default([]) %}
 {% set assignments = t.get('assignments', []) | default([]) %}
 {% set upcoming_exams = t.get('upcoming_exams', []) | default([]) %}
-{% set classroom_requests = t.get('classroom_requests', []) | default([]) %}
 {% set announcements = t.get('announcements', []) | default([]) %}
-
-{% set req_status_labels = {'Pending': 'قيد المراجعة', 'Approved': 'معتمد', 'Rejected': 'مرفوض', 'Cancelled': 'ملغي'} %}
-{% set req_status_colors = {'Pending': 'bg-amber-50 text-amber-700', 'Approved': 'bg-green-50 text-green-700', 'Rejected': 'bg-red-50 text-red-700', 'Cancelled': 'bg-surface-dim text-on-surface-variant'} %}
+{% set course_files = t.get('course_files', {}) | default({}) %}
 
 {% block head_extra %}
 {% endblock %}
@@ -117,6 +114,7 @@
             <th>الوقت</th>
             <th>المادة</th>
             <th>القاعة</th>
+            <th>ملف PDF</th>
           </tr>
         </thead>
         <tbody>
@@ -129,6 +127,27 @@
                 <td class="font-bold text-on-surface whitespace-nowrap" dir="ltr">{{ e.start_time or '—' }}{% if e.end_time %} – {{ e.end_time }}{% endif %}</td>
                 <td class="font-bold text-on-surface">{{ e.course_name }}</td>
                 <td class="text-on-surface-variant">{{ e.room_name or '—' }}</td>
+                <td>
+                  {% set material = course_files.get(e.course_id) %}
+                  <div class="flex flex-wrap items-center gap-1.5">
+                    <form action="{{ url_for('teacher_pages.teacher_syllabus_upload') }}" method="post" enctype="multipart/form-data" class="inline-flex">
+                      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                      <input type="hidden" name="course_id" value="{{ e.course_id }}">
+                      <label class="inline-flex items-center gap-1 rounded-lg bg-primary/10 text-primary px-2 py-1 text-xs font-bold cursor-pointer">
+                        <input type="file" name="file" accept=".pdf,application/pdf" class="hidden" onchange="this.form.submit()">
+                        <span class="material-symbols-outlined text-sm">upload_file</span>
+                        {{ 'استبدال PDF' if material else 'رفع PDF' }}
+                      </label>
+                    </form>
+                    {% if material %}
+                    <a href="{{ url_for('public_library.course_file', file_id=material.id, download=1) }}"
+                       class="inline-flex items-center gap-1 rounded-lg border border-primary/30 text-primary px-2 py-1 text-xs font-bold no-underline">
+                      <span class="material-symbols-outlined text-sm">download</span>
+                      تحميل
+                    </a>
+                    {% endif %}
+                  </div>
+                </td>
               </tr>
               {% endfor %}
             {% else %}
@@ -172,6 +191,27 @@
             <td class="text-on-surface-variant">{{ a.day or '—' }}</td>
             <td class="text-on-surface-variant whitespace-nowrap" dir="ltr">{{ a.start_time or '' }}{% if a.end_time %}–{{ a.end_time }}{% endif %}</td>
             <td class="text-on-surface-variant">{{ a.room_name or '—' }}</td>
+            <td>
+              {% set material = course_files.get(a.id) %}
+              <div class="flex flex-wrap items-center gap-1.5">
+                <form action="{{ url_for('teacher_pages.teacher_syllabus_upload') }}" method="post" enctype="multipart/form-data" class="inline-flex">
+                  <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                  <input type="hidden" name="course_id" value="{{ a.id }}">
+                  <label class="inline-flex items-center gap-1 rounded-lg bg-primary/10 text-primary px-2 py-1 text-xs font-bold cursor-pointer">
+                    <input type="file" name="file" accept=".pdf,application/pdf" class="hidden" onchange="this.form.submit()">
+                    <span class="material-symbols-outlined text-sm">upload_file</span>
+                    {{ 'استبدال PDF' if material else 'رفع PDF' }}
+                  </label>
+                </form>
+                {% if material %}
+                <a href="{{ url_for('public_library.course_file', file_id=material.id, download=1) }}"
+                   class="inline-flex items-center gap-1 rounded-lg border border-primary/30 text-primary px-2 py-1 text-xs font-bold no-underline">
+                  <span class="material-symbols-outlined text-sm">download</span>
+                  تحميل PDF
+                </a>
+                {% endif %}
+              </div>
+            </td>
           </tr>
           {% endfor %}
         </tbody>
@@ -179,47 +219,6 @@
     </div>
     {% else %}
     <div class="px-5 py-4 text-sm text-on-surface-variant">لا توجد مقررات مكلف بها بعد</div>
-    {% endif %}
-  </div>
-
-  <!-- ── Table: Classroom change requests ────────────────────────────── -->
-  <div class="fade-in-card bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden mb-5">
-    <div class="px-5 py-3 border-b border-primary/10 bg-surface-dim flex items-center gap-2">
-      <span class="material-symbols-outlined text-primary text-lg">swap_horiz</span>
-      <h3 class="font-bold text-primary m-0 text-sm">طلبات تغيير القاعات</h3>
-      <span class="mr-auto text-xs font-bold text-on-surface-variant">{{ classroom_requests | length }} طلب</span>
-    </div>
-    {% if classroom_requests %}
-    <div class="overflow-x-auto">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>المادة</th>
-            <th>القاعة الحالية</th>
-            <th>القاعة المطلوبة</th>
-            <th>الحالة</th>
-            <th>التاريخ</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for r in classroom_requests %}
-          <tr>
-            <td class="font-bold text-on-surface">{{ r.course_name or '—' }}</td>
-            <td class="text-on-surface-variant">{{ r.current_room_name or '—' }}</td>
-            <td class="text-on-surface-variant">{{ r.requested_room_name or '—' }}</td>
-            <td>
-              <span class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold {{ req_status_colors.get(r.status, 'bg-surface-dim text-on-surface-variant') }}">
-                {{ req_status_labels.get(r.status, r.status or '—') }}
-              </span>
-            </td>
-            <td class="text-on-surface-variant whitespace-nowrap" dir="ltr">{{ (r.created_at or '')[:10] }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% else %}
-    <div class="px-5 py-4 text-sm text-on-surface-variant">لا توجد طلبات تغيير قاعات</div>
     {% endif %}
   </div>
 

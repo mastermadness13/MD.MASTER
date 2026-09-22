@@ -2,10 +2,9 @@
  * mobile.js — phone/tablet adaptation helpers.
  *  1. Auto-wraps bare <table> elements in a horizontal scroll container
  *     (also catches tables injected dynamically via AJAX).
- *  2. Notification bell: tap-to-toggle (hover doesn't exist on touch).
- *  3. Syncs sidebar drawer/collapsed state when crossing the desktop
+ *  2. Syncs sidebar drawer/collapsed state when crossing the desktop
  *     breakpoint (e.g. rotating a tablet).
- *  4. Locks background scroll while the mobile sidebar drawer is open.
+ *  3. Locks background scroll while the mobile sidebar drawer is open.
  */
 (function () {
   'use strict';
@@ -52,23 +51,7 @@
     scheduleWrap._t = setTimeout(function () { wrapTables(document); }, 150);
   }
 
-  /* ── 2. Notification bell tap-to-toggle ────────────────────── */
-
-  function initNotifTap() {
-    var dropdown = document.querySelector('.notif-dropdown');
-    var bell = dropdown ? dropdown.querySelector('.notif-bell') : null;
-    if (!dropdown || !bell || bell.dataset.notifTapBound) return;
-    bell.dataset.notifTapBound = '1';
-    bell.addEventListener('click', function (e) {
-      e.stopPropagation();
-      dropdown.classList.toggle('open');
-    });
-    document.addEventListener('click', function (e) {
-      if (!dropdown.contains(e.target)) dropdown.classList.remove('open');
-    });
-  }
-
-  /* ── 3. Sidebar breakpoint sync + scroll lock ──────────────── */
+  /* ── 2. Sidebar breakpoint sync + scroll lock ──────────────── */
 
   function initSidebarSync() {
     var sidebar = document.getElementById('appSidebar');
@@ -122,7 +105,6 @@
 
   function boot() {
     wrapTables(document);
-    initNotifTap();
     initSidebarSync();
 
     var main = document.getElementById('mainContent');

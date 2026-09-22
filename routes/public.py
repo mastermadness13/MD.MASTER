@@ -80,6 +80,11 @@ def public_timetables_api():
             'id': item['id'],
             'url': url_for('public_library.course_file', file_id=item['id']),
         }
+    for course_id, item in public_service.get_published_course_contents(db).items():
+        forms.setdefault(course_id, {
+            'id': item['id'],
+            'url': url_for('public_library.course_content', submission_id=item['id']),
+        })
     entries = []
     for e in public_service.get_active_entries(db):
         cid = e.get('course_id')
@@ -125,6 +130,7 @@ def public_courses_api():
         }
     files_by_course = public_service.get_course_syllabus_files(db)
     forms_by_course = public_service.get_approved_course_forms(db)
+    published_contents = public_service.get_published_course_contents(db)
     timetable_course_ids = public_service.get_active_timetable_course_ids(db)
     courses = []
     for c in public_service.get_courses(db):
@@ -138,6 +144,7 @@ def public_courses_api():
                 'url': url_for('public_library.course_file', file_id=item['id']),
             })
         form_item = forms_by_course.get(cid)
+        published_content = published_contents.get(cid)
         did = c['department_id'] or course_dept.get(cid)
         department_name = dept_names.get(did)
         if not department_name and isinstance(c.get('department'), str):
@@ -162,7 +169,12 @@ def public_courses_api():
                 'id': form_item['id'],
                 'originalFilename': form_item['original_filename'],
                 'url': url_for('public_library.course_file', file_id=form_item['id']),
-            } if form_item else None,
+            } if form_item else ({
+                'id': published_content['id'],
+                'originalFilename': 'نموذج توصيف المقرر',
+                'url': url_for('public_library.course_content',
+                               submission_id=published_content['id']),
+            } if published_content else None),
         })
     return jsonify({'departments': departments, 'courses': courses})
 
@@ -205,9 +217,12 @@ def public_exams_api():
 
 @bp.route('/public/api/exam-schedule')
 def public_exam_schedule_api():
-    """Public exam schedule — same data shape as /api/exams/schedule (read-only)."""
+    """Public exam schedule — same data shape as /api/exams/schedule (read-only).
+
+    M1: only published/completed exams are exposed; drafts stay internal.
+    """
     db = get_db()
-    departments = exam_service.build_dept_exam_data(db)
+    departments = exam_service.build_dept_exam_data(db, published_only=True)
     dept_stats = {}
     for dept in departments:
         did = dept['id']

@@ -80,8 +80,8 @@ DOMAINS: OrderedDict[str, dict] = OrderedDict(
             {
                 'name_en': 'Scheduling',
                 'name_ar': 'الجدولة',
-                'description_en': 'Rooms, time periods, the weekly timetable and room-change requests.',
-                'description_ar': 'القاعات والفترات الزمنية والجدول الأسبوعي وطلبات تبديل القاعات.',
+                'description_en': 'Rooms, time periods and the weekly timetable.',
+                'description_ar': 'القاعات والفترات الزمنية والجدول الأسبوعي.',
                 'tables': [
                     'rooms',
                     'room_types',
@@ -89,7 +89,6 @@ DOMAINS: OrderedDict[str, dict] = OrderedDict(
                     'floors',
                     'period_settings',
                     'timetable',
-                    'classroom_change_requests',
                 ],
             },
         ),

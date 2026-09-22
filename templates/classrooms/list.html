@@ -238,19 +238,21 @@
                     <span class="material-symbols-outlined text-lg text-primary shrink-0">visibility</span>
                     عرض
                   </a>
+                  {% if can_manage %}
                   <a href="{{ url_for('classrooms.rooms_edit', id=r.id) }}"
                      class="flex items-center gap-2.5 px-3.5 py-2.5 text-sm font-bold text-on-surface hover:bg-primary/10 transition-colors no-underline">
                     <span class="material-symbols-outlined text-lg text-primary shrink-0">edit</span>
                     تعديل
                   </a>
                   <form method="post" action="{{ url_for('classrooms.rooms_delete', id=r.id) }}"
-                        onsubmit="return confirm('تأكيد حذف القاعة؟')">
+                        data-confirm-message="تأكيد حذف القاعة؟">
                     <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 transition-colors bg-transparent border-0 cursor-pointer text-right">
                       <span class="material-symbols-outlined text-lg shrink-0">delete</span>
                       حذف
                     </button>
                   </form>
+                  {% endif %}
                 </div>
               </div>
             </td>

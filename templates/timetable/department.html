@@ -37,7 +37,7 @@
         <p class="page-subtitle">عرض جداول الأقسام والفصول مع الطباعة</p>
       </div>
     </div>
-    <button type="button" id="addLecBtn" onclick="openAdd()" class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm">
+    <button type="button" id="addLecBtn" onclick="openAdd()" class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm">
       <span class="material-symbols-outlined text-lg">add</span>
       إضافة محاضرة
     </button>
@@ -176,7 +176,7 @@
     </div>
     <div class="px-6 py-4 border-t border-outline-variant flex items-center justify-end gap-3">
       <button type="button" onclick="closeNextYear()" class="border border-outline-variant text-on-surface-variant hover:bg-surface-container rounded-lg px-4 py-2 text-sm font-bold transition">إلغاء</button>
-      <button type="button" onclick="createNextYear()" class="bg-primary hover:bg-primary/90 text-white rounded-lg px-6 py-2 text-sm font-bold transition shadow-sm">
+      <button type="button" onclick="createNextYear()" class="bg-primary hover:bg-primary/90 text-on-primary rounded-lg px-6 py-2 text-sm font-bold transition shadow-sm">
         <span class="material-symbols-outlined text-lg align-middle">save</span>
         إنشاء
       </button>
@@ -292,7 +292,7 @@
     </div>
     <div class="px-5 py-4 border-t border-outline-variant flex items-center justify-end gap-2 shrink-0">
       <button type="button" onclick="closeModal()" class="border border-outline-variant text-on-surface-variant hover:bg-surface-container rounded-xl px-4 py-2 text-sm font-bold transition">إلغاء</button>
-      <button type="button" onclick="saveLecture()" class="bg-primary hover:bg-primary/90 text-white rounded-xl px-5 py-2 text-sm font-bold transition shadow-sm flex items-center gap-2">
+      <button type="button" onclick="saveLecture()" class="bg-primary hover:bg-primary/90 text-on-primary rounded-xl px-5 py-2 text-sm font-bold transition shadow-sm flex items-center gap-2">
         <span class="material-symbols-outlined text-lg align-middle">save</span>
         حفظ
       </button>
@@ -301,7 +301,7 @@
 </div>
 
 <!-- Toast -->
-<div id="toast" class="hidden fixed bottom-6 left-6 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg text-sm font-semibold text-white bg-primary"></div>
+<div id="toast" class="hidden fixed bottom-6 left-6 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg text-sm font-semibold text-on-primary bg-primary"></div>
 
 <div class="print-only">
   {% include 'print/timetables/_department_content.html' %}
@@ -314,7 +314,7 @@
 window.TIMETABLE_DEPARTMENT_BOOT = {
   base: {{ url_for('timetable.timetable_department_view') | tojson }},
   payload: {{ payload | tojson }},
-  isRd: {{ 'true' if user and user.role in ('research_development', 'super_admin') else 'false' }}
+  isRd: {{ 'true' if user and user.role == 'research_development' else 'false' }}
 };
 </script>
 <script src="{{ url_for('static', filename='js/shared/timetable_helpers.js') }}"></script>

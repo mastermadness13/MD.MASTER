@@ -1,25 +1,43 @@
+/* Apple-style buttons: flat, hairline dividers, comfortable targets. */
 .btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border: none;
-  border-radius: var(--radius-default);
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 20px;
+  border: 1px solid transparent;
+  border-radius: var(--control-radius);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
-  transition: all 0.2s;
+  line-height: 1.2;
   text-decoration: none;
   white-space: nowrap;
+  transition: background-color 0.16s ease, border-color 0.16s ease,
+              color 0.16s ease, transform 0.1s ease, box-shadow 0.16s ease;
 }
 
 .btn:hover {
-  opacity: 0.9;
+  background-color: var(--primary-faint);
 }
 
 .btn:active {
-  transform: scale(0.97);
+  transform: scale(0.98);
+}
+
+.btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+.btn:disabled,
+.btn[disabled],
+.btn.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .btn-primary {
@@ -27,14 +45,30 @@
   color: var(--text-on-primary);
 }
 
+.btn-primary:hover {
+  background: var(--primary-dark);
+  color: var(--text-on-primary);
+}
+
 .btn-secondary {
-  background: var(--sidebar-hover-bg);
+  background: var(--surface-card);
   color: var(--text-secondary);
-  border: 1px solid var(--border);
+  border-color: var(--border-accent);
+}
+
+.btn-secondary:hover {
+  background: var(--surface-hover);
+  border-color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 .btn-success {
   background: var(--success);
+  color: var(--text-on-primary);
+}
+
+.btn-success:hover {
+  background: var(--success-dark);
   color: var(--text-on-primary);
 }
 
@@ -43,9 +77,19 @@
   color: var(--text-on-primary);
 }
 
+.btn-error:hover {
+  background: var(--error-dark);
+  color: var(--text-on-primary);
+}
+
 .btn-warning {
   background: var(--warning);
-  color: var(--text-on-primary);
+  color: #3a1d00;
+}
+
+.btn-warning:hover {
+  background: var(--warning-text);
+  color: #3a1d00;
 }
 
 .btn-gold {
@@ -54,150 +98,163 @@
 }
 
 .btn-gold:hover {
-  opacity: 1;
-  filter: brightness(0.95);
+  background: var(--gold-dim);
+  color: var(--on-gold);
 }
 
 .btn-cta {
-  padding: 12px 32px;
+  min-height: 52px;
+  padding: 14px 32px;
   font-size: 16px;
   font-weight: 700;
 }
 
 .btn-sm {
-  padding: 4px 10px;
-  font-size: 12px;
+  min-height: 36px;
+  padding: 6px 14px;
+  font-size: 13px;
+  border-radius: calc(var(--control-radius) - 2px);
 }
 
 .btn-lg {
-  padding: 12px 24px;
+  min-height: 52px;
+  padding: 12px 28px;
   font-size: 16px;
 }
 
 .btn-icon {
-  padding: 8px;
-  border-radius: var(--radius-default);
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border-radius: var(--control-radius);
+  justify-content: center;
 }
 
 .btn-outline-primary {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 20px;
   border: 1.5px solid var(--primary);
-  border-radius: var(--radius-default);
+  border-radius: var(--control-radius);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
-  transition: all 0.2s;
   text-decoration: none;
   white-space: nowrap;
   background: transparent;
   color: var(--primary);
+  transition: background-color 0.16s ease, transform 0.1s ease;
 }
 
 .btn-outline-primary:hover {
   background: var(--primary-faint);
-  box-shadow: 0 2px 8px var(--primary-glow);
 }
 
 .btn-outline-primary:active {
-  transform: scale(0.97);
+  transform: scale(0.98);
 }
 
 .btn-outline-danger {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 20px;
   border: 1.5px solid var(--error);
-  border-radius: var(--radius-default);
+  border-radius: var(--control-radius);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
-  transition: all 0.2s;
   text-decoration: none;
   white-space: nowrap;
   background: transparent;
   color: var(--error);
+  transition: background-color 0.16s ease, transform 0.1s ease;
 }
 
 .btn-outline-danger:hover {
   background: var(--error-faint);
-  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.15);
 }
 
 .btn-outline-danger:active {
-  transform: scale(0.97);
+  transform: scale(0.98);
 }
 
 .btn-outline-secondary {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-default);
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 20px;
+  border: 1.5px solid var(--border-accent);
+  border-radius: var(--control-radius);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
-  transition: all 0.2s;
   text-decoration: none;
   white-space: nowrap;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text-secondary);
+  transition: background-color 0.16s ease, border-color 0.16s ease;
 }
 
 .btn-outline-secondary:hover {
-  background: var(--border-subtle);
-  border-color: var(--border-heavy);
+  background: var(--surface-hover);
+  border-color: var(--text-muted);
 }
 
 .btn-outline-warning {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 20px;
   border: 1.5px solid var(--warning);
-  border-radius: var(--radius-default);
+  border-radius: var(--control-radius);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
-  transition: all 0.2s;
   text-decoration: none;
   white-space: nowrap;
   background: transparent;
   color: var(--warning-text);
+  transition: background-color 0.16s ease;
 }
 
 .btn-outline-warning:hover {
   background: var(--warning-faint);
-  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15);
 }
 
 .btn-outline-info {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 20px;
   border: 1.5px solid var(--secondary);
-  border-radius: var(--radius-default);
+  border-radius: var(--control-radius);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
-  transition: all 0.2s;
   text-decoration: none;
   white-space: nowrap;
   background: transparent;
   color: var(--secondary);
+  transition: background-color 0.16s ease;
 }
 
 .btn-outline-info:hover {
-  background: #f0f9ff;
-  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.15);
+  background: var(--secondary-faint);
 }

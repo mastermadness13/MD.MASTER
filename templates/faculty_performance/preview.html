@@ -5,49 +5,38 @@
 
 {% block content %}
 <div class="max-w-5xl mx-auto">
-
-  <!-- Action Bar -->
-  <div class="no-print flex flex-wrap items-center justify-between gap-3 mb-4 bg-white border border-outline-variant rounded-xl px-4 py-3 shadow-sm">
+  <form method="post" class="no-print">
+  <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="academic_year" value="{{ fd.header.academic_year }}">
+  <input type="hidden" name="semester" value="{{ fd.header.semester_number }}">
+  <input type="hidden" name="dept" value="{{ request.args.get('dept', '') }}">
+  {% for field, values in profile_options.items() %}
+  <datalist id="{{ field }}-options">
+    {% for value in values %}<option value="{{ value }}">{% endfor %}
+  </datalist>
+  {% endfor %}
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-4 bg-white border border-outline-variant rounded-xl px-4 py-3 shadow-sm">
     <div class="flex items-center gap-2 text-sm font-bold text-on-surface">
       <span class="material-symbols-outlined text-primary">assignment</span>
       كشف العبء التدريسي — {{ fd.header.teacher_name }}
     </div>
     <div class="flex items-center gap-2">
       {% if has_permission('faculty_performance.edit_research') %}
-      <button type="button" data-research-manage
-              data-teacher-id="{{ fd.teacher.id }}"
-              data-teacher-name="{{ fd.header.teacher_name }}"
-              data-year="{{ fd.header.academic_year }}"
-              data-semester="{{ fd.header.semester_number }}"
-              class="flex items-center gap-1.5 bg-surface-container hover:bg-surface-container-high border border-outline-variant px-3 py-2 rounded-lg text-xs font-bold transition cursor-pointer">
-        <span class="material-symbols-outlined text-sm">science</span>
-        تعديل الساعات البحثية
-      </button>
+      <a href="{{ url_for('faculty_performance.preview', teacher_id=fd.teacher.id, year=fd.header.academic_year, semester=fd.header.semester_number, dept=request.args.get('dept'), edit=1) }}"
+         class="flex items-center gap-1.5 bg-surface-container hover:bg-surface-container-high border border-outline-variant px-3 py-2 rounded-lg text-xs font-bold transition">
+        <span class="material-symbols-outlined text-sm">edit</span>
+        تحرير
+      </a>
       {% endif %}
-      {% if has_permission('faculty_performance.edit_assignments') %}
-      <button type="button" data-assignments-manage
-              data-teacher-id="{{ fd.teacher.id }}"
-              data-teacher-name="{{ fd.header.teacher_name }}"
-              data-year="{{ fd.header.academic_year }}"
-              data-semester="{{ fd.header.semester_number }}"
-              class="flex items-center gap-1.5 bg-surface-container hover:bg-surface-container-high border border-outline-variant px-3 py-2 rounded-lg text-xs font-bold transition cursor-pointer">
-        <span class="material-symbols-outlined text-sm">work</span>
-        تعديل التكليفات الإدارية
-      </button>
-      {% endif %}
-      {% if has_permission('faculty_performance.edit_leaves') %}
-      <button type="button" data-leave-manage
-              data-teacher-id="{{ fd.teacher.id }}"
-              data-teacher-name="{{ fd.header.teacher_name }}"
-              class="flex items-center gap-1.5 bg-surface-container hover:bg-surface-container-high border border-outline-variant px-3 py-2 rounded-lg text-xs font-bold transition cursor-pointer">
-        <span class="material-symbols-outlined text-sm">event_busy</span>
-        تعديل الإجازات
+      {% if edit_mode %}
+      <button type="submit" class="flex items-center gap-1.5 bg-primary text-on-primary px-3 py-2 rounded-lg text-xs font-bold transition">
+        <span class="material-symbols-outlined text-sm">save</span>
+        حفظ
       </button>
       {% endif %}
       {% if has_permission('faculty_performance.print') %}
       <a href="{{ url_for('faculty_performance.print_form', teacher_id=fd.teacher.id, year=fd.header.academic_year, semester=fd.header.semester_number, dept=request.args.get('dept')) }}"
-         target="_blank"
-         class="flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-on-primary px-3 py-2 rounded-lg text-xs font-bold transition">
+         target="_blank" class="flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-on-primary px-3 py-2 rounded-lg text-xs font-bold transition">
         <span class="material-symbols-outlined text-sm">print</span>
         طباعة
       </a>
@@ -69,6 +58,7 @@
   </div>
 
 </div>
+</form>
 {% endblock %}
 
 {% block modals %}
@@ -77,8 +67,6 @@
 {% endif %}
 {% if has_permission('faculty_performance.edit_research') %}
 {% include 'faculty_performance/_research_modal.html' %}
-{% endif %}
-{% if has_permission('faculty_performance.edit_assignments') %}
 {% include 'faculty_performance/_assignments_modal.html' %}
 {% endif %}
 {% endblock %}
@@ -86,85 +74,9 @@
 {% block scripts %}
 {% include 'faculty_performance/_official_document_styles.html' %}
 <style>
-  /* Phone: wide document tables scroll horizontally instead of being crushed */
   @media (max-width: 768px) {
     #docScroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     #docScroll .official-doc table { min-width: 640px; }
   }
 </style>
-{% if has_permission('faculty_performance.edit_leaves') %}
-<script src="{{ url_for('static', filename='js/faculty_performance_leaves_modal.js') }}"></script>
-<script>
-  window.FACULTY_LEAVES_MODAL.onSaved = function (info) {
-    var params = new URLSearchParams({
-      year: '{{ fd.header.academic_year }}',
-      semester: String('{{ fd.header.semester_number }}')
-    });
-    {% if request.args.get('dept') %}
-    params.set('dept', '{{ request.args.get('dept') }}');
-    {% endif %}
-    return fetch('/faculty-performance/api/teachers/' + encodeURIComponent(info.teacher_id) + '/leaves-section?' + params.toString(), {
-      headers: { 'X-Requested-With': 'XMLHttpRequest' }
-    })
-      .then(function (r) { return r.json(); })
-      .then(function (res) {
-        if (!res.ok) return;
-        var section = document.getElementById('leaves-section');
-        if (section && res.leaves_html) section.outerHTML = res.leaves_html;
-        var warnings = document.getElementById('previewWarnings');
-        if (warnings && typeof res.warnings_html === 'string') warnings.innerHTML = res.warnings_html;
-      });
-  };
-</script>
-{% endif %}
-{% if has_permission('faculty_performance.edit_research') %}
-<script src="{{ url_for('static', filename='js/faculty_performance_research_modal.js') }}"></script>
-<script>
-  window.FACULTY_RESEARCH_MODAL.onSaved = function (info) {
-    var params = new URLSearchParams({
-      year: '{{ fd.header.academic_year }}',
-      semester: String('{{ fd.header.semester_number }}')
-    });
-    {% if request.args.get('dept') %}
-    params.set('dept', '{{ request.args.get('dept') }}');
-    {% endif %}
-    return fetch('/faculty-performance/api/teachers/' + encodeURIComponent(info.teacher_id) + '/research-section?' + params.toString(), {
-      headers: { 'X-Requested-With': 'XMLHttpRequest' }
-    })
-      .then(function (r) { return r.json(); })
-      .then(function (res) {
-        if (!res.ok) return;
-        var section = document.getElementById('research-section');
-        if (section && res.research_html) section.outerHTML = res.research_html;
-        var cell = document.getElementById('grandTotalCell');
-        if (cell && res.grand_total != null) cell.textContent = res.grand_total;
-      });
-  };
-</script>
-{% endif %}
-{% if has_permission('faculty_performance.edit_assignments') %}
-<script src="{{ url_for('static', filename='js/faculty_performance_assignments_modal.js') }}"></script>
-<script>
-  window.FACULTY_ASSIGNMENTS_MODAL.onSaved = function (info) {
-    var params = new URLSearchParams({
-      year: '{{ fd.header.academic_year }}',
-      semester: String('{{ fd.header.semester_number }}')
-    });
-    {% if request.args.get('dept') %}
-    params.set('dept', '{{ request.args.get('dept') }}');
-    {% endif %}
-    return fetch('/faculty-performance/api/teachers/' + encodeURIComponent(info.teacher_id) + '/assignments-section?' + params.toString(), {
-      headers: { 'X-Requested-With': 'XMLHttpRequest' }
-    })
-      .then(function (r) { return r.json(); })
-      .then(function (res) {
-        if (!res.ok) return;
-        var section = document.getElementById('assignments-section');
-        if (section && res.assignments_html) section.outerHTML = res.assignments_html;
-        var cell = document.getElementById('grandTotalCell');
-        if (cell && res.grand_total != null) cell.textContent = res.grand_total;
-      });
-  };
-</script>
-{% endif %}
 {% endblock %}

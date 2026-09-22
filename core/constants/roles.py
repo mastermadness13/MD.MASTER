@@ -1,18 +1,20 @@
-"""Role definitions — the six system roles and their display labels.
+"""Role definitions — the seven system roles and their display labels.
 
-The former ``support_admin`` role was removed; existing accounts were
-promoted to ``super_admin`` by the schema migration.
+The former ``support_admin`` role was removed; the ``super_admin`` role was
+removed entirely and the office-manager (``faculty_affairs``) account is now
+the bootstrap user.
 """
 
 # ── أسماء الأدوار (أسماء العرض بالعربي) ───────────────────────────────────────
 # /     /     >---- كل دور في النظام عنده اسم عربي يظهر في الواجهة
 ROLE_NAMES = {
-    'super_admin': 'مدير النظام',
     'research_development': 'قسم البحث والتطوير والمناهج',
     'faculty_affairs': 'مكتب إدارة أعضاء هيئة التدريس',
-    'head_of_department': 'رئيس القسم',
+    'head_of_department': 'رئيس القسم العلمي',
     'teacher': 'عضو هيئة تدريس',
-    'exam': 'قسم الإدارة والامتحانات',
+    'exam': 'قسم الدراسة والامتحانات',
+    'dean': 'العميد',
+    'visitor': 'الزائر العام',
 }
 
 # /     /     >---- اسم ثاني لنفس القاموس (للتوافق مع الأكواد القديمة)

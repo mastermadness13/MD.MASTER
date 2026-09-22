@@ -138,9 +138,9 @@
       formField('specialization', 'التخصص', 'text', teacher.specialization) +
       formField('email', 'البريد الإلكتروني', 'email', teacher.email) +
       formField('phone', 'الهاتف', 'tel', teacher.phone) +
-      (isEdit ? '' : formField('password', 'كلمة المرور', 'password', '', { required: true })) +
-      (isEdit ? '' : '<div class="sm:col-span-2"><label class="block text-sm font-bold mb-1">اسم المستخدم</label>' +
-        '<input name="username" type="text" required class="w-full px-3 py-2 rounded-lg border border-outline text-sm focus:outline-none focus:ring-2 focus:ring-primary" placeholder="يُولّد تلقائياً إذا ترك فارغاً"></div>') +
+      (isEdit ? '' : '<div class="sm:col-span-2"><label class="block text-sm font-bold mb-1">نيك نيم (اسم الدخول)</label>' +
+        '<input name="username" type="text" class="w-full px-3 py-2 rounded-lg border border-outline text-sm focus:outline-none focus:ring-2 focus:ring-primary" placeholder="اختياري — يُولّد تلقائياً إذا ترك فارغاً">' +
+        '<p class="text-xs text-on-surface-variant mt-1">النيك نيم خاص بتسجيل الدخول فقط — الرمز المؤقت يُنشأ تلقائياً ويظهر بعد الحفظ</p></div>') +
       '</div>' +
       '<div class="mt-6 flex items-center justify-end gap-3">' +
       '<button type="button" class="px-4 py-2 rounded-lg border border-outline text-sm font-bold" data-spa-modal-close>إلغاء</button>' +
@@ -155,9 +155,19 @@
       var payload = {};
       fd.forEach(function (v, k) { if (v) payload[k] = v; });
       var promise = isEdit ? S.api.put('/api/teachers/' + teacher.id, payload) : S.api.post('/api/teachers', payload);
-      promise.then(function () {
+      promise.then(function (res) {
         S.modal.close();
-        showToastSuccess(isEdit ? 'تم تحديث البيانات' : 'تمت الإضافة بنجاح');
+        if (isEdit) {
+          showToastSuccess('تم تحديث البيانات');
+        } else {
+          var body = document.createElement('div');
+          body.innerHTML = '<div class="text-sm space-y-2">' +
+            '<p class="text-success-green font-bold">تمت إضافة العضو — سلم هذه البيانات للعضو (أُرسلت أيضاً إلى بريده):</p>' +
+            '<div class="bg-surface rounded-lg p-3 flex items-center justify-between"><span class="text-on-surface-variant">نيك نيم</span><b class="font-mono">' + E(res.username || '') + '</b></div>' +
+            '<div class="bg-surface rounded-lg p-3 flex items-center justify-between"><span class="text-on-surface-variant">رمز الدخول المؤقت</span><b class="font-mono">' + E(res.code || '') + '</b></div>' +
+            '<p class="text-xs text-on-surface-variant">الرمز صالح لفترة محدودة ثم يُلغى</p></div>';
+          S.modal.open({ title: 'بيانات دخول العضو', body: body });
+        }
         loadPage(1);
       }).catch(function (err) { S.modal.showError(err.message); });
     });

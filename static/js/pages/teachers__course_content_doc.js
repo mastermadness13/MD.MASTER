@@ -247,6 +247,10 @@
 })();
 
 window.downloadCourseSheet = function () {
+  if (!document.querySelector('.cc-sheet')) return;
+  window.print();
+  return;
+/*
   var sheet = document.querySelector('.cc-sheet');
   if (!sheet) return;
 
@@ -276,11 +280,15 @@ window.downloadCourseSheet = function () {
   var codeEl = document.querySelector('.cc-sheet');
   var courseCode = (codeEl && codeEl.getAttribute('data-course-code')) || 'course';
   var title = 'مفردات مقرر ' + courseCode;
+  var safeTitle = title.replace(/[<>&"']/g, function (ch) {
+    return ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'})[ch];
+  });
+  var safeCode = courseCode.replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'course';
 
   var html =
     '<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">' +
     '<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
-    '<title>' + title + '</title>' +
+    '<title>' + safeTitle + '</title>' +
     '<link rel="preconnect" href="https://fonts.googleapis.com">' +
     '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
     '<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">' +
@@ -291,7 +299,7 @@ window.downloadCourseSheet = function () {
   var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
   var a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'course-' + courseCode + '.html';
+  a.download = 'course-' + safeCode + '.html';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -300,4 +308,5 @@ window.downloadCourseSheet = function () {
   if (window.showNotification) {
     window.showNotification('تم تجهيز ملف المقرر للتحميل', 'success', 4000);
   }
+*/
 };

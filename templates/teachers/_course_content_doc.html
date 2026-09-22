@@ -1,357 +1,182 @@
-<style id="ccSheetStyle">
-  body { font-family: 'Cairo', 'Inter', sans-serif; }
+<style>
   .cc-sheet {
-    background-color: #ffffff;
-    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.04);
-    border: 1px solid #cbd5e1;
-    border-radius: 8px;
-    overflow: hidden;
+    background: var(--surface-container-lowest, #fff);
+    border: 1px solid var(--outline-variant, #cfc2d3);
+    border-radius: 1rem;
+    padding: 1.5rem;
   }
-  .cc-sheet .dotted {
-    border-bottom: 1.5px dotted #64748b;
-    min-height: 1.8rem;
-    display: inline-block;
-    padding: 0 6px;
+  .cc-sheet-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
   }
-  .table-scroll-wrap { overflow-x: auto; border: 1px solid #000; border-radius: 4px; }
-  .cc-sheet table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-  .cc-sheet th, .cc-sheet td { border: 1px solid #000; padding: 7px 10px; }
-  .cc-cell-label { background-color: #f8fafc; font-weight: 700; color: #0f172a; }
-  .cc-sheet input[type="text"], .cc-sheet input[type="number"], .cc-sheet select, .cc-sheet textarea {
+  .cc-field {
+    display: flex;
+    flex-direction: column;
+    gap: .35rem;
+  }
+  .cc-field-wide {
+    grid-column: 1 / -1;
+  }
+  .cc-field label,
+  .cc-section-title {
+    font-size: .8rem;
+    font-weight: 700;
+    color: var(--on-surface-variant, #4c4452);
+  }
+  .cc-field input,
+  .cc-field select,
+  .cc-field textarea {
     width: 100%;
-    border: 1px solid transparent;
-    padding: 5px 8px;
-    border-radius: 4px;
-    font-family: 'Cairo', 'Inter', sans-serif;
-    background-color: #f8fafc;
-    transition: all 0.15s ease-in-out;
-    color: #0f172a;
-    resize: none;
-    min-height: 2.1rem;
+    border: 1px solid var(--outline-variant, #cfc2d3);
+    border-radius: .6rem;
+    background: var(--surface, #f7f9ff);
+    padding: .6rem .75rem;
   }
-  .cc-sheet input[type="number"] {
-    direction: ltr;
-    unicode-bidi: isolate;
-    font-variant-numeric: lining-nums tabular-nums;
-    font-feature-settings: "lnum" 1, "tnum" 1;
+  .cc-field textarea {
+    min-height: 6rem;
+    resize: vertical;
   }
-  .cc-sheet input[type="text"]:focus, .cc-sheet input[type="number"]:focus, .cc-sheet select:focus, .cc-sheet textarea:focus {
-    outline: none;
-    background-color: #ffffff;
-    border-color: #320058;
-    box-shadow: 0 0 0 2px rgba(50, 0, 88, 0.15);
+  .cc-curriculum {
+    margin-top: 1.5rem;
+    border-top: 1px solid var(--outline-variant, #cfc2d3);
+    padding-top: 1rem;
   }
-  .cc-sheet input[readonly], .cc-sheet input:disabled, .cc-sheet select:disabled {
-    background-color: transparent;
-    color: #0f172a;
-    cursor: default;
+  .cc-curriculum-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 6rem minmax(0, 1.5fr);
+    gap: .6rem;
+    margin-top: .6rem;
   }
-  .cc-sheet .row-index { font-weight: 700; }
-  .weeks-warning { color: #b91c1c; font-weight: 800; }
-  .cc-table-wide { min-width: 640px; }
-  .cc-section-title { border: 1px solid #000; border-left-width: 0; border-right-width: 0; padding: 6px 12px; background: #f1f5f9; font-weight: 800; }
+  .cc-curriculum-row input,
+  .cc-curriculum-row textarea {
+    width: 100%;
+    border: 1px solid var(--outline-variant, #cfc2d3);
+    border-radius: .5rem;
+    padding: .5rem .6rem;
+    background: var(--surface, #f7f9ff);
+  }
   @media (max-width: 768px) {
-    .cc-sheet section { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    .cc-sheet table.cc-table-wide { min-width: 640px; }
-  }
-  @media print {
-    .cc-sheet { box-shadow: none; border-color: #000; border-radius: 0; overflow: visible !important; page-break-inside: auto !important; break-inside: auto !important; }
-    .table-scroll-wrap { border-color: #000; }
-    .cc-sheet input[type="text"], .cc-sheet input[type="number"], .cc-sheet select, .cc-sheet textarea {
-      border: none; background: transparent; padding: 0; color: #000; box-shadow: none;
+    .cc-sheet-grid,
+    .cc-curriculum-row {
+      grid-template-columns: 1fr;
     }
-    .cc-sheet .dotted { border-color: #000; }
+    .cc-field-wide {
+      grid-column: auto;
+    }
   }
 </style>
 
-<div class="cc-sheet p-6" dir="rtl" data-course-code="{{ doc.course_code | default('') }}">
-
-  <!-- Top Tool in Sheet -->
-  <div class="flex justify-end mb-3 no-print">
-    <button type="button" onclick="downloadCourseSheet()" class="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition shadow-sm">
-      <span class="material-symbols-outlined text-base">download</span>
-      تحميل وطباعة المقرر
-    </button>
-  </div>
-
-  <!-- Official Header -->
-  <header class="text-center border-b-2 border-black pb-4 mb-4">
-    <div class="flex justify-between items-center mb-3 px-2">
-      <div class="text-right text-xs font-bold text-slate-800 leading-relaxed">
-        دولة ليبيا<br>
-        وزارة التعليم العالي والبحث العلمي
-      </div>
-
-      <!-- Emblem / Logo -->
-      <div class="w-14 h-14 rounded-full border-2 border-slate-900 flex flex-col items-center justify-center p-1 text-center">
-        <span class="material-symbols-outlined text-slate-900 text-xl">account_balance</span>
-        <span class="text-[8px] font-bold text-slate-900 leading-none mt-0.5">زوارة</span>
-      </div>
-
-      <div class="text-left text-xs font-bold text-slate-800 leading-relaxed" dir="ltr">
-        State of Libya<br>
-        Ministry of Higher Education
-      </div>
+<div class="cc-sheet" dir="rtl" data-course-code="{{ doc.course_code | default('', true) }}">
+  <div class="flex items-center justify-between gap-3 mb-5">
+    <div>
+      <h2 class="text-xl font-bold text-on-surface">مفردات المقرر</h2>
+      <p class="text-sm text-on-surface-variant mt-1">
+        أدخل بيانات المقرر والمحتوى الدراسي ثم احفظ النموذج.
+      </p>
     </div>
-
-    <h1 class="text-xl font-bold mb-1 text-black">كلية التقنية الهندسية - زوارة</h1>
-    <h2 class="text-base text-black font-semibold">مكتب الشؤون العلمية - قسم البحث والتطوير والمناهج</h2>
-    <div class="mt-2 mb-1">
-      <span class="text-2xl font-extrabold text-black inline-block">مفردات مقرر {{ doc.course_name | default('') }}</span>
-    </div>
-    <p class="text-sm text-black font-medium" dir="ltr">
-      Course Description Sheet — {{ doc.course_name_en | default(doc.course_name | default('')) }}
-    </p>
-  </header>
-
-  <!-- Basic Course Information Table -->
-  <section class="mb-4 px-6 py-4">
-    <div class="table-scroll-wrap">
-      <table>
-        <tbody>
-          <tr>
-          <!-- اسم المادة / Course Title -->
-          <tr>
-            <td class="w-1/4 cc-cell-label text-right align-middle">اسم المادة</td>
-            <td class="w-1/4 text-center text-black align-middle">
-              <input type="text" name="course_name" value="{{ doc.course_name | default('') }}" placeholder="اسم المادة" class="font-semibold text-center">
-            </td>
-            <td class="w-1/4 text-center text-black align-middle" dir="ltr">
-              <input type="text" name="course_name_en" dir="ltr" value="{{ doc.course_name_en | default('') }}" placeholder="Course Name" class="font-semibold text-center font-['Inter']">
-            </td>
-            <td class="w-1/4 cc-cell-label text-left align-middle font-['Inter']" dir="ltr">Course Title</td>
-          </tr>
-
-          <!-- رمزها / Course code -->
-          <tr>
-            <td class="cc-cell-label text-right align-middle">رمزها</td>
-            <td colspan="2" class="text-center text-black align-middle">
-              <input type="text" name="course_code" dir="ltr" value="{{ doc.course_code | default('') }}" placeholder="Course Code" class="text-center font-bold font-['Inter']">
-            </td>
-            <td class="cc-cell-label text-left align-middle font-['Inter']" dir="ltr">Course code</td>
-          </tr>
-
-          <!-- عدد الوحدات / Credits -->
-          <tr>
-            <td class="cc-cell-label text-right align-middle">عدد الوحدات</td>
-            <td colspan="2" class="text-center text-black align-middle">
-              <input type="number" name="credits" min="0" value="{{ doc.credits | default(0) }}" class="text-center font-bold">
-            </td>
-            <td class="cc-cell-label text-left align-middle font-['Inter']" dir="ltr">Credits</td>
-          </tr>
-
-          <!-- الفصل الدراسي / Semester -->
-          <tr>
-            <td class="cc-cell-label text-right align-middle">الفصل الدراسي</td>
-            <td class="text-center text-black align-middle">
-              <select name="semester" class="text-center font-medium">
-                <option value="">— اختر —</option>
-                {% for i in range(1, 9) %}
-                <option value="{{ i }}"{% if doc.semester | string == i | string %} selected{% endif %}>الفصل {{ i }}</option>
-                {% endfor %}
-              </select>
-            </td>
-            <td class="text-center text-black align-middle" dir="ltr">
-              <select name="semester_mirror" data-mirror="semester" class="mirror-input text-center font-['Inter']" dir="ltr" disabled>
-                <option value="">— Choose —</option>
-                {% for i in range(1, 9) %}
-                <option value="{{ i }}"{% if doc.semester | string == i | string %} selected{% endif %}>Semester {{ i }}</option>
-                {% endfor %}
-              </select>
-            </td>
-            <td class="cc-cell-label text-left align-middle font-['Inter']" dir="ltr">Semester</td>
-          </tr>
-</tr>
-          <!-- عدد الساعات الأسبوعية / No. Of hours per week -->
-          <tr>
-            <td class="cc-cell-label text-right align-middle">عدد الساعات الأسبوعية</td>
-            <td class="text-center text-black align-middle">
-              <span class="block text-[11px] font-bold text-slate-700">نظري<br><span class="font-['Inter'] font-normal">Theory</span></span>
-              <input type="number" id="theoryHours" name="theory_hours" min="0" value="{{ doc.theory_hours | default(0) }}" class="text-center font-bold text-base">
-            </td>
-            <td class="text-center text-black align-middle">
-              <span class="block text-[11px] font-bold text-slate-700">عملي<br><span class="font-['Inter'] font-normal">Practical</span></span>
-              <input type="number" id="practicalHours" name="practical_hours" min="0" value="{{ doc.practical_hours | default(0) }}" class="text-center font-bold text-base">
-            </td>
-<td class="text-center text-black align-middle">
-              <span class="block text-[11px] font-bold text-slate-700">حل تمارين<br><span class="font-['Inter'] font-normal">Tutorial</span></span>
-              <input type="number" name="tutorial_hours" min="0" value="{{ doc.tutorial_hours | default(0) }}" class="text-center font-bold text-base">
-            </td>
-            <td class="text-center text-black align-middle">
-              <span class="block text-[11px] font-bold text-slate-700">الإجمالي<br><span class="font-['Inter'] font-normal">Total</span></span>
-              <input type="number" data-mirror="total_hours" value="{{ doc.total_hours | default(0) }}" readonly
-                     class="text-center font-bold text-base bg-slate-100 text-slate-900">
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <input type="hidden" name="total_hours" value="{{ doc.total_hours | default(0) }}">
-  </section>
-
-  <!-- Objective / Prerequisites / Textbook / Notes (2-col: AR right | EN left) -->
-  <section class="mb-4 px-6 py-2">
-    <div class="table-scroll-wrap">
-      <table>
-        <tbody>
-          <tr>
-            <td class="w-1/2 align-top">
-              <span class="cc-cell-label text-right block mb-1">الهدف من المادة</span>
-              <textarea name="course_objective" rows="3" class="w-full text-sm leading-relaxed" style="height:100px;" placeholder="يهدف هذا المقرر إلى...">{{ doc.course_objective | default('') }}</textarea>
-            </td>
-            <td class="w-1/2 align-top" dir="ltr">
-              <span class="cc-cell-label text-left block mb-1 font-['Inter']">Course Objective</span>
-              <textarea name="course_objective_en" rows="3" dir="ltr" class="w-full font-['Inter'] text-sm leading-relaxed" style="height:100px;" placeholder="Course Objective (English)">{{ doc.course_objective_en | default('') }}</textarea>
-            </td>
-          </tr>
-          <tr>
-            <td class="w-1/2 align-middle">
-              <span class="cc-cell-label text-right block mb-1">المواد التي تعتمد عليها</span>
-              <input type="text" name="prerequisites" value="{{ doc.prerequisites | default('') }}" placeholder="اسم المقرر المتطلب">
-            </td>
-            <td class="w-1/2 align-middle" dir="ltr">
-              <span class="cc-cell-label text-left block mb-1 font-['Inter']">Prerequisites</span>
-              <input type="text" name="prerequisites_en" dir="ltr" value="{{ doc.prerequisites_en | default('') }}" placeholder="Prerequisite Courses" class="font-['Inter']">
-            </td>
-          </tr>
-          <tr>
-            <td class="w-1/2 align-top">
-              <span class="cc-cell-label text-right block mb-1">الكتاب المرجعي (أو أكثر)</span>
-              <textarea name="textbooks" rows="2" class="text-sm" placeholder="الكتاب المرجعي والمؤلف...">{{ doc.textbooks | default('') }}</textarea>
-            </td>
-            <td class="w-1/2 align-top" dir="ltr">
-              <span class="cc-cell-label text-left block mb-1 font-['Inter']">Text Book (Books)</span>
-              <textarea name="textbooks_en" rows="2" dir="ltr" class="font-['Inter'] text-sm" placeholder="Text Book (Books)">{{ doc.textbooks_en | default('') }}</textarea>
-            </td>
-          </tr>
-          <tr>
-            <td class="w-1/2 align-top">
-              <span class="cc-cell-label text-right block mb-1">ملاحظات</span>
-              <textarea name="notes" rows="2" class="text-sm">{{ doc.notes | default('') }}</textarea>
-            </td>
-            <td class="w-1/2 align-top" dir="ltr">
-              <span class="cc-cell-label text-left block mb-1 font-['Inter']">Notes</span>
-              <textarea name="notes_en" rows="2" dir="ltr" class="font-['Inter'] text-sm" placeholder="Notes (English)">{{ doc.notes_en | default('') }}</textarea>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- Curriculum: Theoretical -->
-  <section class="mb-4 px-6 py-2">
-    <div class="cc-section-title text-center text-black mb-1" dir="ltr">
-      <span dir="rtl">مفردات الجدول النظري</span> — Curriculum of Theoretical Part
-    </div>
-    <div class="table-scroll-wrap">
-      <table class="cc-table-wide">
-        <thead>
-          <tr class="cc-cell-label">
-            <th style="width:6%" class="text-center">#</th>
-            <th style="width:42%" class="text-right">الموضوع</th>
-            <th style="width:12%" class="text-center">الأسابيع<br><span class="font-['Inter'] text-xs font-normal">Weeks</span></th>
-            <th style="width:40%" class="text-left font-['Inter']" dir="ltr">Topic (EN)</th>
-            <th style="width:6%" class="no-print text-center">إجراء</th>
-          </tr>
-        </thead>
-        <tbody id="ccTheoreticalCurriculumBody">
-          {% for item in theoretical_curriculum | default([]) %}
-          <tr>
-            <td class="align-middle text-center font-bold text-black row-index">{{ loop.index }}</td>
-            <td class="align-middle">
-              <textarea name="theoretical_curriculum_topic[]" rows="2" placeholder="الموضوع">{{ item.topic | default('') }}</textarea>
-            </td>
-            <td class="align-middle">
-              <input type="number" name="theoretical_curriculum_weeks[]" min="1" value="{{ item.weeks | default(1) }}" class="text-center font-semibold week-input">
-            </td>
-            <td class="align-middle">
-              <textarea name="theoretical_curriculum_topic_en[]" rows="2" dir="ltr" placeholder="Topic (EN)" class="font-['Inter'] text-sm">{{ item.topic_en | default('') }}</textarea>
-            </td>
-            <td class="align-middle text-center no-print">
-              <button type="button" class="cc-curriculum-remove text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-1 rounded font-bold cursor-pointer text-xs" title="حذف الصف" aria-label="حذف الصف">✕</button>
-            </td>
-          </tr>
-          {% endfor %}
-          {% if not theoretical_curriculum | default([]) %}
-          <tr>
-            <td class="align-middle text-center font-bold text-black row-index">1</td>
-            <td class="align-middle">
-              <textarea name="theoretical_curriculum_topic[]" rows="2" placeholder="الموضوع"></textarea>
-            </td>
-            <td class="align-middle">
-              <input type="number" name="theoretical_curriculum_weeks[]" min="1" value="1" class="text-center font-semibold week-input">
-            </td>
-            <td class="align-middle">
-              <textarea name="theoretical_curriculum_topic_en[]" rows="2" dir="ltr" placeholder="Topic (EN)" class="font-['Inter'] text-sm"></textarea>
-            </td>
-            <td class="align-middle text-center no-print">
-              <button type="button" class="cc-curriculum-remove text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-1 rounded font-bold cursor-pointer text-xs" title="حذف الصف" aria-label="حذف الصف">✕</button>
-            </td>
-          </tr>
-          {% endif %}
-        </tbody>
-      </table>
-    </div>
-
-    <div class="pt-2 pb-1 flex items-center justify-between no-print">
-      <button type="button" id="ccAddTheoreticalRow" class="flex items-center gap-1.5 bg-white hover:bg-purple-50 text-purple-900 px-3 py-1.5 rounded-md text-xs font-bold transition border border-purple-200 cursor-pointer shadow-sm">
-        <span class="material-symbols-outlined text-base">add</span>
-        صف جديد
+    <div class="flex items-center gap-2 no-print">
+      <button type="button" onclick="downloadCourseSheet()" class="flex items-center gap-1.5 bg-primary text-on-primary px-3 py-1.5 rounded-lg text-xs font-bold">
+        <span class="material-symbols-outlined text-base">download</span>
+        طباعة / حفظ PDF
       </button>
-      <div class="text-xs text-slate-700 bg-slate-100 px-3 py-1.5 rounded-md border border-slate-200 flex items-center gap-1.5" aria-label="إجمالي الأسابيع النظري">
-        <span>إجمالي الأسابيع النظري:</span>
-        <strong id="ccTheoreticalWeeksTotal" class="text-sm font-bold text-purple-900">1</strong>
-        <span>أسابيع</span>
-      </div>
-    </div>
-  </section>
-
-  <!-- Curriculum: Practical (free text) -->
-  <section class="mb-6 px-6 pt-1 pb-2">
-    <div class="cc-section-title text-center text-black mb-1" dir="ltr">
-      <span dir="rtl">مفردات الجدول العملي</span> — Curriculum of Practical Part
-    </div>
-    <div class="table-scroll-wrap">
-      <table>
-        <tbody>
-          <tr>
-            <td class="w-1/2 align-top">
-              <span class="cc-cell-label text-right block mb-1">مفردات الجدول العملي</span>
-              <textarea name="practical_content" rows="4" style="height:100px;" class="w-full text-sm leading-relaxed" placeholder="وصف الجانب العملي للمقرر...">{{ doc.practical_content | default('') }}</textarea>
-            </td>
-            <td class="w-1/2 align-top" dir="ltr">
-              <span class="cc-cell-label text-left block mb-1 font-['Inter']">Curriculum of Practical Part</span>
-              <textarea name="practical_content_en" rows="4" dir="ltr" style="height:100px;" class="w-full font-['Inter'] text-sm leading-relaxed" placeholder="Practical part description (English)">{{ doc.practical_content_en | default('') }}</textarea>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- Signatures (Official Print Layout) -->
-  <div class="px-6 pt-6 pb-4 border-t border-slate-300">
-    <div class="grid grid-cols-2 gap-12 px-8">
-      <div class="text-center">
-        <p class="font-bold mb-12 text-black text-sm">أستاذ المادة</p>
-        <div class="border-b border-black w-3/4 mx-auto mb-2"></div>
-        <p class="text-xs text-slate-500">التوقيع والتاريخ</p>
-      </div>
-      <div class="text-center">
-        <p class="font-bold mb-12 text-black text-sm">رئيس القسم العلمي</p>
-        <div class="border-b border-black w-3/4 mx-auto mb-2"></div>
-        <p class="text-xs text-slate-500">التوقيع والختم الرسمي</p>
-      </div>
+      <span class="material-symbols-outlined text-primary text-3xl" aria-hidden="true">description</span>
     </div>
   </div>
 
-  <!-- Sheet Footer -->
-  <footer class="mt-4 pt-3 border-t border-slate-200 text-center text-xs text-slate-500 font-medium">
-    كلية التقنية الهندسية زوارة — نظام إدارة المناهج والجداول الأكاديمية
-  </footer>
+  <div class="cc-sheet-grid">
+    <div class="cc-field">
+      <label for="ccCourseName">اسم المقرر</label>
+      <input id="ccCourseName" name="course_name" value="{{ doc.course_name | default('', true) }}" required>
+    </div>
+    <div class="cc-field">
+      <label for="ccCourseNameEn">اسم المقرر باللغة الإنجليزية</label>
+      <input id="ccCourseNameEn" name="course_name_en" dir="ltr" value="{{ doc.course_name_en | default('', true) }}">
+    </div>
+    <div class="cc-field">
+      <label for="ccCourseCode">رمز المقرر</label>
+      <input id="ccCourseCode" name="course_code" dir="ltr" value="{{ doc.course_code | default('', true) }}" required>
+    </div>
+    <div class="cc-field">
+      <label for="ccCredits">عدد الوحدات</label>
+      <input id="ccCredits" name="credits" min="0" value="{{ doc.credits | default(0, true) }}" type="number">
+    </div>
+    <div class="cc-field">
+      <label for="ccSemester">الفصل الدراسي</label>
+      <input id="ccSemester" name="semester" value="{{ doc.semester | default('', true) }}">
+    </div>
+    <div class="cc-field">
+      <label for="ccStudyType">نوع الدراسة</label>
+      <select id="ccStudyType" name="study_type">
+        {% set selected_study_type = doc.study_type | default('theoretical') %}
+        <option value="theoretical" {% if selected_study_type == 'theoretical' %}selected{% endif %}>نظري</option>
+        <option value="practical" {% if selected_study_type == 'practical' %}selected{% endif %}>عملي</option>
+        <option value="both" {% if selected_study_type == 'both' %}selected{% endif %}>نظري وعملي</option>
+      </select>
+    </div>
+    <div class="cc-field">
+      <label for="ccTheoryHours">الساعات النظرية</label>
+      <input id="ccTheoryHours" name="theory_hours" min="0" value="{{ doc.theory_hours | default(0, true) }}" type="number">
+    </div>
+    <div class="cc-field">
+      <label for="ccPracticalHours">الساعات العملية</label>
+      <input id="ccPracticalHours" name="practical_hours" min="0" value="{{ doc.practical_hours | default(0, true) }}" type="number">
+    </div>
+    <div class="cc-field cc-field-wide">
+      <label for="ccObjective">أهداف المقرر</label>
+      <textarea id="ccObjective" name="course_objective">{{ doc.course_objective | default('') }}</textarea>
+    </div>
+    <div class="cc-field cc-field-wide">
+      <label for="ccObjectiveEn">أهداف المقرر باللغة الإنجليزية</label>
+      <textarea id="ccObjectiveEn" name="course_objective_en" dir="ltr">{{ doc.course_objective_en | default('') }}</textarea>
+    </div>
+    <div class="cc-field cc-field-wide">
+      <label for="ccPrerequisites">المتطلبات السابقة</label>
+      <textarea id="ccPrerequisites" name="prerequisites">{{ doc.prerequisites | default('') }}</textarea>
+    </div>
+    <div class="cc-field cc-field-wide">
+      <label for="ccTextbooks">المراجع والكتب</label>
+      <textarea id="ccTextbooks" name="textbooks">{{ doc.textbooks | default('') }}</textarea>
+    </div>
+    <div class="cc-field cc-field-wide">
+      <label for="ccNotes">ملاحظات</label>
+      <textarea id="ccNotes" name="notes">{{ doc.notes | default('') }}</textarea>
+    </div>
+  </div>
 
+  {% set theory_rows = theoretical_curriculum | default([]) %}
+  {% set practical_rows = practical_curriculum | default([]) %}
+  <div class="cc-curriculum">
+    <div class="cc-section-title">مفردات الجدول النظري</div>
+    {% for row in theory_rows %}
+    <div class="cc-curriculum-row">
+      <input name="theoretical_curriculum_topic[]" value="{{ row.topic | default('') }}" placeholder="عنوان الموضوع">
+      <input name="theoretical_curriculum_weeks[]" type="number" min="1" value="{{ row.weeks | default(1) }}" placeholder="الأسابيع">
+      <textarea name="theoretical_curriculum_content[]" rows="1" placeholder="المحتوى">{{ row.content | default('') }}</textarea>
+    </div>
+    {% else %}
+    <div class="cc-curriculum-row">
+      <input name="theoretical_curriculum_topic[]" placeholder="عنوان الموضوع">
+      <input name="theoretical_curriculum_weeks[]" type="number" min="1" value="1" placeholder="الأسابيع">
+      <textarea name="theoretical_curriculum_content[]" rows="1" placeholder="المحتوى"></textarea>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="cc-curriculum">
+    <div class="cc-section-title">مفردات الجدول العملي</div>
+    {% for row in practical_rows %}
+    <div class="cc-curriculum-row">
+      <input name="practical_curriculum_topic[]" value="{{ row.topic | default('') }}" placeholder="عنوان الموضوع">
+      <input name="practical_curriculum_weeks[]" type="number" min="1" value="{{ row.weeks | default(1) }}" placeholder="الأسابيع">
+      <textarea name="practical_curriculum_content[]" rows="1" placeholder="المحتوى">{{ row.content | default('') }}</textarea>
+    </div>
+    {% else %}
+    <div class="cc-curriculum-row">
+      <input name="practical_curriculum_topic[]" placeholder="عنوان الموضوع">
+      <input name="practical_curriculum_weeks[]" type="number" min="1" value="1" placeholder="الأسابيع">
+      <textarea name="practical_curriculum_content[]" rows="1" placeholder="المحتوى"></textarea>
+    </div>
+    {% endfor %}
+  </div>
 </div>
-
-<script src="/static/js/pages/teachers__course_content_doc.js"></script>

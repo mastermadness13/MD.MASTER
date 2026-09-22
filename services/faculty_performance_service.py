@@ -49,6 +49,10 @@ RESEARCH_ACTIVITY_TYPES = [
 
 COLLEGE_NAME = 'كلية التقنية الهندسية زوارة'
 
+MINISTRY_NAME = 'وزارة التعليم التقني والفني'
+
+OFFICE_NAME = 'مكتب الشؤون العلمية - قسم البحث والتطوير والمناهج'
+
 # /     /     >---- تسميات الفصول
 SEMESTER_LABELS = {
     1: 'الفصل الأول',
@@ -105,6 +109,7 @@ def get_performance_form_data(
     primary department is used.
     """
     repo = _repo(db)
+    student_counts = repo.get_student_counts(teacher_id, academic_year, semester)
 
     teacher = repo.get_teacher_profile(teacher_id)
     if not teacher:
@@ -184,6 +189,7 @@ def get_performance_form_data(
         hours = int(hours) if hours else 0
         total_raw_hours += hours
         basic_teaching.append({
+            'course_id': entry.get('course_id'),
             'index': idx,
             'course_name': entry.get('course_name') or '',
             'course_code': entry.get('course_code') or '',
@@ -191,7 +197,7 @@ def get_performance_form_data(
             'course_phase': YEAR_LABELS.get(entry.get('course_year'), str(entry.get('course_year') or '')),
             'department': entry.get('dept_name') or '',
             'group_number': entry.get('student_section') or '',
-            'student_count': '',
+            'student_count': student_counts.get(entry.get('course_id'), ''),
             'day': entry.get('day') or '',
             'start_time': entry.get('start_time') or '',
             'end_time': entry.get('end_time') or '',
@@ -321,11 +327,11 @@ def get_performance_form_data(
     return {
         'teacher': teacher,
         'header': {
-            'org_name': COLLEGE_NAME,
+            'org_name': MINISTRY_NAME,
             'college_name': COLLEGE_NAME,
             'teacher_name': teacher.get('name', ''),
             'department': teacher.get('dept_name', ''),
-            'section': '',
+            'section': teacher.get('section') or '',
             'qualification': teacher.get('qual_name', ''),
             'academic_number': _clean_field(teacher.get('academic_number')),
             'national_id': _clean_field(teacher.get('national_id')),
@@ -611,6 +617,7 @@ def get_leave_report_data(db, teacher_id: int) -> Optional[Dict[str, Any]]:
         'teacher': teacher,
         'header': header,
         'college_name': COLLEGE_NAME,
+        'ministry_name': MINISTRY_NAME,
         'semester_label': SEMESTER_LABELS.get(semester, ''),
         'academic_year': academic_year,
         'semester': semester,
@@ -719,7 +726,7 @@ def get_course_report_data(
         'entries': entries,
         'total_hours': total_val,
         'header': {
-            'org_name': COLLEGE_NAME,
+            'org_name': MINISTRY_NAME,
             'college_name': COLLEGE_NAME,
             'academic_year': academic_year,
             'academic_year_label': academic_year_label(academic_year),
