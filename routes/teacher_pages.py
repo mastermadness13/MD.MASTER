@@ -816,7 +816,7 @@ def _render_course_content_page(db, teacher=None, **extra):
         'page_mode': 'teacher_list',
     }
     ctx.update(extra)
-    return render_template('teachers/course_content_page.html', **ctx)
+    return render_template('teachers/course_content_sheet.html', **ctx)
 
 
 def _build_teacher_upload_row(course, submission, syllabus_file, form_file=None):
@@ -1256,7 +1256,7 @@ def super_admin_course_content_list():
 
     academic_periods = _get_academic_periods(db)
 
-    return render_template('teachers/course_content_page.html',
+    return render_template('teachers/course_content_sheet.html',
                            user=current_user(), page_mode='admin_list',
                            courses=courses, departments=departments,
                            vocab_by_course=vocab_by_course,
@@ -1297,7 +1297,7 @@ def super_admin_course_content_create():
         return redirect(url_for('teacher_pages.super_admin_course_content_list'))
 
     return render_template(
-        'teachers/course_content_page.html',
+        'teachers/course_content_sheet.html',
         user=current_user(),
         page_mode='create',
         doc=context['doc'],
@@ -1431,7 +1431,7 @@ def super_admin_course_content_detail(submission_id):
 
     periods = _get_academic_periods(db)
     rnd = request.args.get('rnd', 'show')
-    return render_template('teachers/course_content_page.html',
+    return render_template('teachers/course_content_sheet.html',
                           user=current_user(),
                           submission=dict(submission), page_mode='view',
                           curriculum=curriculum,
@@ -2479,7 +2479,7 @@ def teacher_course_content_form_view(submission_id):
     ).fetchall()]
     theoretical_curriculum, practical_curriculum = _split_curriculum(curriculum)
     return render_template(
-        'teachers/course_content_page.html',
+        'teachers/course_content_sheet.html',
         user=current_user(),
         submission=dict(row),
         page_mode='readonly',

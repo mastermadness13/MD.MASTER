@@ -65,7 +65,7 @@ def course_content(submission_id):
         (submission_id,)
     ).fetchall()]
     html = render_template(
-        'teachers/course_content_page.html',
+        'teachers/course_content_sheet.html',
         user=None,
         hide_sidebar=True,
         public_view=True,

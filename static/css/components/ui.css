@@ -333,7 +333,7 @@
   }
 }
 
-/* ===== Course content admin list (moved verbatim from templates/teachers/course_content_page.html) ===== */
+/* ===== Course content admin list (moved verbatim from templates/teachers/course_content_sheet.html) ===== */
   .cc-dept-card { transition: all 0.2s ease; }
   .cc-dept-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(50,0,88,0.12); }
   .cc-dept-card.active { border-color: #320058; background: #f1dbff; box-shadow: 0 2px 10px rgba(50,0,88,0.18); }
