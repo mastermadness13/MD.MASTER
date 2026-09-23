@@ -8,6 +8,18 @@
   display: none !important;
 }
 
+/* Shared print contract. Pages opt into a document root while the shell
+   remains available on screen. */
+.print-only {
+  display: none !important;
+}
+
+.print-document,
+.print-timetable,
+.print-form {
+  break-inside: avoid;
+}
+
 /* ── Screen: A4 document container (exam schedule) ── */
 .a4-document {
   width: 100%;
@@ -42,6 +54,29 @@
     line-height: 1.5;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .print-document,
+  .print-timetable,
+  .print-form {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    border: 0 !important;
+    break-inside: avoid;
+  }
+
+  .print-document > :first-child,
+  .print-form > :first-child {
+    margin-top: 0 !important;
   }
 
   /* ── Hide all web UI chrome ── */
@@ -491,6 +526,26 @@
   .timetable-print tbody tr {
     break-inside: avoid;
     page-break-inside: avoid;
+  }
+
+  .print-timetable {
+    page-break-before: avoid;
+    page-break-after: avoid;
+  }
+
+  .print-timetable table {
+    table-layout: fixed;
+    font-size: 9pt !important;
+  }
+
+  .print-timetable td,
+  .print-timetable th {
+    padding: 3pt 4pt !important;
+  }
+
+  .print-form {
+    page-break-before: avoid;
+    page-break-after: avoid;
   }
 }
 

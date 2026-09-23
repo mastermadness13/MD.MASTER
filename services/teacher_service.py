@@ -26,6 +26,7 @@ from core.constants.seasons import (
     period_sort_key,
 )
 from database.constants import SOFT_DELETE_TABLES
+from security import validate_password
 from utils.format import teaching_semester_label
 
 logger = logging.getLogger(__name__)
@@ -250,6 +251,9 @@ class TeacherService:
         username = primary_username or _generate_username(teacher['id'])
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         if direct_password:
+            password_error = validate_password(direct_password)
+            if password_error:
+                raise ValueError(password_error)
             hashed = generate_password_hash(direct_password)
             force_change = 0
             code_hash = None
@@ -326,6 +330,9 @@ class TeacherService:
                 (new_username, teacher['user_id']),
             )
         if new_password:
+            password_error = validate_password(new_password)
+            if password_error:
+                raise ValueError(password_error)
             self.db.execute(
                 'UPDATE users SET password = ?, force_password_change = 0, '
                 'initial_login_code_hash = NULL, initial_login_code_used = 1, '

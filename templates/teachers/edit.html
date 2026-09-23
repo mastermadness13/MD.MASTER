@@ -144,56 +144,6 @@
     </div>
 
     <!-- Row 2: Qualification (5) + Administrative Assignment (7) -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-
-      <section class="lg:col-span-5 rounded-2xl bg-surface-container-lowest border border-outline-variant/50 shadow-sm overflow-hidden flex flex-col">
-        <div class="px-5 py-3 border-b border-outline-variant/40 bg-surface/70 flex items-center gap-2">
-          <span class="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-            <span class="material-symbols-outlined text-[18px]">school</span>
-          </span>
-          <h2 class="text-sm font-bold text-on-surface">بيانات الدخول وتسجيل الدخول</h2>
-        </div>
-        
-          <span class="text-[11px] font-mono text-on-surface-variant">Security</span>
-        </div>
-
-        <div class="p-5 space-y-3.5 flex-1 flex flex-col justify-between">
-          <div class="space-y-3">
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-semibold text-on-surface-variant">اسم المستخدم</label>
-              <div class="relative">
-                <span class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-on-surface-variant/70">
-                  <span class="material-symbols-outlined text-[17px]">account_circle</span>
-                </span>
-                <input class="w-full h-10 rounded-xl border border-outline-variant bg-surface-container-lowest focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm text-on-surface pr-9 pl-3 font-mono font-semibold" dir="ltr" name="username" type="text" value="{{ teacher.get('username') or '' }}">
-              </div>
-            </div>
-
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-semibold text-on-surface-variant">تعيين كلمة مرور جديدة</label>
-              <div class="relative">
-                <span class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-on-surface-variant/70">
-                  <span class="material-symbols-outlined text-[17px]">key</span>
-                </span>
-                <input class="w-full h-10 rounded-xl border border-outline-variant bg-surface-container-lowest focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm text-on-surface pr-9 pl-3" name="new_password" type="password" autocomplete="new-password" placeholder="اتركها فارغة إذا لم ترغب بتغييرها">
-              </div>
-            </div>
-          </div>
-
-          <div class="pt-2">
-            <p class="text-[11px] text-on-surface-variant mb-2">تعيين كلمة مرور جديدة يمنح المستخدم دخولاً فورياً دون طلب التنشيط.</p>
-            <button type="button"
-                    onclick="window.confirmThenSubmit('resetPwForm', 'إعادة تعيين كلمة المرور؟ سيتم توليد كلمة جديدة تظهر بعد الحفظ');"
-                    class="w-full py-2 px-3 rounded-xl border border-secondary/40 bg-secondary-container/50 hover:bg-secondary-container text-on-secondary-container text-xs font-semibold transition-colors flex items-center justify-center gap-1.5">
-              <span class="material-symbols-outlined text-[16px] text-secondary">lock_reset</span>
-              إعادة تعيين كلمة المرور
-            </button>
-          </div>
-        </div>
-      </section>
-    </div>
-
-    <!-- Row 2: Qualification (5) + Administrative Assignment (7) -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
 
       <section class="lg:col-span-5 rounded-2xl bg-surface-container-lowest border border-outline-variant/50 shadow-sm overflow-hidden flex flex-col">
@@ -357,11 +307,6 @@
       </div>
     </div>
 
-  </form>
-
-  <!-- Hidden standalone reset-password form (referenced by the account card button) -->
-  <form id="resetPwForm" method="post" action="{{ url_for('teachers.teachers_reset_password', id=teacher_id) }}" class="hidden">
-    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
   </form>
 
 </div>

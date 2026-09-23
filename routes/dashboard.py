@@ -23,6 +23,10 @@ def switch_role():
     )
     if requested in granted:
         session['role'] = requested
+        session['landing_endpoint'] = {
+            'faculty_affairs': 'teachers.teachers_list',
+            'exam': 'exams.exams',
+        }.get(requested, 'dashboard.dashboard')
         if is_ajax:
             landing_endpoints = {
                 'faculty_affairs': 'teachers.teachers_list',

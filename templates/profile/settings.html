@@ -116,7 +116,7 @@
           <div>
             <h2 class="font-bold text-on-surface">بيانات الحساب</h2>
             <p class="text-xs text-on-surface-variant">
-              تُعدَّل بيانات الحساب منك مباشرة — نيك نيم الدخول والاسم الرباعي والبريد والهاتف{% if can_edit_account %} — ولديك صلاحية مكتب إدارة أعضاء هيئة التدريس{% endif %}
+              حدّث بيانات التواصل والاسم الظاهر فقط{% if can_edit_account %} — إدارة اعتمادات الدخول متاحة من شاشة إدارة أعضاء هيئة التدريس{% endif %}
             </p>
           </div>
         </div>
@@ -128,9 +128,9 @@
               <span class="material-symbols-outlined text-[15px] text-primary">alternate_email</span>
               نيك نيم (اسم الدخول)
             </label>
-            <input type="text" name="username" value="{{ usr.get('username') or '' }}" dir="ltr"
-                   class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40 text-left"
-                   minlength="2" required>
+            <div class="w-full bg-surface-container-highest border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface text-left" dir="ltr">
+              {{ usr.get('username') or '—' }}
+            </div>
             <p class="text-[11px] text-on-surface-variant mt-1 flex items-center gap-1">
               <span class="material-symbols-outlined text-[13px]">info</span>
               اسم الدخول إلى النظام فقط — لا يؤثر على اسمك الحقيقي المعروض
@@ -257,52 +257,6 @@
         </div>
       </div>
       {% endif %}
-
-      <!-- Security / password -->
-      <div class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
-        <div class="px-4 py-3 border-b border-primary/10 bg-primary/5 flex items-center gap-2">
-          <span class="material-symbols-outlined text-primary text-[18px]">lock</span>
-          <div>
-            <h2 class="text-sm font-bold text-on-surface">الأمان وكلمة المرور</h2>
-            <p class="text-[11px] text-on-surface-variant">حراسة حساب الكلية</p>
-          </div>
-        </div>
-        <div class="p-4">
-          {% if usr.get('password_changed_at') %}
-          <div class="flex items-center justify-between gap-3 mb-3 text-xs">
-            <span class="text-on-surface-variant">آخر تغيير لكلمة المرور:</span>
-            <span class="text-on-surface font-semibold">{{ usr.get('password_changed_at') }}</span>
-          </div>
-          {% endif %}
-          <form method="POST" action="{{ url_for('profile.profile') }}" class="space-y-3">
-            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-            <input type="hidden" name="form_type" value="security">
-            <div>
-              <label class="text-xs font-bold text-on-surface-variant mb-1 block">كلمة المرور الحالية</label>
-              <input type="password" name="current_password" required autocomplete="current-password"
-                     placeholder="••••••••••••"
-                     class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
-            </div>
-            <div>
-              <label class="text-xs font-bold text-on-surface-variant mb-1 block">كلمة المرور الجديدة</label>
-              <input type="password" name="new_password" required minlength="8" autocomplete="new-password"
-                     placeholder="8 أحرف على الأقل"
-                     class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
-            </div>
-            <div>
-              <label class="text-xs font-bold text-on-surface-variant mb-1 block">تأكيد كلمة المرور الجديدة</label>
-              <input type="password" name="confirm_password" required minlength="8" autocomplete="new-password"
-                     placeholder="أعد إدخال كلمة المرور"
-                     class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
-            </div>
-            <button type="submit"
-                    class="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-4 py-2.5 rounded-lg text-sm font-bold transition shadow-sm">
-              <span class="material-symbols-outlined text-lg">lock_reset</span>
-              تغيير كلمة المرور
-            </button>
-          </form>
-        </div>
-      </div>
 
     </div>
 

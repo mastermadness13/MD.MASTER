@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from functools import wraps
 
-from flask import flash, redirect, session, url_for
+from flask import flash, redirect, request, session, url_for
 
 from core.constants import ROLE_LABELS, ROLE_PERMISSIONS
 from utils.redirects import redirect_back
@@ -147,8 +147,9 @@ def login_required(f):
 def permission_required(permission):
     """Check that the logged-in user holds the given permission.
 
-    Multi-role aware: the permission passes if ANY of the user's granted roles
-    (``session['roles']``) grants it.
+    The permission is evaluated against the active role. Other granted roles
+    remain available to the role switcher but must not leak capabilities into
+    the current context.
     """
 
     def decorator(f):
@@ -157,8 +158,14 @@ def permission_required(permission):
             # /     /     >---- أول شي يتأكد من تسجيل الدخول
             if 'user_id' not in session:
                 return redirect(url_for('auth.login'))
+            # A one-time initial credential may authenticate the user, but it
+            # must not grant access to the application until it is replaced.
+            # Keep logout available so a user can abandon the session.
+            if (session.get('force_password_change')
+                    and request.endpoint not in ('auth.change_password', 'auth.logout')):
+                return redirect(url_for('auth.change_password'))
             # /     /     >---- نجمع كل أدوار المستخدم ونتأكد من الصلاحية
-            roles = get_granted_roles()
+            roles = get_active_roles()
             dept_id = session.get('department_id')
             if not has_permission(roles, permission, dept_id):
                 flash('ليس لديك صلاحية للوصول إلى هذه الصفحة', 'error')
@@ -263,10 +270,12 @@ def inject_navigation() -> dict:
     """Jinja context processor — makes nav helpers available in every template.
 
     ``nav_items``/``user_permissions``/``has_permission``/``header_messages_url``
-    reflect the user's **granted permissions** (union of all roles).
+    reflect the user's active role. Granted roles are exposed separately only
+    for the role switcher.
     """
     from core.constants.navigation import get_nav_for_permissions
-    roles = get_granted_roles()
+    roles = get_active_roles()
+    granted_roles = get_granted_roles()
     dept_id = session.get('department_id')
     perms = get_user_permissions(roles, dept_id)
     return {
@@ -276,6 +285,6 @@ def inject_navigation() -> dict:
         'header_messages_url': get_header_messages_url(roles),
         'role_labels': ROLE_LABELS,
         'hide_sidebar': False,
-        'user_roles': roles,
-        'user_priority_role': highest_priority_role(roles),
+        'user_roles': granted_roles,
+        'user_priority_role': highest_priority_role(granted_roles),
     }

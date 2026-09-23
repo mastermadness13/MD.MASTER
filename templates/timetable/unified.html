@@ -26,7 +26,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="tt-toolbar flex items-center justify-between gap-3 flex-wrap mb-4">
+<div class="tt-toolbar no-print flex items-center justify-between gap-3 flex-wrap mb-4">
   <div class="flex items-center gap-2 flex-wrap">
     <h1 class="text-lg font-bold">الجدول الموحد</h1>
     <span id="currentBadge"></span>
@@ -74,7 +74,7 @@
 <p class="text-sm text-on-surface-variant mb-3">أضِف/عدّل الحصص في الجدول، ثم أنشئ نسخة العام القادم</p>
 {% endif %}
 
-<div class="hidden lg:block">
+<div class="print-timetable hidden lg:block">
   <div class="overflow-x-auto rounded-2xl border border-outline-variant bg-surface shadow-sm">
     <table class="w-full min-w-[700px] text-sm" style="table-layout:fixed">
       <thead>

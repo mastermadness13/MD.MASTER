@@ -21,6 +21,7 @@ from core.constants import (
 )
 from core.exceptions import ConflictError, ProtectedAccountError, ValidationError
 from security.authorization import highest_priority_role
+from security import validate_password
 from services.hod_resolution import get_current_hod
 
 logger = logging.getLogger(__name__)
@@ -129,9 +130,9 @@ class UserService:
                 (user['id'],),
             )
             self.db.commit()
-            # /     /     >---- أول دخول برمز مؤقت: نُعلّم الجلسة لتعرض
-            # /     /     >---- رسالة ترحيب + اقتراح تغيير الرمز (احتفظ به أو غيّره)
+            # /     /     >---- أول دخول برمز مؤقت: يفرض تغيير كلمة المرور
             session_dict['first_login_temp_code'] = True
+            session_dict['force_password_change'] = True
         # /     /     >---- أدوار متعددة: كامل مجموعة الأدوار + دور الهبوط (الأعلى أولوية)
         granted = self._repo.find_roles_by_user(user['id']) or [user['role']]
         if not granted:
@@ -202,12 +203,21 @@ class UserService:
 
     # /     /     >---- تنفيذ إعادة التعيين وتحديث كلمة المرور وعلام الرمز كمستعمل
     def reset_password(self, row: Dict, password: str) -> None:
+        self._assert_password_policy(password)
         self._repo.update_password(row['user_id'], generate_password_hash(password))
         self._repo.mark_reset_used(row['id'])
 
     # /     /     >---- تغيير كلمة مرور مستخدم معين
     def change_user_password(self, user_id: int, new_password: str) -> None:
+        self._assert_password_policy(new_password)
         self._repo.update_password(user_id, generate_password_hash(new_password))
+
+    @staticmethod
+    def _assert_password_policy(password: str) -> None:
+        """Enforce the same password policy at every service entry point."""
+        error = validate_password(password or '')
+        if error:
+            raise ValidationError(message=error)
 
     # /     /     >---- عمليات CRUD للمستخدمين
 
@@ -239,6 +249,7 @@ class UserService:
 
     def create_user(self, username: str, password: str, role: str,
                     department_id: int, email: str, label: str) -> None:
+        self._assert_password_policy(password)
         self._repo.create_user({
             'username': username,
             'password': generate_password_hash(password),
@@ -253,6 +264,7 @@ class UserService:
         data = {'role': role, 'department_id': department_id,
                 'email': email, 'label': label}
         if password:
+            self._assert_password_policy(password)
             data['password'] = generate_password_hash(password)
         self._repo.update_user(user_id, data)
 
@@ -485,6 +497,7 @@ class UserService:
             'phone': phone or '',
         }
         if password:
+            self._assert_password_policy(password)
             data['password'] = generate_password_hash(password)
         self._repo.update_user(user_id, data)
 

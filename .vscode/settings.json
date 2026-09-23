@@ -1,3 +1,9 @@
 {
-    "python-envs.defaultEnvManager": "ms-python.python:system"
+    "python-envs.defaultEnvManager": "ms-python.python:system",
+    "chat.tools.terminal.autoApprove": {
+        "/^node --check \\.\\\\static\\\\js\\\\exams\\\\schedule\\.js$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
 }

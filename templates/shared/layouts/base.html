@@ -183,16 +183,13 @@
           <span class="material-symbols-outlined text-primary text-[22px] shrink-0">waving_hand</span>
           <div class="flex-1 min-w-0 text-sm">
             <div class="font-bold text-on-surface">مرحباً بك في المنصة</div>
-            <p class="text-on-surface-variant mt-0.5">دخلت برمز مؤقت — يمكنك تغييره من صفحة الأمان أو الاحتفاظ به كما هو.</p>
+            <p class="text-on-surface-variant mt-0.5">دخلت برمز مؤقت — يجب تعيين كلمة مرور جديدة لإكمال إعداد الحساب.</p>
           </div>
           <div class="flex items-center gap-2 shrink-0">
             <a href="{{ url_for('profile.profile') }}" class="px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-on-primary text-xs font-bold transition flex items-center gap-1.5 no-underline">
               <span class="material-symbols-outlined text-[16px]">lock_reset</span>
               تغيير الرمز المؤقت
             </a>
-            <button type="button" onclick="document.getElementById('firstLoginBanner').remove()" class="px-4 py-2 rounded-xl border border-outline-variant hover:bg-surface-container text-on-surface-variant text-xs font-bold transition">
-              لاحقاً
-            </button>
           </div>
         </div>
         {% endif %}
@@ -202,7 +199,7 @@
   </main>
 </div>
 
-<button id="backToTop" class="material-symbols-outlined" style="display:none;position:fixed;bottom:24px;left:24px;z-index:50;width:44px;height:44px;border:none;border-radius:50%;background:var(--primary);color:var(--text-on-primary);cursor:pointer;box-shadow:0 4px 14px var(--shadow-lg);align-items:center;justify-content:center;font-size:24px;line-height:1">arrow_upward</button>
+<button id="backToTop" type="button" class="material-symbols-outlined no-print" aria-label="العودة إلى أعلى الصفحة" title="العودة إلى أعلى الصفحة" style="display:none;position:fixed;bottom:24px;left:24px;z-index:50;width:44px;height:44px;border:none;border-radius:50%;background:var(--primary);color:var(--text-on-primary);cursor:pointer;box-shadow:0 4px 14px var(--shadow-lg);align-items:center;justify-content:center;font-size:24px;line-height:1">arrow_upward</button>
 
 <script src="/static/js/main.js"></script>
 <script src="/static/js/toast.js"></script>

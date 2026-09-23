@@ -22,9 +22,14 @@ bp = Blueprint('timetable', __name__, url_prefix='/timetable')
 
 
 def _user_dept():
-    """Department the current user is scoped to — HODs always use the
-    department they head (hod_department_id), every other role their own."""
-    return session.get('hod_department_id') or session.get('department_id')
+    """Return the department restriction that applies to the active role.
+
+    Only a head of department is restricted to one department. Teachers and
+    read-only administrative roles may view all permitted timetable data.
+    """
+    if session.get('role', '') == 'head_of_department':
+        return session.get('hod_department_id') or session.get('department_id')
+    return None
 
 
 def _is_hod():

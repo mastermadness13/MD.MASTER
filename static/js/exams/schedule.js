@@ -34,6 +34,8 @@
     dept: null, period: null,
     semesterExamStart: '', semesterExamEnd: ''
   };
+  var activeCleanup = null;
+  var initGeneration = 0;
 
   function esc(s) { return window.ExamEsc ? window.ExamEsc(s) : String(s == null ? '' : s); }
   function weekLabel(w) { return 'الأسبوع ' + (WEEK_ORDINALS[w - 1] || w); }
@@ -54,6 +56,21 @@
     // Rendering page: exams are entered by the head of department or the exam department.
     var canEdit = role === 'head_of_department' || role === 'exam';
     var scoped = !!opts.scoped;
+    var destroyed = false;
+    var modalRequestGeneration = 0;
+    var modalDocumentCleanup = [];
+
+    function cleanupModalDocumentListeners() {
+      modalDocumentCleanup.forEach(function (cleanup) { cleanup(); });
+      modalDocumentCleanup = [];
+    }
+
+    function addModalDocumentListener(type, handler) {
+      document.addEventListener(type, handler);
+      modalDocumentCleanup.push(function () {
+        document.removeEventListener(type, handler);
+      });
+    }
 
     var switchers = document.getElementById('exam-controls') || document.getElementById('exam-switchers');
     var deptTabsEl = document.getElementById('exam-dept-tabs');
@@ -274,7 +291,7 @@
 
     // ── CSV export (current week) ──
     var csvBtn = document.getElementById('ws-csv') || panel.querySelector('.ws-csv');
-    if (csvBtn) csvBtn.addEventListener('click', function () {
+    function onCsvClick() {
       var dept = getDept();
       var exams = dept.exams.filter(function (e) { return e.week === currentWeek; });
       var csv = '\uFEFFاليوم,المقرر,الرمز,النوع,الوقت,القاعة,الفصل\n';
@@ -290,10 +307,11 @@
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-    });
+    }
+    if (csvBtn) csvBtn.addEventListener('click', onCsvClick);
 
     // ── Cell clicks: open edit / add modals (HOD only) ──
-    panel.addEventListener('click', function (ev) {
+    function onPanelClick(ev) {
       if (!canEdit) return;
       var card = ev.target.closest ? ev.target.closest('[data-schedule-id]') : null;
       if (card) {
@@ -305,7 +323,8 @@
       if (addCell) {
         openExamModal(parseInt(addCell.getAttribute('data-add-sem'), 10), addCell.getAttribute('data-add-day'), null);
       }
-    });
+    }
+    panel.addEventListener('click', onPanelClick);
 
     // ── Modal: add/edit exam (course, room, start, end) ──
     var modal = null;
@@ -329,6 +348,7 @@
     }
 
     function closeModal() {
+      cleanupModalDocumentListeners();
       if (modal) {
         modal.remove();
         modal = null;
@@ -343,10 +363,13 @@
     }
 
     function openExamModal(semester, day, scheduleId) {
+      closeModal();
+      var requestGeneration = ++modalRequestGeneration;
       var dept = getDept();
       var existing = scheduleId ? (examById[scheduleId] || null) : null;
       var url = '/api/exams/department-schedule/cell-options?dept_id=' + encodeURIComponent(dept.id) + '&semester=' + encodeURIComponent(semester);
       window.Exams.api.get(url).then(function (opt) {
+        if (destroyed || requestGeneration !== modalRequestGeneration) return;
         buildExamModal(dept, semester, day, existing, opt);
       }).catch(function (err) {
         window.ExamToast(err.message, true);
@@ -354,6 +377,7 @@
     }
 
     function buildExamModal(dept, semester, day, existing, opt) {
+      if (destroyed) return;
       closeModal();
       var courses = opt.courses || [];
       var rooms = opt.rooms || [];
@@ -472,11 +496,17 @@
         }
       }
 
-      document.addEventListener('mousedown', function coursePickerOutside(ev) {
-        if (!modal) { document.removeEventListener('mousedown', coursePickerOutside); return; }
+      addModalDocumentListener('mousedown', function coursePickerOutside(ev) {
+        if (!modal) return;
         if (!modal.querySelector('.ws-course-picker').contains(ev.target)) {
           courseList.style.display = 'none';
         }
+      });
+      addModalDocumentListener('mousedown', function modalOutside(ev) {
+        if (modal && !modal.querySelector('.ws-modal-card').contains(ev.target)) closeModal();
+      });
+      addModalDocumentListener('keydown', function modalEscape(ev) {
+        if (ev.key === 'Escape' || ev.key === 'Esc') closeModal();
       });
       var roomSel = modal.querySelector('.ws-f-room');
       var startSel = modal.querySelector('.ws-f-start');
@@ -561,19 +591,33 @@
       });
     }
 
+    activeCleanup = function () {
+      destroyed = true;
+      closeModal();
+      panel.removeEventListener('click', onPanelClick);
+      if (csvBtn) csvBtn.removeEventListener('click', onCsvClick);
+    };
+
     renderAll();
   }
 
   function init(panel, opts) {
     opts = opts || {};
+    if (activeCleanup) {
+      activeCleanup();
+      activeCleanup = null;
+    }
+    var generation = ++initGeneration;
     if (opts.data) {
       render(panel, opts.data, opts);
       return;
     }
     panel.innerHTML = '<div class="ws-loading">جارٍ تحميل جدول الامتحانات…</div>';
     window.Exams.api.get('/api/exams/schedule').then(function (data) {
+      if (generation !== initGeneration) return;
       render(panel, data || {}, opts);
     }).catch(function (err) {
+      if (generation !== initGeneration) return;
       panel.innerHTML = '<div class="ws-error">' + (window.ExamEsc ? window.ExamEsc(err.message) : err.message) + '</div>';
     });
   }

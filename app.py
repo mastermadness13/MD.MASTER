@@ -182,8 +182,16 @@ def create_app():
         if 'user_id' not in session:
             return None
 
-        # Skip explicitly public endpoints
         endpoint = request.endpoint
+
+        # Temporary initial credentials may only reach the mandatory change
+        # password endpoint until the user completes setup.
+        if session.get('force_password_change') and endpoint not in {
+            'auth.change_password', 'auth.logout'
+        }:
+            return redirect(url_for('auth.change_password'))
+
+        # Skip explicitly public endpoints
         if endpoint in PUBLIC_ENDPOINTS:
             return None
 
@@ -199,8 +207,8 @@ def create_app():
             return redirect(url_for('dashboard.dashboard'))
 
         # Check permission
-        from security.authorization import get_granted_roles, has_permission
-        roles = get_granted_roles()
+        from security.authorization import get_active_roles, has_permission
+        roles = get_active_roles()
         dept_id = session.get('department_id')
         if not has_permission(roles, required_perm, dept_id):
             flash('ليس لديك صلاحية للوصول إلى هذه الصفحة', 'error')

@@ -67,6 +67,8 @@ def login():
         if success:
             reset_login(client_ip, username)
             session['welcome_user'] = user['username']
+            if session.get('force_password_change'):
+                return redirect(url_for('auth.change_password'))
             # Landing role is the highest-priority granted role, resolved at
             # authenticate time into session['role'] (multi-role model).
             # /     /     >---- الدور الهابط يُحدَّد وقت التوثيق داخل الجلسة
@@ -216,11 +218,14 @@ def change_password():
             return render_template('auth/change_password.html', user=current_user(),
                                   form_error=error)
 
+        forced_change = bool(session.get('force_password_change'))
         user_service.change_user_password(db, session['user_id'], new_pass)
+        session.pop('force_password_change', None)
+        session.pop('first_login_temp_code', None)
         if is_json:
             return jsonify({'ok': True, 'message': 'تم تغيير كلمة المرور بنجاح'})
-        # /     /     >---- تغيير كلمة المرور الإجباري الأول: مسح العلامة ثم الهبوط للوحة
-        if session.pop('force_password_change', None):
+        # /     /     >---- تغيير كلمة المرور الإجباري الأول ثم الهبوط للوحة
+        if forced_change:
             flash('تم تغيير كلمة المرور المؤقتة بنجاح — مرحباً بك', 'success')
             return redirect(url_for('dashboard.dashboard'))
         return render_template('auth/change_password.html', user=current_user(),

@@ -62,9 +62,7 @@ ROLE_PERMISSIONS = {
     'teacher': {
         'dashboard.view',
         'timetable.view',
-      
-        
-       
+        'profile.view', 'profile.edit',
     },
 # ── قسم الإدارة والامتحانات ─────────────────────────────────────
     'exam': {

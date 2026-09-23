@@ -109,14 +109,21 @@ def test_first_temp_code_login_shows_banner_once(app_fx, db_fx):
         '_csrf_token': 'test-token',
     })
     assert r.status_code == 302
+    assert '/change-password' in r.headers['Location']
     with client.session_transaction() as sess:
         assert sess.get('first_login_temp_code') is True
 
     r2 = client.get(r.headers.get('Location'), follow_redirects=True)
     assert r2.status_code == 200
-    assert 'firstLoginBanner' in r2.get_data(as_text=True)
+    assert 'id="current_password"' in r2.get_data(as_text=True)
+
+    r3 = client.post('/change-password', data={
+        'current_password': creds['password'],
+        'new_password': 'Changed!123',
+        'confirm_password': 'Changed!123',
+        '_csrf_token': 'test-token',
+    }, follow_redirects=True)
+    assert r3.status_code == 200
+    assert 'firstLoginBanner' not in r3.get_data(as_text=True)
     with client.session_transaction() as sess:
         assert sess.get('first_login_temp_code') is None
-
-    r3 = client.get(r.headers.get('Location'), follow_redirects=True)
-    assert 'firstLoginBanner' not in r3.get_data(as_text=True)

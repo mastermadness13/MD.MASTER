@@ -1,4 +1,4 @@
-from flask import Blueprint, session, request, render_template, redirect, url_for, flash
+from flask import Blueprint, session, request, render_template, redirect, url_for, flash, abort
 from werkzeug.security import check_password_hash
 
 from flask_db import get_db
@@ -81,11 +81,18 @@ def profile():
         form_type = request.form.get('form_type', 'account')
 
         if form_type == 'account':
+            # Username and password administration is deliberately not part
+            # of the self-service profile.  Faculty-affairs staff manage
+            # those credentials through the administrative teacher flow.
+            if any(request.form.get(name) is not None for name in (
+                    'username', 'password', 'current_password',
+                    'new_password', 'confirm_password')):
+                abort(403)
             return _handle_account_update(db, is_rnd)
         elif form_type == 'department' and is_rnd:
             return _handle_department_update(db)
         elif form_type == 'security':
-            return _handle_password_update(db)
+            abort(403)
 
         flash('طلب غير صالح', 'error')
         return redirect(url_for('profile.profile'))
@@ -93,36 +100,21 @@ def profile():
     return _render_profile(db, is_rnd, can_edit_account=role == 'faculty_affairs')
 
 
-# /     /     >---- تحديث بيانات الحساب (نيك نيم الدخول/بريد/اسم رباعي/هاتف)
-# /     /     >---- يعدّلها صاحب الحساب بنفسه (مثل كلمة المرور)؛ اسم الأستاذ الرسمي
-# /     /     >---- في سجل هيئة التدريس يبقى من مكتب إدارة أعضاء هيئة التدريس
+# /     /     >---- تحديث بيانات الحساب (البريد/الاسم الظاهر/الهاتف)
+# /     /     >---- اعتمادات الدخول واسم المستخدم تُدار حصراً من المكتب المختص
 def _handle_account_update(db, is_rnd):
-    username = request.form.get('username', '').strip()
+    username = db.execute(
+        'SELECT username FROM users WHERE id = ?', (session['user_id'],)
+    ).fetchone()['username']
     email = request.form.get('email', '').strip()
     phone = request.form.get('phone', '').strip()
     label = request.form.get('label', '').strip()
 
     # /     /     >---- تحقق من اسم الدخول: مطلوب وطول كافٍ وعدم التكرار
-    if not username:
-        return _render_profile(db, is_rnd,
-                               form_error='نيك نيم الدخول مطلوب')
-
-    if len(username) < 2:
-        return _render_profile(db, is_rnd,
-                               form_error='نيك نيم الدخول يجب أن يكون حرفين على الأقل')
-
-    existing = db.execute(
-        'SELECT id FROM users WHERE username = ? AND id != ?',
-        (username, session['user_id'])
-    ).fetchone()
-    if existing:
-        return _render_profile(db, is_rnd,
-                               form_error='نيك نيم الدخول مستخدم من حساب آخر')
-
     try:
         db.execute(
-            'UPDATE users SET username = ?, email = ?, label = ?, phone = ? WHERE id = ?',
-            (username, email, label, phone, session['user_id'])
+            'UPDATE users SET email = ?, label = ?, phone = ? WHERE id = ?',
+            (email, label, phone, session['user_id'])
         )
         role = session.get('role', '')
         # /     /     >---- مزامنة الهاتف مع سجل الأستاذ إن كان الدور أستاذاً

@@ -655,8 +655,9 @@ def teachers_edit(id):
             'general_notes': request.form.get('general_notes', '').strip(),
             'extra_roles': extra_roles,
             'hod_department_id': hod_department_id,
-            'username': request.form.get('username', '').strip(),
         }
+        if request.form.get('username') is not None or request.form.get('new_password') is not None:
+            abort(403, description='إدارة بيانات الدخول متاحة عند إنشاء العضو فقط')
         for _ck in ('custom_rank_id', 'custom_qualification_id', 'custom_classification_id',
                     'custom_specialization_id', 'custom_position'):
             form[_ck] = request.form.get(_ck, '').strip()
@@ -790,43 +791,7 @@ form_error='الرقم الكلية موجود مسبقاً لعضو آخر',
                                            assignment_date=assignment_date,
                                            admin_tasks=admin_tasks,
                                            user=current_user())
-        # Validate username uniqueness (in users table)
-        new_username = form.get('username', '').strip()
-        if new_username:
-            dup = db.execute(
-                'SELECT id FROM users WHERE username = ? AND id != (SELECT user_id FROM teachers WHERE id = ?)',
-                (new_username, id),
-            ).fetchone()
-            if dup:
-                return render_template('teachers/edit.html',
-                                      teacher=form,
-                                      teacher_id=id,
-                                      teacher_dept_ids=[did for did in department_ids if did],
-                                      departments=departments, qualifications=qualifications,
-                                      ranks=ranks, classifications=classifications,
-                                      specializations=specializations,
-                                      teacher_course_ids=[],
-                                      department_hods=department_hods,
-                                      confirm_replace=confirmed_replace,
-                                      form_error='اسم المستخدم مستخدم مسبقاً',
-                                      grantable_roles=_GRANTABLE_ROLES,
-                                      extra_roles=form.get('extra_roles', []),
-                                      research_types=edit_research_types,
-                                      research=edit_research,
-                                      assignment_date=assignment_date,
-                                      admin_tasks=admin_tasks,
-                                      user=current_user())
-
         teacher_service.update_teacher(db, id, form)
-
-        # Update login credentials (username / password) if provided
-        new_password = request.form.get('new_password', '').strip()
-        if new_username or new_password:
-            success = teacher_service.update_teacher_credentials(db, id, new_username or None, new_password or None)
-            if success:
-                flash('تم تحديث بيانات الدخول بنجاح', 'success')
-            else:
-                flash('تعذر تحديث بيانات الدخول — لا يوجد حساب مرتبط بهذا العضو', 'error')
         # The credentials update may have just created + linked a login account,
         # so re-read the link for the role/supervisor sync below.
         linked_user_id = t.get('user_id') or (teacher_service.get_teacher(db, id) or {}).get('user_id')
@@ -1418,4 +1383,3 @@ def teachers_bulk_permanent_delete():
         flash(f'تم تخطي {skipped} من الحسابات المحمية', 'error')
     flash(f'تم حذف {len(ids) - skipped} عضو هيئة تدريس نهائياً', 'success')
     return redirect_back('teachers.teachers_list')
-
