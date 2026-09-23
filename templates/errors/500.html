@@ -9,6 +9,9 @@
 <h1 class="font-display-lg text-display-lg text-error font-bold mb-xs">500</h1>
 <p class="font-headline-sm text-headline-sm text-on-surface-variant mb-md">حدث خطأ داخلي في الخادم</p>
 <p class="font-body-md text-body-md text-on-surface-variant mb-xl leading-relaxed">نعتذر عن الإزعاج. فريق الدعم الفني تم إشعاره وسيعمل على حل المشكلة في أقرب وقت.</p>
+{% if error_id %}
+<p class="text-xs text-on-surface-variant mb-md" dir="ltr">مرجع الخطأ: {{ error_id }}</p>
+{% endif %}
 <div class="flex flex-col sm:flex-row items-center justify-center gap-md">
 <a href="/" class="btn btn-primary h-11 px-5 no-underline">
 <span class="material-symbols-outlined text-[20px]" style="font-variation-settings:'FILL'1;">refresh</span>

@@ -647,17 +647,19 @@ def update_teacher(db, id, data):
 
 def reset_teacher_password(db, teacher_id):
     from database.repositories.teacher_repository import TeacherRepository
+    from database.repositories.user_repository import UserRepository
 
     repo = TeacherRepository(db)
-    svc = TeacherService(db, repo)
+    svc = TeacherService(db, repo, UserRepository(db))
     return svc.reset_teacher_password(teacher_id)
 
 
 def update_teacher_credentials(db, teacher_id, new_username=None, new_password=None):
     from database.repositories.teacher_repository import TeacherRepository
+    from database.repositories.user_repository import UserRepository
 
     repo = TeacherRepository(db)
-    svc = TeacherService(db, repo)
+    svc = TeacherService(db, repo, UserRepository(db))
     return svc.update_teacher_credentials(teacher_id, new_username, new_password)
 
 

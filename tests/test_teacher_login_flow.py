@@ -1,10 +1,14 @@
-"""End-to-end login flow for teachers without a linked account.
+"""Teacher login flow under the enforced credential-management design.
 
-Reproduces the office-manager workflow: a teacher that entered the system
-without a login account (e.g. imported from the schedule) gets username +
-password set in the edit form, then must be able to log in with them.
+  * username + temporary initial code are chosen/set ONLY at member creation
+    (``/teachers/create``); the edit flow refuses credential fields (403).
+  * the first successful login with a temporary code forces a mandatory
+    password change before normal application access.
+  * faculty affairs can regenerate a code via ``/teachers/reset-password``,
+    which releases a stuck/expired code by issuing a fresh one.
 """
 
+import re
 import sqlite3
 
 import pytest
@@ -12,6 +16,9 @@ import pytest
 import flask_db
 from database.connection import connect
 from database.schema import ensure_schema
+
+_PASSWORD = 'NewSecurePass123!'
+_CODE_RE = re.compile(r'رمز الدخول المؤقت:\s*([A-Za-z0-9_-]+)')
 
 
 @pytest.fixture
@@ -44,6 +51,26 @@ def db_fx(tmp_path, monkeypatch):
     return str(db_path)
 
 
+@pytest.fixture
+def captured_emails(monkeypatch):
+    """Capture initial-code emails instead of attempting a real SMTP send."""
+    sent = []
+
+    def _fake_send(to_email, username, code, expiry_days, *, renewed=False):
+        sent.append({
+            'email': to_email,
+            'username': username,
+            'code': code,
+            'renewed': bool(renewed),
+        })
+        return True
+
+    monkeypatch.setattr(
+        'services.email_service.send_initial_login_code', _fake_send
+    )
+    return sent
+
+
 def _office_client(app_fx):
     client = app_fx.test_client()
     with client.session_transaction() as sess:
@@ -54,11 +81,26 @@ def _office_client(app_fx):
     return client
 
 
-def test_edit_sets_credentials_then_login_succeeds(app_fx, db_fx):
-    """Setting username+password on an unlinked teacher creates the account and
-    the same credentials log in afterwards."""
+def _flash(client):
+    with client.session_transaction() as sess:
+        return sess.get('_flashes', [])
+
+
+def _code_from_flash(flashes):
+    for _, msg in flashes:
+        m = _CODE_RE.search(msg)
+        if m:
+            return m.group(1)
+    raise AssertionError(f'رمز الدخول المؤقت غير موجود في الرسائل: {flashes}')
+
+
+# ── Backend denial: the edit flow must refuse credential fields ─────────
+
+def test_edit_rejects_username_and_password_fields(app_fx, db_fx):
+    """Admin can no longer change credentials on /teachers/edit/<id>: the
+    fields are blocked with an explicit 403 message."""
     client = _office_client(app_fx)
-    r1 = client.post('/teachers/edit/1', data={
+    r = client.post('/teachers/edit/1', data={
         'name': 'أستاذ مستورد',
         'username': 'imported_t1',
         'new_password': 'SecurePass123!',
@@ -66,22 +108,41 @@ def test_edit_sets_credentials_then_login_succeeds(app_fx, db_fx):
         'position': '',
         '_csrf_token': 'test-token',
     })
-    assert r1.status_code == 302
-    with client.session_transaction() as sess:
-        flashes = sess.get('_flashes', [])
-    assert any('تم تحديث بيانات الدخول بنجاح' in m for _, m in flashes), flashes
+    assert r.status_code == 403
+    assert 'إدارة بيانات الدخول متاحة عند إنشاء العضو فقط' in r.get_data(as_text=True)
 
-    # Now a completely fresh browser logs in with those credentials.
-    login = app_fx.test_client()
-    with login.session_transaction() as sess:
-        sess['_csrf_token'] = 'test-token'
-    r2 = login.post('/login', data={
-        'username': 'imported_t1',
-        'password': 'SecurePass123!',
+
+def test_edit_rejects_username_field_even_when_empty(app_fx, db_fx):
+    """Any presence of the username field (even an empty value) is refused."""
+    client = _office_client(app_fx)
+    r = client.post('/teachers/edit/1', data={
+        'name': 'أستاذ مستورد',
+        'username': '',
+        'department_ids[]': '1',
+        'position': '',
         '_csrf_token': 'test-token',
     })
-    assert r2.status_code == 302
-    assert r2.headers.get('Location') != '/login'
+    assert r.status_code == 403
+
+
+# ── Creation sets username + a temporary code with forced first change ───
+
+def test_create_with_username_then_login_forces_password_change(app_fx, db_fx):
+    """A member created with a username gets a temporary code, the first login
+    with it forces a mandatory password change, the old code dies and the new
+    password logs in straight to the dashboard afterwards."""
+    client = _office_client(app_fx)
+    r1 = client.post('/teachers/create', data={
+        'name': 'أستاذ مستورد',
+        'username': 'imported_t1',
+        'department_ids[]': '1',
+        'position': '',
+        '_csrf_token': 'test-token',
+    })
+    assert r1.status_code == 302
+    flashes = _flash(client)
+    assert any('تم إضافة عضو هيئة التدريس' in m for _, m in flashes), flashes
+    code = _code_from_flash(flashes)
 
     conn = sqlite3.connect(db_fx)
     conn.row_factory = sqlite3.Row
@@ -89,92 +150,146 @@ def test_edit_sets_credentials_then_login_succeeds(app_fx, db_fx):
         'SELECT * FROM users WHERE username=?', ('imported_t1',)
     ).fetchone()
     conn.close()
-    # Direct password means immediate login: no pending activation code.
-    assert user['force_password_change'] == 0
-    assert user['initial_login_code_used'] == 1
-    assert user['initial_login_code_hash'] is None
-
-
-def test_office_set_password_login_not_forced_to_change(app_fx, db_fx):
-    """An account created with an office-set password logs in straight to the
-    dashboard — it must NOT be sent to the forced change-password page."""
-    client = _office_client(app_fx)
-    assert client.post('/teachers/edit/1', data={
-        'name': 'أستاذ مستورد',
-        'username': 'off_pass_t',
-        'new_password': 'OfficePass123!',
-        'department_ids[]': '1',
-        'position': '',
-        '_csrf_token': 'test-token',
-    }).status_code == 302
+    assert user['force_password_change'] == 1
+    assert user['initial_login_code_used'] == 0
+    assert user['initial_login_code_hash']
 
     login = app_fx.test_client()
     with login.session_transaction() as sess:
         sess['_csrf_token'] = 'test-token'
-    r = login.post('/login', data={
-        'username': 'off_pass_t',
-        'password': 'OfficePass123!',
+    r2 = login.post('/login', data={
+        'username': 'imported_t1',
+        'password': code,
         '_csrf_token': 'test-token',
     })
-    assert r.status_code == 302
-    assert 'change-password' not in r.headers.get('Location', '')
+    assert r2.status_code == 302
+    assert 'change-password' in r2.headers.get('Location', '')
 
-
-def test_office_set_password_clears_stuck_code_mode(app_fx, db_fx):
-    """An account stuck in initial-code mode (code never deliverable) is
-    released by an office-set password: login no longer forces change-password."""
-    import sqlite3 as _s
-    conn = _s.connect(db_fx)
-    conn.row_factory = _s.Row
-    from database.repositories.teacher_repository import TeacherRepository
-    from database.repositories.user_repository import UserRepository
-    from services.teacher_service import TeacherService
-    svc = TeacherService(conn, TeacherRepository(conn), UserRepository(conn))
-    creds = svc.create_teacher({
-        'name': 'عضو عالق بالرمز', 'email': '', 'phone': '', 'department_id': 1,
-        'academic_number': 'AN-STUCK', 'qualification_id': None, 'rank_id': None,
-        'classification_id': None, 'national_id': '', 'contract_date': '', 'tasks': '',
-    }, department_ids=[1], additional_roles=None)
-    conn.close()
-
-    # office manager: set username + direct password on the now-unlinked? no — linked account
-    tid = sqlite3.connect(db_fx).execute(
-        "SELECT t.id FROM teachers t JOIN users u ON u.id=t.user_id WHERE u.username=?",
-        (creds['username'],),
-    ).fetchone()[0]
-    client = _office_client(app_fx)
-    assert client.post(f'/teachers/edit/{tid}', data={
-        'name': 'عضو عالق بالرمز',
-        'username': creds['username'],
-        'new_password': 'ReleasePass123!',
-        'department_ids[]': '1',
-        'position': '',
-        '_csrf_token': 'test-token',
-    }).status_code == 302
-
-    login = app_fx.test_client()
-    with login.session_transaction() as sess:
-        sess['_csrf_token'] = 'test-token'
-    r = login.post('/login', data={
-        'username': creds['username'], 'password': 'ReleasePass123!',
+    # the mandatory first change: temporary code as the current password
+    r3 = login.post('/change-password', data={
+        'current_password': code,
+        'new_password': _PASSWORD,
+        'confirm_password': _PASSWORD,
         '_csrf_token': 'test-token',
     })
-    assert r.status_code == 302
-    assert 'change-password' not in r.headers.get('Location', '')
+    assert r3.status_code == 302  # forced change lands on the dashboard
 
     conn = sqlite3.connect(db_fx)
     conn.row_factory = sqlite3.Row
-    user = conn.execute('SELECT * FROM users WHERE username=?', (creds['username'],)).fetchone()
+    user = conn.execute(
+        'SELECT * FROM users WHERE username=?', ('imported_t1',)
+    ).fetchone()
     conn.close()
     assert user['force_password_change'] == 0
     assert user['initial_login_code_hash'] is None
+    assert user['initial_login_code_used'] == 1
+
+    # the temporary code is dead after the change
+    fresh = app_fx.test_client()
+    with fresh.session_transaction() as sess:
+        sess['_csrf_token'] = 'test-token'
+    r4 = fresh.post('/login', data={
+        'username': 'imported_t1',
+        'password': code,
+        '_csrf_token': 'test-token',
+    })
+    assert r4.status_code == 200
+    assert 'اسم المستخدم أو كلمة المرور غير صحيحة' in r4.get_data(as_text=True)
+
+    # the new password logs in without any further forced change
+    fresh2 = app_fx.test_client()
+    with fresh2.session_transaction() as sess:
+        sess['_csrf_token'] = 'test-token'
+    r5 = fresh2.post('/login', data={
+        'username': 'imported_t1',
+        'password': _PASSWORD,
+        '_csrf_token': 'test-token',
+    })
+    assert r5.status_code == 302
+    assert r5.headers.get('Location') != '/login'
+    assert 'change-password' not in r5.headers.get('Location', '')
 
 
-def test_initial_code_login_enters_then_voluntary_change(app_fx, db_fx):
-    """Initial-code account: login enters the app immediately (no forced
-    change-password), the code is invalidated by that first login, and the user
-    can change the password voluntarily via /change-password using the code as
-    the current password."""
+def test_create_username_only_sets_initial_code_then_wrong_password_rejected(app_fx, db_fx):
+    """A username-only creation still produces a temporary code account: a
+    typed guess is rejected even though the username exists, while the real
+    code works and triggers the forced change."""
+    client = _office_client(app_fx)
+    r1 = client.post('/teachers/create', data={
+        'name': 'أستاذ مستورد',
+        'username': 'imported_t2',
+        'department_ids[]': '1',
+        'position': '',
+        '_csrf_token': 'test-token',
+    })
+    assert r1.status_code == 302
+    code = _code_from_flash(_flash(client))
+
+    conn = sqlite3.connect(db_fx)
+    conn.row_factory = sqlite3.Row
+    user = conn.execute(
+        "SELECT u.* FROM users u JOIN teachers t ON t.user_id = u.id "
+        "WHERE u.username = ?", ('imported_t2',),
+    ).fetchone()
+    conn.close()
+    assert user['force_password_change'] == 1
+    assert user['initial_login_code_used'] == 0
+    assert user['initial_login_code_hash']
+
+    login = app_fx.test_client()
+    with login.session_transaction() as sess:
+        sess['_csrf_token'] = 'test-token'
+    r2 = login.post('/login', data={
+        'username': 'imported_t2', 'password': 'SomethingElse!',
+        '_csrf_token': 'test-token',
+    })
+    assert r2.status_code == 200
+    assert 'اسم المستخدم أو كلمة المرور غير صحيحة' in r2.get_data(as_text=True)
+
+    r3 = login.post('/login', data={
+        'username': 'imported_t2', 'password': code,
+        '_csrf_token': 'test-token',
+    })
+    assert r3.status_code == 302
+    assert 'change-password' in r3.headers.get('Location', '')
+
+
+# ── Username validation errors on the create form ────────────────────────
+
+def test_create_short_username_shows_arabic_error(app_fx, db_fx):
+    client = _office_client(app_fx)
+    r = client.post('/teachers/create', data={
+        'name': 'أستاذ قصير',
+        'username': 'x',
+        'department_ids[]': '1',
+        'position': '',
+        '_csrf_token': 'test-token',
+    })
+    assert r.status_code == 200
+    body = r.get_data(as_text=True)
+    assert 'نيك نيم الدخول قصير جداً' in body
+    assert 'value="x"' in body  # the typed nickname is preserved
+
+
+def test_create_duplicate_username_shows_arabic_error(app_fx, db_fx):
+    client = _office_client(app_fx)
+    r = client.post('/teachers/create', data={
+        'name': 'أستاذ مكرر',
+        'username': 'office_manager',
+        'department_ids[]': '1',
+        'position': '',
+        '_csrf_token': 'test-token',
+    })
+    assert r.status_code == 200
+    assert 'نيك نيم الدخول مستخدم مسبقاً' in r.get_data(as_text=True)
+
+
+# ── Initial code lifecycle (service-level creation) ──────────────────────
+
+def test_initial_code_login_forces_change_then_accepts_new_password(app_fx, db_fx):
+    """Service-created initial-code account: first login goes straight to the
+    mandatory change-password page, the code is invalidated by that login and
+    the new password is accepted afterwards."""
     import sqlite3 as _s
     conn = _s.connect(db_fx)
     conn.row_factory = _s.Row
@@ -197,20 +312,17 @@ def test_initial_code_login_enters_then_voluntary_change(app_fx, db_fx):
         '_csrf_token': 'test-token',
     })
     assert r.status_code == 302
-    assert 'change-password' not in r.headers.get('Location', '')
+    assert 'change-password' in r.headers.get('Location', '')
 
-    # first login invalidated the emailed code → voluntary change uses it as current
-    with client.session_transaction() as sess:
-        token = sess['_csrf_token']
     r2 = client.post('/change-password', data={
         'current_password': creds['password'],
-        'new_password': 'NewSecurePass123!',
-        'confirm_password': 'NewSecurePass123!',
-        '_csrf_token': token,
+        'new_password': _PASSWORD,
+        'confirm_password': _PASSWORD,
+        '_csrf_token': 'test-token',
     })
-    assert r2.status_code == 200
+    assert r2.status_code == 302  # forced change lands on the dashboard
 
-    # old code is now dead; the new password works
+    # the old code is dead; the new password works without forcing again
     login2 = app_fx.test_client()
     with login2.session_transaction() as sess:
         sess['_csrf_token'] = 'test-token'
@@ -219,48 +331,99 @@ def test_initial_code_login_enters_then_voluntary_change(app_fx, db_fx):
         '_csrf_token': 'test-token',
     })
     assert r3.status_code == 200
+    assert 'اسم المستخدم أو كلمة المرور غير صحيحة' in r3.get_data(as_text=True)
     r4 = login2.post('/login', data={
-        'username': creds['username'], 'password': 'NewSecurePass123!',
+        'username': creds['username'], 'password': _PASSWORD,
         '_csrf_token': 'test-token',
     })
     assert r4.status_code == 302
     assert 'change-password' not in r4.headers.get('Location', '')
 
 
-def test_edit_username_only_sets_initial_code_not_logged_in_yet(app_fx, db_fx):
-    """Username-only update still creates the account but in initial-code mode:
-    a random password must come from the email, so the typed one is rejected."""
-    client = _office_client(app_fx)
-    r1 = client.post('/teachers/edit/1', data={
-        'name': 'أستاذ مستورد',
-        'username': 'imported_t2',
-        'new_password': '',
-        'department_ids[]': '1',
-        'position': '',
+def test_reset_password_releases_stuck_expired_code(app_fx, db_fx, captured_emails):
+    """A code that expired unused locks the account at login; the office's
+    reset-password flow issues a fresh code that releases it."""
+    import sqlite3 as _s
+    conn = _s.connect(db_fx)
+    conn.row_factory = _s.Row
+    from database.repositories.teacher_repository import TeacherRepository
+    from database.repositories.user_repository import UserRepository
+    from services.teacher_service import TeacherService
+    svc = TeacherService(conn, TeacherRepository(conn), UserRepository(conn))
+    creds = svc.create_teacher({
+        'name': 'عضو عالق بالرمز', 'email': 'stuck@example.com', 'phone': '',
+        'department_id': 1, 'academic_number': 'AN-STUCK2',
+        'qualification_id': None, 'rank_id': None, 'classification_id': None,
+        'national_id': '', 'contract_date': '', 'tasks': '',
+    }, department_ids=[1], additional_roles=None)
+    # expire the unused code so the login becomes locked
+    conn.execute(
+        'UPDATE users SET initial_login_code_expires = ? WHERE username = ?',
+        ('2000-01-01 00:00:00', creds['username']),
+    )
+    conn.commit()
+    conn.close()
+
+    # locked: correct password but an expired initial code
+    login = app_fx.test_client()
+    with login.session_transaction() as sess:
+        sess['_csrf_token'] = 'test-token'
+    r = login.post('/login', data={
+        'username': creds['username'], 'password': creds['password'],
         '_csrf_token': 'test-token',
     })
-    assert r1.status_code == 302
+    assert r.status_code == 200
+    assert 'انتهت صلاحية رمز الدخول الأولي' in r.get_data(as_text=True)
+
+    # office manager regenerates the code
+    tid = sqlite3.connect(db_fx).execute(
+        "SELECT t.id FROM teachers t JOIN users u ON u.id = t.user_id "
+        "WHERE u.username = ?", (creds['username'],),
+    ).fetchone()[0]
+    office = _office_client(app_fx)
+    rr = office.post(f'/teachers/reset-password/{tid}', data={
+        '_csrf_token': 'test-token',
+    })
+    assert rr.status_code == 302
+    flashes = _flash(office)
+    assert any('تم إنشاء رمز دخول جديد' in m for _, m in flashes), flashes
+    assert any(creds['username'] in m for _, m in flashes), flashes
+    # the renewed code is shown on-screen in the success message so the office
+    # can hand it over directly (no personal email needed) — this is the flow
+    # Hanan's case relies on
+    on_screen = [(c, m) for c, m in flashes if 'تم إنشاء رمز دخول جديد' in m]
+    assert on_screen
+    new_code = _code_from_flash(on_screen)
 
     conn = sqlite3.connect(db_fx)
     conn.row_factory = sqlite3.Row
     user = conn.execute(
-        'SELECT * FROM users JOIN teachers t ON t.user_id = users.id WHERE t.id = 1'
+        'SELECT * FROM users WHERE username=?', (creds['username'],)
     ).fetchone()
     conn.close()
-    assert user['username'] == 'imported_t2'
     assert user['force_password_change'] == 1
+    assert user['initial_login_code_used'] == 0
     assert user['initial_login_code_hash']
+    assert user['initial_login_code_expires'] > '2000-01-01 00:00:00'
 
-    login = app_fx.test_client()
-    with login.session_transaction() as sess:
+    # the old code is dead afterwards
+    login2 = app_fx.test_client()
+    with login2.session_transaction() as sess:
         sess['_csrf_token'] = 'test-token'
-    r2 = login.post('/login', data={
-        'username': 'imported_t2',
-        'password': 'SomethingElse!',
+    r2 = login2.post('/login', data={
+        'username': creds['username'], 'password': creds['password'],
         '_csrf_token': 'test-token',
     })
     assert r2.status_code == 200
     assert 'اسم المستخدم أو كلمة المرور غير صحيحة' in r2.get_data(as_text=True)
+
+    # the renewed code logs in and triggers the forced change
+    r3 = login2.post('/login', data={
+        'username': creds['username'], 'password': new_code,
+        '_csrf_token': 'test-token',
+    })
+    assert r3.status_code == 302
+    assert 'change-password' in r3.headers.get('Location', '')
 
 
 def test_expired_unused_code_shows_distinct_login_message(app_fx, db_fx):

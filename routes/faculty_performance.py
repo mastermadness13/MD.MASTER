@@ -5,7 +5,7 @@ from flask import Blueprint, session, request, render_template, redirect, url_fo
 from flask_db import get_db
 from security import login_required, permission_required, role_required, csrf_required
 from security import current_user
-from security.authorization import get_granted_roles, has_permission
+from security.authorization import get_granted_roles, get_active_roles, has_permission
 from services import faculty_performance_service as fps
 
 bp = Blueprint('faculty_performance', __name__, url_prefix='/faculty-performance')
@@ -71,45 +71,88 @@ def _check_teacher_access(db, teacher_id):
     abort(403)
 
 
+def _collect_teaching_rows():
+    """Read the editing-rows form arrays into a coherent row list.
+
+    ``rd_id[]`` carries the real ``course_id`` for existing rows and the
+    literal ``new`` for rows added in the editor. ``rd_remove[]`` holds the
+    ids the user checked for removal.
+    """
+    ids = request.form.getlist('rd_id[]')
+    names = request.form.getlist('rd_course_name[]')
+    codes = request.form.getlist('rd_course_code[]')
+    ltypes = request.form.getlist('rd_lecture_type[]')
+    phases = request.form.getlist('rd_course_phase[]')
+    depts = request.form.getlist('rd_department[]')
+    groups = request.form.getlist('rd_group[]')
+    days = request.form.getlist('rd_day[]')
+    starts = request.form.getlist('rd_start_time[]')
+    ends = request.form.getlist('rd_end_time[]')
+    hours_list = request.form.getlist('rd_hours[]')
+    counts_list = request.form.getlist('rd_student_count[]')
+    removed = set(request.form.getlist('rd_remove[]'))
+
+    def _at(lst, idx, default=''):
+        return lst[idx].strip() if idx < len(lst) else default
+
+    rows = []
+    for i, rid in enumerate(ids):
+        if rid in removed:
+            continue
+        course_id = int(rid) if rid.isdigit() else None
+        name = _at(names, i)
+        code = _at(codes, i)
+        day = _at(days, i)
+        start = _at(starts, i)
+        end = _at(ends, i)
+        if course_id is None and not (name or code or day or start or end):
+            continue
+        raw_hours = _at(hours_list, i, '0') or '0'
+        try:
+            hours = int(float(raw_hours))
+        except ValueError:
+            hours = 0
+        raw_count = _at(counts_list, i, '')
+        student_count = int(raw_count) if raw_count.isdigit() else (raw_count or '')
+        rows.append({
+            'course_id': course_id,
+            'course_name': name,
+            'course_code': code,
+            'lecture_type': _at(ltypes, i),
+            'course_phase': _at(phases, i),
+            'department': _at(depts, i),
+            'group_number': _at(groups, i),
+            'day': day,
+            'start_time': start,
+            'end_time': end,
+            'hours': hours,
+            'student_count': student_count,
+        })
+    return rows
+
+
 def _save_inline_profile(db, teacher_id, academic_year, semester):
     repo = fps._repo(db)
-
-    def _id_for(table, value, column='name'):
-        value = (value or '').strip()
-        if not value:
-            return None
-        row = db.execute(
-            f'SELECT id FROM {table} WHERE {column} = ? LIMIT 1', (value,)
-        ).fetchone()
-        return row['id'] if row else None
-
-    specialization = request.form.get('specialization', '').strip()
-    repo.update_teacher_profile(teacher_id, {
+    repo.save_report_profile_draft(teacher_id, academic_year, semester, {
         'name': request.form.get('name', '').strip(),
+        'section': request.form.get('section', '').strip(),
+        'dept_name': request.form.get('department', '').strip(),
+        'qual_name': request.form.get('qualification', '').strip(),
+        'rank_name': request.form.get('rank', '').strip(),
+        'specialization': request.form.get('specialization', '').strip(),
         'academic_number': request.form.get('academic_number', '').strip(),
         'national_id': request.form.get('national_id', '').strip(),
-        'specialization': specialization,
-        'section': request.form.get('section', '').strip(),
-        'first_lecture_date': request.form.get('first_lecture_date', '').strip() or None,
-        'work_start_date': request.form.get('work_start_date', '').strip() or None,
-        'department_id': _id_for('departments', request.form.get('department')),
-        'qualification_id': _id_for('qualifications', request.form.get('qualification'), 'name_ar'),
-        'rank_id': _id_for('academic_ranks', request.form.get('rank'), 'name_ar'),
-        'specialization_id': _id_for('specializations', specialization),
+        'first_lecture_date': request.form.get('first_lecture_date', '').strip(),
+        'work_start_date': request.form.get('work_start_date', '').strip(),
     })
 
-    data = fps.get_performance_form_data(db, teacher_id, academic_year, semester) or {}
-    course_ids = {
-        row['course_id']
-        for key in ('basic_teaching', 'additional_teaching')
-        for row in data.get(key, [])
-        if row.get('course_id')
-    }
+    rows = _collect_teaching_rows()
+    repo.save_report_teaching_draft(teacher_id, academic_year, semester, rows)
+
     counts = {}
-    for course_id in course_ids:
-        raw = request.form.get(f'student_count_{course_id}', '').strip()
-        if raw.isdigit():
-            counts[course_id] = int(raw)
+    for r in rows:
+        if r.get('course_id') and str(r.get('student_count', '')).isdigit():
+            counts[r['course_id']] = int(r['student_count'])
     repo.save_student_counts(teacher_id, academic_year, semester, counts)
 
 
@@ -135,7 +178,7 @@ def preview(teacher_id):
 
     edit_mode = request.args.get('edit') == '1'
     if request.method == 'POST':
-        if not has_permission('faculty_performance.edit_research'):
+        if not has_permission(get_active_roles(), 'faculty_performance.edit_research'):
             abort(403)
         _save_inline_profile(db, teacher_id, academic_year, semester)
         flash('تم حفظ بيانات الأستاذ وأعداد الطلبة بنجاح', 'success')
@@ -164,6 +207,8 @@ def preview(teacher_id):
             'SELECT name_ar FROM academic_ranks ORDER BY name_ar').fetchall()],
         'specialization': [r['name'] for r in db.execute(
             'SELECT name FROM specializations ORDER BY name').fetchall()],
+        'course': [r['name'] for r in db.execute(
+            'SELECT name FROM courses ORDER BY name').fetchall()],
     }
 
     return render_template(

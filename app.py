@@ -1,5 +1,6 @@
 import logging
 import os
+import secrets
 import sys
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
@@ -299,9 +300,21 @@ def create_app():
     @app.errorhandler(500)
     def server_error(e):
         # /     /     >---- خطأ داخلي في السيرفر
-        logger.exception('Internal server error')
+        error_id = secrets.token_hex(8)
+        logger.exception(
+            'Internal server error id=%s method=%s path=%s user_id=%s endpoint=%s',
+            error_id,
+            request.method,
+            request.path,
+            session.get('user_id'),
+            request.endpoint,
+        )
         if 'user_id' in session:
-            return render_template('errors/500.html', user=current_user()), 500
+            return render_template(
+                'errors/500.html',
+                user=current_user(),
+                error_id=error_id,
+            ), 500
         return redirect(url_for('auth.login'))
 
     # ── الهيدرز الأمنية والكاش ──────────────────────────────────

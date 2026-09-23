@@ -89,7 +89,7 @@
                 <td>{{ e.lecture_type }}</td>
                 <td>{{ e.course_phase }}</td>
                 <td>{{ e.department }}</td>
-                <td>{% if edit_mode|default(false) %}<input type="number" min="0" name="student_count_{{ e.course_id }}" value="{{ e.student_count or '' }}" class="w-full text-center border rounded px-1">{% else %}{{ e.student_count or '' }}{% endif %}</td>
+                <td>{{ e.student_count or '' }}</td>
                 <td>{{ e.day }}</td>
                 <td>{{ e.start_time }}</td>
                 <td>{{ e.end_time }}</td>

@@ -1,0 +1,97 @@
+{# Editing-only table for the report's teaching rows (course list).
+   Saved as a report draft so the printed sheet reflects corrections
+   (adding/removing a course, student counts, hours) without touching the
+   real teaching-assignment ledger. Expects `fd` and `edit_mode`. #}
+{% set editor_rows = [] %}
+{% for e in fd.basic_teaching %}
+  {% if e.course_id or e.course_name or e.course_code or e.day or e.start_time or e.end_time %}
+    {% set _x = editor_rows.append(e) %}
+  {% endif %}
+{% endfor %}
+{% for e in (fd.additional_teaching or []) %}
+  {% if e.course_id or e.course_name or e.course_code or e.day or e.start_time or e.end_time %}
+    {% set _x = editor_rows.append(e) %}
+  {% endif %}
+{% endfor %}
+
+<div class="no-print mt-6">
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+    <div class="flex items-center gap-2 text-sm font-bold text-on-surface">
+      <span class="material-symbols-outlined text-primary">class</span>
+      تصحيح جدول المواد (يُحفظ كمسودة لهذا الكشف فقط — لا يمسّ سجل الإسناد الأصلي)
+    </div>
+    <button type="button" id="addTeachingRow"
+            class="flex items-center gap-1.5 bg-surface-container hover:bg-surface-container-high border border-outline-variant px-3 py-2 rounded-lg text-xs font-bold transition">
+      <span class="material-symbols-outlined text-sm">add</span>
+      إضافة مادة
+    </button>
+  </div>
+
+  <datalist id="lecture-type-options">
+    <option value="نظري">
+    <option value="عملي">
+  </datalist>
+
+  <div class="bg-white border border-outline-variant rounded-xl overflow-hidden shadow-sm">
+    <table class="w-full text-xs">
+      <thead>
+        <tr class="bg-surface-container text-on-surface">
+          <th class="px-2 py-2 text-center w-8">حذف</th>
+          <th class="px-2 py-2 text-right">اسم المقرر</th>
+          <th class="px-2 py-2 text-center w-20">الرمز</th>
+          <th class="px-2 py-2 text-center w-20">نظري/عملي</th>
+          <th class="px-2 py-2 text-center w-28">مرحلة المقرر</th>
+          <th class="px-2 py-2 text-center w-28">القسم</th>
+          <th class="px-2 py-2 text-center w-16">اليوم</th>
+          <th class="px-2 py-2 text-center w-20">من</th>
+          <th class="px-2 py-2 text-center w-20">إلى</th>
+          <th class="px-2 py-2 text-center w-16">الساعات</th>
+          <th class="px-2 py-2 text-center w-20">عدد الطلبة</th>
+        </tr>
+      </thead>
+      <tbody id="teachingRowsBody">
+        {% for e in editor_rows %}
+        {% set rid = e.course_id if e.course_id else 'new' %}
+        <tr>
+          <td class="px-2 py-1 text-center">
+            <input type="checkbox" name="rd_remove[]" value="{{ rid }}" class="accent-red-600">
+            <input type="hidden" name="rd_id[]" value="{{ rid }}">
+          </td>
+          <td class="px-2 py-1"><input name="rd_course_name[]" list="course-options" value="{{ e.course_name or '' }}" class="w-full border rounded px-1 py-0.5"></td>
+          <td class="px-2 py-1"><input name="rd_course_code[]" value="{{ e.course_code or '' }}" class="w-full border rounded px-1 py-0.5"></td>
+          <td class="px-2 py-1"><input name="rd_lecture_type[]" list="lecture-type-options" value="{{ e.lecture_type or '' }}" class="w-full border rounded px-1 py-0.5"></td>
+          <td class="px-2 py-1"><input name="rd_course_phase[]" value="{{ e.course_phase or '' }}" class="w-full border rounded px-1 py-0.5"></td>
+          <td class="px-2 py-1"><input name="rd_department[]" value="{{ e.department or '' }}" class="w-full border rounded px-1 py-0.5"></td>
+          <td class="px-2 py-1"><input name="rd_day[]" value="{{ e.day or '' }}" class="w-full border rounded px-1 py-0.5"></td>
+          <td class="px-2 py-1"><input type="time" name="rd_start_time[]" value="{{ e.start_time or '' }}" class="w-full border rounded px-1 py-0.5"></td>
+          <td class="px-2 py-1"><input type="time" name="rd_end_time[]" value="{{ e.end_time or '' }}" class="w-full border rounded px-1 py-0.5"></td>
+          <td class="px-2 py-1"><input type="number" min="0" step="0.5" name="rd_hours[]" value="{{ e.hours or 0 }}" class="w-full border rounded px-1 py-0.5"></td>
+          <td class="px-2 py-1"><input type="number" min="0" name="rd_student_count[]" value="{{ e.student_count if e.student_count is number else (e.student_count or '') }}" class="w-full border rounded px-1 py-0.5"></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="p-2 text-[10px] text-on-surface-variant bg-surface-container/50">
+      علّم على «حذف» لإزالة المادة من هذا الكشف فقط، وعدّل الساعات/عدد الطلبة ثم اضغط «حفظ». تُعاد الأدوار تلقائياً على الأساسي/الإضافي حسب الحد (10 ساعات).
+    </div>
+
+    <template id="teachingRowTmpl">
+      <tr>
+        <td class="px-2 py-1 text-center">
+          <input type="checkbox" name="rd_remove[]" value="new" class="accent-red-600">
+          <input type="hidden" name="rd_id[]" value="new">
+        </td>
+        <td class="px-2 py-1"><input name="rd_course_name[]" list="course-options" value="" class="w-full border rounded px-1 py-0.5"></td>
+        <td class="px-2 py-1"><input name="rd_course_code[]" value="" class="w-full border rounded px-1 py-0.5"></td>
+        <td class="px-2 py-1"><input name="rd_lecture_type[]" list="lecture-type-options" value="" class="w-full border rounded px-1 py-0.5"></td>
+        <td class="px-2 py-1"><input name="rd_course_phase[]" value="" class="w-full border rounded px-1 py-0.5"></td>
+        <td class="px-2 py-1"><input name="rd_department[]" value="" class="w-full border rounded px-1 py-0.5"></td>
+        <td class="px-2 py-1"><input name="rd_day[]" value="" class="w-full border rounded px-1 py-0.5"></td>
+        <td class="px-2 py-1"><input type="time" name="rd_start_time[]" value="" class="w-full border rounded px-1 py-0.5"></td>
+        <td class="px-2 py-1"><input type="time" name="rd_end_time[]" value="" class="w-full border rounded px-1 py-0.5"></td>
+        <td class="px-2 py-1"><input type="number" min="0" step="0.5" name="rd_hours[]" value="0" class="w-full border rounded px-1 py-0.5"></td>
+        <td class="px-2 py-1"><input type="number" min="0" name="rd_student_count[]" value="" class="w-full border rounded px-1 py-0.5"></td>
+      </tr>
+    </template>
+  </div>
+</div>

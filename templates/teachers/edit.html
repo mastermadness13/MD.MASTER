@@ -295,8 +295,18 @@
         <span class="text-xs text-on-surface-variant hidden sm:inline">• آخر تحديث للنظام: اليوم</span>
       </div>
       <div class="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+        <form method="post" action="{{ url_for('teachers.teachers_reset_password', id=teacher_id) }}"
+              onsubmit="return confirm('سيتم توليد رمز دخول مؤقت جديد لهذا العضو مرة واحدة فقط (يُرسل لبريده أيضاً إن وُجد). متابعة؟')"
+              class="inline-block">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+          <button type="submit"
+                  class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-outline-variant bg-surface hover:bg-error/10 hover:text-error transition-colors text-xs font-semibold text-on-surface-variant">
+            <span class="material-symbols-outlined text-[18px]">key</span>
+            توليد رمز دخول جديد
+          </button>
+        </form>
         <a href="{{ url_for('teachers.teachers_list') }}"
-           class="px-4 py-2 rounded-xl border border-outline-variant hover:bg-surface-container text-on-surface font-medium text-xs transition-colors no-underline">
+           class="px-4 py-2 rounded-xl border border-outline-variant hover:bg-surface-container text-on-surface-variant hover:text-on-surface font-semibold text-xs transition-all no-underline">
           إلغاء التغييرات
         </a>
         <button type="submit" form="edit-faculty-form"

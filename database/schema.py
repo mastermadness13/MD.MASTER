@@ -1839,6 +1839,47 @@ def _ensure_faculty_performance_tables(conn: sqlite3.Connection, existing_tables
         'ON faculty_course_student_counts(teacher_id, academic_year, semester)'
     )
 
+    # /     /     >---- مسودة بيانات الأستاذ الخاصة بالكشف (لا تمس الملف الأصلي)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS faculty_report_profile_drafts (
+            id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+            teacher_id         INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+            academic_year      TEXT NOT NULL,
+            semester           INTEGER NOT NULL,
+            name               TEXT NOT NULL DEFAULT '',
+            section            TEXT NOT NULL DEFAULT '',
+            dept_name          TEXT NOT NULL DEFAULT '',
+            qual_name          TEXT NOT NULL DEFAULT '',
+            rank_name          TEXT NOT NULL DEFAULT '',
+            specialization     TEXT NOT NULL DEFAULT '',
+            academic_number    TEXT NOT NULL DEFAULT '',
+            national_id        TEXT NOT NULL DEFAULT '',
+            first_lecture_date TEXT NOT NULL DEFAULT '',
+            work_start_date    TEXT NOT NULL DEFAULT '',
+            updated_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(teacher_id, academic_year, semester)
+        )
+    """)
+    conn.execute(
+        'CREATE INDEX IF NOT EXISTS idx_frpd_teacher_term '
+        'ON faculty_report_profile_drafts(teacher_id, academic_year, semester)'
+    )
+
+    # /     /     >---- مسودة جدول المواد الخاص بالكشف (لا تمس سجل الإسناد الأصلي)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS faculty_report_teaching_drafts (
+            id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+            teacher_id         INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+            academic_year      TEXT NOT NULL,
+            semester           INTEGER NOT NULL,
+            data               TEXT NOT NULL DEFAULT '[]',
+            updated_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(teacher_id, academic_year, semester)
+        )
+    """)
+    conn.execute('CREATE INDEX IF NOT EXISTS idx_frtd_teacher_term '
+                 'ON faculty_report_teaching_drafts(teacher_id, academic_year, semester)')
+
     # /     /     >---- قواعد العبء التدريسي
     if 'faculty_workload_rules' not in existing_tables:
         conn.execute("""

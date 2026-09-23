@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any, Dict, List, Optional
 
 from database.repositories.base_repository import BaseRepository
@@ -81,6 +82,75 @@ class FacultyPerformanceRepository(BaseRepository):
                                  updated_at = CURRENT_TIMESTAMP''',
                 (teacher_id, course_id, academic_year, semester, value),
             )
+        self.db.commit()
+
+    _DRAFT_COLUMNS = (
+        'name', 'section', 'dept_name', 'qual_name', 'rank_name',
+        'specialization', 'academic_number', 'national_id',
+        'first_lecture_date', 'work_start_date',
+    )
+
+    def get_report_profile_draft(self, teacher_id: int, academic_year: str,
+                                 semester: int) -> Optional[Dict[str, Any]]:
+        row = self.db.execute(
+            f'''SELECT {', '.join(self._DRAFT_COLUMNS)}
+                FROM faculty_report_profile_drafts
+                WHERE teacher_id = ? AND academic_year = ? AND semester = ?''',
+            (teacher_id, academic_year, semester),
+        ).fetchone()
+        return dict(row) if row else None
+
+    def save_report_profile_draft(self, teacher_id: int, academic_year: str,
+                                  semester: int, values) -> None:
+        values = {k: (v if v is not None else '')
+                  for k, v in values.items() if k in self._DRAFT_COLUMNS}
+        if not values:
+            return
+        columns = ', '.join(values.keys())
+        placeholders = ', '.join('?' * len(values))
+        assignments = ', '.join(f'{key} = excluded.{key}' for key in values)
+        self.db.execute(
+            f'''INSERT INTO faculty_report_profile_drafts
+                (teacher_id, academic_year, semester, {columns}, updated_at)
+                VALUES (?, ?, ?, {placeholders}, CURRENT_TIMESTAMP)
+                ON CONFLICT(teacher_id, academic_year, semester)
+                DO UPDATE SET {assignments}, updated_at = CURRENT_TIMESTAMP''',
+            (teacher_id, academic_year, semester, *values.values()),
+        )
+        self.db.commit()
+
+    def get_report_teaching_draft(self, teacher_id: int, academic_year: str,
+                                  semester: int) -> Optional[List[Dict[str, Any]]]:
+        """Return the saved teaching-row draft list, or None when unset.
+
+        ``None`` means "no draft correction" → the report falls back to the
+        real teaching-assignment ledger. An empty list is a valid draft
+        ("all courses removed from this report").
+        """
+        row = self.db.execute(
+            'SELECT data FROM faculty_report_teaching_drafts '
+            'WHERE teacher_id = ? AND academic_year = ? AND semester = ?',
+            (teacher_id, academic_year, semester),
+        ).fetchone()
+        if not row:
+            return None
+        try:
+            data = json.loads(row['data'])
+        except (TypeError, ValueError):
+            return []
+        return data if isinstance(data, list) else []
+
+    def save_report_teaching_draft(self, teacher_id: int, academic_year: str,
+                                   semester: int, rows) -> None:
+        payload = [dict(r) for r in rows]
+        self.db.execute(
+            '''INSERT INTO faculty_report_teaching_drafts
+               (teacher_id, academic_year, semester, data, updated_at)
+               VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+               ON CONFLICT(teacher_id, academic_year, semester)
+               DO UPDATE SET data = excluded.data, updated_at = CURRENT_TIMESTAMP''',
+            (teacher_id, academic_year, semester, json.dumps(payload, ensure_ascii=False)),
+        )
         self.db.commit()
 
     def update_teacher_profile(self, teacher_id: int, values):

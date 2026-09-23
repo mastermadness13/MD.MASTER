@@ -57,6 +57,10 @@
     </div>
   </div>
 
+  {% if edit_mode %}
+  {% include 'faculty_performance/_teaching_editor.html' %}
+  {% endif %}
+
 </div>
 </form>
 {% endblock %}
@@ -73,6 +77,24 @@
 
 {% block scripts %}
 {% include 'faculty_performance/_official_document_styles.html' %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const addBtn = document.getElementById('addTeachingRow');
+  const tbody = document.getElementById('teachingRowsBody');
+  const tmpl = document.getElementById('teachingRowTmpl');
+  if (addBtn && tbody && tmpl) {
+    addBtn.addEventListener('click', function () {
+      tbody.appendChild(tmpl.content.cloneNode(true));
+    });
+  }
+  document.addEventListener('change', function (ev) {
+    if (ev.target && ev.target.name === 'rd_remove[]') {
+      const row = ev.target.closest('tr');
+      if (row) row.style.opacity = ev.target.checked ? '0.35' : '';
+    }
+  });
+});
+</script>
 <style>
   @media (max-width: 768px) {
     #docScroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }

@@ -34,6 +34,7 @@ def _safe_extra_roles(form) -> list:
 
 _POSITION_ROLE_MAP = {
     'رئيس قسم': 'head_of_department',
+    'رئيس القسم': 'head_of_department',
     'قسم البحث والتطوير': 'research_development',
     'رئيس قسم البحث والتطوير': 'research_development',
     'قسم الإدارة والامتحانات': 'exam',
@@ -116,7 +117,7 @@ def _headship_occupant(db, department_id, exclude_teacher_id=None,
                        exclude_user_id=None):
     """The current head of a department, unless it is the member being edited."""
     if not department_id:
-        return None
+        return None                                                                                        
     hod = hod_resolution.get_current_hod(db, department_id)
     if not hod:
         return None
@@ -484,6 +485,7 @@ def teachers_create():
             hod_department_id = None
         form = {
             'name': name,
+            'username': request.form.get('username', '').strip(),
             'email': request.form.get('email', '').strip(),
             'phone': request.form.get('phone', '').strip(),
             'department_id': department_id,
@@ -558,10 +560,10 @@ form=form, form_error=spec_error,
             message = str(exc)
             if 'academic_number' in message:
                 form_error = 'الرقم الكلية مستخدم مسبقاً'
-            elif 'Username' in message:
-                form_error = 'نيك نيم الدخول مستخدم مسبقاً — اختر نيك نيم آخر'
             elif 'too short' in message:
                 form_error = 'نيك نيم الدخول قصير جداً — حرفان على الأقل'
+            elif 'Username' in message:
+                form_error = 'نيك نيم الدخول مستخدم مسبقاً — اختر نيك نيم آخر'
             else:
                 form_error = message
             return render_template('teachers/create.html',
@@ -901,7 +903,12 @@ def teachers_reset_password(id):
     if new_password:
         add_history(db, 'reset_password', 'teacher', id, session['user_id'],
                     session['username'], f'إعادة تعيين كلمة مرور عضو هيئة التدريس: {t["name"]}')
-        flash(f'تم توليد كلمة مرور جديدة لعضو هيئة التدريس: {t["name"]}', 'success')
+        flash(
+            f'تم إنشاء رمز دخول جديد لعضو هيئة التدريس: {t["name"]} — '
+            f'نيك نيم: {t.get("username") or "—"} — رمز الدخول المؤقت: {new_password} '
+            f'(سلمه للعضو يدوياً أو من بريده، صالح {INITIAL_CODE_EXPIRY_DAYS} أيام)',
+            'success',
+        )
     else:
         flash('تعذر توليد كلمة مرور جديدة — لا يوجد حساب مرتبط بهذا العضو', 'error')
     return redirect(url_for('teachers.teachers_edit', id=id))

@@ -115,6 +115,18 @@ def get_performance_form_data(
     if not teacher:
         return None
 
+    # /     /     >---- مسودة بيانات الكشف (إن وُجدت) تتغلب على الملف الأصلي للمعاينة والطباعة
+    draft = repo.get_report_profile_draft(teacher_id, academic_year, semester)
+    if draft:
+        for key in ('name', 'section', 'dept_name', 'qual_name', 'rank_name',
+                    'academic_number', 'national_id',
+                    'first_lecture_date', 'work_start_date'):
+            if draft.get(key) is not None:
+                teacher[key] = draft[key]
+        if draft.get('specialization') is not None:
+            teacher['specialization'] = draft['specialization']
+            teacher['specialization_name'] = draft['specialization']
+
     # /     /     >---- الأقسام: الأساسي + العضويات الإضافية + أقسام التكليفات التدريسية
     m2m_rows = db.execute(
         'SELECT department_id FROM teacher_departments WHERE teacher_id = ?',
@@ -171,38 +183,60 @@ def get_performance_form_data(
         and entry.get('department_id') != primary_dept_id
     })
 
+    # /     /     >---- مسودة جدول المواد (إن وُجدت) تحل محل سجل التكليفات في الكشف فقط
+    teaching_draft = repo.get_report_teaching_draft(teacher_id, academic_year, semester)
+
     # /     /     >---- بناء جدول التدريس الأساسي
     basic_teaching = []
-    total_raw_hours = 0
-    for entry in timetable_entries:
-        # /     /     >---- نتجاهل الصفوف اليتيمة بدون مقرر
-        if not entry.get('course_id') or not entry.get('course_name'):
-            continue
-        idx = len(basic_teaching) + 1
-        lecture_type = entry.get('lecture_type') or ''
-        if lecture_type == 'practical':
-            hours = entry.get('practical_hours') or 0
-        else:
-            hours = entry.get('theoretical_hours') or 0
-        if hours <= 0:
-            hours = _calculate_hours(entry.get('start_time'), entry.get('end_time'))
-        hours = int(hours) if hours else 0
-        total_raw_hours += hours
-        basic_teaching.append({
-            'course_id': entry.get('course_id'),
-            'index': idx,
-            'course_name': entry.get('course_name') or '',
-            'course_code': entry.get('course_code') or '',
-            'lecture_type': LECTURE_TYPE_MAP.get(entry.get('lecture_type') or '', ''),
-            'course_phase': YEAR_LABELS.get(entry.get('course_year'), str(entry.get('course_year') or '')),
-            'department': entry.get('dept_name') or '',
-            'group_number': entry.get('student_section') or '',
-            'student_count': student_counts.get(entry.get('course_id'), ''),
-            'day': entry.get('day') or '',
-            'start_time': entry.get('start_time') or '',
-            'end_time': entry.get('end_time') or '',
-            'hours': hours,
-        })
+    if teaching_draft is not None:
+        for i, r in enumerate(teaching_draft):
+            basic_teaching.append({
+                'course_id': r.get('course_id'),
+                'index': i + 1,
+                'course_name': r.get('course_name') or '',
+                'course_code': r.get('course_code') or '',
+                'lecture_type': r.get('lecture_type') or '',
+                'course_phase': r.get('course_phase') or '',
+                'department': r.get('department') or '',
+                'group_number': r.get('group_number') or '',
+                'student_count': r.get('student_count', ''),
+                'day': r.get('day') or '',
+                'start_time': r.get('start_time') or '',
+                'end_time': r.get('end_time') or '',
+                'hours': r.get('hours') or 0,
+            })
+    else:
+        for entry in timetable_entries:
+            # /     /     >---- نتجاهل الصفوف اليتيمة بدون مقرر
+            if not entry.get('course_id') or not entry.get('course_name'):
+                continue
+            idx = len(basic_teaching) + 1
+            lecture_type = entry.get('lecture_type') or ''
+            if lecture_type == 'practical':
+                hours = entry.get('practical_hours') or 0
+            else:
+                hours = entry.get('theoretical_hours') or 0
+            if hours <= 0:
+                hours = _calculate_hours(entry.get('start_time'), entry.get('end_time'))
+            hours = int(hours) if hours else 0
+            basic_teaching.append({
+                'course_id': entry.get('course_id'),
+                'index': idx,
+                'course_name': entry.get('course_name') or '',
+                'course_code': entry.get('course_code') or '',
+                'lecture_type': LECTURE_TYPE_MAP.get(entry.get('lecture_type') or '', ''),
+                'course_phase': YEAR_LABELS.get(entry.get('course_year'), str(entry.get('course_year') or '')),
+                'department': entry.get('dept_name') or '',
+                'group_number': entry.get('student_section') or '',
+                'student_count': student_counts.get(entry.get('course_id'), ''),
+                'day': entry.get('day') or '',
+                'start_time': entry.get('start_time') or '',
+                'end_time': entry.get('end_time') or '',
+                'hours': hours,
+            })
+    total_raw_hours = sum(
+        (e.get('hours') or 0) for e in basic_teaching
+        if isinstance(e.get('hours'), (int, float)))
 
     # /     /     >---- توزيع العبء: الأساسي حتى 10، والمقرر الكامل الزائد يُنقل للإضافي
     additional_teaching = []
