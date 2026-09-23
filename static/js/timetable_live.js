@@ -99,12 +99,13 @@
   function renderFilters() {
     var addBtn = document.getElementById('addLecBtn');
     var nyBtn = document.getElementById('nextYearBtn');
-    if (locked) {
-      addBtn.disabled = true; addBtn.classList.add('opacity-40', 'cursor-not-allowed', 'pointer-events-none');
-      nyBtn.disabled = true; nyBtn.classList.add('opacity-40', 'cursor-not-allowed', 'pointer-events-none');
-    } else {
-      addBtn.disabled = false; addBtn.classList.remove('opacity-40', 'cursor-not-allowed', 'pointer-events-none');
-      nyBtn.disabled = false; nyBtn.classList.remove('opacity-40', 'cursor-not-allowed', 'pointer-events-none');
+    if (addBtn) {
+      if (locked) { addBtn.disabled = true; addBtn.classList.add('opacity-40', 'cursor-not-allowed', 'pointer-events-none'); }
+      else { addBtn.disabled = false; addBtn.classList.remove('opacity-40', 'cursor-not-allowed', 'pointer-events-none'); }
+    }
+    if (nyBtn) {
+      if (locked) { nyBtn.disabled = true; nyBtn.classList.add('opacity-40', 'cursor-not-allowed', 'pointer-events-none'); }
+      else { nyBtn.disabled = false; nyBtn.classList.remove('opacity-40', 'cursor-not-allowed', 'pointer-events-none'); }
     }
   }
 
@@ -1114,8 +1115,10 @@ function buildTeacherPool() {
     document.getElementById('gridBody').innerHTML = '<tr><td colspan="' + Math.max(2, periods.length + 1) + '" class="py-16 text-center text-on-surface-variant">اختر قسماً لعرض الجدول الأسبوعي</td></tr>';
     var mw = document.getElementById('mobileGrid');
     if (mw) mw.innerHTML = '<div class="tt-mempty"><span class="material-symbols-outlined">domain</span>اختر قسماً لعرض جدوله الأسبوعي</div>';
-    document.getElementById('addLecBtn').disabled = true;
-    document.getElementById('nextYearBtn').disabled = true;
+    var addBtn = document.getElementById('addLecBtn');
+    if (addBtn) addBtn.disabled = true;
+    var nyBtn = document.getElementById('nextYearBtn');
+    if (nyBtn) nyBtn.disabled = true;
   } else {
     renderFilters();
     renderGrid();

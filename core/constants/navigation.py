@@ -17,7 +17,9 @@ NAV_ITEMS = [
         'endpoint': 'dashboard.dashboard',
         'icon': 'dashboard',
         'label': 'لوحة التحكم',
-        'permission': 'dashboard.view',
+        # الشخص الوحيد الذي لا يرى «لوحة التحكم» في القائمة الجانبية هو
+        # عضو هيئة التدريس (teacher) — تبقى له فقط «الجدول الدراسي» للعرض.
+        'permission': 'dashboard.nav',
         'active_keys': ['dashboard.dashboard'],
         'section': 'main',
     },

@@ -16,7 +16,7 @@ The authenticated user's role is the single source of truth.
 ROLE_PERMISSIONS = {
     # ── قسم البحث والتطوير والمناهج ─────────────────────────────────
     'research_development': {
-        'dashboard.view',
+        'dashboard.view', 'dashboard.nav',
         'departments.view',
         'teachers.view',
         'courses.manage', 'courses.view',
@@ -32,7 +32,7 @@ ROLE_PERMISSIONS = {
     },
     # ── مكتب إدارة أعضاء هيئة التدريس ───────────────────────────────
     'faculty_affairs': {
-        'dashboard.view',
+        'dashboard.view', 'dashboard.nav',
         'teachers.manage', 'teachers.view',
         'teachers.assign',
         'timetable.view',
@@ -48,7 +48,7 @@ ROLE_PERMISSIONS = {
     },
     # ── رئيس القسم ──────────────────────────────────────────────────
     'head_of_department': {
-        'dashboard.view',
+        'dashboard.view', 'dashboard.nav',
         'teachers.view',
         'course_content.view',
         'timetable.view', 'timetable.edit',
@@ -68,7 +68,7 @@ ROLE_PERMISSIONS = {
     },
 # ── قسم الإدارة والامتحانات ─────────────────────────────────────
     'exam': {
-        'dashboard.view',
+        'dashboard.view', 'dashboard.nav',
         'departments.view', 'departments.manage',
         'courses.view',
         'course_content.view',
@@ -81,7 +81,7 @@ ROLE_PERMISSIONS = {
     # ── العميد ───────────────────────────────────────────────────
     # /     /     >---- إشراف قراءة فقط على كل نطاقات النظام
     'dean': {
-        'dashboard.view',
+        'dashboard.view', 'dashboard.nav',
         'departments.view',
         'teachers.view',
         'courses.view',
@@ -99,7 +99,7 @@ ROLE_PERMISSIONS = {
     # ── الزائر العام ─────────────────────────────────────────────
     # /     /     >---- مشاهدة النشرات المتاحة فقط (لا تعديل ولا بيانات خاصة)
     'visitor': {
-        'dashboard.view',
+        'dashboard.view', 'dashboard.nav',
         'courses.view',
         'timetable.view',
         'exams.view',

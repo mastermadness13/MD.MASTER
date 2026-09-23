@@ -56,6 +56,7 @@
       <span class="material-symbols-outlined text-base">print</span>
       طباعة الجدول
     </button>
+    {% if payload.can_manage %}
     <button id="addLecBtn" type="button" onclick="window.openAdd()"
             class="inline-flex items-center gap-1.5 rounded-xl bg-surface-container-high border border-outline px-3 py-2 text-sm font-bold">
       <span class="material-symbols-outlined text-base">add</span>
@@ -66,6 +67,7 @@
       <span class="material-symbols-outlined text-base">calendar_month</span>
       نسخة العام القادم
     </button>
+    {% endif %}
   </div>
 </div>
 {% if payload.can_manage %}
