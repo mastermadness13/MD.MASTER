@@ -3,6 +3,7 @@ from flask import (Blueprint, session, request, render_template,
 from utils.redirects import redirect_back
 from datetime import date
 import os
+import sqlite3
 import uuid
 
 from flask_db import get_db
@@ -948,6 +949,10 @@ def teachers_register_username(id):
         )
     except ValueError as exc:
         flash(str(exc), 'error')
+        return redirect(url_for('teachers.teachers_edit', id=id))
+    except sqlite3.IntegrityError:
+        db.rollback()
+        flash('نيك نيم الدخول مستخدم مسبقاً', 'error')
         return redirect(url_for('teachers.teachers_edit', id=id))
     flash('تم تسجيل اسم الدخول وتثبيته نهائياً', 'success')
     return redirect(url_for('teachers.teachers_edit', id=id))
