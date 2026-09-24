@@ -1,4 +1,4 @@
-"""Authentication routes: login, logout, forgot/reset and change password."""
+"""Authentication pages: login, logout, forgot/reset and change password."""
 
 import os
 

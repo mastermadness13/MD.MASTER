@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from api.helpers import install_error_handlers
 from api import (
-    auth,
+    auth_api,
     course_content,
     courses,
     dashboard,
@@ -26,7 +26,7 @@ from api import (
 )
 
 _BLUEPRINTS = (
-    auth.bp,
+    auth_api.bp,
     dashboard.bp,
     departments.bp,
     teachers.bp,

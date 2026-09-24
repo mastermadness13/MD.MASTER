@@ -258,7 +258,7 @@ def get_nav_items(role, department_id=None):
     """Backward-compatible helper: navigation items for a role/dept.
 
     Delegates to the permission-based pipeline so both the SPA bootstrap
-    (``api/auth.py``) and template injection share the same source of truth.
+    (``api/auth_api.py``) and template injection share the same source of truth.
     """
     perms = get_user_permissions(role, department_id)
     from core.constants.navigation import get_nav_for_permissions

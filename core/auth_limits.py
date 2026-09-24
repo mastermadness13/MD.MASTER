@@ -1,7 +1,7 @@
 """Unified rate limiters for all authentication flows.
 
-Shared between ``routes/auth.py`` (HTML form login, forgot/reset password)
-and ``api/auth.py`` (SPA/API login) so that an attacker cannot double their
+Shared between ``routes/auth_pages.py`` (HTML form login, forgot/reset password)
+and ``api/auth_api.py`` (SPA/API login) so that an attacker cannot double their
 attempts by alternating between the two entry points.
 
 All limiters are module-level singletons — they survive across requests within

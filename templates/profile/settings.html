@@ -133,7 +133,7 @@
             </div>
             <p class="text-[11px] text-on-surface-variant mt-1 flex items-center gap-1">
               <span class="material-symbols-outlined text-[13px]">info</span>
-              اسم الدخول إلى النظام فقط — لا يؤثر على اسمك الحقيقي المعروض
+              اسم الدخول باللغة الإنجليزية فقط — يمكنك تغييره من النموذج أدناه
             </p>
           </div>
           <div>
@@ -172,6 +172,25 @@
             </button>
           </div>
         </form>
+        {% if srole != 'faculty_affairs' or usr.get('username') != 'office_manager' %}
+        <form method="POST" action="{{ url_for('profile.profile') }}" class="px-5 pb-5 space-y-3 border-t border-primary/10 pt-4">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="form_type" value="username">
+          <div class="text-xs font-bold text-on-surface-variant">تغيير اسم الدخول بنفسك</div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <input type="text" name="new_username" dir="ltr" required maxlength="32"
+                   pattern="[A-Za-z][A-Za-z0-9_]{2,31}" placeholder="اسم إنجليزي بدون مسافات"
+                   class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface text-left">
+            <input type="password" name="current_password" dir="ltr" required
+                   placeholder="كلمة المرور الحالية" autocomplete="current-password"
+                   class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface text-left">
+          </div>
+          <button type="submit" class="flex items-center gap-2 border border-primary text-primary hover:bg-primary/10 px-4 py-2 rounded-lg text-sm font-bold transition">
+            <span class="material-symbols-outlined text-lg">manage_accounts</span>
+            تغيير اسم الدخول
+          </button>
+        </form>
+        {% endif %}
       </div>
 
       {% if dept %}

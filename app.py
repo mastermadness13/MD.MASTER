@@ -64,7 +64,7 @@ def _setup_logging(app):
     logging.getLogger('urllib3').setLevel(logging.WARNING)
 
 # ── استيراد كل البلوبرنتات (المسارات الفرعية) ─────────────────────
-from routes.auth import bp as auth_bp
+from routes.auth_pages import bp as auth_bp
 from routes.dashboard import bp as dashboard_bp
 from routes.profile import bp as profile_bp
 from routes.departments import bp as departments_bp

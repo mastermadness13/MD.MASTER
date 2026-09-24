@@ -1,4 +1,4 @@
-"""Authentication state — resolve the logged-in user from the session."""
+"""Session state — resolve the logged-in user from the session."""
 
 from __future__ import annotations
 

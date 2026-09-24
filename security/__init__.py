@@ -1,7 +1,7 @@
 """Security package — authentication, authorization, and CSRF.
 
 Modules:
-  auth.py          session → user resolution (get_user / current_user)
+  session_user.py  session → user resolution (get_user / current_user)
   authorization.py permission checks + login/permission decorators + nav
   csrf.py          CSRF token generation and validation
 
@@ -12,7 +12,7 @@ Everything is re-exported here for a single import site:
 # /     /     >---- حزمة الأمان: تسجيل الدخول + الصلاحيات + الحماية من CSRF
 
 # ── استيراد دالة المستخدم ──────────────────────────────────────
-from security.auth import current_user, get_user
+from security.session_user import current_user, get_user
 
 # ── استيراد دوال الصلاحيات والديكوريتورات ──────────────────────
 from security.authorization import (

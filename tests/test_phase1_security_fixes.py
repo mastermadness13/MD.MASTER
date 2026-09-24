@@ -10,7 +10,7 @@ current codebase:
              timetable_versions without wiping data; the semesters table no
              longer exists (academic calendar feature removed).
   SEC-003  services/search.py — highlight_text() HTML-escapes before marking.
-  AUTH-001 api/auth.py — API login is throttled like the HTML login form.
+  AUTH-001 api/auth_api.py — API login is throttled like the HTML login form.
   AUTH-002 routes/dashboard.py — switch-role requires a CSRF token and never
              open-redirects via request.referrer.
   AUTH-003 services/user_service.py — module-level delete_user() is guarded.

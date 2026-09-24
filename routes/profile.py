@@ -6,6 +6,7 @@ from database.history import add_history
 from security import csrf_required, login_required, permission_required
 from security import current_user, validate_password
 from services import user_service
+from services.temp_access_code import validate_username
 bp = Blueprint('profile', __name__, url_prefix='/profile')
 
 # /     /     >---- مسؤوليات كل دور تُعرض في صفحة الملف الشخصي
@@ -89,6 +90,8 @@ def profile():
                     'new_password', 'confirm_password')):
                 abort(403)
             return _handle_account_update(db, is_rnd)
+        elif form_type == 'username':
+            return _handle_username_update(db)
         elif form_type == 'department' and is_rnd:
             return _handle_department_update(db)
         elif form_type == 'security':
@@ -132,6 +135,51 @@ def _handle_account_update(db, is_rnd):
     session['username'] = username
     session['label'] = label
     flash('تم تحديث معلومات الحساب', 'success')
+    return redirect(url_for('profile.profile'))
+
+
+def _handle_username_update(db):
+    """Allow the account holder to change their own login name only."""
+    user_id = session['user_id']
+    user = user_service.get_user_by_id(db, user_id)
+    if not user:
+        abort(401)
+    protected_roles = {
+        row['role'] for row in db.execute(
+            'SELECT role FROM user_roles WHERE user_id = ?', (user_id,)
+        ).fetchall()
+    }
+    if (user.get('username') == 'office_manager'
+            and (user.get('role') == 'faculty_affairs'
+                 or 'faculty_affairs' in protected_roles)):
+        flash('اسم المستخدم لهذا الحساب المحمي لا يمكن تغييره', 'error')
+        return redirect(url_for('profile.profile'))
+
+    current = request.form.get('current_password', '')
+    new_username = request.form.get('new_username', '').strip()
+    error = validate_username(new_username)
+    if error is None and not check_password_hash(user['password'], current):
+        error = 'كلمة المرور الحالية غير صحيحة'
+    if error is None:
+        duplicate = db.execute(
+            'SELECT 1 FROM users WHERE username = ? AND id != ?',
+            (new_username, user_id),
+        ).fetchone()
+        if duplicate:
+            error = 'اسم المستخدم مستخدم مسبقاً — اختر اسماً آخر'
+    if error:
+        return _render_profile(db, session.get('role') == 'research_development',
+                               form_error=error)
+
+    old_username = user['username']
+    db.execute('UPDATE users SET username = ? WHERE id = ?', (new_username, user_id))
+    db.commit()
+    session['username'] = new_username
+    add_history(
+        db, 'update_username', 'user', user_id, user_id,
+        new_username, f'تغيير اسم الدخول من {old_username} إلى {new_username}',
+    )
+    flash('تم تغيير اسم الدخول بنجاح', 'success')
     return redirect(url_for('profile.profile'))
 
 

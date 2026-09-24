@@ -103,6 +103,22 @@ class TeacherService:
                     [c['id'] for c in candidates],
                 )
 
+        # Validate all office-assigned credentials before creating the teacher
+        # row, so rejected submissions cannot leave orphaned records.
+        nickname = (data.get('username') or '').strip()
+        if not nickname:
+            raise ValueError('اسم المستخدم مطلوب')
+        if len(nickname) < 3:
+            raise ValueError('نيك نيم الدخول قصير جداً')
+        from services.temp_access_code import validate_username
+        username_error = validate_username(nickname)
+        if username_error:
+            raise ValueError(username_error)
+        if self._user_repo.username_exists(nickname):
+            raise ValueError('نيك نيم الدخول مستخدم مسبقاً')
+        if not initial_password or len(initial_password) < 6:
+            raise ValueError('كلمة المرور يجب أن تكون 6 أحرف على الأقل')
+
         teacher_id = self._repo.create(data)
         if department_ids:
             self.db.executemany(
@@ -111,31 +127,7 @@ class TeacherService:
             )
             self.db.commit()
 
-        # /     /     >---- نيك نيم اختياري يحدده المكتب؛ إن تُرك فارغاً يُولَّد تلقائياً
-        nickname = (data.get('username') or '').strip()
-        if nickname:
-            from services.temp_access_code import validate_username
-            username_error = validate_username(nickname)
-            if username_error:
-                raise ValueError(username_error)
-            if len(nickname) < 2:
-                raise ValueError(
-                    "Username '"
-                    f"{nickname}"
-                    "' is too short — must be at least 2 characters"
-                )
-            if self._user_repo.username_exists(nickname):
-                raise ValueError(
-                    "Username '"
-                    f"{nickname}"
-                    "' already taken — choose another nickname"
-                )
-        if not nickname:
-            raise ValueError('اسم المستخدم مطلوب')
-        if not initial_password or len(initial_password) < 6:
-            raise ValueError('كلمة المرور يجب أن تكون 6 أحرف على الأقل')
-
-        # /     /     >---- إنشاء حساب الدخول: نيك نيم المكتب أو التوليد التلقائي + رمز دخول أولي
+        # /     /     >---- إنشاء حساب الدخول: نيك نيم المكتب + رمز دخول أولي
         # /     /     >---- الرمز يُرسل بالبريد الشخصي ويُعرض للمكتب مرة واحدة بعد الإنشاء
         username = nickname or _generate_username(teacher_id)
         code = initial_password

@@ -153,3 +153,41 @@ def send_initial_login_code(
     except Exception as e:
         logger.error(f'Failed to send initial login code to {to_email}: {e}')
         return False
+
+
+def send_test_email(to_email: str, recipient_name: str = '') -> bool:
+    """Send a harmless delivery test using the configured mail transport."""
+    subject = 'اختبار البريد الإلكتروني - بوابة كلية التقنية الهندسية زوارة'
+    greeting = recipient_name or to_email
+    body = (
+        f'مرحباً {greeting}،\n\n'
+        'هذه رسالة اختبار من بوابة كلية التقنية الهندسية زوارة.\n'
+        'إذا وصلت هذه الرسالة، فإن إعداد البريد يعمل بشكل صحيح.\n\n'
+        'هذه الرسالة لا تغيّر كلمة المرور ولا بيانات الحساب.\n'
+    )
+    html_body = (
+        '<div dir="rtl" style="font-family:sans-serif">'
+        f'<p>مرحباً {html.escape(greeting)}،</p>'
+        '<p>هذه رسالة اختبار من بوابة كلية التقنية الهندسية زوارة.</p>'
+        '<p>إذا وصلت هذه الرسالة، فإن إعداد البريد يعمل بشكل صحيح.</p>'
+        '<p>هذه الرسالة لا تغيّر كلمة المرور ولا بيانات الحساب.</p>'
+        '</div>'
+    )
+    try:
+        if _brevo_sender_config():
+            return _send_brevo_email(
+                to_email, recipient_name, subject, body, html_body
+            )
+        msg = MIMEText(body, _charset='utf-8')
+        msg['Subject'] = subject
+        msg['From'] = Config.MAIL_DEFAULT_SENDER
+        msg['To'] = to_email
+        with smtplib.SMTP(Config.MAIL_SERVER, Config.MAIL_PORT, timeout=10) as server:
+            server.starttls()
+            server.login(Config.MAIL_USERNAME, Config.MAIL_PASSWORD)
+            server.send_message(msg)
+        logger.info('Test email sent to %s', to_email)
+        return True
+    except (smtplib.SMTPException, OSError, TimeoutError) as exc:
+        logger.error('Failed to send test email to %s: %s', to_email, exc)
+        return False
