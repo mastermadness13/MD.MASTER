@@ -923,10 +923,12 @@ def teachers_reset_password(id):
     if new_password:
         add_history(db, 'reset_password', 'teacher', id, session['user_id'],
                     session['username'], f'إعادة تعيين كلمة مرور عضو هيئة التدريس: {t["name"]}')
+        delivery_note = 'سلّمه للعضو يدوياً الآن؛ لا يُرسل عبر البريد تلقائياً'
         flash(
             f'تم إنشاء رمز دخول جديد لعضو هيئة التدريس: {t["name"]} — '
-            f'نيك نيم: {t.get("username") or "—"} — رمز الدخول المؤقت: {new_password} '
-            f'(سلمه للعضو يدوياً أو من بريده، صالح {INITIAL_CODE_EXPIRY_DAYS} أيام)',
+            f'اسم المستخدم: {t.get("username") or "—"} — رمز الاسترجاع المؤقت: {new_password} '
+            f'({delivery_note}، صالح 60 دقيقة، وبحد أقصى 5 محاولات). '
+            'لن يظهر الرمز مرة أخرى بعد إغلاق هذه الرسالة.',
             'success',
         )
     else:

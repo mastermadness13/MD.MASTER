@@ -114,6 +114,10 @@ class TeacherService:
         # /     /     >---- نيك نيم اختياري يحدده المكتب؛ إن تُرك فارغاً يُولَّد تلقائياً
         nickname = (data.get('username') or '').strip()
         if nickname:
+            from services.temp_access_code import validate_username
+            username_error = validate_username(nickname)
+            if username_error:
+                raise ValueError(username_error)
             if len(nickname) < 2:
                 raise ValueError(
                     "Username '"
@@ -204,44 +208,17 @@ class TeacherService:
         granted = ['teacher'] + [r for r in (additional_roles or []) if r and r != 'teacher']
         self._user_repo.set_user_roles(teacher['user_id'], granted)
 
-    # /     /     >---- إعادة تعيين رمز الدخول الأولي للأستاذ وإرساله بالبريد فقط
+    # /     /     >---- إصدار رمز استرجاع منفصل لا يغيّر كلمة المرور الحالية
     def reset_teacher_password(self, teacher_id: int) -> Optional[str]:
         teacher = self._repo.find_by_id(teacher_id)
-        if not teacher:
+        if not teacher or not teacher.get('user_id'):
             return None
-        if not teacher.get('user_id'):
-            self._ensure_user_account(teacher, email_code=False)
-            teacher = self._repo.find_by_id(teacher_id)
-        if not teacher.get('user_id'):
-            return None
-        new_code = _generate_password()
-        expires = (datetime.now() + timedelta(
-            days=INITIAL_CODE_EXPIRY_DAYS
-        )).strftime('%Y-%m-%d %H:%M:%S')
-        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        self.db.execute(
-            'UPDATE users SET password = ?, force_password_change = 1, '
-            'initial_login_code_hash = ?, initial_login_code_used = 0, '
-            'initial_login_code_expires = ?, initial_login_code_email_sent_at = ? '
-            'WHERE id = ?',
-            (generate_password_hash(new_code), generate_password_hash(new_code),
-             expires, now, teacher['user_id']),
+        from services.temp_access_code import issue_recovery_code
+        return issue_recovery_code(
+            self.db,
+            user_id=teacher['user_id'],
+            issued_by=session.get('user_id'),
         )
-        self.db.commit()
-        # /     /     >---- إرسال الرمز الجديد إلى البريد الشخصي فقط
-        if teacher.get('email'):
-            try:
-                from services.email_service import send_initial_login_code
-                send_initial_login_code(
-                    teacher['email'],
-                    self._user_repo.find_by_id(teacher['user_id'])['username'],
-                    new_code,
-                    INITIAL_CODE_EXPIRY_DAYS,
-                    renewed=True,
-                )
-            except Exception as exc:
-                logger.error('Reset code email failed for teacher %s: %s', teacher_id, exc)
-        return new_code
 
     # /     /     >---- إنشاء حساب دخول مرتبط لأستاذ ليس له حساب (المستوردون مثلاً)
     def _ensure_user_account(self, teacher: Dict[str, Any], primary_username=None,

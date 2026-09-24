@@ -205,7 +205,9 @@ def change_password():
 
         # /     /     >---- سلسلة التحقق: الحالية + التطابق + القواعد + عدم التكرار
         error = None
-        if not user or not check_password_hash(user['password'], current):
+        recovery_authenticated = bool(session.get('recovery_authenticated'))
+        if (not recovery_authenticated
+                and (not user or not check_password_hash(user['password'], current))):
             error = 'كلمة المرور الحالية غير صحيحة'
         elif new_pass != confirm:
             error = 'كلمة المرور الجديدة وتأكيدها غير متطابقين'
@@ -226,6 +228,7 @@ def change_password():
         user_service.change_user_password(db, session['user_id'], new_pass)
         session.pop('force_password_change', None)
         session.pop('first_login_temp_code', None)
+        session.pop('recovery_authenticated', None)
         if is_json:
             return jsonify({'ok': True, 'message': 'تم تغيير كلمة المرور بنجاح'})
         # /     /     >---- تغيير كلمة المرور الإجباري الأول ثم الهبوط للوحة

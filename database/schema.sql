@@ -22,6 +22,11 @@ CREATE TABLE IF NOT EXISTS users (
     session_version INTEGER NOT NULL DEFAULT 1,
     is_active INTEGER NOT NULL DEFAULT 1,
     force_password_change INTEGER NOT NULL DEFAULT 0,
+    recovery_code_hash TEXT,
+    recovery_code_expires_at TEXT,
+    recovery_code_attempts INTEGER NOT NULL DEFAULT 0,
+    recovery_code_issued_at TEXT,
+    recovery_code_issued_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

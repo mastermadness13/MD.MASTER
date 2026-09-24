@@ -2778,6 +2778,18 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
         if 'force_password_change' not in user_columns:
             _safe_add_column(conn, 'users', 'force_password_change',
                              'INTEGER NOT NULL DEFAULT 0')
+        if 'recovery_code_hash' not in user_columns:
+            _safe_add_column(conn, 'users', 'recovery_code_hash', 'TEXT')
+        if 'recovery_code_expires_at' not in user_columns:
+            _safe_add_column(conn, 'users', 'recovery_code_expires_at', 'TEXT')
+        if 'recovery_code_attempts' not in user_columns:
+            _safe_add_column(conn, 'users', 'recovery_code_attempts',
+                             'INTEGER NOT NULL DEFAULT 0')
+        if 'recovery_code_issued_at' not in user_columns:
+            _safe_add_column(conn, 'users', 'recovery_code_issued_at', 'TEXT')
+        if 'recovery_code_issued_by' not in user_columns:
+            _safe_add_column(conn, 'users', 'recovery_code_issued_by',
+                             'INTEGER REFERENCES users(id) ON DELETE SET NULL')
         if 'phone' not in user_columns:
             _safe_add_column(conn, 'users', 'phone', 'TEXT')
         if 'theme' not in user_columns:

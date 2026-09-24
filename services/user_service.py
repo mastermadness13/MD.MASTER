@@ -89,17 +89,35 @@ class UserService:
         # /     /     >---- دائماً نتحقق من التجزئة حتى لو المستخدم غير موجود
         # /     /     >---- هذا يمنع تمييز الحسابات عبر فرق التوقيت (CWE-204)
         pw_hash = user['password'] if user else _DUMMY_PASSWORD_HASH
-        if not check_password_hash(pw_hash, password):
-            return False, None
         if not user:
+            check_password_hash(pw_hash, password)
             return False, None
+        recovery_login = False
+        if not check_password_hash(pw_hash, password):
+            from services.temp_access_code import (
+                RecoveryCodeResult,
+                verify_recovery_code,
+            )
+            recovery_result = verify_recovery_code(self.db, user, password)
+            if recovery_result != RecoveryCodeResult.VALID:
+                return False, None
+            recovery_login = True
         # /     /     >---- رمز أولي منتهي الصلاحية ولم يُستعمل: يُرفض الدخول
         # /     /     >---- (المستخدم يسترجع الرمز عبر المسار القياسي ببريده)
         # /     /     >---- نرجع علامة مميزة بدلاً من None حتى تعرض الواجهة رسالة
         # /     /     >---- واضحة بدلاً من رسالة "البيانات غير صحيحة" المضلِّلة.
         if not user.get('is_active', 1):
             return False, None
-        if (user.get('initial_login_code_used') == 0
+        if recovery_login:
+            self.db.execute(
+                'UPDATE users SET force_password_change = 1, '
+                'session_version = session_version + 1 WHERE id = ?',
+                (user['id'],),
+            )
+            self.db.commit()
+            user = self._repo.find_by_id(user['id']) or user
+        if (not recovery_login
+                and user.get('initial_login_code_used') == 0
                 and user.get('initial_login_code_hash')
                 and user.get('initial_login_code_expires')):
             from datetime import datetime as _dt
@@ -122,6 +140,9 @@ class UserService:
         session_dict['user_id'] = user['id']
         session_dict['username'] = user['username']
         session_dict['session_version'] = user.get('session_version', 1)
+        if recovery_login:
+            session_dict['force_password_change'] = True
+            session_dict['recovery_authenticated'] = True
         # /     /     >---- رمز الدخول الأولي: أول تسجيل ناجح يبطل استخدامه نهائياً
         # /     /     >---- (نحذف تجزئته حتى ما يبقاش صالح للاستعمال مرة ثانية)
         if user.get('initial_login_code_used') == 0 and user.get('initial_login_code_hash'):
