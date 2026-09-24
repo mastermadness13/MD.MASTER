@@ -929,10 +929,27 @@ def teachers_reset_password(id):
             f'اسم المستخدم: {t.get("username") or "—"} — رمز الاسترجاع المؤقت: {new_password} '
             f'({delivery_note}، صالح 60 دقيقة، وبحد أقصى 5 محاولات). '
             'لن يظهر الرمز مرة أخرى بعد إغلاق هذه الرسالة.',
-            'success',
+            'recovery_code',
         )
     else:
         flash('تعذر توليد كلمة مرور جديدة — لا يوجد حساب مرتبط بهذا العضو', 'error')
+    return redirect(url_for('teachers.teachers_edit', id=id))
+
+
+@bp.route('/register-username/<int:id>', methods=['POST'])
+@login_required
+@permission_required('teachers.manage')
+@csrf_required
+def teachers_register_username(id):
+    db = get_db()
+    try:
+        teacher_service.register_teacher_username(
+            id, request.form.get('username', '')
+        )
+    except ValueError as exc:
+        flash(str(exc), 'error')
+        return redirect(url_for('teachers.teachers_edit', id=id))
+    flash('تم تسجيل اسم الدخول وتثبيته نهائياً', 'success')
     return redirect(url_for('teachers.teachers_edit', id=id))
 
 

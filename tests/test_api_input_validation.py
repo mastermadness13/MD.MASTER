@@ -15,8 +15,8 @@ import sqlite3
 import pytest
 
 import flask_db
-from api.courses import _validate_course
-from api.timetable import _entry_fields_valid
+from api_routes.courses import _validate_course
+from api_routes.timetable import _entry_fields_valid
 from core.validators import (
     in_choices,
     integer_between,

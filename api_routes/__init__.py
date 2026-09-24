@@ -3,14 +3,14 @@
 JSON endpoints consumed by the SPA frontend.  Each sub-module owns one domain
 blueprint; :func:`register_api` registers them all with the app.
 
-Session auth is shared with the HTML routes (``api/helpers.py`` decorators
+Session auth is shared with the HTML routes (``api_routes/helpers.py`` decorators
 return JSON 401/403 instead of redirects).
 """
 
 from __future__ import annotations
 
-from api.helpers import install_error_handlers
-from api import (
+from api_routes.helpers import install_error_handlers
+from api_routes import (
     auth_api,
     course_content,
     courses,

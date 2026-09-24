@@ -18,7 +18,7 @@ import pytest
 import flask_db
 from database.connection import connect
 from database.schema import ensure_schema
-from routes.teachers import _validate_specialization, _reconcile_primary_dept
+from page_routes.teachers import _validate_specialization, _reconcile_primary_dept
 
 
 @pytest.fixture

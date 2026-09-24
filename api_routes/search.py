@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from flask import Blueprint, request, session
 
-from api.helpers import api_permission_required, ok
+from api_routes.helpers import api_permission_required, ok
 from services.search_service import SearchService
 
 bp = Blueprint('api_search', __name__, url_prefix='/api/search')

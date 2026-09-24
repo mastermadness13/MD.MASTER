@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from flask import Blueprint, request
 
-from api.helpers import api_permission_required, err, ok
+from api_routes.helpers import api_permission_required, err, ok
 from flask_db import get_db
 
 bp = Blueprint('api_course_content', __name__, url_prefix='/api/course-content')

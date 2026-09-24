@@ -22,15 +22,16 @@
     var container = ensureContainer();
 
     var el = document.createElement('div');
-    var bg = type === 'success' ? 'bg-primary-container border-primary-fixed'
+    var persistent = type === 'recovery_code';
+    var bg = persistent || type === 'success' ? 'bg-primary-container border-primary-fixed'
       : type === 'warning' ? 'bg-warning-faint border-warning-border'
       : type === 'error' ? 'bg-error-container border-error'
       : 'bg-surface border-primary';
-    var text = type === 'success' ? 'text-on-primary-container'
+    var text = persistent || type === 'success' ? 'text-on-primary-container'
       : type === 'warning' ? 'text-warning-text'
       : type === 'error' ? 'text-error'
       : 'text-on-surface';
-    var icon = type === 'success' ? 'waving_hand' : (type === 'error' ? 'error' : (type === 'warning' ? 'warning' : 'info'));
+    var icon = persistent || type === 'success' ? 'key' : (type === 'error' ? 'error' : (type === 'warning' ? 'warning' : 'info'));
 
     el.className = 'notification pointer-events-auto flex items-center justify-between ' + bg + ' border-l-4 p-4 rounded-lg shadow-lg';
     el.innerHTML =
@@ -38,14 +39,17 @@
         '<span class="material-symbols-outlined shrink-0">' + icon + '</span>' +
         '<p class="font-body-md ' + text + '">' + message + '</p>' +
       '</div>' +
-      '<button type="button" class="text-outline hover:text-on-surface transition-colors shrink-0" aria-label="إغلاق">' +
-        '<span class="material-symbols-outlined text-sm">close</span>' +
+      '<button type="button" class="text-outline hover:text-on-surface transition-colors shrink-0 px-2 py-1 text-xs font-bold" aria-label="' +
+        (persistent ? 'تأكيد القراءة' : 'إغلاق') + '">' +
+        (persistent ? 'تأكيد القراءة' : '<span class="material-symbols-outlined text-sm">close</span>') +
       '</button>';
 
     container.appendChild(el);
     var closeBtn = el.querySelector('button');
     closeBtn.addEventListener('click', function () { dismiss(el); });
     requestAnimationFrame(function () { el.classList.add('show'); });
-    setTimeout(function () { dismiss(el); }, duration);
+    if (duration > 0) {
+      setTimeout(function () { dismiss(el); }, duration);
+    }
   };
 })();

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from flask import Blueprint, session
 
-from api.helpers import api_login_required, api_permission_required, ok
+from api_routes.helpers import api_login_required, api_permission_required, ok
 from flask_db import get_db
 from security import csrf_required
 from services import notification_service

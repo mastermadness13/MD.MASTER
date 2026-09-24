@@ -64,29 +64,29 @@ def _setup_logging(app):
     logging.getLogger('urllib3').setLevel(logging.WARNING)
 
 # ── استيراد كل البلوبرنتات (المسارات الفرعية) ─────────────────────
-from routes.auth_pages import bp as auth_bp
-from routes.dashboard import bp as dashboard_bp
-from routes.profile import bp as profile_bp
-from routes.departments import bp as departments_bp
-from routes.teachers import bp as teachers_bp
-from routes.classrooms import bp as classrooms_bp
-from routes.courses import bp as courses_bp
-from routes.timetable import bp as timetable_bp
-from routes.exams import bp as exams_bp
-from routes.history import bp as history_bp
-from routes.teacher_pages import bp as teacher_pages_bp
-from routes.hod_pages import bp as hod_pages_bp
-from routes.academic_calendar import bp as academic_calendar_bp
-from routes.spa import bp as spa_bp
-from routes.print_routes import bp as print_routes_bp
-from routes.uploads import bp as uploads_bp
-from routes.misc import bp as misc_bp
-from routes.html_to_pdf import bp as html_to_pdf_bp
-from routes.public_library import bp as public_library_bp
-from routes.public import bp as public_bp
-from routes.public_site import bp as public_site_bp
-from routes.faculty_performance import bp as faculty_performance_bp
-from api import register_api
+from page_routes.auth_pages import bp as auth_bp
+from page_routes.dashboard import bp as dashboard_bp
+from page_routes.profile import bp as profile_bp
+from page_routes.departments import bp as departments_bp
+from page_routes.teachers import bp as teachers_bp
+from page_routes.classrooms import bp as classrooms_bp
+from page_routes.courses import bp as courses_bp
+from page_routes.timetable import bp as timetable_bp
+from page_routes.exams import bp as exams_bp
+from page_routes.history import bp as history_bp
+from page_routes.teacher_pages import bp as teacher_pages_bp
+from page_routes.hod_pages import bp as hod_pages_bp
+from page_routes.academic_calendar import bp as academic_calendar_bp
+from page_routes.spa import bp as spa_bp
+from page_routes.print_routes import bp as print_routes_bp
+from page_routes.uploads import bp as uploads_bp
+from page_routes.misc import bp as misc_bp
+from page_routes.html_to_pdf import bp as html_to_pdf_bp
+from page_routes.public_library import bp as public_library_bp
+from page_routes.public import bp as public_bp
+from page_routes.public_site import bp as public_site_bp
+from page_routes.faculty_performance import bp as faculty_performance_bp
+from api_routes import register_api
 
 
 # /     /     >---- الدالة الرئيسية اللي تصنع التطبيق وتهيئ كل شي

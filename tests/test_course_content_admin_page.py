@@ -204,7 +204,7 @@ def test_list_search_serverside(client):
 
 
 def test_send_new_form_publishes(client, app_fx, tmp_path, monkeypatch):
-    import routes.teacher_pages as tp
+    import page_routes.teacher_pages as tp
     monkeypatch.setattr(tp, '_translate_course_content_en', lambda db, sid: None)
     cid = _course_id('CS103')
     data = {'_csrf_token': 't', 'action': 'send', 'course_id': str(cid),
@@ -218,7 +218,7 @@ def test_send_new_form_publishes(client, app_fx, tmp_path, monkeypatch):
 
 
 def test_send_saves_draft(client, app_fx, tmp_path, monkeypatch):
-    import routes.teacher_pages as tp
+    import page_routes.teacher_pages as tp
     monkeypatch.setattr(tp, '_translate_course_content_en', lambda db, sid: None)
     cid = _course_id('CS103')
     data = {'_csrf_token': 't', 'action': 'save', 'course_id': str(cid)}
@@ -229,7 +229,7 @@ def test_send_saves_draft(client, app_fx, tmp_path, monkeypatch):
 
 
 def test_send_requires_department(client, app_fx, tmp_path, monkeypatch):
-    import routes.teacher_pages as tp
+    import page_routes.teacher_pages as tp
     monkeypatch.setattr(tp, '_translate_course_content_en', lambda db, sid: None)
     conn = sqlite3.connect(flask_db.DATABASE)
     conn.execute("UPDATE courses SET department_id = NULL WHERE code='CS103'")
@@ -243,7 +243,7 @@ def test_send_requires_department(client, app_fx, tmp_path, monkeypatch):
 
 def test_send_with_submission_id_updates_same_row(client, app_fx, tmp_path, monkeypatch):
     """إعادة الإرسال (تعديل) تحدّث نفس السجل ولا تُنشئ سجلاً جديداً."""
-    import routes.teacher_pages as tp
+    import page_routes.teacher_pages as tp
     monkeypatch.setattr(tp, '_translate_course_content_en', lambda db, sid: None)
     cid = _course_id('CS101')
     sid = _q("SELECT id FROM course_content_submissions WHERE course_id=?", (cid,))[0]['id']
@@ -261,7 +261,7 @@ def test_send_with_submission_id_updates_same_row(client, app_fx, tmp_path, monk
 
 
 def test_send_edit_rewrites_curriculum(client, app_fx, tmp_path, monkeypatch):
-    import routes.teacher_pages as tp
+    import page_routes.teacher_pages as tp
     monkeypatch.setattr(tp, '_translate_course_content_en', lambda db, sid: None)
     cid = _course_id('CS101')
     sid = _q("SELECT id FROM course_content_submissions WHERE course_id=?", (cid,))[0]['id']
@@ -328,7 +328,7 @@ def test_codes_tab_is_sheet_only(client):
 
 
 def test_send_persists_curriculum_sections(client, app_fx, tmp_path, monkeypatch):
-    import routes.teacher_pages as tp
+    import page_routes.teacher_pages as tp
     monkeypatch.setattr(tp, '_translate_course_content_en', lambda db, sid: None)
     cid = _course_id('CS103')
     data = {
@@ -361,7 +361,7 @@ def test_codes_tab_shows_period_picker(client):
 
 
 def test_send_rejects_theoretical_weeks_over_12(client, app_fx, tmp_path, monkeypatch):
-    import routes.teacher_pages as tp
+    import page_routes.teacher_pages as tp
     monkeypatch.setattr(tp, '_translate_course_content_en', lambda db, sid: None)
     cid = _course_id('CS103')
     before = _q("SELECT COUNT(*) AS n FROM course_content_submissions WHERE course_id=?", (cid,))[0]['n']
@@ -524,7 +524,7 @@ def test_submission_view_never_renders_none_for_null_credits(client):
 
 def test_send_with_empty_credits_stores_zero(client, app_fx, tmp_path, monkeypatch):
     """POST credits='' يخزّن 0 وليس '' ولا 'None' (مسار إنشاء جديد)."""
-    import routes.teacher_pages as tp
+    import page_routes.teacher_pages as tp
     monkeypatch.setattr(tp, '_translate_course_content_en', lambda db, sid: None)
     cid = _course_id('CS103')
     data = {'_csrf_token': 't', 'action': 'save', 'course_id': str(cid), 'credits': ''}
@@ -539,7 +539,7 @@ def test_send_with_empty_credits_stores_zero(client, app_fx, tmp_path, monkeypat
 
 def test_send_empty_credits_on_edit_updates_row_to_zero(client, app_fx, tmp_path, monkeypatch):
     """تعديل نفس السجل مع credits='' يحوّل القيمة إلى 0 في نفس الصف."""
-    import routes.teacher_pages as tp
+    import page_routes.teacher_pages as tp
     monkeypatch.setattr(tp, '_translate_course_content_en', lambda db, sid: None)
     cid = _course_id('CS101')
     sid = _q("SELECT id FROM course_content_submissions WHERE course_id=?", (cid,))[0]['id']

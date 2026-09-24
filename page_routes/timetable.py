@@ -2,7 +2,7 @@ import logging
 
 from flask import Blueprint, session, request, render_template, redirect, url_for, flash, jsonify
 
-from api.helpers import ok
+from api_routes.helpers import ok
 
 from flask_db import get_db
 from security import csrf_required, login_required, permission_required

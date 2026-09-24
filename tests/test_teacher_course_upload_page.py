@@ -232,7 +232,7 @@ def test_syllabus_upload_rejects_unassigned_course(client, app_fx, tmp_path, mon
 
 
 def test_form_upload_sends_rnd(client, app_fx, tmp_path, monkeypatch):
-    import routes.teacher_pages as tp
+    import page_routes.teacher_pages as tp
     monkeypatch.setattr(tp, '_translate_course_content_en', lambda db, sid: None)
     monkeypatch.setitem(app_fx.config, 'UPLOAD_FOLDER', str(tmp_path))
     cid = _course_id('CS101')
@@ -251,7 +251,7 @@ def test_form_upload_sends_rnd(client, app_fx, tmp_path, monkeypatch):
 
 
 def test_form_upload_requires_existing_submission(client, app_fx, tmp_path, monkeypatch):
-    import routes.teacher_pages as tp
+    import page_routes.teacher_pages as tp
     monkeypatch.setattr(tp, '_translate_course_content_en', lambda db, sid: None)
     monkeypatch.setitem(app_fx.config, 'UPLOAD_FOLDER', str(tmp_path))
     cid = _course_id('CS101')
@@ -268,7 +268,7 @@ def test_form_upload_requires_existing_submission(client, app_fx, tmp_path, monk
 def test_form_upload_rejects_disallowed_extension(client, app_fx, tmp_path, monkeypatch):
     """H2: arbitrary extensions (e.g. .html → same-origin stored XSS) must be
     rejected before any file is written or the submission status advanced."""
-    import routes.teacher_pages as tp
+    import page_routes.teacher_pages as tp
     monkeypatch.setattr(tp, '_translate_course_content_en', lambda db, sid: None)
     monkeypatch.setitem(app_fx.config, 'UPLOAD_FOLDER', str(tmp_path))
     cid = _course_id('CS101')

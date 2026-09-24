@@ -7,7 +7,7 @@ from database.history import add_history
 from security import csrf_required, login_required, permission_required
 from security import current_user, has_permission
 from services import course_service
-from routes.teacher_pages import build_course_content_form_context
+from page_routes.teacher_pages import build_course_content_form_context
 
 bp = Blueprint('courses', __name__, url_prefix='/courses')
 
@@ -92,7 +92,7 @@ def courses_list():
 @permission_required('courses.manage')
 @csrf_required
 def courses_api_move():
-    from api.courses import api_courses_move
+    from api_routes.courses import api_courses_move
     return api_courses_move()
 
 
@@ -101,7 +101,7 @@ def courses_api_move():
 @permission_required('courses.manage')
 @csrf_required
 def courses_api_sync_from_timetable():
-    from api.courses import api_courses_sync_from_timetable
+    from api_routes.courses import api_courses_sync_from_timetable
     return api_courses_sync_from_timetable()
 
 

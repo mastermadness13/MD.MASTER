@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from flask import Blueprint
 
-from api.helpers import api_permission_required, err, ok, pagination
+from api_routes.helpers import api_permission_required, err, ok, pagination
 from flask_db import get_db
 from services import history_service
 

@@ -171,7 +171,7 @@ class TestLookups:
 
 class TestApiRoomForm:
     def _form(self, **data):
-        from api.rooms import _room_form
+        from api_routes.rooms import _room_form
         return _room_form(data)
 
     def test_computers_parsed_from_variants(self):
@@ -183,7 +183,7 @@ class TestApiRoomForm:
         assert self._form(name='X')['computers'] == 0
 
     def test_update_keeps_existing_computers_when_omitted(self):
-        from api.rooms import _room_form
+        from api_routes.rooms import _room_form
         defaults = {'computers': 1}
         form = _room_form({'name': 'X'}, defaults=defaults)
         assert form['computers'] == 1

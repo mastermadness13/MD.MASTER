@@ -212,6 +212,32 @@ class TeacherService:
             issued_by=session.get('user_id'),
         )
 
+    def register_teacher_username(self, teacher_id: int, username: str) -> bool:
+        """Set a missing teacher username once; registered names are immutable."""
+        teacher = self._repo.find_by_id(teacher_id)
+        if not teacher or not teacher.get('user_id'):
+            raise ValueError('لا يوجد حساب دخول مرتبط بهذا العضو')
+        current = (teacher.get('username') or '').strip()
+        if current:
+            raise ValueError('اسم الدخول مثبت ولا يمكن تغييره')
+
+        username = (username or '').strip()
+        from services.temp_access_code import validate_username
+        username_error = validate_username(username)
+        if username_error:
+            raise ValueError(username_error)
+        if self._user_repo.username_exists(username):
+            raise ValueError('نيك نيم الدخول مستخدم مسبقاً')
+
+        cursor = self.db.execute(
+            'UPDATE users SET username = ? WHERE id = ? AND (username IS NULL OR username = ?)',
+            (username, teacher['user_id'], ''),
+        )
+        if cursor.rowcount != 1:
+            raise ValueError('تعذر تسجيل اسم الدخول؛ ربما تم تسجيله مسبقاً')
+        self.db.commit()
+        return True
+
     # /     /     >---- إنشاء حساب دخول مرتبط لأستاذ ليس له حساب (المستوردون مثلاً)
     def _ensure_user_account(self, teacher: Dict[str, Any], primary_username=None,
                              direct_password=None, email_code=True) -> int:
@@ -288,20 +314,19 @@ class TeacherService:
         teacher = self._repo.find_by_id(teacher_id)
         if not teacher:
             return False
+        created_account = False
         if not teacher.get('user_id'):
             if not (new_username or new_password):
                 return False
             self._ensure_user_account(
                 teacher, primary_username=new_username, direct_password=new_password,
             )
+            created_account = True
             teacher = self._repo.find_by_id(teacher_id)
         if not teacher.get('user_id'):
             return False
-        if new_username:
-            self.db.execute(
-                'UPDATE users SET username = ? WHERE id = ?',
-                (new_username, teacher['user_id']),
-            )
+        if new_username and not created_account:
+            raise ValueError('اسم الدخول مثبت ولا يمكن تغييره')
         if new_password:
             password_error = validate_password(new_password)
             if password_error:

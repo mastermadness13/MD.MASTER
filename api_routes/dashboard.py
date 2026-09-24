@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from flask import Blueprint, request, session
 
-from api.helpers import api_login_required, ok
+from api_routes.helpers import api_login_required, ok
 from flask_db import get_db
 from services import dashboard_service
 from services.dashboard_service import get_dashboard_stats

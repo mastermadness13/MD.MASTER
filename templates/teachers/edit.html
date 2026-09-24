@@ -1,6 +1,7 @@
 {% extends 'shared/layouts/base.html' %}
 {% set sidebar_active = 'teachers' %}
 {% set page_title = 'تعديل عضو هيئة تدريس' %}
+
 {% set teacher = teacher | default({}) %}
 {% set teacher_id = teacher_id | default(teacher.get('id')) %}
 {% set teacher_dept_ids = teacher_dept_ids | default([]) %}
@@ -13,316 +14,1113 @@
 {% set research_types = research_types | default([]) %}
 {% set research = research | default([]) %}
 {% set assignment_date = assignment_date | default('') %}
+
 {% set inp = 'w-full h-10 rounded-xl border border-outline-variant bg-surface-container-lowest focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm text-on-surface placeholder:text-on-surface-variant/50 transition-all px-3' %}
 {% set sel = 'w-full h-10 rounded-xl border border-outline-variant bg-surface-container-lowest focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm text-on-surface px-3 transition-all' %}
-{% from 'teachers/_faculty_form_fields.html' import error_banner, identity_fields, academic_select, specialization_select, official_dates_fields, dept_checklist, position_hod_fields %}
+
+{% from 'teachers/_faculty_form_fields.html' import
+    error_banner,
+    identity_fields,
+    academic_select,
+    specialization_select,
+    official_dates_fields,
+    dept_checklist,
+    position_hod_fields
+%}
+
 
 {% block content %}
-<div class="max-w-6xl mx-auto pb-4">
 
-  <!-- Page Header -->
-  <div class="flex items-center justify-between gap-4 mb-4 flex-wrap">
+<div class="max-w-6xl mx-auto pb-8">
+
+  <!-- ========================================================= -->
+  <!-- PAGE HEADER -->
+  <!-- ========================================================= -->
+
+  <div class="flex items-center justify-between gap-4 mb-5 flex-wrap">
+
     <div class="flex items-center gap-3 min-w-0">
+
       <a href="{{ url_for('teachers.teachers_list') }}"
-         class="w-10 h-10 rounded-xl bg-surface-container hover:bg-primary/10 text-on-surface-variant hover:text-primary flex items-center justify-center transition-all shrink-0 no-underline border border-outline-variant/50 active:scale-95"
-         aria-label="العودة إلى قائمة الأعضاء" title="العودة لأعضاء هيئة التدريس">
-        <span class="material-symbols-outlined text-[22px]">arrow_forward</span>
+         class="w-10 h-10 rounded-xl bg-surface-container
+                hover:bg-primary/10 text-on-surface-variant
+                hover:text-primary flex items-center justify-center
+                transition-all shrink-0 no-underline
+                border border-outline-variant/50 active:scale-95"
+         aria-label="العودة إلى قائمة الأعضاء"
+         title="العودة لأعضاء هيئة التدريس">
+
+        <span class="material-symbols-outlined text-[22px]">
+          arrow_forward
+        </span>
+
       </a>
+
       <div class="min-w-0">
-        <div class="flex items-center gap-1.5 text-xs text-on-surface-variant font-medium mb-0.5">
-          <a href="{{ url_for('teachers.teachers_list') }}" class="hover:text-primary no-underline transition-colors">أعضاء هيئة التدريس</a>
-          <span class="material-symbols-outlined text-[14px] text-on-surface-variant/70">chevron_left</span>
-          <span class="text-primary font-bold">تعديل ملف العضو</span>
+
+        <div class="flex items-center gap-1.5 text-xs
+                    text-on-surface-variant font-medium mb-1">
+
+          <a href="{{ url_for('teachers.teachers_list') }}"
+             class="hover:text-primary no-underline transition-colors">
+            أعضاء هيئة التدريس
+          </a>
+
+          <span class="material-symbols-outlined
+                       text-[14px] text-on-surface-variant/70">
+            chevron_left
+          </span>
+
+          <span class="text-primary font-bold">
+            تعديل ملف العضو
+          </span>
+
         </div>
+
         <div class="flex items-center gap-2.5 min-w-0">
-          <div class="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center text-sm font-bold shadow-xs shrink-0 border border-outline-variant/40">
+
+          <div class="w-8 h-8 rounded-full bg-primary text-on-primary
+                      flex items-center justify-center text-sm font-bold
+                      shadow-xs shrink-0 border border-outline-variant/40">
+
             {{ (teacher.get('name') or '؟')[:1] }}
+
           </div>
-          <h1 class="text-lg sm:text-xl font-bold text-on-surface truncate">{{ teacher.get('name', '') }}</h1>
+
+          <h1 class="text-lg sm:text-xl font-bold
+                     text-on-surface truncate">
+
+            {{ teacher.get('name', '') }}
+
+          </h1>
+
         </div>
+
       </div>
+
     </div>
+
+
+    <!-- Header Actions -->
 
     <div class="flex items-center gap-2 shrink-0">
+
       <a href="{{ url_for('teachers.teacher_detail', id=teacher_id) }}"
-         class="hidden md:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-outline-variant text-on-surface-variant hover:bg-surface-container text-xs font-semibold transition-all no-underline">
-        <span class="material-symbols-outlined text-[17px]">badge</span>
+         class="hidden md:inline-flex items-center gap-1.5
+                px-3 py-2 rounded-xl border border-outline-variant
+                text-on-surface-variant hover:bg-surface-container
+                text-xs font-semibold transition-all no-underline">
+
+        <span class="material-symbols-outlined text-[17px]">
+          badge
+        </span>
+
         الملف
+
       </a>
+
+
       <a href="{{ url_for('teachers.teachers_list') }}"
-         class="px-4 py-2 rounded-xl border border-outline-variant text-on-surface-variant hover:bg-surface-container font-semibold text-sm transition-all no-underline">
+         class="px-4 py-2 rounded-xl border border-outline-variant
+                text-on-surface-variant hover:bg-surface-container
+                font-semibold text-sm transition-all no-underline">
+
         إلغاء
+
       </a>
-      <button form="edit-faculty-form" type="submit"
-              class="px-5 py-2 rounded-xl bg-primary hover:bg-primary/90 text-on-primary font-bold text-sm shadow-sm hover:shadow-md transition-all flex items-center gap-1.5 active:scale-95">
-        <span class="material-symbols-outlined text-[18px]">save</span>
+
+
+      <button form="edit-faculty-form"
+              type="submit"
+              class="px-5 py-2 rounded-xl bg-primary
+                     hover:bg-primary/90 text-on-primary
+                     font-bold text-sm shadow-sm hover:shadow-md
+                     transition-all flex items-center gap-1.5
+                     active:scale-95">
+
+        <span class="material-symbols-outlined text-[18px]">
+          save
+        </span>
+
         حفظ التعديلات
+
       </button>
+
     </div>
+
   </div>
+
+
+  <!-- ========================================================= -->
+  <!-- ERROR -->
+  <!-- ========================================================= -->
 
   {{ error_banner(form_error) }}
 
-  <form id="reset-password-form" method="post"
+
+  <!-- ========================================================= -->
+  <!-- RESET PASSWORD FORM -->
+  <!-- ========================================================= -->
+
+  <form id="reset-password-form"
+        method="post"
         action="{{ url_for('teachers.teachers_reset_password', id=teacher_id) }}"
         data-confirm-title="تأكيد إصدار رمز جديد"
         data-confirm-message="سيتم إلغاء رمز الاسترجاع السابق فقط وإصدار رمز استرجاع من 6 أرقام صالح لمدة 60 دقيقة. لن تتأثر كلمة مرور العضو الحالية أو جلسته المفتوحة. هل تريد المتابعة؟"
         data-confirm-label="إصدار الرمز">
-    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+    <input type="hidden"
+           name="_csrf_token"
+           value="{{ csrf_token() }}">
+
   </form>
+
+
+  <!-- ========================================================= -->
+  <!-- ACTIVE COURSES WARNING -->
+  <!-- ========================================================= -->
+
   {% if teacher_course_ids %}
-  <div class="mb-4 p-3.5 rounded-xl bg-yellow-100/70 text-yellow-900 text-sm font-bold flex items-center gap-2 border border-yellow-300">
-    <span class="material-symbols-outlined text-lg">warning</span>
-    هذا العضو مسند إليه {{ teacher_course_ids | length }} مقرر في الجدول النشط — تعديل بياناته لن يؤثر على الجدول.
+
+  <div class="mb-5 p-3.5 rounded-xl bg-yellow-100/70
+              text-yellow-900 text-sm font-bold flex items-center gap-2
+              border border-yellow-300">
+
+    <span class="material-symbols-outlined text-lg">
+      warning
+    </span>
+
+    هذا العضو مسند إليه
+    {{ teacher_course_ids | length }}
+    مقرر في الجدول النشط — تعديل بياناته لن يؤثر على الجدول.
+
   </div>
+
   {% endif %}
 
-  <form class="flex flex-col gap-5" id="edit-faculty-form" method="post"
-        action="{{ url_for('teachers.teachers_edit', id=teacher_id) }}" enctype="multipart/form-data">
-    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
 
-    <!-- Row 1: Identity & Photo (8) + Account (4) -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+  <!-- ========================================================= -->
+  <!-- MAIN FORM -->
+  <!-- ========================================================= -->
 
-      <section class="lg:col-span-12 rounded-2xl bg-surface-container-lowest border border-outline-variant/50 shadow-sm overflow-hidden">
-        <div class="px-5 py-3 border-b border-outline-variant/40 bg-surface/70 flex items-center justify-between gap-3">
-          <h2 class="text-sm font-bold text-on-surface flex items-center gap-2">
-            <span class="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-              <span class="material-symbols-outlined text-[18px]">person</span>
+  {% if not (teacher.get('username') or teacher.get('nickname') or teacher.get('login_name')) %}
+  <form id="register-username-form" method="post"
+        action="{{ url_for('teachers.teachers_register_username', id=teacher_id) }}">
+  </form>
+  {% endif %}
+
+  <form class="flex flex-col gap-5"
+        id="edit-faculty-form"
+        method="post"
+        action="{{ url_for('teachers.teachers_edit', id=teacher_id) }}"
+        enctype="multipart/form-data">
+
+    <input type="hidden"
+           name="_csrf_token"
+           value="{{ csrf_token() }}">
+
+
+    <!-- ======================================================= -->
+    <!-- SECTION 1: BASIC DATA -->
+    <!-- ======================================================= -->
+
+    <section class="rounded-2xl bg-surface-container-lowest
+                    border border-outline-variant/50
+                    shadow-sm overflow-hidden">
+
+      <!-- Section Header -->
+
+      <div class="px-5 py-3 border-b border-outline-variant/40
+                  bg-surface/70 flex items-center justify-between gap-3">
+
+        <h2 class="text-sm font-bold text-on-surface
+                   flex items-center gap-2">
+
+          <span class="w-7 h-7 rounded-lg bg-primary/10
+                       text-primary flex items-center justify-center">
+
+            <span class="material-symbols-outlined text-[18px]">
+              person
             </span>
-            البيانات الأساسية والهوية الأكاديمية
-          </h2>
-          <span class="text-[11px] text-on-surface-variant">الحقول المؤشرة بـ (<span class="text-error font-bold">*</span>) إلزامية</span>
-        </div>
 
-        <div class="p-5">
-          <div class="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
-
-            <!-- Photo -->
-            <div class="md:col-span-4 flex flex-col items-center sm:items-start text-center sm:text-right p-3 rounded-xl bg-surface border border-outline-variant/50">
-              <div class="flex items-center gap-3 w-full">
-                <div class="relative shrink-0">
-                  {% if teacher.get('photo_filename') %}
-                  <img src="{{ url_for('uploads.uploaded_file', filename=teacher.get('photo_filename')) }}"
-                       alt="{{ teacher.get('name', '') }}"
-                       class="w-16 h-16 rounded-xl object-cover border-2 border-surface-container-lowest ring-1 ring-outline-variant shadow-sm">
-                  {% else %}
-                  <div class="w-16 h-16 rounded-xl bg-primary text-on-primary flex items-center justify-center text-2xl font-black shadow-sm border border-outline-variant/40">
-                    {{ (teacher.get('name') or '؟')[:1] }}
-                  </div>
-                  {% endif %}
-                  <span class="absolute -bottom-1 -left-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-surface-container-lowest flex items-center justify-center text-white" title="الحساب نشط">
-                    <span class="material-symbols-outlined text-[12px] font-bold">check</span>
-                  </span>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <p class="text-xs font-bold text-on-surface truncate">الصورة الشخصية</p>
-                  <p class="text-[10.5px] text-on-surface-variant mt-0.5">JPG، PNG، WEBP (بحد أقصى 4MB)</p>
-                </div>
-              </div>
-              <div class="w-full mt-3">
-                <label class="relative block">
-                  <input type="file" name="photo" accept=".jpg,.jpeg,.png,.webp"
-                         class="block w-full text-[11px] text-on-surface cursor-pointer file:ml-2.5 file:py-1.5 file:px-2.5 file:rounded-lg file:border-0 file:text-[11px] file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer border border-outline-variant rounded-lg bg-surface-container-lowest p-1 transition-colors">
-                </label>
-                {% if teacher.get('photo_filename') %}
-                <label class="flex items-center gap-1.5 text-[11px] font-bold text-error cursor-pointer mt-2">
-                  <input type="checkbox" name="remove_photo" value="1" class="rounded border-outline-variant accent-error">
-                  إزالة الصورة الحالية
-                </label>
-                {% endif %}
-              </div>
-            </div>
-
-            <!-- Fields -->
-            <div class="md:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {% set fv = {
-                'name': teacher.get('name', ''),
-                'academic_number': teacher.get('academic_number', ''),
-                'phone': teacher.get('phone', ''),
-                'email': teacher.get('email', ''),
-                'national_id': teacher.get('national_id', ''),
-              } %}
-              {{ identity_fields(fv, name_cell='sm:col-span-2 flex flex-col gap-1.5', cell='flex flex-col gap-1.5') }}
-            </div>
-          </div>
-        </div>
-      </section>
-    </div>
-
-    <!-- Row 2: Qualification (5) + Administrative Assignment (7) -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
-
-      <section class="lg:col-span-5 rounded-2xl bg-surface-container-lowest border border-outline-variant/50 shadow-sm overflow-hidden flex flex-col">
-        <div class="px-5 py-3 border-b border-outline-variant/40 bg-surface/70 flex items-center gap-2">
-          <span class="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-            <span class="material-symbols-outlined text-[18px]">school</span>
           </span>
-          <h2 class="text-sm font-bold text-on-surface">المؤهل والدرجة العلمية</h2>
-        </div>
 
-        <div class="p-5 space-y-3.5 flex-1">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            {{ academic_select(sel, ranks, teacher.get('rank_id'), 'الدرجة العلمية', 'rank_id',
-                               placeholder='اختر الدرجة العلمية',
-                               col_class='sm:col-span-2 flex flex-col gap-1.5',
-                               custom_value=teacher.get('custom_rank_id', teacher.get('academic_rank', ''))) }}
-            {{ academic_select(sel, qualifications, teacher.get('qualification_id'), 'المؤهل الأكاديمي', 'qualification_id',
-                               placeholder='اختر المؤهل',
-                               custom_value=teacher.get('custom_qualification_id', teacher.get('qualification', ''))) }}
-            {{ academic_select(sel, classifications, teacher.get('classification_id'), 'التصنيف الوظيفي', 'classification_id',
-                               placeholder='اختر التصنيف',
-                               custom_value=teacher.get('custom_classification_id', teacher.get('classification', ''))) }}
-          </div>
+          البيانات الأساسية والهوية الأكاديمية
 
-          {{ specialization_select(sel, 'edit_specialization', specializations, teacher.get('specialization_id'),
-                                   custom_value=teacher.get('custom_specialization_id', teacher.get('specialization', ''))) }}
-        </div>
-      </section>
-
-      <section class="lg:col-span-7 rounded-2xl bg-surface-container-lowest border border-outline-variant/50 shadow-sm overflow-hidden flex flex-col">
-        <div class="px-5 py-3 border-b border-outline-variant/40 bg-surface/70 flex items-center justify-between gap-2">
-          <div class="flex items-center gap-2">
-            <span class="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-              <span class="material-symbols-outlined text-[18px]">assignment_ind</span>
-            </span>
-            <h2 class="text-sm font-bold text-on-surface">التكليف الإداري والصلاحيات</h2>
-          </div>
-          <span class="text-[11px] text-on-surface-variant">صلاحيات مكتبية مؤتمتة</span>
-        </div>
-
-        <div class="p-5 space-y-4 flex-1">
-          {{ position_hod_fields(inp, sel, departments,
-                                 selected_position=teacher.get('position'),
-                                 hod_value=teacher.get('hod_department_id'),
-                                 assignment_date=assignment_date,
-                                 department_hods=department_hods|default({}),
-                                 confirm_replace=confirm_replace|default(false),
-                                 custom_value=teacher.get('custom_position', ''),
-                                 admin_tasks=admin_tasks) }}
-        </div>
-      </section>
-    </div>
-
-    <!-- Section: Linked Departments -->
-    <section id="teachingDeptWrap" class="rounded-2xl bg-surface-container-lowest border border-outline-variant/50 shadow-sm p-5" {% if teacher.get('position') != 'عضو تدريس' %}style="display:none"{% endif %}>
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-3.5 border-b border-outline-variant/40 gap-1.5">
-        <h2 class="text-sm font-bold text-on-surface flex items-center gap-2">
-          <span class="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-            <span class="material-symbols-outlined text-[18px]">workspaces</span>
-          </span>
-          الأقسام العلمية المرتبطة للتدريس
         </h2>
-        <span class="text-xs text-on-surface-variant">الأقسام المتاح للعضو تنزيل مقررات وإشراف أكاديمي بها:</span>
-      </div>
 
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
-        {{ dept_checklist(departments, teacher_dept_ids) }}
-      </div>
-    </section>
 
-    <!-- Section: Research Hours -->
-    <section class="rounded-2xl bg-surface-container-lowest border border-outline-variant/50 shadow-sm overflow-hidden">
-      <div class="px-5 py-3 border-b border-outline-variant/40 bg-surface/70 flex flex-wrap items-center justify-between gap-2">
-        <div class="flex items-center gap-2">
-          <span class="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-            <span class="material-symbols-outlined text-[18px]">science</span>
-          </span>
-          <h2 class="text-sm font-bold text-on-surface">الساعات البحثية</h2>
-          <span class="text-xs text-on-surface-variant mr-1">(البند ثانياً — المجموع المطلوب 4 إلى 10 ساعات أسبوعياً)</span>
-        </div>
-        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-semibold">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-          الفصل الدراسي النشط
+        <span class="text-[11px] text-on-surface-variant">
+
+          الحقول المؤشرة بـ
+          <span class="text-error font-bold">*</span>
+          إلزامية
+
         </span>
+
       </div>
+
+
+      <!-- Section Content -->
 
       <div class="p-5">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {% for rt in research_types %}
-          {% set _mg = namespace(hours='') %}
-          {% for r in research %}
-            {% if (r.activity_type or '')|trim == (rt.name|string)|trim %}{% set _mg.hours = r.hours %}{% endif %}
-          {% endfor %}
-          <div class="flex items-center justify-between gap-3 p-3 rounded-xl border border-outline-variant/50 bg-surface hover:bg-primary/5 transition-colors">
-            <div class="flex items-center gap-2 min-w-0">
-              <span class="w-2 h-2 rounded-full bg-primary shrink-0"></span>
-              <span class="text-xs font-bold text-on-surface truncate">{{ rt.name }}</span>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+
+
+          <!-- ================================================= -->
+          <!-- PHOTO -->
+          <!-- ================================================= -->
+
+          <div class="lg:col-span-4">
+
+            <div class="flex flex-col items-center
+                        sm:items-start text-center sm:text-right
+                        p-4 rounded-xl bg-surface
+                        border border-outline-variant/50">
+
+              <div class="flex items-center gap-3 w-full">
+
+                <div class="relative shrink-0">
+
+                  {% if teacher.get('photo_filename') %}
+
+                  <img src="{{ url_for(
+                        'uploads.uploaded_file',
+                        filename=teacher.get('photo_filename')
+                      ) }}"
+                       alt="{{ teacher.get('name', '') }}"
+                       class="w-16 h-16 rounded-xl object-cover
+                              border-2 border-surface-container-lowest
+                              ring-1 ring-outline-variant shadow-sm">
+
+                  {% else %}
+
+                  <div class="w-16 h-16 rounded-xl bg-primary
+                              text-on-primary flex items-center
+                              justify-center text-2xl font-black
+                              shadow-sm border border-outline-variant/40">
+
+                    {{ (teacher.get('name') or '؟')[:1] }}
+
+                  </div>
+
+                  {% endif %}
+
+
+                  <span class="absolute -bottom-1 -left-1
+                               w-5 h-5 rounded-full bg-emerald-500
+                               border-2 border-surface-container-lowest
+                               flex items-center justify-center
+                               text-white"
+                        title="الحساب نشط">
+
+                    <span class="material-symbols-outlined
+                                 text-[12px] font-bold">
+
+                      check
+
+                    </span>
+
+                  </span>
+
+                </div>
+
+
+                <div class="flex-1 min-w-0">
+
+                  <p class="text-xs font-bold text-on-surface truncate">
+                    الصورة الشخصية
+                  </p>
+
+                  <p class="text-[10.5px]
+                            text-on-surface-variant mt-0.5">
+
+                    JPG، PNG، WEBP
+                    (بحد أقصى 4MB)
+
+                  </p>
+
+                </div>
+
+              </div>
+
+
+              <!-- Upload -->
+
+              <div class="w-full mt-4">
+
+                <label class="relative block">
+
+                  <input type="file"
+                         name="photo"
+                         accept=".jpg,.jpeg,.png,.webp"
+                         class="block w-full text-[11px]
+                                text-on-surface cursor-pointer
+                                file:ml-2.5 file:py-1.5
+                                file:px-2.5 file:rounded-lg
+                                file:border-0 file:text-[11px]
+                                file:font-semibold
+                                file:bg-primary/10 file:text-primary
+                                hover:file:bg-primary/20
+                                file:cursor-pointer
+                                border border-outline-variant
+                                rounded-lg bg-surface-container-lowest
+                                p-1 transition-colors">
+
+                </label>
+
+
+                {% if teacher.get('photo_filename') %}
+
+                <label class="flex items-center gap-1.5
+                              text-[11px] font-bold text-error
+                              cursor-pointer mt-2">
+
+                  <input type="checkbox"
+                         name="remove_photo"
+                         value="1"
+                         class="rounded border-outline-variant
+                                accent-error">
+
+                  إزالة الصورة الحالية
+
+                </label>
+
+                {% endif %}
+
+              </div>
+
             </div>
-            <div class="flex items-center gap-1.5 shrink-0">
-              <input type="number" name="research_hours[]" value="{{ _mg.hours }}"
-                     min="1" max="20" step="1" inputmode="numeric" pattern="[0-9]*"
-                     placeholder="0"
-                     class="w-16 h-8 text-center text-xs font-bold text-on-surface rounded-lg border border-outline-variant bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary">
-              <span class="text-[11px] text-on-surface-variant font-medium">ساعة</span>
-              <input type="hidden" name="research_type[]" value="{{ rt.name }}">
-            </div>
+
           </div>
-          {% endfor %}
+
+
+          <!-- ================================================= -->
+          <!-- IDENTITY FIELDS -->
+          <!-- ================================================= -->
+
+          <div class="lg:col-span-8">
+
+            {% set fv = {
+              'name': teacher.get('name', ''),
+              'academic_number': teacher.get('academic_number', ''),
+              'phone': teacher.get('phone', ''),
+              'email': teacher.get('email', ''),
+              'national_id': teacher.get('national_id', '')
+            } %}
+
+
+            <div class="flex items-center gap-2
+                        text-sm font-bold text-on-surface mb-3">
+
+              <span class="material-symbols-outlined text-primary">
+                badge
+              </span>
+
+              البيانات الشخصية وبيانات العضو
+
+            </div>
+
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+
+              {{ identity_fields(
+                   fv,
+                   name_cell='sm:col-span-2 flex flex-col gap-1.5',
+                   cell='flex flex-col gap-1.5'
+                 )
+              }}
+
+            </div>
+
+
+            <!-- Username -->
+
+            <div class="mt-4">
+
+              <label class="text-xs font-bold
+                            text-on-surface-variant
+                            mb-1.5 block flex items-center gap-1.5">
+
+                <span class="material-symbols-outlined
+                             text-[15px] text-primary">
+
+                  alternate_email
+
+                </span>
+
+                نيك نيم (اسم الدخول)
+
+              </label>
+
+
+              {% set registered_username = teacher.get('username')
+                   or teacher.get('nickname')
+                   or teacher.get('login_name') %}
+              {% if registered_username %}
+              <div class="w-full bg-surface-container-highest
+                          border border-outline-variant
+                          rounded-xl px-3 py-2.5
+                          text-sm font-bold text-on-surface flex items-center justify-between gap-2"
+                   dir="ltr">
+                <span>{{ registered_username }}</span>
+                <span class="material-symbols-outlined text-success text-[18px]"
+                      title="اسم الدخول مثبت" aria-label="اسم الدخول مثبت">lock</span>
+              </div>
+              {% else %}
+              <div class="flex items-center gap-2">
+                <input type="hidden" form="register-username-form"
+                       name="_csrf_token" value="{{ csrf_token() }}">
+                <input type="text" name="username" required minlength="3" maxlength="32"
+                       pattern="[A-Za-z][A-Za-z0-9_]{2,31}"
+                       class="{{ inp }} flex-1" dir="ltr" autocomplete="off"
+                       form="register-username-form"
+                       placeholder="اكتب اسم الدخول بالإنجليزية">
+                <button type="submit" form="register-username-form"
+                        class="px-4 py-2.5 rounded-xl bg-primary text-on-primary text-xs font-bold whitespace-nowrap">
+                  تسجيل
+                </button>
+              </div>
+              {% endif %}
+
+
+              <p class="text-[11px]
+                        text-on-surface-variant mt-1
+                        flex items-center gap-1">
+
+                <span class="material-symbols-outlined text-[13px]">
+                  info
+                </span>
+
+                {% if registered_username %}
+                اسم الدخول مثبت ولا يمكن تغييره
+                {% else %}
+                يجب أن يبدأ بحرف إنجليزي، ويسمح بالحروف والأرقام والشرطة السفلية فقط
+                {% endif %}
+
+              </p>
+
+            </div>
+
+          </div>
+
         </div>
 
-        <div class="mt-3.5 flex items-center gap-2 text-xs text-primary bg-primary-container/60 border border-primary/10 rounded-xl px-3 py-2">
-          <span class="material-symbols-outlined text-[18px] shrink-0">info</span>
-          <span>تُسجل هذه الساعات مباشرة في كشف العبء التدريسي والبحثي للفصل الدراسي المعتمد حالياً.</span>
-        </div>
       </div>
+
     </section>
 
-    <!-- Section: Official Dates & Tasks -->
-    <section class="rounded-2xl bg-surface-container-lowest border border-outline-variant/50 shadow-sm overflow-hidden">
-      <div class="px-5 py-3 border-b border-outline-variant/40 bg-surface/70 flex items-center gap-2">
-        <span class="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-          <span class="material-symbols-outlined text-[18px]">calendar_month</span>
+
+    <!-- ======================================================= -->
+    <!-- SECTION 2: QUALIFICATION + ADMINISTRATIVE ASSIGNMENT -->
+    <!-- ======================================================= -->
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+
+      <!-- ===================================================== -->
+      <!-- QUALIFICATION -->
+      <!-- ===================================================== -->
+
+      <section class="lg:col-span-5 rounded-2xl
+                      bg-surface-container-lowest
+                      border border-outline-variant/50
+                      shadow-sm overflow-hidden flex flex-col">
+
+        <div class="px-5 py-3 border-b border-outline-variant/40
+                    bg-surface/70 flex items-center gap-2">
+
+          <span class="w-7 h-7 rounded-lg bg-primary/10
+                       text-primary flex items-center justify-center">
+
+            <span class="material-symbols-outlined text-[18px]">
+              school
+            </span>
+
+          </span>
+
+          <h2 class="text-sm font-bold text-on-surface">
+            المؤهل والدرجة العلمية
+          </h2>
+
+        </div>
+
+
+        <div class="p-5 space-y-3.5 flex-1">
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+
+            {{ academic_select(
+                 sel,
+                 ranks,
+                 teacher.get('rank_id'),
+                 'الدرجة العلمية',
+                 'rank_id',
+                 placeholder='اختر الدرجة العلمية',
+                 col_class='sm:col-span-2 flex flex-col gap-1.5',
+                 custom_value=teacher.get(
+                   'custom_rank_id',
+                   teacher.get('academic_rank', '')
+                 )
+               )
+            }}
+
+
+            {{ academic_select(
+                 sel,
+                 qualifications,
+                 teacher.get('qualification_id'),
+                 'المؤهل الأكاديمي',
+                 'qualification_id',
+                 placeholder='اختر المؤهل',
+                 custom_value=teacher.get(
+                   'custom_qualification_id',
+                   teacher.get('qualification', '')
+                 )
+               )
+            }}
+
+
+            {{ academic_select(
+                 sel,
+                 classifications,
+                 teacher.get('classification_id'),
+                 'التصنيف الوظيفي',
+                 'classification_id',
+                 placeholder='اختر التصنيف',
+                 custom_value=teacher.get(
+                   'custom_classification_id',
+                   teacher.get('classification', '')
+                 )
+               )
+            }}
+
+          </div>
+
+
+          {{ specialization_select(
+               sel,
+               'edit_specialization',
+               specializations,
+               teacher.get('specialization_id'),
+               custom_value=teacher.get(
+                 'custom_specialization_id',
+                 teacher.get('specialization', '')
+               )
+             )
+          }}
+
+        </div>
+
+      </section>
+
+
+      <!-- ===================================================== -->
+      <!-- ADMINISTRATIVE ASSIGNMENT -->
+      <!-- ===================================================== -->
+
+      <section class="lg:col-span-7 rounded-2xl
+                      bg-surface-container-lowest
+                      border border-outline-variant/50
+                      shadow-sm overflow-hidden flex flex-col">
+
+        <div class="px-5 py-3
+                    border-b border-outline-variant/40
+                    bg-surface/70
+                    flex items-center justify-between gap-2">
+
+          <div class="flex items-center gap-2">
+
+            <span class="w-7 h-7 rounded-lg bg-primary/10
+                         text-primary flex items-center justify-center">
+
+              <span class="material-symbols-outlined text-[18px]">
+                assignment_ind
+              </span>
+
+            </span>
+
+            <h2 class="text-sm font-bold text-on-surface">
+              التكليف الإداري والصلاحيات
+            </h2>
+
+          </div>
+
+          <span class="text-[11px] text-on-surface-variant">
+            صلاحيات مكتبية مؤتمتة
+          </span>
+
+        </div>
+
+
+        <div class="p-5 space-y-4 flex-1">
+
+          {{ position_hod_fields(
+               inp,
+               sel,
+               departments,
+               selected_position=teacher.get('position'),
+               hod_value=teacher.get('hod_department_id'),
+               assignment_date=assignment_date,
+               department_hods=department_hods|default({}),
+               confirm_replace=confirm_replace|default(false),
+               custom_value=teacher.get('custom_position', ''),
+               admin_tasks=admin_tasks
+             )
+          }}
+
+        </div>
+
+      </section>
+
+    </div>
+
+
+    <!-- ======================================================= -->
+    <!-- SECTION 3: OFFICIAL DATES -->
+    <!-- ======================================================= -->
+
+    <section class="rounded-2xl bg-surface-container-lowest
+                    border border-outline-variant/50
+                    shadow-sm overflow-hidden">
+
+      <div class="px-5 py-3
+                  border-b border-outline-variant/40
+                  bg-surface/70 flex items-center gap-2">
+
+        <span class="w-7 h-7 rounded-lg bg-primary/10
+                     text-primary flex items-center justify-center">
+
+          <span class="material-symbols-outlined text-[18px]">
+            calendar_month
+          </span>
+
         </span>
-        <h2 class="text-sm font-bold text-on-surface">التواريخ الرسمية والمهام</h2>
+
+        <h2 class="text-sm font-bold text-on-surface">
+          التواريخ الرسمية والمهام
+        </h2>
+
       </div>
 
+
       <div class="p-5 space-y-3.5">
+
         {% set fv_dates = {
           'contract_date': teacher.get('contract_date', ''),
           'work_start_date': teacher.get('work_start_date', ''),
-          'first_lecture_date': teacher.get('first_lecture_date', ''),
+          'first_lecture_date': teacher.get('first_lecture_date', '')
         } %}
+
+
         {{ official_dates_fields(inp, fv_dates) }}
+
+
         <div class="flex flex-col gap-1.5">
-          <label class="text-xs font-semibold text-on-surface-variant">المهام والملاحظات الخاصة</label>
-          <textarea class="w-full rounded-xl border border-outline-variant bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary text-sm text-on-surface placeholder:text-on-surface-variant/50 p-2.5 transition-colors" name="tasks" rows="2" placeholder="أدخل أي لجان علمية، أعباء إضافية، أو ملاحظات خاصة بالعضو...">{{ teacher.get('tasks', '') }}</textarea>
+
+          <label class="text-xs font-semibold
+                        text-on-surface-variant">
+
+            المهام والملاحظات الخاصة
+
+          </label>
+
+
+          <textarea
+            class="w-full rounded-xl border
+                   border-outline-variant
+                   bg-surface-container-lowest
+                   focus:border-primary
+                   focus:ring-1 focus:ring-primary
+                   text-sm text-on-surface
+                   placeholder:text-on-surface-variant/50
+                   p-2.5 transition-colors"
+            name="tasks"
+            rows="3"
+            placeholder="أدخل أي لجان علمية، أعباء إضافية، أو ملاحظات خاصة بالعضو..."
+          >{{ teacher.get('tasks', '') }}</textarea>
+
         </div>
+
       </div>
+
     </section>
 
-    <!-- Action Footer Card -->
-    <div class="rounded-2xl bg-surface-container-lowest border border-outline-variant/50 shadow-sm p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-      <div class="flex items-center gap-2">
-        <a href="{{ url_for('teachers.teacher_detail', id=teacher_id) }}"
-           class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-on-surface hover:text-primary bg-surface hover:bg-primary/10 rounded-xl transition-colors no-underline">
-          <span class="material-symbols-outlined text-[18px]">badge</span>
-          عرض الملف الشخصي
-        </a>
+
+    <!-- ======================================================= -->
+    <!-- SECTION 4: LINKED DEPARTMENTS -->
+    <!-- ======================================================= -->
+
+    <section id="teachingDeptWrap"
+             class="rounded-2xl bg-surface-container-lowest
+                    border border-outline-variant/50
+                    shadow-sm p-5"
+             {% if teacher.get('position') != 'عضو تدريس' %}
+             style="display:none"
+             {% endif %}>
+
+      <div class="flex flex-col sm:flex-row
+                  sm:items-center justify-between
+                  pb-3 mb-3.5
+                  border-b border-outline-variant/40
+                  gap-1.5">
+
+        <h2 class="text-sm font-bold text-on-surface
+                   flex items-center gap-2">
+
+          <span class="w-7 h-7 rounded-lg bg-primary/10
+                       text-primary flex items-center justify-center">
+
+            <span class="material-symbols-outlined text-[18px]">
+              workspaces
+            </span>
+
+          </span>
+
+          الأقسام العلمية المرتبطة للتدريس
+
+        </h2>
+
+
+        <span class="text-xs text-on-surface-variant">
+
+          الأقسام المتاح للعضو تنزيل مقررات وإشراف أكاديمي بها
+
+        </span>
+
       </div>
-      <div class="flex items-center gap-2.5 w-full sm:w-auto justify-end">
-        <button type="submit" form="reset-password-form"
-                class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-error/30 bg-surface hover:bg-error/10 hover:text-error transition-colors text-xs font-semibold text-error">
-          <span class="material-symbols-outlined text-[18px]">key</span>
+
+
+      <div class="grid grid-cols-2 sm:grid-cols-3
+                  md:grid-cols-6 gap-2.5">
+
+        {{ dept_checklist(
+             departments,
+             teacher_dept_ids
+           )
+        }}
+
+      </div>
+
+    </section>
+
+
+    <!-- ======================================================= -->
+    <!-- SECTION 5: RESEARCH HOURS -->
+    <!-- ======================================================= -->
+
+    <section class="rounded-2xl bg-surface-container-lowest
+                    border border-outline-variant/50
+                    shadow-sm overflow-hidden">
+
+      <div class="px-5 py-3
+                  border-b border-outline-variant/40
+                  bg-surface/70
+                  flex flex-wrap items-center
+                  justify-between gap-2">
+
+        <div class="flex items-center gap-2">
+
+          <span class="w-7 h-7 rounded-lg bg-primary/10
+                       text-primary flex items-center justify-center">
+
+            <span class="material-symbols-outlined text-[18px]">
+              science
+            </span>
+
+          </span>
+
+          <h2 class="text-sm font-bold text-on-surface">
+            الساعات البحثية
+          </h2>
+
+          <span class="text-xs text-on-surface-variant mr-1">
+            (البند ثانياً — المجموع المطلوب 4 إلى 10 ساعات أسبوعياً)
+          </span>
+
+        </div>
+
+
+        <span class="inline-flex items-center gap-1
+                     px-2.5 py-1 rounded-md
+                     bg-emerald-50 text-emerald-700
+                     border border-emerald-200
+                     text-[11px] font-semibold">
+
+          <span class="w-1.5 h-1.5 rounded-full
+                       bg-emerald-500 animate-pulse">
+          </span>
+
+          الفصل الدراسي النشط
+
+        </span>
+
+      </div>
+
+
+      <div class="p-5">
+
+        <div class="grid grid-cols-1 sm:grid-cols-2
+                    lg:grid-cols-3 gap-3">
+
+          {% for rt in research_types %}
+
+          {% set _mg = namespace(hours='') %}
+
+          {% for r in research %}
+
+            {% if (r.activity_type or '')|trim
+                  == (rt.name|string)|trim %}
+
+              {% set _mg.hours = r.hours %}
+
+            {% endif %}
+
+          {% endfor %}
+
+
+          <div class="flex items-center justify-between
+                      gap-3 p-3 rounded-xl
+                      border border-outline-variant/50
+                      bg-surface hover:bg-primary/5
+                      transition-colors">
+
+            <div class="flex items-center gap-2 min-w-0">
+
+              <span class="w-2 h-2 rounded-full
+                           bg-primary shrink-0">
+              </span>
+
+              <span class="text-xs font-bold
+                           text-on-surface truncate">
+
+                {{ rt.name }}
+
+              </span>
+
+            </div>
+
+
+            <div class="flex items-center gap-1.5 shrink-0">
+
+              <input type="number"
+                     name="research_hours[]"
+                     value="{{ _mg.hours }}"
+                     min="1"
+                     max="20"
+                     step="1"
+                     inputmode="numeric"
+                     pattern="[0-9]*"
+                     placeholder="0"
+                     class="w-16 h-8 text-center text-xs
+                            font-bold text-on-surface
+                            rounded-lg border
+                            border-outline-variant
+                            bg-surface-container-lowest
+                            focus:border-primary
+                            focus:ring-1 focus:ring-primary">
+
+              <span class="text-[11px]
+                           text-on-surface-variant
+                           font-medium">
+
+                ساعة
+
+              </span>
+
+
+              <input type="hidden"
+                     name="research_type[]"
+                     value="{{ rt.name }}">
+
+            </div>
+
+          </div>
+
+          {% endfor %}
+
+        </div>
+
+
+        <div class="mt-3.5 flex items-center gap-2
+                    text-xs text-primary
+                    bg-primary-container/60
+                    border border-primary/10
+                    rounded-xl px-3 py-2">
+
+          <span class="material-symbols-outlined
+                       text-[18px] shrink-0">
+
+            info
+
+          </span>
+
+          <span>
+
+            تُسجل هذه الساعات مباشرة في كشف العبء
+            التدريسي والبحثي للفصل الدراسي المعتمد حالياً.
+
+          </span>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ======================================================= -->
+    <!-- PASSWORD / ACCOUNT ACTION -->
+    <!-- ======================================================= -->
+
+    <section class="rounded-2xl bg-surface-container-lowest
+                    border border-outline-variant/50
+                    shadow-sm overflow-hidden">
+
+      <div class="px-5 py-3
+                  border-b border-outline-variant/40
+                  bg-surface/70
+                  flex items-center gap-2">
+
+        <span class="w-7 h-7 rounded-lg bg-primary/10
+                     text-primary flex items-center justify-center">
+
+          <span class="material-symbols-outlined text-[18px]">
+            security
+          </span>
+
+        </span>
+
+        <h2 class="text-sm font-bold text-on-surface">
+          أمان الحساب
+        </h2>
+
+      </div>
+
+
+      <div class="p-5 flex flex-col sm:flex-row
+                  items-start sm:items-center
+                  justify-between gap-4">
+
+        <div>
+
+          <p class="text-sm font-bold text-on-surface">
+            رمز الاسترجاع
+          </p>
+
+          <p class="text-xs text-on-surface-variant mt-1">
+            يمكنك إصدار رمز استرجاع مؤقت دون تغيير كلمة المرور الحالية.
+          </p>
+
+        </div>
+
+
+        <button type="submit"
+                form="reset-password-form"
+                class="inline-flex items-center gap-1.5
+                       px-3.5 py-2 rounded-xl
+                       border border-error/30
+                       bg-surface hover:bg-error/10
+                       hover:text-error transition-colors
+                       text-xs font-semibold text-error
+                       shrink-0">
+
+          <span class="material-symbols-outlined text-[18px]">
+            key
+          </span>
+
           إصدار رمز استرجاع مؤقت
+
         </button>
-        <a href="{{ url_for('teachers.teachers_list') }}"
-           class="px-4 py-2 rounded-xl border border-outline-variant hover:bg-surface-container text-on-surface-variant hover:text-on-surface font-semibold text-xs transition-all no-underline">
-          إلغاء التغييرات
-        </a>
-        <button type="submit" form="edit-faculty-form"
-                class="px-6 py-2 rounded-xl bg-primary hover:bg-primary/90 active:bg-primary/90 text-on-primary font-semibold text-xs shadow-sm transition-all flex items-center gap-1.5">
-          <span class="material-symbols-outlined text-[18px]">save</span>
-          حفظ التعديلات
-        </button>
+
       </div>
+
+    </section>
+
+
+    <!-- ======================================================= -->
+    <!-- FINAL ACTION BAR -->
+    <!-- ======================================================= -->
+
+    <div class="rounded-2xl bg-surface-container-lowest
+                border border-outline-variant/50
+                shadow-sm p-4
+                flex flex-col sm:flex-row
+                items-center justify-between gap-3">
+
+
+      <a href="{{ url_for('teachers.teacher_detail', id=teacher_id) }}"
+         class="inline-flex items-center gap-1.5
+                px-3.5 py-2 text-xs font-semibold
+                text-on-surface hover:text-primary
+                bg-surface hover:bg-primary/10
+                rounded-xl transition-colors
+                no-underline">
+
+        <span class="material-symbols-outlined text-[18px]">
+          badge
+        </span>
+
+        عرض الملف الشخصي
+
+      </a>
+
+
+      <div class="flex items-center gap-2 w-full sm:w-auto">
+
+        <a href="{{ url_for('teachers.teachers_list') }}"
+           class="flex-1 sm:flex-none
+                  inline-flex items-center justify-center
+                  px-4 py-2 rounded-xl
+                  border border-outline-variant
+                  hover:bg-surface-container
+                  text-on-surface-variant
+                  hover:text-on-surface
+                  font-semibold text-xs
+                  transition-all no-underline">
+
+          إلغاء التغييرات
+
+        </a>
+
+
+        <button type="submit"
+                form="edit-faculty-form"
+                class="flex-1 sm:flex-none
+                       inline-flex items-center
+                       justify-center gap-1.5
+                       px-6 py-2 rounded-xl
+                       bg-primary hover:bg-primary/90
+                       active:bg-primary/90
+                       text-on-primary
+                       font-semibold text-xs
+                       shadow-sm transition-all">
+
+          <span class="material-symbols-outlined text-[18px]">
+            save
+          </span>
+
+          حفظ التعديلات
+
+        </button>
+
+      </div>
+
     </div>
 
   </form>
 
 </div>
+
 {% endblock %}
 
+
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/pages/teachers_faculty_form.js') }}"></script>
+
+<script src="{{ url_for(
+  'static',
+  filename='js/pages/teachers_faculty_form.js'
+) }}"></script>
+
 {% endblock %}
