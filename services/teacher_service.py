@@ -215,11 +215,8 @@ class TeacherService:
     def register_teacher_username(self, teacher_id: int, username: str) -> bool:
         """Set a missing teacher username once; registered names are immutable."""
         teacher = self._repo.find_by_id(teacher_id)
-        if not teacher or not teacher.get('user_id'):
-            raise ValueError('لا يوجد حساب دخول مرتبط بهذا العضو')
-        current = (teacher.get('username') or '').strip()
-        if current:
-            raise ValueError('اسم الدخول مثبت ولا يمكن تغييره')
+        if not teacher:
+            raise ValueError('عضو هيئة التدريس غير موجود')
 
         username = (username or '').strip()
         from services.temp_access_code import validate_username
@@ -228,6 +225,26 @@ class TeacherService:
             raise ValueError(username_error)
         if self._user_repo.username_exists(username):
             raise ValueError('نيك نيم الدخول مستخدم مسبقاً')
+
+        # Legacy/imported teachers may not have a users row yet. Create the
+        # linked account with a one-time initial code instead of rejecting the
+        # username registration.
+        linked_user = (
+            self._user_repo.find_by_id(teacher['user_id'])
+            if teacher.get('user_id') else None
+        )
+        if not linked_user:
+            self._ensure_user_account(
+                teacher,
+                primary_username=username,
+                direct_password=None,
+                email_code=True,
+            )
+            return True
+
+        current = (teacher.get('username') or '').strip()
+        if current:
+            raise ValueError('اسم الدخول مثبت ولا يمكن تغييره')
 
         cursor = self.db.execute(
             'UPDATE users SET username = ? WHERE id = ? AND (username IS NULL OR username = ?)',
@@ -650,6 +667,14 @@ def reset_teacher_password(db, teacher_id):
     repo = TeacherRepository(db)
     svc = TeacherService(db, repo, UserRepository(db))
     return svc.reset_teacher_password(teacher_id)
+
+
+def register_teacher_username(db, teacher_id, username):
+    from database.repositories.teacher_repository import TeacherRepository
+    from database.repositories.user_repository import UserRepository
+
+    svc = TeacherService(db, TeacherRepository(db), UserRepository(db))
+    return svc.register_teacher_username(teacher_id, username)
 
 
 def update_teacher_credentials(db, teacher_id, new_username=None, new_password=None):

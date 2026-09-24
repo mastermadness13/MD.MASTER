@@ -945,7 +945,7 @@ def teachers_register_username(id):
     db = get_db()
     try:
         teacher_service.register_teacher_username(
-            id, request.form.get('username', '')
+            db, id, request.form.get('username', '')
         )
     except ValueError as exc:
         flash(str(exc), 'error')
