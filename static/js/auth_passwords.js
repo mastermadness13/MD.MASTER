@@ -1,7 +1,4 @@
-/* Shared auth password helpers — change-password & reset-password pages.
-   Provides: show/hide toggle, live strength meter (policy: >=8 chars,
-   uppercase, lowercase, digit), confirm-match feedback, and submit-time
-   validation for `data-validate-form` auth forms. */
+/* Shared auth password helpers — change-password & reset-password pages. */
 
 function togglePassword(inputId) {
   var input = document.getElementById(inputId);
