@@ -157,11 +157,11 @@
         <div class="p-5 space-y-3.5 flex-1">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             {{ academic_select(sel, ranks, teacher.get('rank_id'), 'الدرجة العلمية', 'rank_id',
-                               placeholder='اختر الدرجة العلمية', required=true,
+                               placeholder='اختر الدرجة العلمية',
                                col_class='sm:col-span-2 flex flex-col gap-1.5',
                                custom_value=teacher.get('custom_rank_id', teacher.get('academic_rank', ''))) }}
             {{ academic_select(sel, qualifications, teacher.get('qualification_id'), 'المؤهل الأكاديمي', 'qualification_id',
-                               placeholder='اختر المؤهل', required=true,
+                               placeholder='اختر المؤهل',
                                custom_value=teacher.get('custom_qualification_id', teacher.get('qualification', ''))) }}
             {{ academic_select(sel, classifications, teacher.get('classification_id'), 'التصنيف الوظيفي', 'classification_id',
                                placeholder='اختر التصنيف',
@@ -292,19 +292,8 @@
           <span class="material-symbols-outlined text-[18px]">badge</span>
           عرض الملف الشخصي
         </a>
-        <span class="text-xs text-on-surface-variant hidden sm:inline">• آخر تحديث للنظام: اليوم</span>
       </div>
       <div class="flex items-center gap-2.5 w-full sm:w-auto justify-end">
-        <form method="post" action="{{ url_for('teachers.teachers_reset_password', id=teacher_id) }}"
-              onsubmit="return confirm('سيتم توليد رمز دخول مؤقت جديد لهذا العضو مرة واحدة فقط (يُرسل لبريده أيضاً إن وُجد). متابعة؟')"
-              class="inline-block">
-          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-          <button type="submit"
-                  class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-outline-variant bg-surface hover:bg-error/10 hover:text-error transition-colors text-xs font-semibold text-on-surface-variant">
-            <span class="material-symbols-outlined text-[18px]">key</span>
-            توليد رمز دخول جديد
-          </button>
-        </form>
         <a href="{{ url_for('teachers.teachers_list') }}"
            class="px-4 py-2 rounded-xl border border-outline-variant hover:bg-surface-container text-on-surface-variant hover:text-on-surface font-semibold text-xs transition-all no-underline">
           إلغاء التغييرات

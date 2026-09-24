@@ -680,8 +680,6 @@ def teachers_edit(id):
             'extra_roles': extra_roles,
             'hod_department_id': hod_department_id,
         }
-        if request.form.get('username') is not None or request.form.get('new_password') is not None:
-            abort(403, description='إدارة بيانات الدخول متاحة عند إنشاء العضو فقط')
         for _ck in ('custom_rank_id', 'custom_qualification_id', 'custom_classification_id',
                     'custom_specialization_id', 'custom_position'):
             form[_ck] = request.form.get(_ck, '').strip()
