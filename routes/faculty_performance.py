@@ -178,7 +178,11 @@ def preview(teacher_id):
 
     edit_mode = request.args.get('edit') == '1'
     if request.method == 'POST':
-        if not has_permission(get_active_roles(), 'faculty_performance.edit_research'):
+        if not has_permission(
+            get_active_roles(),
+            'faculty_performance.edit_research',
+            session.get('department_id'),
+        ):
             abort(403)
         _save_inline_profile(db, teacher_id, academic_year, semester)
         flash('تم حفظ بيانات الأستاذ وأعداد الطلبة بنجاح', 'success')

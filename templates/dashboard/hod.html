@@ -155,10 +155,10 @@
                   {{ lecture.room_name or '—' }}
                   {% if lecture.start_time %}<span class="mx-1">·</span>
                   <span dir="ltr">{{ lecture.start_time }} - {{ lecture.end_time }}</span>{% endif %}
-                  <a href="{{ url_for('courses.print_course', course_id=lecture.course_id, semester_id=lecture.semester_id) }}" target="_blank" onclick="ccPreparePrint(this)" data-cid="{{ lecture.course_id }}" data-sid="{{ lecture.semester_id }}" class="ml-2 text-primary hover:text-primary/70 transition-colors" aria-label="طباعة مقرر">
+                  <a href="{{ url_for('courses.courses_list', course_id=lecture.course_id, semester=lecture.semester_id) }}" class="ml-2 text-primary hover:text-primary/70 transition-colors" aria-label="عرض المقرر">
                     <span class="material-symbols-outlined text-[14px]">print</span>
                   </a>
-                  <a href="{{ url_for('courses.print_course', course_id=lecture.course_id, semester_id=lecture.semester_id) }}" target="_blank" onclick="ccPreparePrint(this)" data-cid="{{ lecture.course_id }}" data-sid="{{ lecture.semester_id }}" class="ml-2 text-primary hover:text-primary/70 transition-colors" aria-label="طباعة المنهج">
+                  <a href="{{ url_for('courses.courses_list', course_id=lecture.course_id, semester=lecture.semester_id) }}" class="ml-2 text-primary hover:text-primary/70 transition-colors" aria-label="عرض المقرر">
                     <span class="material-symbols-outlined text-[14px]">download</span>
                   </a>
                 </div>

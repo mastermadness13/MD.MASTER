@@ -376,5 +376,5 @@ if __name__ == '__main__':
         app = create_app()
         # /     /     >---- وضع التصحيح اختياري (FLASK_DEBUG=1) — إعادة التشغيل التلقائية
         # /     /     >---- تمسح عدادات تحديد معدل المحاولات من الذاكرة
-        debug = os.environ.get('FLASK_DEBUG', '1').strip().lower() in ('1', 'true', 'yes', 'on')
+        debug = os.environ.get('FLASK_DEBUG', '').strip().lower() in ('1', 'true', 'yes', 'on')
         app.run(debug=debug, host='127.0.0.1', port=5000)
