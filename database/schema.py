@@ -2478,6 +2478,7 @@ def _ensure_core_identity_schema(conn: sqlite3.Connection) -> None:
                 email TEXT,
                 phone TEXT,
                 password_changed_at TIMESTAMP,
+                session_version INTEGER NOT NULL DEFAULT 1,
                 is_active INTEGER NOT NULL DEFAULT 1,
                 force_password_change INTEGER NOT NULL DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -2771,6 +2772,9 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
             _safe_add_column(conn, 'users', 'email', 'TEXT')
         if 'password_changed_at' not in user_columns:
             _safe_add_column(conn, 'users', 'password_changed_at', 'TIMESTAMP')
+        if 'session_version' not in user_columns:
+            _safe_add_column(conn, 'users', 'session_version',
+                             'INTEGER NOT NULL DEFAULT 1')
         if 'force_password_change' not in user_columns:
             _safe_add_column(conn, 'users', 'force_password_change',
                              'INTEGER NOT NULL DEFAULT 0')

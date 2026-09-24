@@ -486,6 +486,7 @@ def teachers_create():
         form = {
             'name': name,
             'username': request.form.get('username', '').strip(),
+            'password': request.form.get('password', ''),
             'email': request.form.get('email', '').strip(),
             'phone': request.form.get('phone', '').strip(),
             'department_id': department_id,
@@ -522,6 +523,26 @@ form=form, form_error='الاسم مطلوب',
                                    grantable_roles=_GRANTABLE_ROLES,
                                    admin_tasks=admin_tasks,
                                    user=current_user())
+        if not form['username']:
+            return render_template('teachers/create.html',
+                                  departments=departments, qualifications=qualifications,
+                                  ranks=ranks, classifications=classifications,
+                                  specializations=specializations,
+                                  department_hods=department_hods,
+                                  confirm_replace=confirmed_replace, form=form,
+                                  form_error='اسم المستخدم مطلوب',
+                                  grantable_roles=_GRANTABLE_ROLES,
+                                  admin_tasks=admin_tasks, user=current_user())
+        if len(form['password']) < 6:
+            return render_template('teachers/create.html',
+                                  departments=departments, qualifications=qualifications,
+                                  ranks=ranks, classifications=classifications,
+                                  specializations=specializations,
+                                  department_hods=department_hods,
+                                  confirm_replace=confirmed_replace, form=form,
+                                  form_error='كلمة المرور يجب أن تكون 6 أحرف على الأقل',
+                                  grantable_roles=_GRANTABLE_ROLES,
+                                  admin_tasks=admin_tasks, user=current_user())
         if 'head_of_department' in effective_roles:
             headship_error, _conflict_name = _validate_headship(
                 db, hod_department_id,
@@ -555,7 +576,8 @@ form=form, form_error=spec_error,
                                    user=current_user())
         try:
             creds = teacher_service.create_teacher(db, form, department_ids=department_ids,
-                                                   additional_roles=sorted(effective_roles))
+                                                   additional_roles=sorted(effective_roles),
+                                                   initial_password=form['password'])
         except ValueError as exc:
             message = str(exc)
             if 'academic_number' in message:

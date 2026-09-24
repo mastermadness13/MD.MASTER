@@ -194,7 +194,9 @@ def change_password():
     if request.method == 'POST':
         payload = request.get_json(silent=True) or request.form
         is_json = request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-        current = (payload.get('current_password') or '').strip()
+        # Passwords are opaque secrets: do not trim them because leading or
+        # trailing whitespace may be part of a user's chosen password.
+        current = payload.get('current_password') or ''
         new_pass = payload.get('new_password') or ''
         confirm = payload.get('confirm_password') or ''
 
@@ -207,10 +209,12 @@ def change_password():
             error = 'كلمة المرور الحالية غير صحيحة'
         elif new_pass != confirm:
             error = 'كلمة المرور الجديدة وتأكيدها غير متطابقين'
-        elif validate_password(new_pass):
-            error = validate_password(new_pass)
-        elif check_password_hash(user['password'], new_pass):
-            error = 'كلمة المرور الجديدة يجب أن تختلف عن كلمة المرور الحالية'
+        else:
+            password_error = validate_password(new_pass)
+            if password_error:
+                error = password_error
+            elif check_password_hash(user['password'], new_pass):
+                error = 'كلمة المرور الجديدة يجب أن تختلف عن كلمة المرور الحالية'
 
         if error:
             if is_json:

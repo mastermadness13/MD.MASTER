@@ -121,6 +121,7 @@ class UserService:
         session_dict['permanent'] = bool(remember)
         session_dict['user_id'] = user['id']
         session_dict['username'] = user['username']
+        session_dict['session_version'] = user.get('session_version', 1)
         # /     /     >---- رمز الدخول الأولي: أول تسجيل ناجح يبطل استخدامه نهائياً
         # /     /     >---- (نحذف تجزئته حتى ما يبقاش صالح للاستعمال مرة ثانية)
         if user.get('initial_login_code_used') == 0 and user.get('initial_login_code_hash'):

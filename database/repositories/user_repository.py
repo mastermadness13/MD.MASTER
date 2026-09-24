@@ -105,7 +105,8 @@ class UserRepository(BaseRepository):
     def update_password(self, user_id: int, hashed_password: str) -> None:
         self.db.execute(
             'UPDATE users SET password = ?, password_changed_at = CURRENT_TIMESTAMP, '
-            'force_password_change = 0 WHERE id = ?',
+            'force_password_change = 0, session_version = session_version + 1 '
+            'WHERE id = ?',
             (hashed_password, user_id),
         )
         self.db.commit()

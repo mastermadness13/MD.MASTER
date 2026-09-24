@@ -173,6 +173,31 @@ def create_app():
     PUBLIC_PREFIXES = ('/static/', '/uploads/', '/favicon.ico')
 
     @app.before_request
+    def enforce_session_version():
+        """Invalidate sessions created before a password change."""
+        user_id = session.get('user_id')
+        if not user_id or request.path.startswith(PUBLIC_PREFIXES):
+            return None
+
+        row = get_db().execute(
+            'SELECT session_version FROM users WHERE id = ? AND is_active = 1',
+            (user_id,),
+        ).fetchone()
+        if not row:
+            session.clear()
+            return redirect(url_for('auth.login'))
+
+        current_version = row['session_version'] or 1
+        session_version = session.get('session_version')
+        if session_version is None:
+            session['session_version'] = current_version
+        elif session_version != current_version:
+            session.clear()
+            flash('انتهت صلاحية الجلسة، يرجى تسجيل الدخول مجدداً', 'error')
+            return redirect(url_for('auth.login'))
+        return None
+
+    @app.before_request
     def enforce_permissions():
         """Deny access unless user has required permission for the endpoint."""
         # Skip static and public assets

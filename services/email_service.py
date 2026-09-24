@@ -1,9 +1,55 @@
 import smtplib
 import logging
+import html
+import json
+import os
+from urllib import error as urllib_error
+from urllib import request as urllib_request
 from email.mime.text import MIMEText
 from config import Config
 
 logger = logging.getLogger(__name__)
+BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email'
+
+
+def _brevo_sender_config():
+    """Return the configured Brevo sender, or None to use the SMTP fallback."""
+    api_key = os.environ.get('BREVO_API_KEY')
+    sender_email = os.environ.get('BREVO_SENDER_EMAIL')
+    if not api_key or not sender_email:
+        return None
+    return api_key, sender_email, os.environ.get('BREVO_SENDER_NAME', 'ROPEY')
+
+
+def _send_brevo_email(to_email: str, recipient_name: str, subject: str,
+                      text_body: str, html_body: str) -> bool:
+    config = _brevo_sender_config()
+    if not config:
+        return False
+    api_key, sender_email, sender_name = config
+    payload = json.dumps({
+        'sender': {'name': sender_name, 'email': sender_email},
+        'to': [{'email': to_email, 'name': recipient_name or to_email}],
+        'subject': subject,
+        'textContent': text_body,
+        'htmlContent': html_body,
+    }).encode('utf-8')
+    req = urllib_request.Request(
+        BREVO_API_URL,
+        data=payload,
+        headers={
+            'api-key': api_key,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+        },
+        method='POST',
+    )
+    try:
+        with urllib_request.urlopen(req, timeout=10) as response:
+            return 200 <= response.status < 300
+    except (urllib_error.HTTPError, urllib_error.URLError, TimeoutError, OSError):
+        logger.exception('Failed to send email through Brevo to %s', to_email)
+        return False
 
 
 # /     /     >---- إرسال بريد إعادة تعيين كلمة المرور للمستخدم
@@ -75,6 +121,22 @@ def send_initial_login_code(
             'أهلاً بك في المجتمع الأكاديمي،\n'
             'مكتب إدارة أعضاء هيئة التدريس'
         )
+
+        html_body = (
+            '<div dir="rtl" style="font-family:sans-serif">'
+            f'<p>مرحباً {html.escape(username)}،</p>'
+            f'<p>{html.escape(intro)}</p>'
+            f'<p><strong>نيك نيم:</strong> {html.escape(username)}<br>'
+            f'<strong>رمز الدخول المؤقت:</strong> {html.escape(code)}</p>'
+            f'<p>يرجى استخدام الرمز خلال {expiry_days} أيام، ثم تعيين كلمة مرور جديدة.</p>'
+            '</div>'
+        )
+        if _brevo_sender_config() and _send_brevo_email(
+                to_email, username, subject, body, html_body):
+            logger.info('Initial login code email sent through Brevo to %s', to_email)
+            return True
+        if _brevo_sender_config():
+            return False
 
         msg = MIMEText(body, _charset='utf-8')
         msg['Subject'] = subject

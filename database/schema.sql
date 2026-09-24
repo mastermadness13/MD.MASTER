@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS users (
     email TEXT,
     phone TEXT,
     password_changed_at TIMESTAMP,
+    session_version INTEGER NOT NULL DEFAULT 1,
     is_active INTEGER NOT NULL DEFAULT 1,
     force_password_change INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

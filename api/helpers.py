@@ -77,16 +77,7 @@ def log_history(db, action, entity_type, entity_id, message):
 
 
 def install_error_handlers(bp):
-    """Register JSON error handlers on an API blueprint (idempotent).
-
-    ``create_app()`` may legitimately run more than once in a process (tests,
-    DB migration checks). Flask raises ``AssertionError`` when ``errorhandler``
-    is called on a blueprint that was already registered, so each handler set
-    is installed exactly once per blueprint.
-    """
-    if getattr(bp, '_api_json_error_handlers_installed', False):
-        return
-    bp._api_json_error_handlers_installed = True
+    """Register JSON error handlers on an API blueprint."""
 
     @bp.errorhandler(401)
     def _unauthorized(e):

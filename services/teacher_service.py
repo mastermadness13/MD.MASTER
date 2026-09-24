@@ -74,7 +74,7 @@ class TeacherService:
 
     # /     /     >---- إنشاء أستاذ: منع تكرار الرقم الأكاديمي + ربطه بحساب مستخدم
     def create_teacher(self, data: Dict[str, Any], department_ids=None,
-                       additional_roles=None) -> Dict[str, str]:
+                       additional_roles=None, initial_password=None) -> Dict[str, str]:
         from utils.text import normalize_academic_number, normalize_arabic_name
 
         an = normalize_academic_number(data.get('academic_number'))
@@ -126,11 +126,15 @@ class TeacherService:
                     f"{nickname}"
                     "' already taken — choose another nickname"
                 )
+        if not nickname:
+            raise ValueError('اسم المستخدم مطلوب')
+        if not initial_password or len(initial_password) < 6:
+            raise ValueError('كلمة المرور يجب أن تكون 6 أحرف على الأقل')
 
         # /     /     >---- إنشاء حساب الدخول: نيك نيم المكتب أو التوليد التلقائي + رمز دخول أولي
         # /     /     >---- الرمز يُرسل بالبريد الشخصي ويُعرض للمكتب مرة واحدة بعد الإنشاء
         username = nickname or _generate_username(teacher_id)
-        code = _generate_password()
+        code = initial_password
         expires = (datetime.now() + timedelta(
             days=INITIAL_CODE_EXPIRY_DAYS
         )).strftime('%Y-%m-%d %H:%M:%S')

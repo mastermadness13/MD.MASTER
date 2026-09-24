@@ -217,25 +217,25 @@
 
 <div class="{{ cell }}">
   <label class="text-xs font-bold text-on-surface-variant">
-    الرقم التعريفي / الكلية <span class="text-error">*</span>
+    الرقم التعريفي / الكلية
   </label>
   <div class="relative">
     <span class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-on-surface-variant/70">
       <span class="material-symbols-outlined text-[18px]">tag</span>
     </span>
-    <input class="{{ inp }} font-mono text-left" placeholder="أدخل الرقم التعريفي" type="text" name="academic_number" value="{{ fv.academic_number or '' }}" dir="ltr" required="">
+    <input class="{{ inp }} font-mono text-left" placeholder="اختياري — يمكن إضافته لاحقاً" type="text" name="academic_number" value="{{ fv.academic_number or '' }}" dir="ltr">
   </div>
 </div>
 
 <div class="{{ cell }}">
   <label class="text-xs font-bold text-on-surface-variant">
-    رقم الهاتف المعتمد <span class="text-error">*</span>
+    رقم الهاتف المعتمد
   </label>
   <div class="relative">
     <span class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-on-surface-variant/70">
       <span class="material-symbols-outlined text-[18px]">call</span>
     </span>
-    <input class="{{ inp }} font-mono text-left" placeholder="أدخل رقم الهاتف" type="tel" name="phone" value="{{ fv.phone or '' }}" dir="ltr" required="">
+    <input class="{{ inp }} font-mono text-left" placeholder="اختياري — يمكن إضافته لاحقاً" type="tel" name="phone" value="{{ fv.phone or '' }}" dir="ltr">
   </div>
 </div>
 
