@@ -47,11 +47,12 @@ def course_content(submission_id):
     """Public view of a published electronic course-description sheet."""
     db = get_db()
     submission = db.execute(
-        '''SELECT s.*, d.name AS dept_name, ap.label AS period_label
+        '''SELECT s.*, c.year AS academic_year,
+                  d.name AS dept_name, ap.label AS period_label
            FROM course_content_submissions s
            LEFT JOIN departments d ON d.id = s.department_id
            LEFT JOIN academic_periods ap ON ap.id = s.academic_period_id
-           JOIN courses c ON c.id = s.course_id AND c.deleted_at IS NULL
+           LEFT JOIN courses c ON c.id = s.course_id AND c.deleted_at IS NULL
            WHERE s.id = ? AND s.status = 'published' ''',
         (submission_id,)
     ).fetchone()

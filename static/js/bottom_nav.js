@@ -80,7 +80,8 @@
   var tbody = document.getElementById('ccTheoreticalCurriculumBody');
   var total = document.getElementById('ccTheoreticalWeeksTotal');
   var addBtn = document.getElementById('ccAddTheoreticalRow');
-  if(!tbody) return;
+  var dedicatedSheet = document.querySelector('.cc-sheet[data-course-content-manager="teachers__course_content_doc"]');
+  if(!tbody || dedicatedSheet) return;
 
   // 1) تمدد تلقائي لكل textarea (لا شريط تمرير)
   function grow(t){

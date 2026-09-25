@@ -17,6 +17,46 @@
     initModals();
     initBackToTop();
     initCSRF();
+    initCarousels();
+  }
+
+  function initCarousels() {
+    document.querySelectorAll('[data-carousel]').forEach(function (root) {
+      var slides = Array.prototype.slice.call(root.querySelectorAll('.carousel-slide'));
+      if (!slides.length) return;
+
+      var prevBtn = root.querySelector('[data-carousel-prev]');
+      var nextBtn = root.querySelector('[data-carousel-next]');
+      var counter = root.querySelector('[data-carousel-counter]');
+      var current = 0;
+
+      function show(index) {
+        if (index < 0 || index >= slides.length) return;
+        current = index;
+        slides.forEach(function (slide, i) {
+          slide.classList.toggle('hidden', i !== current);
+        });
+        if (counter) {
+          counter.textContent = (current + 1) + ' / ' + slides.length;
+        }
+        if (prevBtn) prevBtn.disabled = current === 0;
+        if (nextBtn) nextBtn.disabled = current === slides.length - 1;
+      }
+
+      if (prevBtn) {
+        prevBtn.addEventListener('click', function () { show(current - 1); });
+      }
+      if (nextBtn) {
+        nextBtn.addEventListener('click', function () { show(current + 1); });
+      }
+
+      root.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowRight') { show(current - 1); }
+        else if (e.key === 'ArrowLeft') { show(current + 1); }
+      });
+
+      show(0);
+    });
   }
 
   /* ── Sidebar ── */

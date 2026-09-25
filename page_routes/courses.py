@@ -384,6 +384,30 @@ def _validate_code_updates(db, updates):
 @csrf_required
 def courses_codes():
     """Batch editor for course codes, per department or for all courses."""
+    if request.method == 'GET' and request.args.get('tab') == 'content':
+        db = get_db()
+        course_id = request.args.get('course_id', type=int)
+        submission_id = request.args.get('submission_id', type=int)
+        if not course_id:
+            return redirect(url_for('teacher_pages.super_admin_course_content_list'))
+        context = build_course_content_form_context(
+            db, course_id=course_id, submission_id=submission_id
+        )
+        if context is None:
+            return redirect(url_for('teacher_pages.super_admin_course_content_list'))
+        return render_template(
+            'teachers/course_content_sheet.html',
+            user=current_user(),
+            page_mode='create',
+            edit_submission_id=submission_id,
+            doc=context['doc'],
+            curriculum=context['curriculum'],
+            theoretical_curriculum=context['theoretical_curriculum'],
+            practical_curriculum=context['practical_curriculum'],
+            courses=context['courses'],
+            academic_periods=context['academic_periods'],
+            default_period_id=context['default_period_id'],
+        )
     abort(404)
     db = get_db()
     dept_id = request.form.get('dept', request.args.get('dept', 0, type=int), type=int) or None

@@ -15,6 +15,7 @@ from security import current_user
 from services import download_service, message_service, course_service, notification_service, public_service
 from services import hod_resolution
 from services.course_content_service import transition_submission, copy_submission_as_draft, publish_directly, CourseContentError, pdf_state_for
+from services.translation_service import translate_ar_to_en
 from utils.format import semester_label
 from utils.redirects import redirect_back
 
@@ -453,7 +454,7 @@ def _course_context_from_db(db, course_id, teacher_id):
     row = db.execute('''
         SELECT c.id AS course_id, c.name AS course_name, c.code AS course_code,
                c.theoretical_hours, c.practical_hours, c.total_hours,
-               COALESCE(c.accreditation, 0) AS credits, c.semester,
+               COALESCE(c.accreditation, 0) AS credits, c.semester, c.year,
                tt.department_id, tt.student_section
         FROM timetable tt
         JOIN courses c ON tt.course_id = c.id
@@ -478,7 +479,7 @@ def _course_context_course_only(db, course_id):
     row = db.execute('''
         SELECT c.id AS course_id, c.name AS course_name, c.code AS course_code,
                c.theoretical_hours, c.practical_hours, c.total_hours,
-               COALESCE(c.accreditation, 0) AS credits, c.semester,
+               COALESCE(c.accreditation, 0) AS credits, c.semester, c.year,
                COALESCE(
                    (SELECT cd.department_id FROM course_departments cd
                     WHERE cd.course_id = c.id LIMIT 1),
@@ -490,57 +491,119 @@ def _course_context_course_only(db, course_id):
     return dict(row) if row else None
 
 
-def _curriculum_from_form(form):
+def _curriculum_from_form(form, existing_rows=None):
+    existing_by_section = {'theoretical': [], 'practical': []}
+    for row in existing_rows or []:
+        section = row.get('section') or 'theoretical'
+        if section not in existing_by_section:
+            section = 'theoretical'
+        existing_by_section[section].append(dict(row))
+
+    def _old_row(old_rows, row_id, index, used_ids, allow_positional=True):
+        if row_id:
+            for candidate in old_rows:
+                candidate_id = candidate.get('id')
+                if candidate_id is not None and str(candidate_id) == str(row_id):
+                    if candidate_id in used_ids:
+                        return {}
+                    used_ids.add(candidate_id)
+                    return candidate
+            return {}
+        if not allow_positional or index >= len(old_rows):
+            return {}
+        candidate = old_rows[index]
+        candidate_id = candidate.get('id')
+        if candidate_id is not None:
+            if candidate_id in used_ids:
+                return {}
+            used_ids.add(candidate_id)
+        return candidate
+
+    def _value(values, index, old_key, old_row, field_present=True):
+        if index < len(values):
+            return values[index] or ''
+        if not field_present:
+            return old_row.get(old_key) or ''
+        return ''
+
     def _read_section(prefix):
         topics = form.getlist(f'{prefix}_curriculum_topic[]')
         if not topics:
             return []
+        old_rows = existing_by_section.get(prefix, [])
+        row_ids = form.getlist(f'{prefix}_curriculum_id[]')
         topics_en = form.getlist(f'{prefix}_curriculum_topic_en[]')
         weeks = form.getlist(f'{prefix}_curriculum_weeks[]')
         contents = form.getlist(f'{prefix}_curriculum_content[]')
         contents_en = form.getlist(f'{prefix}_curriculum_content_en[]')
+        has_topics_en = f'{prefix}_curriculum_topic_en[]' in form
+        has_contents = f'{prefix}_curriculum_content[]' in form
+        has_contents_en = f'{prefix}_curriculum_content_en[]' in form
+        used_ids = set()
         items = []
         for i, topic in enumerate(topics):
-            if (topic or '').strip():
+            if not (topic or '').strip():
+                continue
+            row_id = row_ids[i] if i < len(row_ids) else ''
+            old_row = _old_row(old_rows, row_id, i, used_ids, not row_ids)
+            if i < len(weeks) and weeks[i]:
                 try:
-                    w = int(weeks[i]) if i < len(weeks) and weeks[i] else 1
+                    w = int(weeks[i])
                 except (ValueError, TypeError):
-                    w = 1
-                items.append({
-                    'topic': (topic or '').strip(),
-                    'weeks': w,
-                    'content': (contents[i] if i < len(contents) else '') or '',
-                    'topic_en': (topics_en[i] if i < len(topics_en) else '') or '',
-                    'content_en': (contents_en[i] if i < len(contents_en) else '') or '',
-                    'section': prefix,
-                })
+                    w = int(old_row.get('weeks') or 1)
+            else:
+                w = int(old_row.get('weeks') or 1)
+            items.append({
+                'topic': (topic or '').strip(),
+                'weeks': w,
+                'content': _value(contents, i, 'content', old_row, has_contents),
+                'topic_en': _value(topics_en, i, 'topic_en', old_row, has_topics_en),
+                'content_en': _value(contents_en, i, 'content_en', old_row, has_contents_en),
+                'section': prefix,
+            })
         return items
 
     theoretical = _read_section('theoretical')
     practical = _read_section('practical')
 
-    # Backwards compatibility: legacy forms post `curriculum_topic[]` with no
-    # section prefix — treat those rows as the theoretical section.
+    if 'practical_curriculum_topic[]' not in form:
+        practical = [dict(row) for row in existing_by_section['practical']]
+
+    if not theoretical and 'theoretical_curriculum_topic[]' not in form and 'curriculum_topic[]' not in form:
+        theoretical = [dict(row) for row in existing_by_section['theoretical']]
+
     if not theoretical:
         legacy_topics = form.getlist('curriculum_topic[]')
         legacy_topics_en = form.getlist('curriculum_topic_en[]')
         legacy_weeks = form.getlist('curriculum_weeks[]')
         legacy_contents = form.getlist('curriculum_content[]')
         legacy_contents_en = form.getlist('curriculum_content_en[]')
+        legacy_ids = form.getlist('curriculum_id[]')
+        old_rows = existing_by_section['theoretical']
+        has_legacy_topics_en = 'curriculum_topic_en[]' in form
+        has_legacy_contents = 'curriculum_content[]' in form
+        has_legacy_contents_en = 'curriculum_content_en[]' in form
+        used_ids = set()
         for i, topic in enumerate(legacy_topics):
-            if (topic or '').strip():
+            if not (topic or '').strip():
+                continue
+            row_id = legacy_ids[i] if i < len(legacy_ids) else ''
+            old_row = _old_row(old_rows, row_id, i, used_ids, not legacy_ids)
+            if i < len(legacy_weeks) and legacy_weeks[i]:
                 try:
-                    w = int(legacy_weeks[i]) if i < len(legacy_weeks) and legacy_weeks[i] else 1
+                    w = int(legacy_weeks[i])
                 except (ValueError, TypeError):
-                    w = 1
-                theoretical.append({
-                    'topic': (topic or '').strip(),
-                    'weeks': w,
-                    'content': (legacy_contents[i] if i < len(legacy_contents) else '') or '',
-                    'topic_en': (legacy_topics_en[i] if i < len(legacy_topics_en) else '') or '',
-                    'content_en': (legacy_contents_en[i] if i < len(legacy_contents_en) else '') or '',
-                    'section': 'theoretical',
-                })
+                    w = int(old_row.get('weeks') or 1)
+            else:
+                w = int(old_row.get('weeks') or 1)
+            theoretical.append({
+                'topic': (topic or '').strip(),
+                'weeks': w,
+                'content': _value(legacy_contents, i, 'content', old_row, has_legacy_contents),
+                'topic_en': _value(legacy_topics_en, i, 'topic_en', old_row, has_legacy_topics_en),
+                'content_en': _value(legacy_contents_en, i, 'content_en', old_row, has_legacy_contents_en),
+                'section': 'theoretical',
+            })
 
     return {'theoretical': theoretical, 'practical': practical}
 
@@ -570,20 +633,7 @@ _STUDY_TYPE_EN = {
 
 
 def _google_translate(text):
-    import urllib.parse
-    import urllib.request
-
-    url = 'https://translate.googleapis.com/translate_a/single'
-    params = urllib.parse.urlencode({
-        'client': 'gtx', 'sl': 'ar', 'tl': 'en', 'dt': 't', 'q': text,
-    })
-    req = urllib.request.Request(
-        url + '?' + params,
-        headers={'User-Agent': 'Mozilla/5.0'},
-    )
-    with urllib.request.urlopen(req, timeout=15) as resp:
-        payload = json.loads(resp.read().decode('utf-8'))
-    return ''.join(seg[0] for seg in payload[0] if seg and seg[0])
+    return translate_ar_to_en(text)
 
 
 def _safe_translate(text):
@@ -1300,6 +1350,7 @@ def super_admin_course_content_create():
         'teachers/course_content_sheet.html',
         user=current_user(),
         page_mode='create',
+        edit_submission_id=submission_id,
         doc=context['doc'],
         curriculum=context['curriculum'],
         theoretical_curriculum=context['theoretical_curriculum'],
@@ -1482,7 +1533,16 @@ def super_admin_course_content_send():
     status = 'draft'
 
     submitted_to = ''
-    curriculum = _curriculum_from_form(request.form)
+    existing_curriculum = []
+    if submission_id:
+        existing_curriculum = [dict(row) for row in db.execute(
+            '''SELECT id, topic, weeks, content, topic_en, content_en,
+                      COALESCE(section, 'theoretical') AS section
+               FROM course_content_curriculum
+               WHERE submission_id = ? ORDER BY sort_order''',
+            (submission_id,),
+        ).fetchall()]
+    curriculum = _curriculum_from_form(request.form, existing_curriculum)
 
     # Theoretical weeks must not exceed the 12-week semester limit.
     theoretical_weeks = sum(
@@ -1672,8 +1732,10 @@ def build_course_content_form_context(db, course_id=None, submission_id=None):
     """
     if submission_id:
         sub = db.execute(
-            '''SELECT s.*, COALESCE(d.name, '') AS department_name
+            '''SELECT s.*, c.year AS academic_year,
+                      COALESCE(d.name, '') AS department_name
                FROM course_content_submissions s
+               LEFT JOIN courses c ON c.id = s.course_id
                LEFT JOIN departments d ON s.department_id = d.id
                WHERE s.id = ?''',
             (submission_id,)
@@ -1683,6 +1745,7 @@ def build_course_content_form_context(db, course_id=None, submission_id=None):
             return None
         doc = {
             'course_id': sub['course_id'],
+            'academic_year': sub['academic_year'] or '',
             'course_name': sub['course_name'],
             'course_code': sub['course_code'],
             'credits': sub['credits'],
@@ -1708,7 +1771,7 @@ def build_course_content_form_context(db, course_id=None, submission_id=None):
             'notes_en': sub['notes_en'] or '',
         }
         curriculum = [dict(r) for r in db.execute(
-            'SELECT topic, weeks, content, topic_en, content_en, '
+            'SELECT id, topic, weeks, content, topic_en, content_en, '
             'COALESCE(section, "theoretical") AS section '
             'FROM course_content_curriculum WHERE submission_id = ? '
             'ORDER BY sort_order',
@@ -1727,6 +1790,7 @@ def build_course_content_form_context(db, course_id=None, submission_id=None):
         ).fetchone()
         doc = {
             'course_id': context['course_id'],
+            'academic_year': context.get('year') or '',
             'course_name': context['course_name'],
             'course_code': context['course_code'],
             'credits': context['credits'],
@@ -1757,6 +1821,7 @@ def build_course_content_form_context(db, course_id=None, submission_id=None):
     else:
         doc = {
             'course_id': '',
+            'academic_year': '',
             'course_name': '',
             'course_code': '',
             'credits': '',

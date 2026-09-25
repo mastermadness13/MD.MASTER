@@ -23,10 +23,93 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=cairo:wght@400;600;700;800&family=inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  .cc-create-page {
+    max-width: 1180px !important;
+    margin: -8px auto 0;
+  }
+  .cc-create-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 64px;
+    margin: 0 -16px 24px;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, .95);
+    border-bottom: 1px solid #e5e7eb;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, .08);
+  }
+  .cc-create-toolbar-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+  }
+  .cc-create-toolbar-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    flex: 0 0 auto;
+    border-radius: 8px;
+    background: #eef2ff;
+    color: #4f46e5;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .cc-create-toolbar-copy { min-width: 0; }
+  .cc-create-toolbar-copy h1,
+  .cc-create-toolbar-copy p { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cc-create-toolbar-copy h1 { color: #111827; font-size: 14px; font-weight: 700; }
+  .cc-create-toolbar-copy p { margin-top: 2px; color: #6b7280; font-size: 12px; }
+  .cc-create-toolbar-actions { display: flex; flex-wrap: wrap; gap: 8px; flex: 0 0 auto; }
+  .cc-create-toolbar-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 36px;
+    padding: 0 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: #fff;
+    color: #374151;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .15s ease, border-color .15s ease;
+  }
+  .cc-create-toolbar-button:hover { background: #f9fafb; border-color: #9ca3af; }
+  .cc-create-toolbar-button--primary {
+    border-color: #4f46e5;
+    background: #4f46e5;
+    color: #fff;
+  }
+  .cc-create-toolbar-button--primary:hover { background: #4338ca; border-color: #4338ca; }
+  .cc-create-page .cc-sheet--form .cc-sheet-header { display: none; }
+  .cc-create-page .cc-sheet--form .cc-doc-title {
+    margin: 0 0 20px;
+    padding-bottom: 20px;
+    border-bottom: 0;
+  }
+  .cc-create-page .cc-sheet--form .cc-doc-title h1 { font-size: 28px; color: #111827; }
+  .cc-create-page .cc-sheet--form .cc-doc-title p { color: #374151; font-size: 14px; }
+  .cc-create-page .cc-sheet--form .cc-sheet-meta { display: none; }
+  @media (max-width: 700px) {
+    .cc-create-toolbar { align-items: flex-start; flex-direction: column; margin-left: -8px; margin-right: -8px; }
+    .cc-create-toolbar-actions { width: 100%; }
+    .cc-create-toolbar-button { flex: 1; justify-content: center; }
+  }
+  @media print {
+    .cc-create-page { max-width: none !important; margin: 0 !important; }
+    .cc-create-toolbar { display: none !important; }
+  }
+</style>
 {% endblock %}
 
 {% block content %}
-<div class="{{ 'max-w-6xl' if (is_admin_list or is_teacher_list) else 'max-w-5xl' }} mx-auto">
+<div class="{{ 'cc-create-page' if is_form else ('max-w-6xl' if (is_admin_list or is_teacher_list) else 'max-w-5xl') }} mx-auto">
 
   <!-- Page Header -->
   {% if is_admin_list %}
@@ -63,6 +146,25 @@
     </div>
   </div>
   {% elif is_form %}
+  <div class="cc-create-toolbar no-print">
+    <div class="cc-create-toolbar-info">
+      <span class="cc-create-toolbar-mark">{{ (doc.course_code or 'CC')[:4] }}</span>
+      <div class="cc-create-toolbar-copy">
+        <h1>Course Syllabus (مفردات مقرر)</h1>
+        <p>Course: {{ doc.course_name or '—' }}{% if doc.course_code %} • Code: {{ doc.course_code }}{% endif %}</p>
+      </div>
+    </div>
+    <div class="cc-create-toolbar-actions">
+      <button type="button" onclick="window.print()" class="cc-create-toolbar-button">
+        <span class="material-symbols-outlined text-base">print</span>
+        طباعة النموذج
+      </button>
+      <button type="submit" form="courseContentForm" class="cc-create-toolbar-button cc-create-toolbar-button--primary">
+        <span class="material-symbols-outlined text-base">download</span>
+        حفظ / تنزيل PDF
+      </button>
+    </div>
+  </div>
   {% else %}
   <div class="flex flex-wrap items-center justify-between gap-4 mb-6 no-point">
     <div class="flex items-center gap-3">

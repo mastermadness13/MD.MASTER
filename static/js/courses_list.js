@@ -133,10 +133,10 @@
     var cc = COURSE_CONTENT[c.id] || {};
     var html = '';
     if (cc.form) {
-      html += '<a href="/course-file/' + cc.form.id + '?download=1" class="w-7 h-7 inline-flex items-center justify-center rounded-lg hover:bg-primary-faint text-primary transition-all" data-tip="تحميل المقرر" aria-label="تحميل المقرر"><span class="material-symbols-outlined text-base">description</span></a>';
+      html += '<a href="/course-file/' + cc.form.id + '?download=1" class="inline-flex items-center gap-1 rounded-lg border border-primary/30 text-primary px-2 py-1.5 text-xs font-bold no-underline hover:bg-primary-faint transition-all" data-tip="تحميل المقرر" aria-label="تحميل المقرر"><span class="material-symbols-outlined text-sm">description</span>تحميل المقرر</a>';
     }
     if (cc.syllabus) {
-      html += '<a href="/course-file/' + cc.syllabus.id + '?download=1" class="w-7 h-7 inline-flex items-center justify-center rounded-lg hover:bg-primary-faint text-primary transition-all" data-tip="تحميل المنهج" aria-label="تحميل المنهج"><span class="material-symbols-outlined text-base">download</span></a>';
+      html += '<a href="/course-file/' + cc.syllabus.id + '?download=1" class="inline-flex items-center gap-1 rounded-lg border border-primary/30 text-primary px-2 py-1.5 text-xs font-bold no-underline hover:bg-primary-faint transition-all" data-tip="تحميل المنهج" aria-label="تحميل المنهج"><span class="material-symbols-outlined text-sm">download</span>تحميل المنهج</a>';
     }
     if (IS_RD) {
       var href = cc.form ? '/teacher/super-admin/course-content/' + cc.form.id : '/teacher/super-admin/course-content/create?course_id=' + c.id;
@@ -292,8 +292,6 @@
     var items = '';
     items += '<button onclick="openDetails(' + deptId + ',' + tableIdx + ',' + courseIdx + ')"><span class="material-symbols-outlined text-base">visibility</span>عرض التفاصيل</button>';
     var cc = COURSE_CONTENT[c.id] || {};
-    if (cc.form) items += '<a href="/course-file/' + cc.form.id + '?download=1"><span class="material-symbols-outlined text-base">description</span>تحميل المقرر</a>';
-    if (cc.syllabus) items += '<a href="/course-file/' + cc.syllabus.id + '?download=1"><span class="material-symbols-outlined text-base">download</span>تحميل المنهج</a>';
     if (IS_RD) {
       var href = cc.form ? '/teacher/super-admin/course-content/' + cc.form.id : '/teacher/super-admin/course-content/create?course_id=' + c.id;
       items += '<a href="' + href + '"><span class="material-symbols-outlined text-base">upload_file</span>إنشاء/تعديل المقرر</a>';
@@ -315,8 +313,6 @@
     var items = '';
     items += '<button onclick="openDetails(' + deptId + ',' + tableIdx + ',' + courseIdx + ')"><span class="material-symbols-outlined text-base">visibility</span>عرض التفاصيل</button>';
     var cc = COURSE_CONTENT[c.id] || {};
-    if (cc.form) items += '<a href="/course-file/' + cc.form.id + '?download=1"><span class="material-symbols-outlined text-base">description</span>تحميل المقرر</a>';
-    if (cc.syllabus) items += '<a href="/course-file/' + cc.syllabus.id + '?download=1"><span class="material-symbols-outlined text-base">download</span>تحميل المنهج</a>';
     if (IS_RD) {
       var href = cc.form ? '/teacher/super-admin/course-content/' + cc.form.id : '/teacher/super-admin/course-content/create?course_id=' + c.id;
       items += '<a href="' + href + '"><span class="material-symbols-outlined text-base">upload_file</span>إنشاء/تعديل المقرر</a>';
@@ -1024,7 +1020,7 @@
       '</div>' +
       '<div class="bg-surface-container rounded-lg p-3">' +
         '<div class="flex items-center gap-2 mb-2"><span class="material-symbols-outlined text-primary text-lg">folder</span><span class="text-xs text-gray-500">ملفات المقرر</span></div>' +
-        '<div class="flex flex-wrap gap-1.5">' + contentBtns(c) + '</div>' +
+        '<div class="flex flex-wrap gap-1.5">' + (contentBtns(c) || '<span class="text-xs text-gray-500">لا توجد ملفات منشورة لهذا المقرر</span>') + '</div>' +
       '</div>' +
       prereqHtml;
 

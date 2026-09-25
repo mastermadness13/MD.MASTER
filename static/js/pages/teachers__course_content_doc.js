@@ -1,312 +1,490 @@
 (function () {
   var WEEKS_LIMIT = 12;
-
-  function initCurriculumSection(bodyId, addBtnId, totalInlineId, prefix, onTotal) {
-    var body = document.getElementById(bodyId);
-    if (!body) return;
-    var addBtn = document.getElementById(addBtnId);
-    var totalOut = document.getElementById(totalInlineId);
-
-    function rowInputs(tr, name) {
-      return tr.querySelector('[name="' + prefix + '_' + name + '[]"]');
+  var SECTIONS = [
+    {
+      prefix: 'theoretical',
+      bodyId: 'ccTheoreticalCurriculumBody',
+      totalId: 'ccTheoreticalWeeksTotal',
+      addId: 'ccAddTheoreticalRow',
+      limit: WEEKS_LIMIT
+    },
+    {
+      prefix: 'practical',
+      bodyId: 'ccPracticalCurriculumBody',
+      totalId: 'ccPracticalWeeksTotal',
+      addId: 'ccAddPracticalRow',
+      limit: null
     }
-
-    function createRow() {
-      var tr = document.createElement('tr');
-      tr.innerHTML =
-        '<td class="align-middle text-center font-bold text-black row-index"></td>' +
-        '<td class="align-middle"><textarea name="' + prefix + '_curriculum_topic[]" rows="2" placeholder="الموضوع"></textarea></td>' +
-        '<td class="align-middle"><input type="number" name="' + prefix + '_curriculum_weeks[]" min="1" value="1" class="text-center font-semibold week-input"></td>' +
-        '<td class="align-middle"><textarea name="' + prefix + '_curriculum_topic_en[]" rows="2" dir="ltr" placeholder="Topic (EN)" class="font-[Inter] text-sm"></textarea></td>' +
-        '<td class="align-middle text-center"><button type="button" class="cc-curriculum-remove text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-1 rounded font-bold cursor-pointer text-xs" title="حذف الصف" aria-label="حذف الصف">✕</button></td>';
-      attachRowHandlers(tr);
-      return tr;
-    }
-
-    function attachRowHandlers(tr) {
-      var inputs = tr.querySelectorAll('input[name^="' + prefix + '_curriculum_"], textarea[name^="' + prefix + '_curriculum_"]');
-      inputs.forEach(function (inp) {
-        inp.addEventListener('input', onCurriculumInput);
-        inp.addEventListener('focus', onCurriculumFocus);
-      });
-      var rem = tr.querySelector('.cc-curriculum-remove');
-      if (rem) {
-        rem.addEventListener('click', function (e) {
-          if (body.querySelectorAll('tr').length <= 1) return;
-          var row = e.target.closest('tr');
-          if (row) row.remove();
-          renumberRows();
-          recalc();
-        });
-      }
-    }
-
-    function isRowEmpty(tr) {
-      var t = rowInputs(tr, 'curriculum_topic');
-      var w = rowInputs(tr, 'curriculum_weeks');
-      return !((t && t.value && t.value.trim()) || (w && w.value && w.value.trim()));
-    }
-
-    function maybeAddRow() {
-      var rows = body.querySelectorAll('tr');
-      var last = rows[rows.length - 1];
-      if (last && !isRowEmpty(last)) {
-        body.appendChild(createRow());
-        renumberRows();
-      }
-      recalc();
-    }
-
-    function onCurriculumInput(e) {
-      var tr = e.target.closest('tr');
-      var rows = body.querySelectorAll('tr');
-      var last = rows[rows.length - 1];
-      if (tr === last && !isRowEmpty(last)) {
-        body.appendChild(createRow());
-        renumberRows();
-      }
-      recalc();
-    }
-
-    function onCurriculumFocus(e) {
-      var tr = e.target.closest('tr');
-      var rows = body.querySelectorAll('tr');
-      var last = rows[rows.length - 1];
-      if (tr === last && !isRowEmpty(last)) {
-        body.appendChild(createRow());
-        renumberRows();
-        recalc();
-      }
-    }
-
-    function renumberRows() {
-      var i = 1;
-      body.querySelectorAll('tr').forEach(function (tr) {
-        var cell = tr.querySelector('td:first-child');
-        if (cell) {
-          cell.textContent = i;
-          var idx = tr.querySelector('.row-index');
-          if (idx && idx !== cell) idx.textContent = i;
-        }
-        i++;
-      });
-    }
-
-    function recalc() {
-      var sum = 0;
-      body.querySelectorAll('tr').forEach(function (tr) {
-        if (isRowEmpty(tr)) return;
-        var w = rowInputs(tr, 'curriculum_weeks');
-        sum += parseInt(w && w.value || 0, 10) || 0;
-      });
-      if (totalOut) {
-        totalOut.textContent = sum;
-        totalOut.classList.toggle('weeks-warning', sum > WEEKS_LIMIT);
-      }
-      if (onTotal) onTotal(sum);
-      return sum;
-    }
-
-    if (addBtn) addBtn.addEventListener('click', function () { body.appendChild(createRow()); renumberRows(); });
-
-    body.querySelectorAll('tr').forEach(attachRowHandlers);
-    renumberRows();
-    recalc();
-  }
-
-  // First empty row for a fresh sheet: keep weeks at 1
-  var theoreticalBody = document.getElementById('ccTheoreticalCurriculumBody');
-  if (theoreticalBody) {
-    var rows = theoreticalBody.querySelectorAll('tr');
-    var topicInput = rows[0].querySelector('[name$="curriculum_topic[]"]');
-    if (rows.length === 1 && topicInput && !topicInput.value) {
-      var weeks = rows[0].querySelector('input[name$="curriculum_weeks[]"]');
-      if (weeks) weeks.value = 1;
-    }
-  }
-
+  ];
+  var SEMESTER_EN = {
+    '1': 'first', '2': 'second', '3': 'third', '4': 'fourth',
+    '5': 'fifth', '6': 'sixth', '7': 'seventh', '8': 'eighth'
+  };
+  var sheet = document.querySelector('.cc-sheet');
+  var form = document.getElementById('courseContentForm');
   var theoreticalWeeksTotal = 0;
-  initCurriculumSection('ccTheoreticalCurriculumBody', 'ccAddTheoreticalRow', 'ccTheoreticalWeeksTotal', 'theoretical', function (sum) {
-    theoreticalWeeksTotal = sum;
-  });
+  var translationTimers = {};
+  var translationJobs = {};
+  var translationVersions = {};
+  var pendingTranslations = {};
+  var initialized = false;
 
-  // Block submission when total theoretical weeks exceed the limit (12).
-  var courseContentFormEl = document.getElementById('courseContentForm');
-  if (courseContentFormEl) {
-    courseContentFormEl.addEventListener('submit', function (e) {
-      if (theoreticalWeeksTotal > WEEKS_LIMIT) {
-        e.preventDefault();
-        var msg = 'إجمالي الأسابيع النظرية (' + theoreticalWeeksTotal + ') يتجاوز الحد المسموح (' + WEEKS_LIMIT + ') — لا يمكن الحفظ أو النشر.';
-        if (window.showNotification) {
-          window.showNotification(msg, 'error', 6000);
-        } else {
-          alert(msg);
-        }
+  /* ── Textareas: grow with content so no character is ever hidden ── */
+  function autoResize(element) {
+    if (!element) return;
+    var previous = element.style.height;
+    element.style.height = 'auto';
+    var measured = element.scrollHeight;
+    if (!measured) {
+      /* Element is hidden or not laid out yet: keep the height we had. */
+      element.style.height = previous || '';
+      return;
+    }
+    var height = Math.max(measured, 24);
+    element.style.setProperty('--cc-auto-height', height + 'px');
+    element.style.height = height + 'px';
+  }
+
+  function resizeAllTextareas() {
+    if (!sheet) return;
+    sheet.querySelectorAll('textarea').forEach(autoResize);
+  }
+
+  function scheduleResize() {
+    window.setTimeout(resizeAllTextareas, 0);
+  }
+
+  /* Multi-page print: measure only, never force a one-page shrink. */
+  function preparePrint() {
+    if (!sheet) return;
+    resizeAllTextareas();
+    sheet.style.setProperty('--cc-print-zoom', '1');
+  }
+
+  /* ── Auto translation (AR source -> EN target) ── */
+  function sourceTarget(source) {
+    if (!source || !sheet) return null;
+    var field = source.getAttribute('data-translation-source');
+    if (!field) return null;
+    var targetName = field + '_en';
+    var row = source.closest('tr');
+    if (row) {
+      return row.querySelector('[data-translation-target="' + targetName + '"]');
+    }
+    return sheet.querySelector('[data-translation-target="' + targetName + '"]');
+  }
+
+  function translationKey(source) {
+    var field = source.getAttribute('data-translation-source') || '';
+    return field + ':' + (source.getAttribute('data-translation-row') || '');
+  }
+
+  function csrfToken() {
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    if (meta && meta.content) return meta.content;
+    var input = document.querySelector('input[name="_csrf_token"]');
+    return input ? input.value : '';
+  }
+
+  function translationEnabled() {
+    return !!(sheet && form && sheet.getAttribute('data-translation-editable') === 'true');
+  }
+
+  function scheduleTranslation(source) {
+    if (!translationEnabled()) return;
+    var target = sourceTarget(source);
+    var key = translationKey(source);
+    if (translationTimers[key]) {
+      window.clearTimeout(translationTimers[key]);
+      delete translationTimers[key];
+      delete translationJobs[key];
+    }
+    var version = (translationVersions[key] || 0) + 1;
+    translationVersions[key] = version;
+    if (!target || target.getAttribute('data-translation-manual') === 'true') return;
+    var text = (source.value || '').trim();
+    if (!text) return;
+    translationJobs[key] = {
+      source: source,
+      target: target,
+      key: key,
+      version: version
+    };
+    translationTimers[key] = window.setTimeout(function () {
+      delete translationTimers[key];
+      var job = translationJobs[key];
+      delete translationJobs[key];
+      if (job) translateSource(job.source, job.target, job.key, job.version);
+    }, 700);
+  }
+
+  function translateSource(source, target, key, version) {
+    var text = (source.value || '').trim();
+    if (!text) return Promise.resolve();
+    if (target.getAttribute('data-translation-manual') === 'true') return Promise.resolve();
+
+    var url = sheet.getAttribute('data-translation-url');
+    var token = csrfToken();
+    var request = window.fetch(url, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRFToken': token
+      },
+      body: JSON.stringify({
+        field: source.getAttribute('data-translation-source'),
+        text: text,
+        row_index: source.getAttribute('data-translation-row')
+          ? parseInt(source.getAttribute('data-translation-row'), 10)
+          : null
+      })
+    }).then(function (response) {
+      if (!response.ok) throw new Error('translation request failed');
+      return response.json();
+    }).then(function (payload) {
+      if (!payload || payload.ok !== true || !payload.data) return;
+      if (translationVersions[key] !== version) return;
+      if (target.getAttribute('data-translation-manual') === 'true') return;
+      var translated = payload.data.text;
+      if (typeof translated !== 'string' || !translated) return;
+      target.value = translated;
+      target.setAttribute('data-translation-auto', 'true');
+      autoResize(target);
+    }).catch(function () {
+      return undefined;
+    });
+
+    pendingTranslations[key] = request;
+    request.then(function () {
+      if (pendingTranslations[key] === request) delete pendingTranslations[key];
+    });
+    return request;
+  }
+
+  function startScheduledTranslations() {
+    Object.keys(translationTimers).forEach(function (key) {
+      window.clearTimeout(translationTimers[key]);
+      delete translationTimers[key];
+      var job = translationJobs[key];
+      delete translationJobs[key];
+      if (job) translateSource(job.source, job.target, job.key, job.version);
+    });
+  }
+
+  function flushTranslations() {
+    startScheduledTranslations();
+    if (!Object.keys(pendingTranslations).length) return Promise.resolve();
+    return Promise.all(Object.keys(pendingTranslations).map(function (key) {
+      return pendingTranslations[key];
+    })).catch(function () {
+      return undefined;
+    }).then(function () {
+      if (Object.keys(translationTimers).length || Object.keys(pendingTranslations).length) {
+        return flushTranslations();
+      }
+      return undefined;
+    });
+  }
+
+  function markExistingEnglishManual() {
+    if (!sheet) return;
+    sheet.querySelectorAll('[data-translation-target]').forEach(function (target) {
+      if (target.value && target.value.trim()) {
+        target.setAttribute('data-translation-manual', 'true');
       }
     });
   }
 
-  // Hour inputs: sum theory + practical + tutorial into hidden total_hours
-  var hourInputs = ['theory_hours', 'practical_hours', 'tutorial_hours'];
-  function recalcHours() {
+  function scheduleInitialTranslations() {
+    if (!translationEnabled() || !sheet) return;
+    sheet.querySelectorAll('[data-translation-source]').forEach(function (source) {
+      var target = sourceTarget(source);
+      if (!target || target.value.trim()) return;
+      if (target.getAttribute('data-translation-manual') === 'true') return;
+      if ((source.value || '').trim()) scheduleTranslation(source);
+    });
+  }
+
+  function initTranslation() {
+    if (!translationEnabled() || !sheet) return;
+    sheet.addEventListener('input', function (event) {
+      var target = event.target;
+      if (!target || !target.matches) return;
+      if (target.matches('[data-translation-target]')) {
+        target.setAttribute('data-translation-manual', 'true');
+        target.removeAttribute('data-translation-auto');
+        autoResize(target);
+        return;
+      }
+      if (target.matches('[data-translation-source]')) {
+        scheduleTranslation(target);
+      }
+    });
+  }
+
+  /* ── Curriculum rows (theoretical + practical) ── */
+  function sectionBody(section) {
+    return document.getElementById(section.bodyId);
+  }
+
+  function rowInputs(row, name) {
+    return row.querySelector('[name$="_curriculum_' + name + '[]"]');
+  }
+
+  function createCurriculumRow(section, shouldFocus) {
+    var body = sectionBody(section);
+    if (!body) return null;
+    var row = document.createElement('tr');
+    row.innerHTML =
+      '<td class="cc-block-cell cc-en">' +
+        '<input type="hidden" name="' + section.prefix + '_curriculum_id[]" value="">' +
+        '<textarea name="' + section.prefix + '_curriculum_topic_en[]" dir="ltr" rows="2" placeholder="Topic (EN)"' +
+        ' data-translation-target="' + section.prefix + '_curriculum_topic_en" data-translation-row=""></textarea>' +
+      '</td>' +
+      '<td class="cc-week-cell">' +
+        '<input class="cc-cell-input cc-num week-input" type="number" min="1" name="' +
+        section.prefix + '_curriculum_weeks[]" value="1">' +
+      '</td>' +
+      '<td class="cc-block-cell cc-ar">' +
+        '<textarea name="' + section.prefix + '_curriculum_topic[]" rows="2" placeholder="الموضوع"' +
+        ' data-translation-source="' + section.prefix + '_curriculum_topic" data-translation-row=""></textarea>' +
+      '</td>';
+    body.appendChild(row);
+    if (shouldFocus !== false) {
+      var first = row.querySelector('textarea');
+      if (first) first.focus();
+    }
+    return row;
+  }
+
+  function rowIsEmpty(row) {
+    var topic = rowInputs(row, 'topic');
+    return !(topic && topic.value && topic.value.trim());
+  }
+
+  function ensureTrailingCurriculumRow(section) {
+    var body = sectionBody(section);
+    if (!body) return null;
+    var rows = body.querySelectorAll('tr');
+    var lastRow = rows[rows.length - 1];
+    if (!lastRow || !rowIsEmpty(lastRow)) {
+      return createCurriculumRow(section, false);
+    }
+    return lastRow;
+  }
+
+  function renumberCurriculumRows(section) {
+    var body = sectionBody(section);
+    if (!body) return;
+    body.querySelectorAll('tr').forEach(function (row, index) {
+      row.querySelectorAll('[data-translation-row]').forEach(function (element) {
+        element.setAttribute('data-translation-row', String(index));
+      });
+    });
+  }
+
+  function recalcSection(section) {
+    var body = sectionBody(section);
+    if (!body) return 0;
     var total = 0;
-    hourInputs.forEach(function (name) {
-      var el = document.querySelector('[name="' + name + '"]');
-      if (el) total += parseInt(el.value || 0, 10) || 0;
+    body.querySelectorAll('tr').forEach(function (row) {
+      if (rowIsEmpty(row)) return;
+      var weeks = rowInputs(row, 'weeks');
+      total += parseInt(weeks && weeks.value || 0, 10) || 0;
     });
-    var t = document.querySelector('[name="total_hours"]');
-    if (t) t.value = total;
-
-    ['theory_hours', 'practical_hours', 'tutorial_hours', 'total_hours', 'credits', 'semester'].forEach(function (name) {
-      var main = document.querySelector('[name="' + name + '"]');
-      if (!main) return;
-      var mirrors = document.querySelectorAll('[data-mirror="' + name + '"]');
-      mirrors.forEach(function (m) { m.value = main.value; });
-    });
+    var output = document.getElementById(section.totalId);
+    if (output) {
+      output.textContent = total;
+      output.classList.toggle('cc-weeks-warning', !!(section.limit && total > section.limit));
+    }
+    if (section.prefix === 'theoretical') theoreticalWeeksTotal = total;
+    return total;
   }
 
-  function addListeners(el, handler) {
-    if (!el) return;
-    el.addEventListener('input', handler);
-    el.addEventListener('change', handler);
+  function maybeAddCurriculumRow(section, row) {
+    var body = sectionBody(section);
+    if (!body || !row) return;
+    var rows = body.querySelectorAll('tr');
+    if (row === rows[rows.length - 1] && !rowIsEmpty(row)) {
+      createCurriculumRow(section);
+      renumberCurriculumRows(section);
+      recalcSection(section);
+    }
   }
 
-  function wireSync(name) {
-    var main = document.querySelector('[name="' + name + '"]');
-    if (main) {
-      addListeners(main, function () {
-        var mirrors = document.querySelectorAll('[data-mirror="' + name + '"]');
-        mirrors.forEach(function (m) { m.value = main.value; });
-        if (hourInputs.indexOf(name) !== -1) recalcHours();
+  function initSection(section) {
+    var body = sectionBody(section);
+    if (!body) return;
+    if (translationEnabled()) {
+      body.addEventListener('input', function (event) {
+        var row = event.target.closest('tr');
+        autoResize(event.target);
+        renumberCurriculumRows(section);
+        recalcSection(section);
+        maybeAddCurriculumRow(section, row);
+      });
+      body.addEventListener('focusin', function (event) {
+        maybeAddCurriculumRow(section, event.target.closest('tr'));
       });
     }
-    var mirrors = document.querySelectorAll('[data-mirror="' + name + '"]');
-    mirrors.forEach(function (m) {
-      addListeners(m, function () {
-        var target = document.querySelector('[name="' + name + '"]');
-        if (target) target.value = m.value;
-        if (hourInputs.indexOf(name) !== -1) recalcHours();
+    body.addEventListener('input', function (event) {
+      if (event.target && event.target.matches) autoResize(event.target);
+    });
+    var addButton = document.getElementById(section.addId);
+    if (addButton) {
+      addButton.addEventListener('click', function () {
+        createCurriculumRow(section);
+        renumberCurriculumRows(section);
+        recalcSection(section);
+      });
+    }
+    body.querySelectorAll('tr').forEach(function (row) {
+      var weeks = rowInputs(row, 'weeks');
+      if (weeks && !weeks.value) weeks.value = 1;
+    });
+    ensureTrailingCurriculumRow(section);
+    renumberCurriculumRows(section);
+    recalcSection(section);
+  }
+
+  function initCurriculum() {
+    SECTIONS.forEach(initSection);
+  }
+
+  /* ── Hours, credits, semester ── */
+  function recalcHours() {
+    if (!sheet) return;
+    var names = ['theory_hours', 'practical_hours', 'tutorial_hours'];
+    var total = 0;
+    names.forEach(function (name) {
+      var input = sheet.querySelector('[name="' + name + '"]');
+      if (input) total += parseInt(input.value || 0, 10) || 0;
+    });
+    var totalInput = sheet.querySelector('[name="total_hours"]');
+    if (totalInput) totalInput.value = total;
+    ['theory_hours', 'practical_hours', 'tutorial_hours', 'total_hours', 'credits', 'semester'].forEach(function (name) {
+      var main = sheet.querySelector('[name="' + name + '"]');
+      if (!main) return;
+      sheet.querySelectorAll('[data-mirror="' + name + '"]').forEach(function (mirror) {
+        mirror.value = main.value;
       });
     });
+    var semesterLabel = sheet.querySelector('[data-semester-en]');
+    if (semesterLabel) {
+      var select = sheet.querySelector('[name="semester"]');
+      var value = select ? select.value : '';
+      semesterLabel.textContent = SEMESTER_EN[value] || '—';
+    }
   }
 
-  ['theory_hours', 'practical_hours', 'tutorial_hours', 'total_hours', 'credits', 'semester'].forEach(wireSync);
-  recalcHours();
-
-  // Force English (Latin) digits everywhere in the sheet, including any
-  // Arabic-Indic/Persian digits a user may type.
-  function toLatinDigits(v) {
-    return String(v || '')
-      .replace(/[\u0660-\u0669]/g, function (d) { return String.fromCharCode(d.charCodeAt(0) - 0x0660 + 0x30); })
-      .replace(/[\u06F0-\u06F9]/g, function (d) { return String.fromCharCode(d.charCodeAt(0) - 0x06F0 + 0x30); });
+  function latinDigits(value) {
+    return String(value || '')
+      .replace(/[\u0660-\u0669]/g, function (digit) {
+        return String.fromCharCode(digit.charCodeAt(0) - 0x0660 + 0x30);
+      })
+      .replace(/[\u06F0-\u06F9]/g, function (digit) {
+        return String.fromCharCode(digit.charCodeAt(0) - 0x06F0 + 0x30);
+      });
   }
-  document.addEventListener('input', function (e) {
-    var el = e.target;
-    if (el && el.matches && el.matches('input[type="number"]')) {
-      var latin = toLatinDigits(el.value);
-      if (latin !== el.value) {
-        el.value = latin;
+
+  function initFormBehavior() {
+    if (!form || !sheet) return;
+    ['theory_hours', 'practical_hours', 'tutorial_hours', 'credits', 'semester'].forEach(function (name) {
+      var input = sheet.querySelector('[name="' + name + '"]');
+      if (!input) return;
+      input.addEventListener('input', recalcHours);
+      input.addEventListener('change', recalcHours);
+    });
+    sheet.addEventListener('input', function (event) {
+      var input = event.target;
+      if (!input || !input.matches || !input.matches('input[type="number"]')) return;
+      var latin = latinDigits(input.value);
+      if (latin !== input.value) {
+        input.value = latin;
         recalcHours();
       }
-    }
-  });
-
-  // Enter-key navigation: move to next empty input (or next) on Enter
-  var form = document.getElementById('courseContentForm');
-  if (form) {
-    function inputsInOrder() {
-      return Array.prototype.slice.call(form.querySelectorAll('input:not([type=hidden]), select, textarea'))
-        .filter(function (el) { return el.offsetParent !== null; });
-    }
-    form.addEventListener('keydown', function (e) {
-      if (e.key !== 'Enter') return;
-      var active = document.activeElement;
-      if (!form.contains(active)) return;
-      if (active.tagName === 'TEXTAREA') return;
-      e.preventDefault();
-      var inputs = inputsInOrder();
-      var idx = inputs.indexOf(active);
-      if (idx === -1) return;
-      var forward = !e.shiftKey;
-      var next = null;
-      if (forward) {
-        for (var i = idx + 1; i < inputs.length; i++) {
-          if (!inputs[i].value) { next = inputs[i]; break; }
-        }
-        if (!next) next = inputs[idx + 1] || inputs[inputs.length - 1];
-      } else {
-        for (var i = idx - 1; i >= 0; i--) {
-          if (!inputs[i].value) { next = inputs[i]; break; }
-        }
-        if (!next) next = inputs[idx - 1] || inputs[0];
+    });
+    form.addEventListener('submit', function (event) {
+      if (theoreticalWeeksTotal > WEEKS_LIMIT) {
+        event.preventDefault();
+        var message = 'إجمالي الأسابيع النظرية (' + theoreticalWeeksTotal + ') يتجاوز الحد المسموح (' + WEEKS_LIMIT + ') — لا يمكن الحفظ أو النشر.';
+        if (window.showNotification) window.showNotification(message, 'error', 6000);
+        else alert(message);
+        return;
       }
-      if (next) next.focus();
+      var submitter = event.submitter;
+      if (submitter && submitter.dataset && submitter.dataset.action) return;
+      if (!Object.keys(translationTimers).length && !Object.keys(pendingTranslations).length) return;
+      event.preventDefault();
+      flushTranslations().then(function () {
+        form.submit();
+      });
+    });
+    recalcHours();
+  }
+
+  function initEnterNavigation() {
+    if (!form) return;
+    form.addEventListener('keydown', function (event) {
+      if (event.key !== 'Enter' || event.target.tagName === 'TEXTAREA') return;
+      var inputs = Array.prototype.slice.call(
+        form.querySelectorAll('input:not([type=hidden]), select, textarea')
+      ).filter(function (input) { return input.offsetParent !== null; });
+      var index = inputs.indexOf(document.activeElement);
+      if (index === -1) return;
+      event.preventDefault();
+      var direction = event.shiftKey ? -1 : 1;
+      for (var offset = 1; offset < inputs.length; offset += 1) {
+        var candidate = inputs[index + direction * offset];
+        if (!candidate) continue;
+        if (!candidate.value) {
+          candidate.focus();
+          return;
+        }
+      }
+      var fallback = inputs[index + direction];
+      if (fallback) fallback.focus();
     });
   }
 
-})();
-
-window.downloadCourseSheet = function () {
-  if (!document.querySelector('.cc-sheet')) return;
-  window.print();
-  return;
-/*
-  var sheet = document.querySelector('.cc-sheet');
-  if (!sheet) return;
-
-  var clone = sheet.cloneNode(true);
-  clone.querySelectorAll('.no-print').forEach(function (el) { el.remove(); });
-  clone.querySelectorAll('input, textarea, select').forEach(function (el) {
-    if (el.type === 'hidden') { el.remove(); return; }
-    if (el.disabled || el.readOnly) {
-      el.removeAttribute('disabled');
-      el.removeAttribute('readonly');
+  function init() {
+    if (initialized) return;
+    initialized = true;
+    initCurriculum();
+    initTranslation();
+    initFormBehavior();
+    initEnterNavigation();
+    markExistingEnglishManual();
+    scheduleInitialTranslations();
+    resizeAllTextareas();
+    if (window.ResizeObserver && sheet) {
+      new ResizeObserver(function () {
+        resizeAllTextareas();
+      }).observe(sheet);
     }
-    var span = document.createElement('span');
-    if (el.tagName === 'SELECT') {
-      var selOpt = el.options[el.selectedIndex];
-      span.textContent = (selOpt && selOpt.textContent && selOpt.textContent.trim()) ? selOpt.textContent : '';
-    } else {
-      span.textContent = el.value || el.placeholder || '';
-    }
-    if (el.getAttribute('dir')) span.setAttribute('dir', el.getAttribute('dir'));
-    span.style.fontWeight = '600';
-    el.parentNode.replaceChild(span, el);
-  });
-
-  var sheetStyle = document.getElementById('ccSheetStyle');
-  var css = sheetStyle ? sheetStyle.textContent : '';
-
-  var codeEl = document.querySelector('.cc-sheet');
-  var courseCode = (codeEl && codeEl.getAttribute('data-course-code')) || 'course';
-  var title = 'مفردات مقرر ' + courseCode;
-  var safeTitle = title.replace(/[<>&"']/g, function (ch) {
-    return ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'})[ch];
-  });
-  var safeCode = courseCode.replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'course';
-
-  var html =
-    '<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">' +
-    '<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
-    '<title>' + safeTitle + '</title>' +
-    '<link rel="preconnect" href="https://fonts.googleapis.com">' +
-    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
-    '<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">' +
-    '<script src="https://cdn.tailwindcss.com"><\/script>' +
-    '<style>' + css + '</style>' +
-    '</head><body class="bg-slate-100 p-4 sm:p-8">' + clone.outerHTML + '</body></html>';
-
-  var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-  var a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'course-' + safeCode + '.html';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(a.href);
-
-  if (window.showNotification) {
-    window.showNotification('تم تجهيز ملف المقرر للتحميل', 'success', 4000);
+    window.addEventListener('resize', scheduleResize);
+    window.addEventListener('beforeprint', preparePrint);
+    window.addEventListener('afterprint', function () {
+      if (sheet) sheet.style.setProperty('--cc-print-zoom', '1');
+    });
   }
-*/
-};
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  window.flushCourseContentTranslations = flushTranslations;
+
+  window.downloadCourseSheet = function () {
+    if (!sheet) return;
+    Promise.resolve(flushTranslations()).then(function () {
+      preparePrint();
+      window.print();
+    });
+  };
+})();

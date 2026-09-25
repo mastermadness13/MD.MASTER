@@ -1,18 +1,30 @@
-"""Course content workflow API — quick search for the launcher.
-
-Every endpoint here is read-only and protected by ``course_content.view``.
-The launcher uses these to look up teachers / courses (linked only through
-the active timetable) before sending a course to a teacher.
-"""
+"""Course content workflow API — quick search and protected translation."""
 
 from __future__ import annotations
 
-from flask import Blueprint, request
+from flask import Blueprint, request, session
 
-from api_routes.helpers import api_permission_required, err, ok
+from api_routes.helpers import api_login_required, api_permission_required, err, ok
+from core.rate_limiter import RateLimiter
 from flask_db import get_db
+from security.csrf import csrf_required
+from services.translation_service import safe_translate_ar_to_en
 
 bp = Blueprint('api_course_content', __name__, url_prefix='/api/course-content')
+translation_limiter = RateLimiter(max_requests=60, window_seconds=60)
+
+_TRANSLATION_TARGETS = {
+    'course_name': 'course_name_en',
+    'course_objective': 'course_objective_en',
+    'prerequisites': 'prerequisites_en',
+    'textbooks': 'textbooks_en',
+    'notes': 'notes_en',
+    'theoretical_curriculum_topic': 'theoretical_curriculum_topic_en',
+    'practical_curriculum_topic': 'practical_curriculum_topic_en',
+    'practical_content': 'practical_content_en',
+}
+_ROW_TRANSLATION_FIELDS = {'theoretical_curriculum_topic', 'practical_curriculum_topic'}
+_MAX_TRANSLATION_CHARS = 5000
 
 _ACTIVE_VERSION = (
     "SELECT id FROM timetable_versions WHERE status = 'active'"
@@ -59,6 +71,58 @@ def teachers_search():
         params,
     ).fetchall()
     return ok({'teachers': [dict(r) for r in rows]})
+
+
+@bp.route('/translate', methods=['POST'])
+@api_login_required
+@api_permission_required('course_content.manage')
+@csrf_required
+def translate():
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return err('صيغة الطلب غير صحيحة', 400)
+
+    field = str(payload.get('field', '')).strip()
+    if field not in _TRANSLATION_TARGETS:
+        return err('الحقل غير مسموح للترجمة', 422)
+
+    text = payload.get('text')
+    if not isinstance(text, str):
+        return err('النص العربي مطلوب', 422)
+    text = text.strip()
+    if not text:
+        return err('النص العربي مطلوب', 422)
+    if len(text) > _MAX_TRANSLATION_CHARS:
+        return err('النص طويل جدًا للترجمة', 422)
+
+    row_index = payload.get('row_index')
+    if field in _ROW_TRANSLATION_FIELDS:
+        if isinstance(row_index, bool):
+            return err('رقم الصف غير صحيح', 422)
+        try:
+            row_index = int(row_index)
+        except (TypeError, ValueError):
+            return err('رقم الصف غير صحيح', 422)
+        if row_index < 0 or row_index >= 12:
+            return err('رقم الصف غير صحيح', 422)
+    else:
+        row_index = None
+
+    key = f"course-content-translate:{session.get('user_id', '')}"
+    if translation_limiter.is_limited(key):
+        return err('تم تجاوز عدد طلبات الترجمة، حاول لاحقًا', 429)
+    translation_limiter.record(key)
+
+    translated = safe_translate_ar_to_en(text)
+    if not translated:
+        return err('تعذر إكمال الترجمة الآن', 502)
+
+    return ok({
+        'field': field,
+        'target': _TRANSLATION_TARGETS[field],
+        'row_index': row_index,
+        'text': translated,
+    })
 
 
 @bp.route('/courses')

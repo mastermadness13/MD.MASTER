@@ -157,6 +157,7 @@ def create_app():
         'static',
         'api_auth.api_me', 'api_auth.api_logout',
         'public_library.course_file',
+        'public_library.course_content',
         'public_library.library_file',
         'public_library.vocabulary_file',
         'public_library.teacher_file',

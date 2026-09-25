@@ -102,7 +102,8 @@ def dashboard():
         dept_data = dashboard_service.get_exam_dept_dashboard_data(db)
     elif role == 'research_development':
         db = get_db()
-        dept_data = dashboard_service.get_rnd_dept_dashboard_data(db)
+        dept_data = dashboard_service.get_rnd_dept_dashboard_data(
+            db, page=request.args.get('page', 1, type=int))
 
     return render_template(template, user=current_user(),
                           stats=stats, faculty_data=faculty_data,

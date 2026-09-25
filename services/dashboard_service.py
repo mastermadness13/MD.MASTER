@@ -6,6 +6,8 @@ from services import notification_service
 from services import course_service
 from utils.format import semester_label
 
+COURSES_PER_PAGE = 30
+
 
 # /     /     >---- بيانات لوحة إدارة الامتحانات
 def get_exam_dept_dashboard_data(db):
@@ -69,8 +71,12 @@ def get_exam_dept_dashboard_data(db):
 
 
 # /     /     >---- بيانات لوحة قسم البحث والتطوير
-def get_rnd_dept_dashboard_data(db):
-    """Data for the R&D Department sub-admin dashboard."""
+def get_rnd_dept_dashboard_data(db, page=1, per_page=COURSES_PER_PAGE):
+    """Data for the R&D Department sub-admin dashboard.
+
+    ``page`` is 1-based and clamped to the available range, so a stale or
+    hand-edited ``?page=`` can never raise or return an empty table.
+    """
     data = {}
 
     data['total_courses'] = db.execute(
@@ -90,6 +96,13 @@ def get_rnd_dept_dashboard_data(db):
         'AND (version_id IS NULL OR version_id IN '
         '(SELECT id FROM timetable_versions WHERE status = \'active\'))'
     ).fetchone()[0]
+
+    # /     /     >---- جدول المقررات: صفحة واحدة فقط من الاستعلام (LIMIT/OFFSET)
+    total = data['total_courses']
+    per_page = per_page or COURSES_PER_PAGE
+    total_pages = (total + per_page - 1) // per_page
+    page = max(1, min(page or 1, total_pages or 1))
+    offset = (page - 1) * per_page
 
     rows = db.execute(
         '''SELECT c.*, d.name as department_name,
@@ -111,10 +124,16 @@ def get_rnd_dept_dashboard_data(db):
            FROM courses c
            LEFT JOIN departments d ON c.department_id = d.id
            WHERE c.deleted_at IS NULL
-           ORDER BY has_syllabus DESC, c.name'''
+           ORDER BY has_syllabus DESC, c.name, c.id
+           LIMIT ? OFFSET ?''',
+        (per_page, offset)
     ).fetchall()
     data['courses_list'] = course_service.attach_course_related_data(
         db, [dict(r) for r in rows])
+    data['page'] = page
+    data['per_page'] = per_page
+    data['total'] = total
+    data['total_pages'] = total_pages
 
     dept_rows = db.execute(
         """SELECT d.id, d.name,
@@ -390,17 +409,25 @@ def get_teacher_dashboard_data(db, user_id):
         for day_name in days_order:
             day_entries = db.execute(
                 '''SELECT t.period, t.semester, t.course_id, c.name as course_name, c.year as course_year,
-                          r.name as room_name, t.start_time, t.end_time
+                          c.code as course_code,
+                          r.name as room_name, t.start_time, t.end_time,
+                          d.name as department_name
                    FROM timetable t
                    LEFT JOIN courses c ON t.course_id = c.id
                    LEFT JOIN rooms r ON t.room_id = r.id
+                   LEFT JOIN departments d ON t.department_id = d.id
                    WHERE t.teacher_id = ? AND t.day = ? AND t.deleted_at IS NULL
                    AND (t.version_id IS NULL OR t.version_id IN
                        (SELECT id FROM timetable_versions WHERE status = 'active'))
                    ORDER BY t.start_time''',
                 (teacher_id, day_name)
             ).fetchall()
-            weekly_schedule[day_name] = [dict(r) for r in day_entries]
+            entries = []
+            for r in day_entries:
+                entry = dict(r)
+                entry['semester_display'] = semester_label(entry.get('semester'))
+                entries.append(entry)
+            weekly_schedule[day_name] = entries
     teacher_data['weekly_schedule'] = weekly_schedule
     teacher_data['days_order'] = days_order
 
@@ -419,24 +446,72 @@ def get_teacher_dashboard_data(db, user_id):
                 row['course_id'], dict(row)
             )
 
-    # /     /     >---- تكليفات التدريس المميزة (المقررات مع قاعاتها وفصولها)
+    # /     /     >---- نموذج المقرر المنشور لكل مادة (للتحميل من لوحة الأستاذ)
+    teacher_data['course_forms'] = {}
+    if teacher_id:
+        form_rows = db.execute(
+            '''SELECT cf.course_id, cf.id AS file_id
+               FROM course_files cf
+               WHERE cf.file_type = 'form' AND cf.status = 'published'
+               AND EXISTS (
+                   SELECT 1 FROM timetable t
+                   WHERE t.teacher_id = ? AND t.course_id = cf.course_id
+                     AND t.deleted_at IS NULL
+                     AND (t.version_id IS NULL OR t.version_id IN
+                         (SELECT id FROM timetable_versions WHERE status = 'active'))
+               )
+               ORDER BY cf.created_at DESC, cf.id DESC''',
+            (teacher_id,),
+        ).fetchall()
+        for row in form_rows:
+            teacher_data['course_forms'].setdefault(
+                row['course_id'], dict(row)
+            )
+
+    # /     /     >---- تكليفات التدريس المميزة (المقررات مع محاضراتها الأسبوعية)
+    teacher_data['assignments'] = []
     if teacher_id:
         rows = db.execute(
-            '''SELECT DISTINCT c.id, c.name, c.code, c.year, c.semester, c.department,
-                      t.room_id, r.name as room_name, t.day, t.period,
-                      t.start_time, t.end_time
+            '''SELECT c.id, c.name, c.code, c.year, c.semester,
+                      d.name as department_name,
+                      t.day, t.start_time, t.end_time,
+                      r.name as room_name
                FROM timetable t
                LEFT JOIN courses c ON t.course_id = c.id
                LEFT JOIN rooms r ON t.room_id = r.id
+               LEFT JOIN departments d ON t.department_id = d.id
                WHERE t.teacher_id = ? AND t.deleted_at IS NULL
                AND (t.version_id IS NULL OR t.version_id IN
                    (SELECT id FROM timetable_versions WHERE status = 'active'))
-               ORDER BY c.name''',
+               ORDER BY c.name, t.start_time''',
             (teacher_id,)
         ).fetchall()
-        teacher_data['assignments'] = [dict(r) for r in rows if r['id']]
-    else:
-        teacher_data['assignments'] = []
+        assignments = []
+        by_course = {}
+        for r in rows:
+            if not r['id']:
+                continue
+            course = by_course.get(r['id'])
+            if course is None:
+                course = {
+                    'id': r['id'],
+                    'name': r['name'],
+                    'code': r['code'],
+                    'year': r['year'],
+                    'semester': r['semester'],
+                    'semester_display': semester_label(r['semester']),
+                    'department_name': r['department_name'],
+                    'lectures': [],
+                }
+                by_course[r['id']] = course
+                assignments.append(course)
+            course['lectures'].append({
+                'day': r['day'],
+                'start_time': r['start_time'],
+                'end_time': r['end_time'],
+                'room_name': r['room_name'],
+            })
+        teacher_data['assignments'] = assignments
 
     # /     /     >---- الامتحانات القادمة للمقررات المتعلقة بالأستاذ
     if teacher_id:

@@ -2,10 +2,13 @@
 {% set sidebar_active = 'dashboard.dashboard' %}
 {% set page_title = 'لوحة تحكم البحث والتطوير' %}
 
-{% set stats = stats | default({}) %}
 {% set d = dept_data | default({}) %}
-{% set departments = d.get('departments', []) | default([]) %}
 {% set courses_list = d.get('courses_list', []) | default([]) %}
+{% set total = d.get('total', 0) %}
+{% set page = d.get('page', 1) %}
+{% set per_page = d.get('per_page', 30) %}
+{% set total_pages = (total // per_page) + (1 if total % per_page else 0) %}
+{% from 'shared/components/pagination.html' import pagination %}
 
 {% block content %}
 <div class="max-w-7xl mx-auto">
@@ -16,106 +19,31 @@
       <span class="material-symbols-outlined text-primary text-3xl">science</span>
       <div>
         <h1 class="text-2xl font-bold text-on-surface">لوحة البحث والتطوير</h1>
-        <p class="page-subtitle">مرحباً {{ user.label or user.username }}، نظرة عامة على المقررات والأقسام.</p>
+        <p class="page-subtitle">مرحباً {{ user.label or user.username }}، نظرة عامة على المقررات.</p>
       </div>
-    </div>
-  </div>
-
-  <!-- Stats Cards -->
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-    <div class="bg-white rounded-xl border border-outline-variant p-4 flex items-center gap-4 shadow-sm">
-      <div class="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-        <span class="material-symbols-outlined">menu_book</span>
-      </div>
-      <div>
-        <div class="text-2xl font-bold text-on-surface">{{ d.get('total_courses', 0) }}</div>
-        <div class="text-xs font-bold text-on-surface-variant mt-0.5">المقررات</div>
-      </div>
-    </div>
-    <div class="bg-white rounded-xl border border-outline-variant p-4 flex items-center gap-4 shadow-sm">
-      <div class="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-        <span class="material-symbols-outlined">domain</span>
-      </div>
-      <div>
-        <div class="text-2xl font-bold text-on-surface">{{ d.get('total_departments', 0) }}</div>
-        <div class="text-xs font-bold text-on-surface-variant mt-0.5">الأقسام</div>
-      </div>
-    </div>
-    <div class="bg-white rounded-xl border border-outline-variant p-4 flex items-center gap-4 shadow-sm">
-      <div class="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-        <span class="material-symbols-outlined">school</span>
-      </div>
-      <div>
-        <div class="text-2xl font-bold text-on-surface">{{ d.get('total_teachers', 0) }}</div>
-        <div class="text-xs font-bold text-on-surface-variant mt-0.5">هيئة التدريس</div>
-      </div>
-    </div>
-    <div class="bg-white rounded-xl border border-outline-variant p-4 flex items-center gap-4 shadow-sm">
-      <div class="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-        <span class="material-symbols-outlined">calendar_today</span>
-      </div>
-      <div>
-        <div class="text-2xl font-bold text-on-surface">{{ d.get('total_timetable_entries', 0) }}</div>
-        <div class="text-xs font-bold text-on-surface-variant mt-0.5">حصص مجدولة</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Departments with course counts -->
-  <div class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden mb-6">
-    <div class="px-5 py-4 border-b border-primary/10 bg-surface-dim flex items-center gap-2">
-      <span class="material-symbols-outlined text-primary">domain</span>
-      <h3 class="font-bold text-primary">الأقسام الكلية</h3>
-    </div>
-    <div class="p-5">
-      {% if departments %}
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {% for dep in departments %}
-        <div class="rounded-xl border border-outline-variant p-4 flex items-center justify-between gap-3">
-          <div class="flex items-center gap-2.5">
-            <span class="material-symbols-outlined text-primary">domain</span>
-            <span class="font-bold text-on-surface">{{ dep.name }}</span>
-          </div>
-          <span class="text-xs font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-full">{{ dep.course_count }} مقرر</span>
-        </div>
-        {% endfor %}
-      </div>
-      {% else %}
-      <div class="py-10 text-center text-on-surface-variant text-sm">لا توجد أقسام كلية</div>
-      {% endif %}
     </div>
   </div>
 
   <!-- Courses list -->
   <div class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
-    <div class="px-5 py-4 border-b border-primary/10 bg-surface-dim flex flex-wrap items-center justify-between gap-2">
+    <div class="px-5 py-4 border-b border-primary/10 bg-surface-dim flex items-center justify-between gap-3">
       <h3 class="font-bold text-primary flex items-center gap-2">
         <span class="material-symbols-outlined">menu_book</span>
         المقررات
       </h3>
-      <div class="flex flex-wrap items-center gap-3">
-        <span class="inline-flex items-center gap-1 text-xs font-bold text-green-700 bg-green-50 px-2 py-1 rounded-full">
-          <span class="material-symbols-outlined text-sm">check_circle</span>
-          {{ courses_list | selectattr('has_syllabus') | list | length }} منهج محمّل
-        </span>
-        <span class="inline-flex items-center gap-1 text-xs font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded-full">
-          <span class="material-symbols-outlined text-sm">warning</span>
-          {{ courses_list | rejectattr('has_syllabus') | list | length }} بدون منهج
-        </span>
-        <a href="/teacher/super-admin/course-content"
-           class="inline-flex items-center gap-1.5 text-xs font-bold text-primary bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-full transition-all no-underline"
-           title="البحث عن مقرر غير موجود في الجداول أو تصفية كل المقررات">
-          <span class="material-symbols-outlined text-sm">search</span>
-          البحث عن مقرر
-        </a>
-        <span class="text-xs font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-full">{{ courses_list|length }} مقرر</span>
-      </div>
+      <a href="/teacher/super-admin/course-content"
+         class="inline-flex items-center gap-1.5 text-xs font-bold text-primary bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-full transition-all no-underline"
+         title="البحث عن مقرر">
+        <span class="material-symbols-outlined text-sm">search</span>
+        البحث عن مقرر
+      </a>
     </div>
+
     <div class="overflow-x-auto">
       {% if courses_list %}
       <table class="w-full text-right border-collapse text-sm">
         <thead>
-          <tr class="bg-surface-dim font-label-md text-label-md text-on-surface-variant">
+          <tr class="bg-surface-dim text-on-surface-variant">
             <th class="px-4 py-3 border-b border-outline-variant font-bold">المادة</th>
             <th class="px-4 py-3 border-b border-outline-variant font-bold">القسم</th>
             <th class="px-4 py-3 border-b border-outline-variant font-bold text-center">المنهج</th>
@@ -125,7 +53,8 @@
         </thead>
         <tbody>
           {% for c in courses_list %}
-          <tr class="border-b border-outline-variant last:border-b-0 transition-colors {% if c.has_syllabus %}hover:bg-green-50/40{% else %}hover:bg-amber-50/40{% endif %}"
+          <tr class="border-b border-outline-variant last:border-b-0 transition-colors
+                     {% if c.has_syllabus %}hover:bg-green-50/40{% else %}hover:bg-amber-50/40{% endif %}"
               {% if not c.has_syllabus %}style="background-color: rgba(245, 158, 11, 0.04)"{% endif %}>
             <td class="px-4 py-3">
               <div class="font-bold text-on-surface">{{ c.name }}</div>
@@ -173,7 +102,7 @@
                   <span class="material-symbols-outlined text-base">add</span>
                   إنشاء المقرر
                 </a>
-                {% elif c.form_status in ('draft',) %}
+                {% elif c.form_status == 'draft' %}
                 <a href="/teacher/super-admin/course-content/create?course_id={{ c.id }}&submission_id={{ c.form_submission_id }}"
                    class="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1.5 text-xs font-bold transition-all no-underline"
                    title="متابعة تعبئة المقرر">
@@ -195,14 +124,12 @@
                   تحميل المقرر
                 </a>
                 {% endif %}
-                {% if c.form_submission_id %}
                 <a href="/teacher/super-admin/course-content/create?course_id={{ c.id }}&submission_id={{ c.form_submission_id }}"
                    class="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 px-3 py-1.5 text-xs font-bold transition-all no-underline"
                    title="تعديل المقرر">
                   <span class="material-symbols-outlined text-base">edit</span>
                   تعديل المقرر
                 </a>
-                {% endif %}
                 {% endif %}
               </div>
             </td>
@@ -218,6 +145,10 @@
       {% endif %}
     </div>
   </div>
+
+  <!-- Pagination -->
+  {{ pagination(page, per_page, total, total_pages,
+                url_for('dashboard.dashboard', page='__page__')) }}
 
 </div>
 {% endblock %}

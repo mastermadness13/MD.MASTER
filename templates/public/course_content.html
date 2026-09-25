@@ -2,9 +2,73 @@
 {% set page_title = (doc.course_name or 'نموذج توصيف المقرر') %}
 {% set public_view = true %}
 {% block head_extra %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=cairo:wght@400;600;700;800&family=inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   body.public-course-content { background: #f1f5f9; }
   .public-course-wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
+  .public-doc-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, .08);
+    padding: 10px 14px;
+    margin-bottom: 16px;
+  }
+  .public-doc-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--primary, #1d4ed8);
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .public-doc-back:hover { opacity: .85; }
+  .public-doc-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    min-width: 0;
+  }
+  .public-doc-code {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 34px;
+    height: 28px;
+    padding: 0 8px;
+    border-radius: 6px;
+    background: #eef2ff;
+    color: #4338ca;
+    font-family: 'Inter', 'Cairo', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    direction: ltr;
+  }
+  .public-doc-print {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 38px;
+    padding: 0 16px;
+    border: 1px solid var(--primary, #1d4ed8);
+    border-radius: 8px;
+    background: var(--primary, #1d4ed8);
+    color: #fff;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .public-doc-print:hover { opacity: .9; }
   @media print {
     @page { size: A4 portrait; margin: 8mm; }
     body.public-course-content { background: #fff !important; }
@@ -40,10 +104,18 @@
 {% endblock %}
 {% block content %}
 <main class="public-course-wrap" aria-label="نموذج توصيف المقرر المنشور">
-  <div class="no-print flex justify-between items-center mb-4">
-    <a href="/index.html#courses" class="text-primary font-bold no-underline">العودة إلى المواد</a>
-    <button type="button" onclick="window.print()" class="bg-primary text-white px-4 py-2 rounded-lg font-bold">
-      طباعة النموذج
+  <div class="no-print public-doc-toolbar">
+    <a href="/index.html#courses" class="public-doc-back">
+      <span class="material-symbols-outlined">arrow_forward</span>
+      العودة إلى المواد
+    </a>
+    <div class="public-doc-meta">
+      <span class="public-doc-code">{{ doc.course_code or '' }}</span>
+      <strong>{{ doc.course_name or 'نموذج توصيف المقرر' }}</strong>
+    </div>
+    <button type="button" onclick="downloadCourseSheet()" class="public-doc-print">
+      <span class="material-symbols-outlined">print</span>
+      طباعة / حفظ PDF
     </button>
   </div>
   {% set doc_mode = 'readonly_form' %}

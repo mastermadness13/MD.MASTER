@@ -11,19 +11,45 @@
   }
 
   var form = document.getElementById('courseContentForm');
+  var courseContentSubmitPending = false;
   if (form) {
+    function courseContentWeeksBlocked() {
+      var output = document.getElementById('ccTheoreticalWeeksTotal');
+      var total = parseInt(output ? output.textContent : '0', 10) || 0;
+      if (total <= 12) return false;
+      var message = 'إجمالي الأسابيع النظرية (' + total + ') يتجاوز الحد المسموح (12) — لا يمكن الحفظ أو النشر.';
+      if (window.showNotification) window.showNotification(message, 'error', 6000);
+      else window.alert(message);
+      return true;
+    }
+
+    function submitCourseContentForm() {
+      if (courseContentSubmitPending || courseContentWeeksBlocked()) return;
+      courseContentSubmitPending = true;
+      var submit = function () {
+        courseContentSubmitPending = false;
+        form.submit();
+      };
+      if (typeof window.flushCourseContentTranslations === 'function') {
+        Promise.resolve(window.flushCourseContentTranslations()).then(submit, submit);
+      } else {
+        submit();
+      }
+    }
+
     form.addEventListener('submit', function (e) {
       var btn = e.submitter;
       if (btn && btn.dataset.action) {
+        if (courseContentWeeksBlocked()) return;
         e.preventDefault();
         form.elements['action'].value = btn.dataset.action;
         if (btn.dataset.action === 'send') {
           window.askConfirm({
             message: 'سيتم حفظ مفردات المقرر ونشرها في الجدول الدراسي مباشرة. متابعة؟',
-            onConfirm: function () { form.submit(); }
+            onConfirm: submitCourseContentForm
           });
         } else {
-          form.submit();
+          submitCourseContentForm();
         }
       }
     });

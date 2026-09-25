@@ -324,7 +324,7 @@ def test_codes_tab_is_sheet_only(client):
     # Tutorial hours present in the weekly-hours row
     assert 'name="tutorial_hours"' in body
     # Hours row keeps an EN label so both sides are symmetric
-    assert 'No. Of hours per week' in body
+    assert 'No. Of hours' in body
 
 
 def test_send_persists_curriculum_sections(client, app_fx, tmp_path, monkeypatch):
@@ -352,6 +352,103 @@ def test_send_persists_curriculum_sections(client, app_fx, tmp_path, monkeypatch
              " ORDER BY id DESC LIMIT 1", (cid,))[0]
     assert sub['practical_content'] == 'تطبيقات عملية على المقرر'
     assert sub['practical_content_en'] == 'Practical applications'
+
+
+def test_send_edit_preserves_omitted_legacy_curriculum_fields(client, monkeypatch):
+    import page_routes.teacher_pages as tp
+    monkeypatch.setattr(tp, '_translate_course_content_en', lambda db, sid: None)
+    cid = _course_id('CS102')
+    sid = _q("SELECT id FROM course_content_submissions WHERE course_id=?", (cid,))[0]['id']
+    _q(
+        '''INSERT INTO course_content_curriculum
+           (submission_id, topic, weeks, content, sort_order, topic_en, content_en, section)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+        (sid, 'موضوع قديم', 2, 'محتوى تفصيلي', 0, 'Old topic', 'Detailed content', 'theoretical'),
+    )
+    _q(
+        '''INSERT INTO course_content_curriculum
+           (submission_id, topic, weeks, content, sort_order, topic_en, content_en, section)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+        (sid, 'تطبيق قديم', 1, 'محتوى تطبيقي محفوظ', 1, 'Old practical', 'Saved practical content', 'practical'),
+    )
+    response = client.post('/teacher/super-admin/course-content/send', data={
+        '_csrf_token': 't',
+        'action': 'save',
+        'course_id': str(cid),
+        'submission_id': str(sid),
+        'theoretical_curriculum_topic[]': ['موضوع محدّث'],
+        'theoretical_curriculum_weeks[]': ['3'],
+        'theoretical_curriculum_topic_en[]': ['Updated topic'],
+    })
+    assert response.status_code == 302
+    rows = _q(
+        '''SELECT topic, content, topic_en, content_en, section
+           FROM course_content_curriculum WHERE submission_id=? ORDER BY sort_order''',
+        (sid,),
+    )
+    assert rows == [
+        {
+            'topic': 'موضوع محدّث',
+            'content': 'محتوى تفصيلي',
+            'topic_en': 'Updated topic',
+            'content_en': 'Detailed content',
+            'section': 'theoretical',
+        },
+        {
+            'topic': 'تطبيق قديم',
+            'content': 'محتوى تطبيقي محفوظ',
+            'topic_en': 'Old practical',
+            'content_en': 'Saved practical content',
+            'section': 'practical',
+        },
+    ]
+
+
+def test_send_edit_uses_curriculum_row_ids_when_rows_are_omitted(client, monkeypatch):
+    import page_routes.teacher_pages as tp
+    monkeypatch.setattr(tp, '_translate_course_content_en', lambda db, sid: None)
+    cid = _course_id('CS102')
+    sid = _q("SELECT id FROM course_content_submissions WHERE course_id=?", (cid,))[0]['id']
+    _q(
+        '''INSERT INTO course_content_curriculum
+           (submission_id, topic, weeks, content, sort_order, topic_en, content_en, section)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+        (sid, 'الموضوع الأول', 2, 'محتوى أول', 0, 'First topic', 'First content', 'theoretical'),
+    )
+    _q(
+        '''INSERT INTO course_content_curriculum
+           (submission_id, topic, weeks, content, sort_order, topic_en, content_en, section)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+        (sid, 'الموضوع الثاني', 3, 'محتوى ثان', 1, 'Second topic', 'Second content', 'theoretical'),
+    )
+    old_rows = _q(
+        'SELECT id FROM course_content_curriculum WHERE submission_id=? ORDER BY sort_order',
+        (sid,),
+    )
+    second_id = old_rows[1]['id']
+    response = client.post('/teacher/super-admin/course-content/send', data={
+        '_csrf_token': 't',
+        'action': 'save',
+        'course_id': str(cid),
+        'submission_id': str(sid),
+        'theoretical_curriculum_id[]': [str(second_id)],
+        'theoretical_curriculum_topic[]': ['الموضوع الثاني المحدث'],
+        'theoretical_curriculum_weeks[]': ['4'],
+        'theoretical_curriculum_topic_en[]': ['Second topic updated'],
+    })
+    assert response.status_code == 302
+    saved = _q(
+        'SELECT topic, weeks, content, topic_en, content_en FROM course_content_curriculum '
+        'WHERE submission_id=?',
+        (sid,),
+    )
+    assert saved == [{
+        'topic': 'الموضوع الثاني المحدث',
+        'weeks': 4,
+        'content': 'محتوى ثان',
+        'topic_en': 'Second topic updated',
+        'content_en': 'Second content',
+    }]
 
 
 def test_codes_tab_shows_period_picker(client):
@@ -400,8 +497,8 @@ def test_detail_edit_link_points_to_create(client):
 def test_detail_view_has_download_and_dual_curriculum(client):
     sid = _q("SELECT id FROM course_content_submissions WHERE status='published'")[0]['id']
     body = client.get(f'/teacher/super-admin/course-content/{sid}').get_data(as_text=True)
-    assert 'مفردات الجدول النظري' in body
-    assert 'مفردات الجدول العملي' in body
+    assert 'مفردات الجانب النظري' in body
+    assert 'مفردات الجانب العملي' in body
     assert 'onclick="downloadCourseSheet()"' in body
     assert 'data-course-code=' in body
 
@@ -417,6 +514,84 @@ def test_detail_print_boot_and_script(client):
     assert 'auto_print: true' in body2
 
 
+def test_course_sheet_print_flows_across_pages_without_clipping(client):
+    """The printed sheet must flow over several A4 pages and never clip text."""
+    sid = _q("SELECT id FROM course_content_submissions WHERE status='published'")[0]['id']
+    body = client.get(f'/teacher/super-admin/course-content/{sid}').get_data(as_text=True)
+    script = _read_js('static/js/pages/teachers__course_content_doc.js')
+
+    # A4 page box, owned by the sheet stylesheet
+    assert '@page { size: A4 portrait; margin: 10mm; }' in body
+    assert '--cc-print-zoom' in body
+
+    # No absolute positioning and no forced single page: content must paginate
+    assert 'position: static !important' in body
+    assert 'position: absolute' not in body
+    assert 'break-inside: avoid; page-break-inside: avoid' in body
+
+    # Table headers repeat on continuation pages, footers do not
+    assert 'display: table-header-group' in body
+    assert 'display: table-row-group' in body
+
+    # Running footer repeated at the bottom of every page
+    assert 'cc-print-footer' in body
+    assert 'position: fixed' in body
+
+    # Textareas print at the height JS measured — never `height: auto`
+    assert 'height: var(--cc-auto-height, auto) !important' in body
+    sheet_css = re.sub(r'/\*.*?\*/', '', body, flags=re.S)  # ignore comments
+    textarea_print_rules = re.findall(r'body \.cc-sheet textarea \{(.*?)\}', sheet_css, re.S)
+    assert textarea_print_rules, 'print rules for textareas are missing'
+    assert not any('height: auto' in rule for rule in textarea_print_rules), \
+        'textarea height must come from the measured --cc-auto-height, never auto'
+    assert any('var(--cc-auto-height' in rule for rule in textarea_print_rules)
+    assert 'scrollHeight' in script
+    assert 'font-size: max' not in body
+    assert 'Promise.resolve(flushTranslations())' in script
+
+
+def test_course_sheet_exposes_both_curriculum_sections(client):
+    """Theoretical + practical curricula are both editable, translated and printed."""
+    cid = _course_id('CS103')
+    body = client.get(f'/courses/codes?tab=content&course_id={cid}').get_data(as_text=True)
+    assert 'id="ccTheoreticalCurriculumBody"' in body
+    assert 'id="ccPracticalCurriculumBody"' in body
+    assert 'theoretical_curriculum_topic[]' in body
+    assert 'theoretical_curriculum_topic_en[]' in body
+    assert 'theoretical_curriculum_weeks[]' in body
+    assert 'practical_curriculum_topic[]' in body
+    assert 'practical_curriculum_topic_en[]' in body
+    assert 'practical_curriculum_weeks[]' in body
+    assert 'id="ccAddTheoreticalRow"' in body
+    assert 'id="ccAddPracticalRow"' in body
+    assert 'id="ccPracticalWeeksTotal"' in body
+    # The official header is part of the printed sheet
+    assert 'كلية التقنية الهندسية زوارة' in body
+    assert 'cc-sheet-meta' in body
+    assert 'صفحة 1 من 1' not in body, 'hardcoded page counter removed'
+
+
+def test_translate_endpoint_maps_practical_curriculum_topic(client, monkeypatch):
+    import api_routes.course_content as api
+
+    api.translation_limiter.reset_all()
+    monkeypatch.setattr(api, 'safe_translate_ar_to_en', lambda text: 'Practical topic')
+    response = client.post(
+        '/api/course-content/translate',
+        json={
+            '_csrf_token': 't',
+            'field': 'practical_curriculum_topic',
+            'text': 'موضوع عملي',
+            'row_index': 2,
+        },
+        headers={'X-Requested-With': 'XMLHttpRequest'},
+    )
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload['data']['target'] == 'practical_curriculum_topic_en'
+    assert payload['data']['text'] == 'Practical topic'
+
+
 # ── pdfState — عمود «الملف» المباشر (المرحلة 2) ──────────────────────────
 
 
@@ -430,10 +605,10 @@ def test_boot_keys_are_camelcase(client):
 
 
 def test_pdf_state_exposed_for_every_row(client):
-    """كل صف يحمل pdf_state مشتقاً من آخر تسليم (لا يوجد ملف نموذج في التثبيت)."""
+    """كل صف يحمل pdf_state مشتقاً من آخر تسليم مع مراعاة ورقة المقرر القابلة للتنزيل."""
     body = client.get('/teacher/super-admin/course-content').get_data(as_text=True)
     courses = {c['code']: c for c in _courses_json(body)}
-    assert courses['CS101']['pdf_state'] == 'approved', 'published submission → approved'
+    assert courses['CS101']['pdf_state'] == 'available', 'published submission → downloadable sheet'
     assert courses['CS102']['pdf_state'] == 'draft'
     assert courses['CS103']['pdf_state'] == 'none'
     assert all('pdf_state' in c for c in _courses_json(body))
@@ -492,6 +667,48 @@ def test_public_library_serves_published_forms(client, app_fx, tmp_path, monkeyp
     payload = json.loads(body)
     courses = {c['id']: c for c in payload['courses']}
     assert courses[cid].get('formFile') is not None, 'published form visible publicly'
+
+
+def test_public_course_content_is_readonly_without_login(app_fx, db_fx):
+    sid = _q("SELECT id FROM course_content_submissions WHERE status='published'")[0]['id']
+    response = app_fx.test_client().get(f'/course-content/{sid}')
+    body = response.get_data(as_text=True)
+    assert response.status_code == 200
+    assert 'data-translation-editable="false"' in body
+    assert 'data-course-content-manager="teachers__course_content_doc"' in body
+    assert 'id="courseContentForm"' not in body
+    assert 'id="ccAddTheoreticalRow"' not in body
+    assert 'data-action="send"' not in body
+    assert re.search(r'<input[^>]+name="course_name"[^>]+disabled', body)
+    assert re.search(r'<textarea[^>]+name="course_objective"[^>]+disabled', body)
+    assert re.search(r'<textarea[^>]+name="practical_content"[^>]+disabled', body)
+
+
+def test_public_course_content_keeps_legacy_submission_without_course(app_fx, db_fx):
+    department_id = _q("SELECT id FROM departments LIMIT 1")[0]['id']
+    _q(
+        '''INSERT INTO course_content_submissions
+           (user_id, department_id, course_id, course_name, course_code, status)
+           VALUES (1, ?, NULL, ?, ?, 'published')''',
+        (department_id, 'مقرر قديم', 'OLD101'),
+    )
+    sid = _q(
+        "SELECT id FROM course_content_submissions WHERE course_code='OLD101'"
+    )[0]['id']
+    response = app_fx.test_client().get(f'/course-content/{sid}')
+    assert response.status_code == 200
+    assert 'مقرر قديم' in response.get_data(as_text=True)
+
+
+def test_translation_endpoint_rejects_anonymous_client(app_fx, db_fx):
+    import api_routes.course_content as api
+    api.translation_limiter.reset_all()
+    response = app_fx.test_client().post(
+        '/api/course-content/translate',
+        json={'field': 'notes', 'text': 'ملاحظات'},
+        headers={'X-Requested-With': 'XMLHttpRequest'},
+    )
+    assert response.status_code == 403
 
 
 # ── قيم None / فارغة في حقول العدد (credits و hours) ──────────────────────
@@ -553,3 +770,41 @@ def test_send_empty_credits_on_edit_updates_row_to_zero(client, app_fx, tmp_path
     assert subs[0]['credits'] == 0
     assert subs[0]['credits'] != ''
     assert subs[0]['credits'] != 'None'
+
+
+def test_translation_endpoint_returns_english_for_allowed_field(client, monkeypatch):
+    import api_routes.course_content as api
+
+    api.translation_limiter.reset_all()
+    monkeypatch.setattr(api, 'safe_translate_ar_to_en', lambda text: 'English objective')
+    response = client.post(
+        '/api/course-content/translate',
+        json={
+            '_csrf_token': 't',
+            'field': 'course_objective',
+            'text': 'هدف المقرر',
+        },
+        headers={'X-Requested-With': 'XMLHttpRequest'},
+    )
+    assert response.status_code == 200
+    assert response.get_json()['data']['target'] == 'course_objective_en'
+    assert response.get_json()['data']['text'] == 'English objective'
+
+
+def test_translation_endpoint_rejects_empty_arabic(client, monkeypatch):
+    import api_routes.course_content as api
+
+    api.translation_limiter.reset_all()
+    called = []
+    monkeypatch.setattr(api, 'safe_translate_ar_to_en', lambda text: called.append(text) or 'unexpected')
+    response = client.post(
+        '/api/course-content/translate',
+        json={
+            '_csrf_token': 't',
+            'field': 'course_objective',
+            'text': '   ',
+        },
+        headers={'X-Requested-With': 'XMLHttpRequest'},
+    )
+    assert response.status_code == 422
+    assert not called
