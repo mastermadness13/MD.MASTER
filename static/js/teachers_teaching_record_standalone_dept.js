@@ -2,6 +2,13 @@
 (function () {
   var BOOT = window.TEACHERS_TEACHING_RECORD_STANDALONE_BOOT || {};
   var URLS = BOOT.urls || {};
+  /* Teacher names come from the by-department API and are unvalidated beyond
+   * .strip(), so escape before concatenating into the <option> markup. */
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
 document.getElementById('tr-dept-select').addEventListener('change', function() {
   var deptId = this.value;
   var teacherSelect = document.getElementById('tr-teacher-select');
@@ -26,7 +33,7 @@ document.getElementById('tr-dept-select').addEventListener('change', function() 
       } else {
         var html = '<option value="">— اختر عضو هيئة التدريس —</option>';
         data.forEach(function(t) {
-          html += '<option value="' + t.id + '">' + t.name + (t.academic_number ? ' (' + t.academic_number + ')' : '') + '</option>';
+          html += '<option value="' + t.id + '">' + esc(t.name) + (t.academic_number ? ' (' + esc(t.academic_number) + ')' : '') + '</option>';
         });
         teacherSelect.innerHTML = html;
       }

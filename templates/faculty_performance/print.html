@@ -4,10 +4,37 @@
 
 {% block doc_title %}نموذج معدل الأداء الموحد — {{ fd.header.teacher_name }}{% endblock %}
 
+{% block doc_styles %}
+        @page {
+            size: A4 landscape;
+            margin: 10mm;
+        }
+
+        @media print {
+            .document-page {
+                height: 190mm;
+                min-height: 0;
+                overflow: hidden;
+                transform: none !important;
+                margin-bottom: 0 !important;
+            }
+
+            .performance-print-fit {
+                transform-origin: top right;
+            }
+        }
+{% endblock %}
+
+{% block doc_scripts %}
+    <script src="{{ url_for('static', filename='js/faculty_performance_print_fit.js') }}"></script>
+{% endblock %}
+
 {% block back_link %}
 <a class="back-btn no-print" href="{{ url_for('teachers.teacher_detail', id=fd.teacher['id']) }}">العودة</a>
 {% endblock %}
 
 {% block doc_body %}
-    {% include 'faculty_performance/_teacher_document.html' %}
+    <div class="performance-print-fit">
+        {% include 'faculty_performance/_teacher_document.html' %}
+    </div>
 {% endblock %}

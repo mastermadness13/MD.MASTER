@@ -1,6 +1,14 @@
 var BOOT = window.TEACHERS_ASSIGN_BOOT || {};
 var URLS = BOOT.urls || {};
 var CSRF = BOOT.csrfToken || '';
+/* Teacher names and academic numbers come from GET /teachers/api/teacher-pool
+ * and are only .strip()'d on the way into the database, so they must be
+ * escaped before they are concatenated into markup. */
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
 // ── Assign Teacher Side Drawer ──
 var assignDebounce = null;
 function openAssignDrawer() {
@@ -46,9 +54,9 @@ function searchPool(q) {
     data.forEach(function(t) {
       html += '<div class="flex items-center justify-between gap-3 py-3 px-1">';
       html += '<div class="flex items-center gap-3 min-w-0">';
-      html += '<span class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0">' + (t.name ? t.name.charAt(0) : '?') + '</span>';
-      html += '<div class="min-w-0"><p class="font-bold text-on-surface text-sm truncate">' + t.name + '</p>';
-      html += '<p class="text-xs text-on-surface-variant" dir="ltr">' + (t.academic_number || '') + '</p></div></div>';
+      html += '<span class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0">' + esc(t.name ? t.name.charAt(0) : '?') + '</span>';
+      html += '<div class="min-w-0"><p class="font-bold text-on-surface text-sm truncate">' + esc(t.name) + '</p>';
+      html += '<p class="text-xs text-on-surface-variant" dir="ltr">' + esc(t.academic_number || '') + '</p></div></div>';
       html += '<form method="post" action="' + URLS.assign + '" style="display:inline">';
       html += '<input type="hidden" name="_csrf_token" value="' + (CSRF || '') + '">';
       html += '<input type="hidden" name="teacher_id" value="' + t.id + '">';

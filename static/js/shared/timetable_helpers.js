@@ -7,8 +7,12 @@ window.TimetableHelpers = (function () {
     var periods = (options && options.periods) || [];
     var BASE = (options && options.base) || '';
 
+    /* All five markup-significant characters, including the apostrophe so the
+     * result is safe inside single-quoted attributes too. */
     function esc(s) {
-      return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').split('"').join('&quot;');
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
     function semesterNumLabel(s) {
       var names = {1: 'الأول', 2: 'الثاني', 3: 'الثالث', 4: 'الرابع', 5: 'الخامس', 6: 'السادس', 7: 'السابع'};

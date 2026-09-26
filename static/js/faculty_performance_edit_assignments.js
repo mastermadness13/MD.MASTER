@@ -2,6 +2,16 @@
 const BOOT = window.FACULTY_EDIT_ASSIGNMENTS_BOOT || {};
 const TASK_HOURS = BOOT.taskHours || {};
 
+/* Task-type names reach admin_assignment_types from the teacher form's
+ * free-text "custom position" field, which is only .strip()'d server-side
+ * (page_routes/teachers.py::_ensure_admin_task). They are re-emitted into a
+ * value="..." attribute here, so quote escaping is mandatory, not optional. */
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 function autoFillHours(selectEl) {
   const row = selectEl.closest('.assignment-row');
   const autoInput = row.querySelector('input[name="auto_hours[]"]');
@@ -17,7 +27,7 @@ function addAssignmentRow() {
   const container = document.getElementById('assignments-container');
   const types = BOOT.taskTypes || [];
   let taskOptions = '<option value="">— اختر —</option>';
-  types.forEach(t => { taskOptions += '<option value="' + t.name + '">' + t.name + '</option>'; });
+  types.forEach(t => { taskOptions += '<option value="' + esc(t.name) + '">' + esc(t.name) + '</option>'; });
 
   const html = `
     <div class="assignment-row flex flex-wrap items-end gap-2 p-3 rounded-xl border border-outline-variant bg-surface-dim">

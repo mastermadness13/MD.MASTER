@@ -45,8 +45,15 @@
       });
       return out;
     }
+    /* Course code and name are free-text columns (only .strip() on write), so
+     * they must be escaped before being shown in the prerequisite picker. */
+    function esc(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
     function displayText(c) {
-      return (c.code || '') + ' - ' + (c.name || '');
+      return esc(c.code || '') + ' - ' + esc(c.name || '');
     }
     function currentSelection() {
       var v = valueEl.value;

@@ -157,6 +157,7 @@
     border-collapse: collapse;
     table-layout: fixed;
     font-size: 12.5px;
+    direction: ltr;
   }
   .cc-sheet .document-table th,
   .cc-sheet .document-table td {
@@ -176,11 +177,13 @@
     background: #f3f4f6;
     font-weight: 700;
     text-align: right;
+    direction: rtl;
   }
   .cc-sheet .cc-en-label-cell {
     background: #f3f4f6;
     font-weight: 700;
     text-align: left;
+    direction: ltr;
   }
   .cc-sheet .cc-value-cell { text-align: center; }
   .cc-sheet .cc-value-cell.cc-en {
@@ -188,8 +191,12 @@
     text-align: left;
     font-family: 'Inter', 'Cairo', sans-serif;
   }
-  .cc-sheet .cc-value-cell.cc-ar { text-align: right; }
+  .cc-sheet .cc-value-cell.cc-ar {
+    direction: rtl;
+    text-align: right;
+  }
   .cc-sheet .cc-block-cell { text-align: right; }
+  .cc-sheet .cc-block-cell.cc-ar { direction: rtl; }
   .cc-sheet .cc-block-cell.cc-en {
     direction: ltr;
     text-align: left;
@@ -199,6 +206,7 @@
   /* Weekly hours grid (mirrors the official 4-cell row) */
   .cc-sheet .cc-hours-grid {
     display: grid;
+    width: 80%;
     grid-template-columns: repeat(4, 1fr);
     align-items: stretch;
   }
@@ -667,20 +675,26 @@
         </td>
         <th class="cc-label-cell" scope="row">الكتاب المرجعي (أو أكثر)</th>
       </tr>
+     
+   
+    </tbody>
+  </table>
+<table class="document-table" data-purpose="practical-content-table">
+    <tbody>
       <tr>
-        <th class="cc-en-label-cell" scope="row" dir="ltr">Notes</th>
+        <th class="cc-en-label-cell" scope="row" dir="ltr">Practical<br>Content</th>
         <td class="cc-block-cell cc-en">
-          <textarea name="notes_en" dir="ltr" rows="2" placeholder="Notes"
-                    data-translation-target="notes_en"
-                    data-translation-manual="{% if doc.notes_en %}true{% endif %}"
-                    {% if read_only %}disabled{% endif %}>{{ doc.notes_en or '' }}</textarea>
+          <textarea name="practical_content_en" dir="ltr" rows="3" placeholder="Practical content"
+                    data-translation-target="practical_content_en"
+                    data-translation-manual="{% if doc.practical_content_en %}true{% endif %}"
+                    {% if read_only %}disabled{% endif %}>{{ doc.practical_content_en or '' }}</textarea>
         </td>
         <td class="cc-block-cell cc-ar">
-          <textarea name="notes" rows="2" placeholder="ملاحظات"
-                    data-translation-source="notes"
-                    {% if read_only %}disabled{% endif %}>{{ doc.notes or '' }}</textarea>
+          <textarea name="practical_content" rows="3" placeholder="المحتوى العملي"
+                    data-translation-source="practical_content"
+                    {% if read_only %}disabled{% endif %}>{{ doc.practical_content or '' }}</textarea>
         </td>
-        <th class="cc-label-cell" scope="row">ملاحظات</th>
+        <th class="cc-label-cell" scope="row">المحتوى العملي</th>
       </tr>
     </tbody>
   </table>
@@ -818,26 +832,7 @@
   </section>
 
   <!-- Practical content summary -->
-  <table class="document-table" data-purpose="practical-content-table">
-    <tbody>
-      <tr>
-        <th class="cc-en-label-cell" scope="row" dir="ltr">Practical<br>Content</th>
-        <td class="cc-block-cell cc-en">
-          <textarea name="practical_content_en" dir="ltr" rows="3" placeholder="Practical content"
-                    data-translation-target="practical_content_en"
-                    data-translation-manual="{% if doc.practical_content_en %}true{% endif %}"
-                    {% if read_only %}disabled{% endif %}>{{ doc.practical_content_en or '' }}</textarea>
-        </td>
-        <td class="cc-block-cell cc-ar">
-          <textarea name="practical_content" rows="3" placeholder="المحتوى العملي"
-                    data-translation-source="practical_content"
-                    {% if read_only %}disabled{% endif %}>{{ doc.practical_content or '' }}</textarea>
-        </td>
-        <th class="cc-label-cell" scope="row">المحتوى العملي</th>
-      </tr>
-    </tbody>
-  </table>
-
+  
   <div class="cc-print-actions no-print">
     <button type="button" onclick="downloadCourseSheet()" class="cc-print-btn">
       <span class="material-symbols-outlined">print</span>

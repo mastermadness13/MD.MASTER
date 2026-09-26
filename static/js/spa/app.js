@@ -9,13 +9,16 @@
   window.SPA.session = null;
   window.SPA.VIEWS = window.SPA.VIEWS || {};
 
+  /* Escapes all five markup-significant characters. The apostrophe matters
+   * because this helper also guards single-quoted HTML attributes. */
   function escapeHtml(str) {
     if (!str && str !== 0) return '';
     return String(str)
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   window.SPA.escapeHtml = escapeHtml;

@@ -684,6 +684,19 @@ def test_public_course_content_is_readonly_without_login(app_fx, db_fx):
     assert re.search(r'<textarea[^>]+name="practical_content"[^>]+disabled', body)
 
 
+def test_course_content_document_keeps_english_left_and_arabic_right(client):
+    sid = _q("SELECT id FROM course_content_submissions WHERE status='published'")[0]['id']
+    body = client.get(f'/teacher/super-admin/course-content/{sid}').get_data(
+        as_text=True
+    )
+
+    assert '.cc-sheet .document-table {' in body
+    assert 'direction: ltr;' in body
+    assert '.cc-sheet .cc-value-cell.cc-ar {' in body
+    assert '.cc-sheet .cc-block-cell.cc-ar { direction: rtl; }' in body
+    assert body.index('Course Title') < body.index('اسم المادة')
+
+
 def test_public_course_content_keeps_legacy_submission_without_course(app_fx, db_fx):
     department_id = _q("SELECT id FROM departments LIMIT 1")[0]['id']
     _q(

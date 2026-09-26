@@ -16,6 +16,20 @@
     setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 500);
   }
 
+  /* Flash messages and API error strings reach here verbatim from the server.
+   * Several of them interpolate database values (teacher name, course name,
+   * period label) that only get .strip() on the way in, so they must not be
+   * parsed as markup. `&quot;` / `&#39;` are included so this is also safe if
+   * a caller ever moves the value into an attribute. */
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   window.showNotification = function (message, type, duration) {
     type = type || 'info';
     duration = typeof duration === 'number' ? duration : 3000;
@@ -37,7 +51,7 @@
     el.innerHTML =
       '<div class="flex items-center gap-3">' +
         '<span class="material-symbols-outlined shrink-0">' + icon + '</span>' +
-        '<p class="font-body-md ' + text + '">' + message + '</p>' +
+        '<p class="font-body-md ' + text + '">' + esc(message) + '</p>' +
       '</div>' +
       '<button type="button" class="text-outline hover:text-on-surface transition-colors shrink-0 px-2 py-1 text-xs font-bold" aria-label="' +
         (persistent ? 'تأكيد القراءة' : 'إغلاق') + '">' +

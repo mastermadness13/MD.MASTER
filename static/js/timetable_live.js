@@ -478,7 +478,7 @@
       content.innerHTML =
         '<div class="bg-gradient-to-l from-primary/5 to-transparent border border-outline-variant rounded-xl p-4">' +
           '<div class="text-primary text-sm font-bold mb-1">' + esc(e.course_name || '—') + ' <span class="text-xs text-on-surface-variant font-normal">(' + esc(e.course_code || '') + ')</span></div>' +
-          '<div class="text-xs text-on-surface-variant">' + (P.dept ? esc(P.dept.name) : '—') + ' — ' + currentYear + ' / الفصل ' + semesterNumLabel(e.semester) + '</div>' +
+          '<div class="text-xs text-on-surface-variant">' + (P.dept ? esc(P.dept.name) : '—') + ' — ' + esc(currentYear) + ' / الفصل ' + semesterNumLabel(e.semester) + '</div>' +
         '</div>' +
         '<div class="grid grid-cols-2 gap-3">' +
           '<div class="bg-surface border border-outline-variant rounded-xl p-3">' +
@@ -512,7 +512,7 @@
       content.innerHTML =
         '<div class="bg-gradient-to-l from-primary/5 to-transparent border border-outline-variant rounded-xl p-4">' +
           '<div class="text-primary text-sm font-bold mb-1">' + esc(e.course_name || '—') + ' <span class="text-xs text-on-surface-variant font-normal">(' + esc(e.course_code || '') + ')</span></div>' +
-          '<div class="text-xs text-on-surface-variant">' + (P.dept ? esc(P.dept.name) : '—') + ' — ' + currentYear + ' / الفصل ' + semesterNumLabel(e.semester) + '</div>' +
+          '<div class="text-xs text-on-surface-variant">' + (P.dept ? esc(P.dept.name) : '—') + ' — ' + esc(currentYear) + ' / الفصل ' + semesterNumLabel(e.semester) + '</div>' +
         '</div>' +
         '<div class="grid grid-cols-2 gap-3">' +
           '<div class="bg-surface border border-outline-variant rounded-xl p-3">' +

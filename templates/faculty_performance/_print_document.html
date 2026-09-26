@@ -11,6 +11,8 @@
             margin: 20mm 15mm;
         }
 
+        {% block doc_styles %}{% endblock %}
+
         * {
             box-sizing: border-box;
         }
@@ -110,6 +112,7 @@
         {% block doc_body %}{% endblock %}
     </div>
 
+    {% block doc_scripts %}{% endblock %}
     <script src="{{ url_for('static', filename='js/shared/doc_page_fit.js') }}"></script>
 
 </body>

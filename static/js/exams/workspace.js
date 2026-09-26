@@ -55,7 +55,7 @@
         var ar = dayDisplays[day] || '';
         var datePart = '';
         if (ar) {
-          datePart = '<span style="font-size:11px; font-weight:400; color:#4b4450; margin-top:2px; display:block;">' + ar + '</span>';
+          datePart = '<span style="font-size:11px; font-weight:400; color:#4b4450; margin-top:2px; display:block;">' + escapeHtml(ar) + '</span>';
         } else if (raw) {
           var pt = raw.split('-');
           datePart = '<span style="font-size:11px; font-weight:400; color:#4b4450; margin-top:2px; display:block;">' +
@@ -91,7 +91,7 @@
 
       var periodLine = '';
       if (semStart) {
-        periodLine = '<p style="margin:0; font-size:11px;">فترة الامتحانات: ' + semStart + ' — ' + (semEnd || '') + '</p>';
+        periodLine = '<p style="margin:0; font-size:11px;">فترة الامتحانات: ' + escapeHtml(semStart) + ' — ' + escapeHtml(semEnd || '') + '</p>';
       }
 
       sheets += '' +
@@ -107,7 +107,7 @@
             '</div>' +
             '<div style="text-align:left; flex:1; color:#4b4450; font-size:12px;">' +
               '<p style="margin:0 0 2px 0;">سنة ' + escapeHtml(yearLabel || '—') + '</p>' +
-              '<p style="margin:0 0 2px 0;">الأسبوع ' + week + '</p>' +
+              '<p style="margin:0 0 2px 0;">الأسبوع ' + escapeHtml(week) + '</p>' +
               periodLine +
             '</div>' +
           '</header>' +

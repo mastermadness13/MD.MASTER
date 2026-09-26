@@ -11,6 +11,14 @@
   var courseSel = document.getElementById('course-select');
   var teacherSel = document.getElementById('teacher-select');
 
+  /* Course/teacher names and codes come from the /api/courses and /api/teachers
+   * endpoints, which accept arbitrary text. Escape before building <option>. */
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
   function currentType() {
     return document.querySelector('input[name="report_type"]:checked').value;
   }
@@ -38,8 +46,8 @@
         } else {
           let html = '<option value="">— اختر المقرر —</option>';
           data.forEach(c => {
-            html += '<option value="' + c.id + '">' + c.name +
-                    (c.code ? ' (' + c.code + ')' : '') + '</option>';
+            html += '<option value="' + c.id + '">' + esc(c.name) +
+                    (c.code ? ' (' + esc(c.code) + ')' : '') + '</option>';
           });
           courseSel.innerHTML = html;
         }
@@ -54,7 +62,7 @@
         } else {
           let html = '<option value="">— اختر عضو هيئة التدريس —</option>';
           data.forEach(t => {
-            html += '<option value="' + t.id + '">' + t.name + '</option>';
+            html += '<option value="' + t.id + '">' + esc(t.name) + '</option>';
           });
           teacherSel.innerHTML = html;
         }

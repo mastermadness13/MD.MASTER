@@ -435,7 +435,7 @@
         (d.id === currentDeptId ? 'active border-primary bg-primary-faint text-primary' : 'border-border bg-white text-text-secondary hover:bg-surface-hover hover:text-primary');
       btn.innerHTML =
         '<span class="material-symbols-outlined text-lg">' + d.icon + '</span>' +
-        '<span>' + d.name + '</span>' +
+        '<span>' + esc(d.name) + '</span>' +
         '<span class="text-[11px] font-bold px-2 py-0.5 rounded-full ' + (d.id === currentDeptId ? 'bg-white text-primary' : 'bg-surface-zebra text-text-muted') + '">' + countLabel + '</span>';
       btn.onclick = function () { selectDept(d.id, true); };
       grid.appendChild(btn);
@@ -465,7 +465,7 @@
       rows += '<tr class="course-row hover:bg-surface-hover transition-colors' + (CAN_MANAGE ? ' cursor-grab' : '') + '"' + dragAttrs + '>' +
         (CAN_MANAGE ? '<td class="px-3 py-2 text-center"><input type="checkbox" class="ws-course-cb rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" data-course-id="' + c.id + '" data-dept-id="' + dept.id + '" data-semester="' + t.semester + '" onchange="onCourseCheck()" /></td>' : '') +
         '<td class="px-3 py-2">' + clMaterialCell(c) + '</td>' +
-        '<td class="px-3 py-2 text-center text-xs font-semibold text-text-secondary">' + (c.requires || '—') + '</td>' +
+        '<td class="px-3 py-2 text-center text-xs font-semibold text-text-secondary">' + esc(c.requires || '—') + '</td>' +
         '<td class="px-3 py-2">' + teachersCell(c) + '</td>' +
         '<td class="px-2 py-2">' + clPlanHoursBadge(c) + '</td>' +
         '<td class="no-print px-2 py-2">' + clPlanActionsDropdown(dept.id, tableIdx, i, c) + '</td>' +
