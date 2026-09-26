@@ -33,6 +33,15 @@ NAV_ITEMS = [
         'active_keys': ['teachers'],
         'section': 'main',
     },
+    {
+        'key': 'teacher_lookup_lists',
+        'endpoint': 'teachers.lookup_lists',
+        'icon': 'list_alt',
+        'label': 'إدارة القوائم المرجعية',
+        'permission': 'teachers.lookup_lists.manage',
+        'active_keys': ['teacher_lookup_lists'],
+        'section': 'more',
+    },
     # ── قائمة معدل الأداء (مكتب أعضاء هيئة التدريس) ────────────────
     {
         'key': 'faculty_performance_rate',

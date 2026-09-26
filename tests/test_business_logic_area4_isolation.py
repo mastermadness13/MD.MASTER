@@ -82,10 +82,10 @@ def _seed(tmp_path, monkeypatch):
     ids['hod_uid'] = _user('a4_hod', 'head_of_department')
     conn.execute(
         'INSERT INTO teachers (name, user_id, hod_department_id) VALUES (?, ?, ?)',
-        ('ر试用س قسم ألف', ids['hod_uid'], ids['dept_a']),
+        ('رئيس قسم ألف', ids['hod_uid'], ids['dept_a']),
     )
     ids['hod_teacher'] = conn.execute(
-        "SELECT id FROM teachers WHERE name = 'ر试用س قسم ألف'"
+        "SELECT id FROM teachers WHERE name = 'رئيس قسم ألف'"
     ).fetchone()['id']
 
     for key, dept in (('a', 'dept_a'), ('b', 'dept_b')):

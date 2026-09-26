@@ -137,19 +137,19 @@ class TeacherRepository(BaseRepository):
 
         # /     /     >---- المؤهلات العلمية
         qualifications = self.db.execute(
-            'SELECT * FROM qualifications ORDER BY name_ar'
+            'SELECT * FROM qualifications WHERE is_active = 1 ORDER BY sort_order, name_ar'
         ).fetchall()
         qualifications = [dict(r) for r in qualifications]
 
         # /     /     >---- الرتب الأكاديمية
         ranks = self.db.execute(
-            'SELECT * FROM academic_ranks ORDER BY sort_order'
+            'SELECT * FROM academic_ranks WHERE is_active = 1 ORDER BY sort_order, id'
         ).fetchall()
         ranks = [dict(r) for r in ranks]
 
         # /     /     >---- التصنيفات
         classifications = self.db.execute(
-            'SELECT * FROM classifications ORDER BY name_ar'
+            'SELECT * FROM classifications WHERE is_active = 1 ORDER BY sort_order, name_ar'
         ).fetchall()
         classifications = [dict(r) for r in classifications]
 
@@ -164,7 +164,7 @@ class TeacherRepository(BaseRepository):
             'SELECT s.id, s.department_id, s.name\n'
             '                   FROM specializations s\n'
             '                   JOIN departments d ON d.id = s.department_id\n'
-            '                   WHERE d.deleted_at IS NULL\n'
+            '                   WHERE d.deleted_at IS NULL AND s.is_active = 1\n'
             '                   ORDER BY s.department_id, s.sort_order'
         ).fetchall()
         specializations = [dict(r) for r in specializations]

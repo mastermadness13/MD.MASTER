@@ -178,8 +178,14 @@ def _ensure_lookup_tables(conn: sqlite3.Connection) -> None:
          'name_ar'),
     ]
 
-    # /     /     >---- كل جدول: نضيف السطور اللي ناقصة حسب العمود الفريد
+    managed_lookup_seed = 'managed_academic_lookup_values_v1'
+    seed_managed_lookups = not _migration_done(conn, managed_lookup_seed)
+
+    # /     /     >---- القوائم المدارة تُزرع مرة واحدة حتى لا تعود القيم المحذوفة.
     for table_name, columns, seed_data, unique_col in tables_data:
+        if table_name in {'qualifications', 'academic_ranks', 'classifications'}:
+            if not seed_managed_lookups:
+                continue
         existing = {row[unique_col] for row in conn.execute(
             f'SELECT "{unique_col}" FROM "{table_name}"'
         ).fetchall()}
@@ -191,6 +197,8 @@ def _ensure_lookup_tables(conn: sqlite3.Connection) -> None:
                     f'INSERT INTO "{table_name}" ({col_names}) VALUES ({placeholders})',
                     row_data,
                 )
+    if seed_managed_lookups:
+        _mark_migration_done(conn, managed_lookup_seed)
 
     # /     /     >---- نعبّي قواعد الرتب من أسماء المؤهلات والرتب
     rule_data = []
@@ -225,12 +233,15 @@ def _ensure_lookup_tables(conn: sqlite3.Connection) -> None:
     conn.execute(
         'CREATE INDEX IF NOT EXISTS idx_specializations_department ON specializations(department_id)'
     )
-    # /     /     >---- نعبّي تخصصات كل قسم (اللي ناقصة فقط)
+    # /     /     >---- نزرع تخصصات القسم مرة واحدة، ولا نعيد القيم المحذوفة.
     for dept_name, spec_names in DEFAULT_SPECIALIZATIONS.items():
         dept = conn.execute(
             'SELECT id FROM departments WHERE name = ?', (dept_name,)
         ).fetchone()
         if not dept:
+            continue
+        migration_name = f'default_specializations_department_{dept["id"]}_v1'
+        if _migration_done(conn, migration_name):
             continue
         existing = {r[0] for r in conn.execute(
             'SELECT name FROM specializations WHERE department_id = ?', (dept['id'],)
@@ -241,6 +252,91 @@ def _ensure_lookup_tables(conn: sqlite3.Connection) -> None:
                     'INSERT INTO specializations (department_id, name, sort_order) VALUES (?, ?, ?)',
                     (dept['id'], name, idx + 1),
                 )
+        _mark_migration_done(conn, migration_name)
+
+
+_SYSTEM_ADMIN_ASSIGNMENT_SEEDS = (
+    ('رئيس القسم العلمي', 'head_of_department', 18, 1),
+    ('رئيس قسم', 'head_of_department', 18, 2),
+    ('رئيس القسم', 'head_of_department', 18, 3),
+    ('رئيس قسم البحث والتطوير', 'research_development', 18, 4),
+    ('قسم البحث والتطوير', 'research_development', 18, 5),
+    ('قسم الإدارة والامتحانات', 'exam', 18, 6),
+    ('رئيس قسم الامتحانات', 'exam', 18, 7),
+    ('رئيس قسم الدراسة والامتحانات', 'exam', 18, 8),
+    ('مدير مكتب أعضاء هيئة التدريس', 'faculty_affairs', 12, 9),
+    ('مكتب إدارة أعضاء هيئة التدريس', 'faculty_affairs', 12, 10),
+    ('عميد الكلية', 'dean', 18, 11),
+    ('العميد', 'dean', 18, 12),
+)
+
+_GENERAL_ADMIN_ASSIGNMENT_SEEDS = (
+    ('مدير مكتب الشؤون العلمية', 12, 5),
+    ('منسق القاعات', 6, 6),
+    ('مدير مكتب الجودة', 12, 8),
+    ('مدير مكتب الدراسة العالية', 12, 9),
+    ('رئيس قسم الشؤون الفنية والمعامل', 12, 11),
+    ('رئيس قسم البحث والتطوير والمناهج', 18, 12),
+    ('رئيس قسم التدريب الميداني', 12, 13),
+    ('رئيس قسم الدبلوم المهني', 12, 14),
+    ('منسق الشعبة العلمية', 6, 15),
+    ('منسق الجودة بالقسم', 6, 16),
+    ('منسق الدراسة العالية بالقسم', 6, 17),
+    ('منسق المواد العامة بالقسم العلمي', 6, 18),
+    ('منسق تدريب ميداني', 6, 19),
+    ('عضو تحرير مجلة علمية', 6, 20),
+)
+
+
+def _ensure_managed_lookup_metadata(conn: sqlite3.Connection) -> None:
+    """Add lifecycle metadata to existing lookups and seed stable role codes."""
+    for table, columns in (
+        ('qualifications', (('is_active', 'INTEGER NOT NULL DEFAULT 1'),
+                            ('sort_order', 'INTEGER NOT NULL DEFAULT 0'))),
+        ('academic_ranks', (('is_active', 'INTEGER NOT NULL DEFAULT 1'),)),
+        ('classifications', (('is_active', 'INTEGER NOT NULL DEFAULT 1'),
+                             ('sort_order', 'INTEGER NOT NULL DEFAULT 0'))),
+        ('specializations', (('is_active', 'INTEGER NOT NULL DEFAULT 1'),)),
+        ('admin_assignment_types', (
+            ('internal_code', 'TEXT'),
+            ('is_system_linked', 'INTEGER NOT NULL DEFAULT 0'),
+        )),
+    ):
+        for column, ddl in columns:
+            if column not in _get_column_names(conn, table):
+                _safe_add_column(conn, table, column, ddl)
+
+    migration_key = 'managed_admin_assignment_values_v1'
+    if _migration_done(conn, migration_key):
+        return
+
+    conn.execute(
+        '''INSERT OR IGNORE INTO admin_assignment_types
+           (name, default_hours, is_active, sort_order)
+           VALUES ('عضو تدريس', 0, 1, 0)'''
+    )
+    for name, hours, order in _GENERAL_ADMIN_ASSIGNMENT_SEEDS:
+        conn.execute(
+            '''INSERT OR IGNORE INTO admin_assignment_types
+               (name, default_hours, is_active, sort_order)
+               VALUES (?, ?, 1, ?)''',
+            (name, hours, order),
+        )
+    for name, code, hours, order in _SYSTEM_ADMIN_ASSIGNMENT_SEEDS:
+        conn.execute(
+            '''INSERT OR IGNORE INTO admin_assignment_types
+               (name, default_hours, is_active, sort_order,
+                internal_code, is_system_linked)
+               VALUES (?, ?, 1, ?, ?, 1)''',
+            (name, hours, order, code),
+        )
+        conn.execute(
+            '''UPDATE admin_assignment_types
+               SET internal_code = ?, is_system_linked = 1
+               WHERE name = ? AND (internal_code IS NULL OR internal_code = ?)''',
+            (code, name, code),
+        )
+    _mark_migration_done(conn, migration_key)
 
 
 # /     /     >---- نعيد تسمية قيمة في قائمة مرجعية (مع تحديث كل المراجع)
@@ -1976,7 +2072,9 @@ def _ensure_faculty_performance_tables(conn: sqlite3.Connection, existing_tables
                 name            TEXT NOT NULL UNIQUE,
                 default_hours   INTEGER NOT NULL DEFAULT 0,
                 is_active       INTEGER NOT NULL DEFAULT 1,
-                sort_order      INTEGER NOT NULL DEFAULT 0
+                sort_order      INTEGER NOT NULL DEFAULT 0,
+                internal_code   TEXT,
+                is_system_linked INTEGER NOT NULL DEFAULT 0
             )
         """)
         _seed_admin_assignment_types(conn)
@@ -3389,6 +3487,7 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
 
     # ── Faculty Performance Evaluation (كشف العبء التدريسي) ─────────
     _ensure_faculty_performance_tables(conn, existing_tables)
+    _ensure_managed_lookup_metadata(conn)
 
     # ── Canonical room types (قاعات + معملان فقط) ────────────────────
     _migrate_canonical_room_types(conn)

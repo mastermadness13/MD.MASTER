@@ -1,37 +1,9 @@
 {% macro admin_tasks_options(selected='', extra=None) %}
-{% set selected = 'رئيس القسم العلمي' if selected in ['رئيس قسم', 'رئيس القسم'] else selected %}
-{% set tasks = [
-    'عضو تدريس',
-    'رئيس القسم العلمي',
-    'مدير مكتب أعضاء هيئة التدريس',
-    'مدير مكتب الشؤون العلمية',
-    'منسق القاعات',
-    'رئيس قسم الدراسة والامتحانات',
-    'مكتب إدارة أعضاء هيئة التدريس',
-    'عميد الكلية',
-    'مدير مكتب الجودة',
-    'مدير مكتب الدراسة العالية',
-    'رئيس قسم الشؤون الفنية والمعامل',
-    'رئيس قسم البحث والتطوير والمناهج',
-    'رئيس قسم التدريب الميداني',
-    'رئيس قسم الدبلوم المهني',
-    'منسق الشعبة العلمية',
-    'منسق الجودة بالقسم',
-    'منسق الدراسة العالية بالقسم',
-    'منسق المواد العامة بالقسم العلمي',
-    'منسق تدريب ميداني',
-    'عضو تحرير مجلة علمية'
-] %}
-{% if extra %}
-  {% for item in extra %}
-    {% if item not in tasks %}{% set _ = tasks.append(item) %}{% endif %}
-  {% endfor %}
-{% endif %}
-{% set gold = ['رئيس القسم العلمي','رئيس قسم البحث والتطوير والمناهج',
-'مدير مكتب أعضاء هيئة التدريس',
-               'رئيس قسم الدراسة والامتحانات', 'مكتب إدارة أعضاء هيئة التدريس'] %}
-{% for task in tasks %}
-<option value="{{ task }}" {{ 'class="text-amber-600 font-bold"' if task in gold else '' }} {{ 'selected' if selected == task else '' }}>{{ task }}</option>
+{% for task in extra or [] %}
+<option value="{{ task.name }}" data-role="{{ task.internal_code or '' }}"
+        data-system-linked="{{ '1' if task.is_system_linked else '0' }}"
+        {{ 'class="text-amber-600 font-bold"' if task.is_system_linked else '' }}
+        {{ 'selected' if selected == task.name else '' }}>{{ task.name }}</option>
 {% endfor %}
 {% endmacro %}
 

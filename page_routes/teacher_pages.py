@@ -566,10 +566,14 @@ def _curriculum_from_form(form, existing_rows=None):
     theoretical = _read_section('theoretical')
     practical = _read_section('practical')
 
-    if 'practical_curriculum_topic[]' not in form:
+    if ('practical_curriculum_topic[]' not in form
+            and 'practical_curriculum_present' not in form):
         practical = [dict(row) for row in existing_by_section['practical']]
 
-    if not theoretical and 'theoretical_curriculum_topic[]' not in form and 'curriculum_topic[]' not in form:
+    if (not theoretical
+            and 'theoretical_curriculum_topic[]' not in form
+            and 'theoretical_curriculum_present' not in form
+            and 'curriculum_topic[]' not in form):
         theoretical = [dict(row) for row in existing_by_section['theoretical']]
 
     if not theoretical:
@@ -1544,15 +1548,32 @@ def super_admin_course_content_send():
         ).fetchall()]
     curriculum = _curriculum_from_form(request.form, existing_curriculum)
 
-    # Theoretical weeks must not exceed the 12-week semester limit.
-    theoretical_weeks = sum(
-        int(item.get('weeks') or 0) for item in curriculum.get('theoretical', [])
+    section_week_totals = {
+        section: sum(int(item.get('weeks') or 0)
+                     for item in curriculum.get(section, []))
+        for section in ('theoretical', 'practical')
+    }
+    invalid_weeks = any(
+        int(item.get('weeks') or 0) < 1 or int(item.get('weeks') or 0) > 12
+        for section in ('theoretical', 'practical')
+        for item in curriculum.get(section, [])
     )
-    if theoretical_weeks > 12 and action in ('submit', 'send'):
-        flash(
-            f'إجمالي الأسابيع النظرية ({theoretical_weeks}) يتجاوز الحد المسموح (12 أسبوعًا) — لا يمكن الحفظ أو النشر.',
-            'error',
+    exceeded_sections = [
+        f'{label} ({section_week_totals[section]} أسبوعًا)'
+        for section, label in (
+            ('theoretical', 'النظري'),
+            ('practical', 'العملي'),
         )
+        if section_week_totals[section] > 12
+    ]
+    if invalid_weeks or exceeded_sections:
+        reason = (
+            'كل صف يجب أن يكون من 1 إلى 12 أسبوعًا.'
+            if invalid_weeks else
+            'إجمالي الأسابيع تجاوز الحد الأقصى (12): '
+            + '، '.join(exceeded_sections) + '.'
+        )
+        flash(reason + ' لم يتم حفظ التعديلات.', 'error')
         if submission_id:
             return redirect(url_for(
                 'teacher_pages.super_admin_course_content_create',

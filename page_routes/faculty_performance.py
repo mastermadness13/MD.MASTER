@@ -206,11 +206,14 @@ def preview(teacher_id):
         'department': [r['name'] for r in db.execute(
             'SELECT name FROM departments ORDER BY name').fetchall()],
         'qualification': [r['name_ar'] for r in db.execute(
-            'SELECT name_ar FROM qualifications ORDER BY name_ar').fetchall()],
+            'SELECT name_ar FROM qualifications WHERE is_active = 1 '
+            'ORDER BY name_ar').fetchall()],
         'rank': [r['name_ar'] for r in db.execute(
-            'SELECT name_ar FROM academic_ranks ORDER BY name_ar').fetchall()],
+            'SELECT name_ar FROM academic_ranks WHERE is_active = 1 '
+            'ORDER BY name_ar').fetchall()],
         'specialization': [r['name'] for r in db.execute(
-            'SELECT name FROM specializations ORDER BY name').fetchall()],
+            'SELECT name FROM specializations WHERE is_active = 1 '
+            'ORDER BY name').fetchall()],
         'course': [r['name'] for r in db.execute(
             'SELECT name FROM courses ORDER BY name').fetchall()],
     }

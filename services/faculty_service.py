@@ -76,7 +76,7 @@ def get_teaching_assignments(
     ]
     ranks = [
         dict(r) for r in db.execute(
-            'SELECT * FROM academic_ranks ORDER BY sort_order'
+            'SELECT * FROM academic_ranks WHERE is_active = 1 ORDER BY sort_order'
         ).fetchall()
     ]
     return rows, total, pg, pp, departments, ranks

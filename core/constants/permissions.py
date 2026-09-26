@@ -34,6 +34,7 @@ ROLE_PERMISSIONS = {
     'faculty_affairs': {
         'dashboard.view', 'dashboard.nav',
         'teachers.manage', 'teachers.view',
+        'teachers.lookup_lists.manage',
         'teachers.assign',
         'timetable.view',
         'history.view',

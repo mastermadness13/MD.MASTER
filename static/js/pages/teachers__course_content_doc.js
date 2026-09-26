@@ -13,7 +13,7 @@
       bodyId: 'ccPracticalCurriculumBody',
       totalId: 'ccPracticalWeeksTotal',
       addId: 'ccAddPracticalRow',
-      limit: null
+      limit: WEEKS_LIMIT
     }
   ];
   var SEMESTER_EN = {
@@ -23,6 +23,7 @@
   var sheet = document.querySelector('.cc-sheet');
   var form = document.getElementById('courseContentForm');
   var theoreticalWeeksTotal = 0;
+  var practicalWeeksTotal = 0;
   var translationTimers = {};
   var translationJobs = {};
   var translationVersions = {};
@@ -245,8 +246,9 @@
         ' data-translation-target="' + section.prefix + '_curriculum_topic_en" data-translation-row=""></textarea>' +
       '</td>' +
       '<td class="cc-week-cell">' +
-        '<input class="cc-cell-input cc-num week-input" type="number" min="1" name="' +
-        section.prefix + '_curriculum_weeks[]" value="1">' +
+        '<input class="cc-cell-input cc-num week-input" type="number" name="' +
+        section.prefix + '_curriculum_weeks[]" value="1" min="1" max="' +
+        section.limit + '">' +
       '</td>' +
       '<td class="cc-block-cell cc-ar">' +
         '<textarea name="' + section.prefix + '_curriculum_topic[]" rows="2" placeholder="الموضوع"' +
@@ -263,17 +265,6 @@
   function rowIsEmpty(row) {
     var topic = rowInputs(row, 'topic');
     return !(topic && topic.value && topic.value.trim());
-  }
-
-  function ensureTrailingCurriculumRow(section) {
-    var body = sectionBody(section);
-    if (!body) return null;
-    var rows = body.querySelectorAll('tr');
-    var lastRow = rows[rows.length - 1];
-    if (!lastRow || !rowIsEmpty(lastRow)) {
-      return createCurriculumRow(section, false);
-    }
-    return lastRow;
   }
 
   function renumberCurriculumRows(section) {
@@ -298,21 +289,19 @@
     var output = document.getElementById(section.totalId);
     if (output) {
       output.textContent = total;
-      output.classList.toggle('cc-weeks-warning', !!(section.limit && total > section.limit));
+      output.classList.toggle('cc-weeks-warning', total > section.limit);
+    }
+    var addButton = document.getElementById(section.addId);
+    if (addButton) {
+      var limitReached = total >= section.limit;
+      addButton.disabled = limitReached;
+      addButton.title = limitReached
+        ? 'لا يمكن إضافة صف لأن مجموع الأسابيع بلغ 12 أسبوعًا'
+        : '';
     }
     if (section.prefix === 'theoretical') theoreticalWeeksTotal = total;
+    else if (section.prefix === 'practical') practicalWeeksTotal = total;
     return total;
-  }
-
-  function maybeAddCurriculumRow(section, row) {
-    var body = sectionBody(section);
-    if (!body || !row) return;
-    var rows = body.querySelectorAll('tr');
-    if (row === rows[rows.length - 1] && !rowIsEmpty(row)) {
-      createCurriculumRow(section);
-      renumberCurriculumRows(section);
-      recalcSection(section);
-    }
   }
 
   function initSection(section) {
@@ -320,22 +309,20 @@
     if (!body) return;
     if (translationEnabled()) {
       body.addEventListener('input', function (event) {
-        var row = event.target.closest('tr');
         autoResize(event.target);
         renumberCurriculumRows(section);
         recalcSection(section);
-        maybeAddCurriculumRow(section, row);
-      });
-      body.addEventListener('focusin', function (event) {
-        maybeAddCurriculumRow(section, event.target.closest('tr'));
       });
     }
     body.addEventListener('input', function (event) {
-      if (event.target && event.target.matches) autoResize(event.target);
+      if (!event.target || !event.target.matches) return;
+      if (event.target.matches('textarea')) autoResize(event.target);
+      if (event.target.matches('.week-input')) recalcSection(section);
     });
     var addButton = document.getElementById(section.addId);
     if (addButton) {
       addButton.addEventListener('click', function () {
+        if (recalcSection(section) >= section.limit) return;
         createCurriculumRow(section);
         renumberCurriculumRows(section);
         recalcSection(section);
@@ -345,7 +332,6 @@
       var weeks = rowInputs(row, 'weeks');
       if (weeks && !weeks.value) weeks.value = 1;
     });
-    ensureTrailingCurriculumRow(section);
     renumberCurriculumRows(section);
     recalcSection(section);
   }
@@ -408,9 +394,11 @@
       }
     });
     form.addEventListener('submit', function (event) {
-      if (theoreticalWeeksTotal > WEEKS_LIMIT) {
+      if (theoreticalWeeksTotal > WEEKS_LIMIT || practicalWeeksTotal > WEEKS_LIMIT) {
         event.preventDefault();
-        var message = 'إجمالي الأسابيع النظرية (' + theoreticalWeeksTotal + ') يتجاوز الحد المسموح (' + WEEKS_LIMIT + ') — لا يمكن الحفظ أو النشر.';
+        var message = 'مجموع الأسابيع يجب ألا يتجاوز 12 أسبوعًا: النظري (' +
+          theoreticalWeeksTotal + ') والعملي (' + practicalWeeksTotal +
+          ') — لا يمكن الحفظ أو الإرسال.';
         if (window.showNotification) window.showNotification(message, 'error', 6000);
         else alert(message);
         return;

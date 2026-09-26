@@ -291,6 +291,24 @@ def test_codes_tab_for_course_without_submission(client):
     body = client.get(f'/courses/codes?tab=content&course_id={cid}').get_data(as_text=True)
     assert 'name="course_name"' in body
     assert 'name="submission_id"' not in body, 'new form has no submission id yet'
+    assert re.search(r'<tbody id="ccTheoreticalCurriculumBody">\s*</tbody>', body)
+    assert re.search(r'<tbody id="ccPracticalCurriculumBody">\s*</tbody>', body)
+    assert 'name="theoretical_curriculum_present" value="1"' in body
+    assert 'name="practical_curriculum_present" value="1"' in body
+
+
+def test_curriculum_rows_are_manual_and_both_sections_stop_at_12_weeks():
+    script = _read_js('static/js/pages/teachers__course_content_doc.js')
+    template = _read_js('templates/teachers/_course_content_doc.html')
+
+    assert 'ensureTrailingCurriculumRow' not in script
+    assert 'maybeAddCurriculumRow' not in script
+    assert script.count('limit: WEEKS_LIMIT') == 2
+    assert "if (recalcSection(section) >= section.limit) return;" in script
+    assert 'practicalWeeksTotal > WEEKS_LIMIT' in script
+    assert 'total > section.limit' in script
+    assert 'name="theoretical_curriculum_weeks[]" value="{{ row.weeks or 1 }}"' in template
+    assert template.count('max="12"') == 2
 
 
 def test_codes_tab_is_sheet_only(client):
@@ -556,15 +574,13 @@ def test_course_sheet_exposes_both_curriculum_sections(client):
     body = client.get(f'/courses/codes?tab=content&course_id={cid}').get_data(as_text=True)
     assert 'id="ccTheoreticalCurriculumBody"' in body
     assert 'id="ccPracticalCurriculumBody"' in body
-    assert 'theoretical_curriculum_topic[]' in body
-    assert 'theoretical_curriculum_topic_en[]' in body
-    assert 'theoretical_curriculum_weeks[]' in body
-    assert 'practical_curriculum_topic[]' in body
-    assert 'practical_curriculum_topic_en[]' in body
-    assert 'practical_curriculum_weeks[]' in body
     assert 'id="ccAddTheoreticalRow"' in body
     assert 'id="ccAddPracticalRow"' in body
     assert 'id="ccPracticalWeeksTotal"' in body
+    script = _read_js('static/js/pages/teachers__course_content_doc.js')
+    assert "_curriculum_topic[]\"" in script
+    assert "_curriculum_topic_en[]\"" in script
+    assert "_curriculum_weeks[]\"" in script
     # The official header is part of the printed sheet
     assert 'كلية التقنية الهندسية زوارة' in body
     assert 'cc-sheet-meta' in body

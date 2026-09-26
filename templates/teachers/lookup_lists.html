@@ -1,0 +1,199 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'teacher_lookup_lists' %}
+{% set page_title = 'إدارة القوائم المرجعية' %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto pb-8 space-y-5">
+  <div>
+    <h1 class="text-xl font-bold text-on-surface">إدارة القوائم المرجعية</h1>
+    <p class="text-sm text-on-surface-variant mt-1">
+      إدارة الخيارات المستخدمة في ملفات أعضاء هيئة التدريس وتقارير الأداء.
+    </p>
+  </div>
+
+  <nav class="flex flex-wrap gap-2" aria-label="فئات القوائم">
+    {% for key, item in categories.items() %}
+    <a href="{{ url_for('teachers.lookup_lists', category=key) }}"
+       class="px-3 py-2 rounded-xl border text-sm font-semibold no-underline
+              {% if selected_category == key %}bg-primary text-on-primary border-primary
+              {% else %}bg-surface border-outline-variant text-on-surface-variant{% endif %}">
+      {{ item.label }}
+    </a>
+    {% endfor %}
+  </nav>
+
+  <section class="bg-surface rounded-2xl border border-outline-variant p-4 sm:p-5">
+    <h2 class="font-bold text-on-surface mb-4">
+      إضافة قيمة إلى {{ categories[selected_category].label }}
+    </h2>
+    <form method="post" class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="category" value="{{ selected_category }}">
+      <input type="hidden" name="action" value="add">
+      {% if selected_category == 'specialization' %}
+      <label class="flex flex-col gap-1.5 text-xs font-semibold text-on-surface-variant">
+        القسم
+        <select name="department_id" required
+                class="h-10 rounded-xl border border-outline-variant bg-surface px-3 text-sm text-on-surface">
+          <option value="">اختر القسم</option>
+          {% for department in departments %}
+          <option value="{{ department.id }}">{{ department.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      {% endif %}
+      <label class="flex flex-col gap-1.5 text-xs font-semibold text-on-surface-variant">
+        نص الخيار
+        <input name="name" required maxlength="120"
+               class="h-10 rounded-xl border border-outline-variant bg-surface px-3 text-sm text-on-surface">
+      </label>
+      <button type="submit"
+              class="h-10 rounded-xl bg-primary px-4 text-sm font-bold text-on-primary">
+        إضافة قيمة
+      </button>
+    </form>
+    {% if selected_category == 'admin_assignment_type' %}
+    <p class="text-xs text-on-surface-variant mt-3">
+      القيم الجديدة تكليفات عامة؛ التكليفات النظامية الحالية لا يمكن حذفها، ويمكن تغيير اسمها أو تعطيلها.
+    </p>
+    {% endif %}
+  </section>
+
+  {% if delete_pending %}
+  <section class="rounded-2xl border border-error/40 bg-error-container/30 p-4"
+           role="alert">
+    <h2 class="font-bold text-on-error-container">تأكيد حذف «{{ delete_pending.name }}»</h2>
+    <p class="text-sm text-on-error-container mt-1">
+      القيمة مستخدمة من {{ delete_pending.member_count }} عضو
+      {% if delete_pending.assignment_count %}
+      و{{ delete_pending.assignment_count }} تكليف محفوظ
+      {% endif %}.
+      {% if delete_pending.linked_count %}
+      وترتبط بـ{{ delete_pending.linked_count }} قاعدة أو إعداد للعبء
+      {% endif %}
+      اختر نقل الاستخدام إلى قيمة بديلة، أو حذف القيمة مع تفريغ هذه الحقول.
+    </p>
+    <form method="post" class="flex flex-wrap items-end gap-3 mt-3">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="category" value="{{ selected_category }}">
+      <input type="hidden" name="action" value="delete">
+      <input type="hidden" name="id" value="{{ delete_pending.id }}">
+      {% if replacement_choices %}
+      <label class="flex min-w-56 flex-col gap-1 text-xs font-semibold">
+        نقل الاستخدام إلى
+        <select name="replacement_id"
+                class="h-10 rounded-xl border border-outline-variant bg-surface px-3 text-sm">
+          <option value="">اختر قيمة بديلة</option>
+          {% for choice in replacement_choices %}
+          <option value="{{ choice.id }}">{{ choice.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button type="submit"
+              class="h-10 rounded-xl bg-primary px-4 text-sm font-bold text-on-primary">
+        نقل الاستخدام وحذف
+      </button>
+      {% endif %}
+      <button type="submit" name="clear_references" value="1"
+              class="h-10 rounded-xl border border-error px-4 text-sm font-bold text-error"
+              onclick="return confirm('سيتم تفريغ الحقول لدى {{ delete_pending.member_count }} عضو والتكليفات المحفوظة لدى {{ delete_pending.assignment_count }} سجل، وحذف {{ delete_pending.linked_count }} قاعدة أو إعداد مرتبط. هل تريد المتابعة؟')">
+        تفريغ الحقول وحذف
+      </button>
+      <a href="{{ url_for('teachers.lookup_lists', category=selected_category) }}"
+         class="px-3 py-2 text-sm font-semibold">إلغاء</a>
+    </form>
+  </section>
+  {% endif %}
+
+  <section class="overflow-x-auto rounded-2xl border border-outline-variant bg-surface">
+    <table class="w-full min-w-[680px] text-sm">
+      <thead class="bg-surface-container text-on-surface-variant">
+        <tr>
+          <th class="p-3 text-right">القيمة</th>
+          {% if selected_category == 'specialization' %}
+          <th class="p-3 text-right">القسم</th>
+          {% endif %}
+          {% if selected_category == 'admin_assignment_type' %}
+          <th class="p-3 text-center">النوع والحالة</th>
+          {% else %}
+          <th class="p-3 text-center">الأعضاء المستخدمون</th>
+          {% endif %}
+          <th class="p-3 text-center">الإجراءات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr class="border-t border-outline-variant/60">
+          <td class="p-3">
+            <form method="post" class="flex items-center gap-2">
+              <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="category" value="{{ selected_category }}">
+              <input type="hidden" name="action" value="rename">
+              <input type="hidden" name="id" value="{{ row.id }}">
+              <input name="name" value="{{ row[categories[selected_category].name_col] if categories[selected_category].name_col is defined else row.name }}"
+                     maxlength="120" required
+                     class="h-9 min-w-40 flex-1 rounded-lg border border-outline-variant bg-surface px-2 text-on-surface">
+              <button type="submit" class="rounded-lg border border-outline-variant px-3 py-2 text-xs font-bold">
+                حفظ الاسم
+              </button>
+            </form>
+          </td>
+          {% if selected_category == 'specialization' %}
+          <td class="p-3 text-on-surface-variant">{{ row.department_name }}</td>
+          {% endif %}
+          <td class="p-3 text-center">
+            {% if selected_category == 'admin_assignment_type' %}
+              {% if row.is_system_linked %}
+              <span class="font-bold text-primary" title="هذا التكليف مرتبط بصلاحية أو صفحة في النظام">
+                نظامي · {{ 'نشط' if row.is_active else 'معطّل' }}
+              </span>
+              {% else %}
+              <span class="text-on-surface-variant">عام</span>
+              {% endif %}
+              <div class="text-xs text-on-surface-variant mt-1">
+                {{ row.member_count }} عضو · {{ row.assignment_count }} تكليف محفوظ
+              </div>
+            {% else %}
+              {{ row.member_count }}
+            {% endif %}
+          </td>
+          <td class="p-3">
+            <div class="flex flex-wrap justify-center gap-2">
+              {% if selected_category == 'admin_assignment_type' and row.is_system_linked %}
+              <form method="post">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="category" value="{{ selected_category }}">
+                <input type="hidden" name="action" value="toggle">
+                <input type="hidden" name="id" value="{{ row.id }}">
+                <button type="submit" title="هذا التكليف مرتبط بصفحة أو صلاحية في النظام"
+                        class="rounded-lg border border-outline-variant px-3 py-2 text-xs font-bold">
+                  {{ 'تفعيل' if not row.is_active else 'تعطيل' }}
+                </button>
+              </form>
+              {% else %}
+              <form method="post">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="category" value="{{ selected_category }}">
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="id" value="{{ row.id }}">
+                <button type="submit"
+                        class="rounded-lg border border-error/40 px-3 py-2 text-xs font-bold text-error">
+                  حذف
+                </button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="4" class="p-8 text-center text-on-surface-variant">
+            لا توجد قيم مسجلة في هذه الفئة.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
+{% endblock %}

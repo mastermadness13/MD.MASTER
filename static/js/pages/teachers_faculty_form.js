@@ -82,15 +82,17 @@ document.addEventListener('DOMContentLoaded', function () {
     var hodWrap = document.getElementById('headshipDeptWrap');
     var teachingDeptWrap = document.getElementById('teachingDeptWrap');
     if (!posSel) return;
+    function selectedRole() {
+      var option = posSel.options[posSel.selectedIndex];
+      return option ? option.getAttribute('data-role') || '' : '';
+    }
     function toggleHead() {
-      if (hodWrap) hodWrap.style.display = ['رئيس القسم العلمي', 'رئيس قسم', 'رئيس القسم'].indexOf(posSel.value) !== -1 ? '' : 'none';
+      if (hodWrap) hodWrap.style.display = selectedRole() === 'head_of_department' ? '' : 'none';
       if (teachingDeptWrap) teachingDeptWrap.style.display = posSel.value === 'عضو تدريس' ? '' : 'none';
     }
-    // تلوين ذهبي للخيارات التي تمنح لوحة تحكم إدارية
-    var panelTasks = ['رئيس القسم العلمي', 'رئيس قسم', 'رئيس القسم', 'رئيس قسم البحث والتطوير', 'مدير مكتب أعضاء هيئة التدريس',
-                      'رئيس قسم الدراسة والامتحانات', 'مكتب إدارة أعضاء هيئة التدريس'];
     function tintPanel() {
-      var gold = panelTasks.indexOf(posSel.value) !== -1;
+      var option = posSel.options[posSel.selectedIndex];
+      var gold = option && option.getAttribute('data-system-linked') === '1';
       posSel.classList.toggle('text-amber-600', gold);
       posSel.classList.toggle('font-bold', gold);
       posSel.classList.toggle('text-on-surface', !gold);
