@@ -133,6 +133,21 @@ def world(tmp_path, monkeypatch):
     return db_path, ids
 
 
+@pytest.fixture
+def uploads(tmp_path, monkeypatch, app_fx):
+    """A real upload directory with a real (dummy) file in it.
+
+    Required for the lifecycle test: ``_send_course_file`` aborts 404 when the
+    bytes are missing from disk, so a submission row without a real file would
+    404 for the wrong reason and the guard could never fail.
+    """
+    folder = tmp_path / 'uploads'
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / 'area4.pdf').write_bytes(b'%PDF-1.4 area4 dummy\n')
+    monkeypatch.setitem(app_fx.config, 'UPLOAD_FOLDER', str(folder))
+    return folder
+
+
 def _conn(db_path):
     c = sqlite3.connect(str(db_path))
     c.row_factory = sqlite3.Row
@@ -241,33 +256,47 @@ def test_teacher_cannot_read_another_teachers_course_content(app_fx, world):
     )
 
 
-def test_public_library_hides_an_unpublished_submission(app_fx, world):
-    """A draft sheet is internal state.  Only ``published`` may be served."""
+def test_public_library_hides_an_unpublished_submission(app_fx, world, uploads):
+    """A draft sheet is internal state.  Only ``published`` may be served.
+
+    The published row is the positive control: it proves the bytes really are
+    reachable through this URL, so the draft's 404 can only come from the
+    lifecycle gate rather than from a broken path or a missing file.
+    """
     db_path, ids = world
     conn = _conn(db_path)
     try:
-        for status in ('draft', 'in_review', 'rejected', 'archived'):
+        sub_ids = {}
+        for status in ('published', 'draft', 'in_review', 'rejected', 'archived'):
             conn.execute(
                 'INSERT INTO course_content_submissions '
-                '(user_id, department_id, course_name, course_code, status) '
-                'VALUES (?, ?, ?, ?, ?)',
+                '(user_id, department_id, course_name, course_code, status, '
+                ' filename, original_filename) '
+                'VALUES (?, ?, ?, ?, ?, ?, ?)',
                 (ids['teacher_a_uid'], ids['dept_a'], f'مقرر {status}', 'C1',
-                 status),
+                 status, 'area4.pdf', 'area4.pdf'),
             )
-        sub_id = conn.execute(
-            "SELECT id FROM course_content_submissions WHERE status = 'draft' "
-            'ORDER BY id DESC LIMIT 1'
-        ).fetchone()['id']
+            sub_ids[status] = conn.execute(
+                'SELECT id FROM course_content_submissions WHERE status = ? '
+                'ORDER BY id DESC LIMIT 1', (status,)
+            ).fetchone()['id']
         conn.commit()
     finally:
         conn.close()
 
     anon = app_fx.test_client()
-    response = anon.get(f'/library/file/{sub_id}')
-    assert response.status_code == 404, (
-        f'an anonymous visitor was served a {response.status_code} '
-        'unpublished submission'
+    control = anon.get(f'/library/file/{sub_ids["published"]}')
+    assert control.status_code == 200, (
+        'the published control is not served, so the assertions below would '
+        f'pass for the wrong reason (status {control.status_code})'
     )
+
+    for status in ('draft', 'in_review', 'rejected', 'archived'):
+        response = anon.get(f'/library/file/{sub_ids[status]}')
+        assert response.status_code == 404, (
+            f'an anonymous visitor was served a {status} submission '
+            f'(status {response.status_code})'
+        )
 
 
 def test_public_course_content_page_requires_published(app_fx, world):

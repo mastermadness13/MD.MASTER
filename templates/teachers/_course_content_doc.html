@@ -182,6 +182,7 @@
   .cc-sheet .cc-en-label-cell {
     background: #f3f4f6;
     font-weight: 700;
+
     text-align: left;
     direction: ltr;
   }
@@ -206,7 +207,7 @@
   /* Weekly hours grid (mirrors the official 4-cell row) */
   .cc-sheet .cc-hours-grid {
     display: grid;
-    width: 80%;
+    width: 67%;
     grid-template-columns: repeat(4, 1fr);
     align-items: stretch;
   }
@@ -573,20 +574,22 @@
         </td>
         <th class="cc-label-cell" scope="row">اسم المادة</th>
       </tr>
+   <!-- Course code + credit hours -->
       <tr>
         <th class="cc-en-label-cell" scope="row" dir="ltr">Course Code</th>
-        <td colspan="3" class="cc-value-cell">
-          <input type="text" class="cc-cell-input cc-num" name="course_code" dir="ltr" readonly
-                 value="{{ doc.course_code or '' }}">
+        <td class="cc-value-cell cc-en">
+          <input type="text" class="cc-cell-input" name="course_code" dir="ltr"
+                 value="{{ doc.course_code or '' }}" placeholder="Course code"
+                 {% if read_only %}disabled{% elif locked %}readonly{% endif %}>
         </td>
-      </tr>
-      <tr>
-        <th class="cc-en-label-cell" scope="row" dir="ltr">Credits</th>
-        <td colspan="3" class="cc-value-cell">
-          <input type="number" class="cc-cell-input" name="credits" min="0" value="{{ doc.credits or 0 }}"
-                 {% if read_only %}disabled{% endif %}>
+        <td class="cc-value-cell cc-ar">
+          <input type="text" class="cc-cell-input" name="course_code_ar" value="{{ doc.course_code_ar or '' }}"
+                 placeholder="رمز المادة"
+                 {% if read_only %}disabled{% elif locked %}readonly{% endif %}>
         </td>
+        <th class="cc-label-cell" scope="row">رمز المادة</th>
       </tr>
+      
       <tr>
         <th class="cc-en-label-cell" scope="row" dir="ltr">Semester</th>
         <td class="cc-value-cell cc-en">

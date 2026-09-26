@@ -117,7 +117,7 @@ def hod_material_delete(material_id):
     if dept_id is None:
         abort(403)
     mat = db.execute(
-        'SELECT * FROM teacher_materials WHERE id = ?',
+        'SELECT * FROM teacher_materials WHERE id = ? AND department_id = ?',
         (material_id, dept_id)
     ).fetchone()
     if not mat:
