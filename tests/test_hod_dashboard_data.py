@@ -16,7 +16,6 @@ from datetime import datetime, timedelta
 import pytest
 
 import flask_db
-from app import create_app
 from database.connection import connect
 from database.schema import ensure_schema
 from werkzeug.security import generate_password_hash
@@ -132,11 +131,16 @@ def test_create_app_migrates_legacy_database(tmp_path, monkeypatch):
     conn.commit(); conn.close()
 
     monkeypatch.setattr(flask_db, 'DATABASE', str(db_path))
-    app = create_app()
-    with app.app_context():
-        db = flask_db.get_db()
-        cols = [row[1] for row in db.execute('PRAGMA table_info(departments)').fetchall()]
-        assert 'deleted_at' in cols
+    # ensure_database_schema() is exactly what flask_db.init_app() runs on boot.
+    # Calling it directly proves the migration path without building a second
+    # app, which would re-register error handlers on the global blueprints.
+    from flask_db import ensure_database_schema
+    ensure_database_schema()
+
+    conn = sqlite3.connect(str(db_path))
+    cols = [row[1] for row in conn.execute('PRAGMA table_info(departments)').fetchall()]
+    conn.close()
+    assert 'deleted_at' in cols
 
 
 # ── 1. Attendance is cancelled ────────────────────────────────────────────

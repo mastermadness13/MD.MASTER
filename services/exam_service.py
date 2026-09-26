@@ -332,6 +332,26 @@ class ExamService:
                                 last_thursday = cur
                     cur += timedelta(days=1)
 
+        # /     /     >---- سجلات الامتحانات لكل الأقسام في استعلام واحد بدل استعلام لكل قسم
+        dept_ids = [d['id'] for d in departments]
+        status_filter = ''
+        if published_only:
+            status_filter = " AND es.status IN ('published', 'completed')"
+        rows_by_dept = {}
+        if dept_ids:
+            _ph = ','.join('?' * len(dept_ids))
+            for _r in self.db.execute(
+                f'''SELECT es.*, c.name as course_name, c.code as course_code,
+                          r.name as room_name, c.practical_hours
+                   FROM exam_schedule es
+                   LEFT JOIN courses c ON es.course_id = c.id
+                   LEFT JOIN rooms r ON es.room_id = r.id
+                   WHERE es.department_id IN ({_ph}){status_filter}
+                   ORDER BY es.week, es.day_ar, es.start_time, es.semester''',
+                list(dept_ids),
+            ).fetchall():
+                rows_by_dept.setdefault(_r['department_id'], []).append(_r)
+
         dept_list = []
         for dept in departments:
             dept_name = dept['name']
@@ -342,20 +362,7 @@ class ExamService:
                 sem_start, sem_end = (2, int(dept.get('semesters') or 7))
 
             # /     /     >---- سجلات الامتحانات المخزنة للقسم
-            status_filter = ''
-            params = [dept['id']]
-            if published_only:
-                status_filter = " AND es.status IN ('published', 'completed')"
-            rows = self.db.execute(
-                f'''SELECT es.*, c.name as course_name, c.code as course_code,
-                          r.name as room_name, c.practical_hours
-                   FROM exam_schedule es
-                   LEFT JOIN courses c ON es.course_id = c.id
-                   LEFT JOIN rooms r ON es.room_id = r.id
-                   WHERE es.department_id = ?{status_filter}
-                   ORDER BY es.week, es.day_ar, es.start_time, es.semester''',
-                params,
-            ).fetchall()
+            rows = rows_by_dept.get(dept['id'], [])
 
             # /     /     >---- فهرسة السجلات حسب الخلية (أسبوع، يوم، فصل)
             stored_weeks = set()

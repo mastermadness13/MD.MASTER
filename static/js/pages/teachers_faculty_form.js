@@ -76,18 +76,18 @@ document.addEventListener('DOMContentLoaded', function () {
     render();
   })();
 
-  // ── Headship department shown only when task = 'رئيس قسم' ──
+  // ── Headship department shown only for the academic department head ──
   (function () {
     var posSel = document.getElementById('positionSelect');
     var hodWrap = document.getElementById('headshipDeptWrap');
     var teachingDeptWrap = document.getElementById('teachingDeptWrap');
     if (!posSel) return;
     function toggleHead() {
-      if (hodWrap) hodWrap.style.display = posSel.value === 'رئيس قسم' ? '' : 'none';
+      if (hodWrap) hodWrap.style.display = ['رئيس القسم العلمي', 'رئيس قسم', 'رئيس القسم'].indexOf(posSel.value) !== -1 ? '' : 'none';
       if (teachingDeptWrap) teachingDeptWrap.style.display = posSel.value === 'عضو تدريس' ? '' : 'none';
     }
     // تلوين ذهبي للخيارات التي تمنح لوحة تحكم إدارية
-    var panelTasks = ['رئيس قسم', 'رئيس قسم البحث والتطوير', 'مدير مكتب أعضاء هيئة التدريس',
+    var panelTasks = ['رئيس القسم العلمي', 'رئيس قسم', 'رئيس القسم', 'رئيس قسم البحث والتطوير', 'مدير مكتب أعضاء هيئة التدريس',
                       'رئيس قسم الدراسة والامتحانات', 'مكتب إدارة أعضاء هيئة التدريس'];
     function tintPanel() {
       var gold = panelTasks.indexOf(posSel.value) !== -1;

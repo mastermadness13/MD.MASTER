@@ -17,6 +17,7 @@
 @import url('./components/icon-picker.css');
 @import url('./components/badges.css');
 @import url('./components/ui.css');
+@import url('./components/theme-panel.css');
 
 @import url('./features/auth.css');
 @import url('./features/timetable.css');
@@ -43,6 +44,10 @@
 @import url('./preview/styles.css');
 
 @import url('./themes/dark.css');
+
+/* Custom accent hue + density + corner style. Must load after dark.css so a
+   custom accent wins over both palettes. */
+@import url('./utilities/theme-custom.css');
 
 /* Mobile adaptation layer — must stay LAST so overrides win */
 @import url('./layout/mobile.css');

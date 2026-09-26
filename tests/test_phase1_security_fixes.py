@@ -331,18 +331,45 @@ def test_api_login_rate_limited_per_username(app_fx):
 # ── AUTH-002: switch-role CSRF + safe redirect ────────────────────────────
 
 
-def _login_session(app_fx, role='teacher', roles=('teacher',)):
+@pytest.fixture
+def role_db(tmp_path, monkeypatch):
+    """A real user row for the switch-role tests.
+
+    app.before_request's enforce_session_version looks the session user up and
+    clears the session when the row is missing, so a session pointing at a
+    non-existent user_id gets bounced to /login before the route ever runs.
+    """
+    db_path = tmp_path / 'switch_role.db'
+    monkeypatch.setattr(flask_db, 'DATABASE', str(db_path))
+    conn = connect(str(db_path))
+    with open('database/schema.sql', encoding='utf-8') as f:
+        conn.executescript(f.read())
+    from database.schema import ensure_schema
+    ensure_schema(conn)
+    conn.execute(
+        "INSERT OR IGNORE INTO users (username, password, role, label) "
+        "VALUES ('multi_role', 'x', 'teacher', 'مدرس')"
+    )
+    uid = conn.execute(
+        "SELECT id FROM users WHERE username = 'multi_role'"
+    ).fetchone()['id']
+    conn.commit()
+    conn.close()
+    return uid
+
+
+def _login_session(app_fx, role='teacher', roles=('teacher',), user_id=1):
     client = app_fx.test_client()
     with client.session_transaction() as sess:
         sess['_csrf_token'] = 'test-token'
-        sess['user_id'] = 1
+        sess['user_id'] = user_id
         sess['role'] = role
         sess['roles'] = list(roles)
     return client
 
 
-def test_switch_role_rejects_missing_csrf(app_fx):
-    client = _login_session(app_fx)
+def test_switch_role_rejects_missing_csrf(role_db, app_fx):
+    client = _login_session(app_fx, user_id=role_db)
     resp = client.post('/switch-role', data={
         'role': 'teacher',
         '_csrf_token': 'wrong-token',
@@ -352,8 +379,8 @@ def test_switch_role_rejects_missing_csrf(app_fx):
         assert sess.get('role') == 'teacher'
 
 
-def test_switch_role_with_valid_csrf(app_fx):
-    client = _login_session(app_fx)
+def test_switch_role_with_valid_csrf(role_db, app_fx):
+    client = _login_session(app_fx, user_id=role_db)
     resp = client.post('/switch-role', headers={
         'Referer': 'http://localhost/dashboard/',
     }, data={
@@ -365,8 +392,8 @@ def test_switch_role_with_valid_csrf(app_fx):
         assert sess.get('role') == 'teacher'
 
 
-def test_switch_role_ignores_cross_origin_referrer(app_fx):
-    client = _login_session(app_fx)
+def test_switch_role_ignores_cross_origin_referrer(role_db, app_fx):
+    client = _login_session(app_fx, user_id=role_db)
     resp = client.post('/switch-role', headers={
         'Referer': 'https://evil.example/phish',
     }, data={
@@ -378,8 +405,8 @@ def test_switch_role_ignores_cross_origin_referrer(app_fx):
     assert 'evil.example' not in target
 
 
-def test_switch_role_ajax_success(app_fx):
-    client = _login_session(app_fx, role='teacher', roles=('teacher', 'exam'))
+def test_switch_role_ajax_success(role_db, app_fx):
+    client = _login_session(app_fx, role='teacher', roles=('teacher', 'exam'), user_id=role_db)
     resp = client.post('/switch-role', headers={
         'X-Requested-With': 'XMLHttpRequest',
         'Accept': 'application/json',
@@ -394,8 +421,8 @@ def test_switch_role_ajax_success(app_fx):
         assert sess.get('role') == 'exam'
 
 
-def test_switch_role_ajax_denied_role(app_fx):
-    client = _login_session(app_fx, role='teacher', roles=('teacher',))
+def test_switch_role_ajax_denied_role(role_db, app_fx):
+    client = _login_session(app_fx, role='teacher', roles=('teacher',), user_id=role_db)
     resp = client.post('/switch-role', headers={
         'X-Requested-With': 'XMLHttpRequest',
         'Accept': 'application/json',
@@ -410,8 +437,8 @@ def test_switch_role_ajax_denied_role(app_fx):
         assert sess.get('role') == 'teacher'
 
 
-def test_switch_role_ajax_missing_csrf(app_fx):
-    client = _login_session(app_fx)
+def test_switch_role_ajax_missing_csrf(role_db, app_fx):
+    client = _login_session(app_fx, user_id=role_db)
     resp = client.post('/switch-role', headers={
         'X-Requested-With': 'XMLHttpRequest',
         'Accept': 'application/json',

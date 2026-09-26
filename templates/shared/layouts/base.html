@@ -6,6 +6,10 @@
 </head>
 <body class="sidebar-layout{% if hide_sidebar %} no-sidebar{% endif %}">
 
+{# First focusable element: lets keyboard users jump past the sidebar nav,
+   which is long on every authenticated page. Hidden until focused. #}
+<a class="skip-link" href="#mainContent">تخطي إلى المحتوى الرئيسي</a>
+
 {% set user = user if user is defined else current_user() %}
 {% set active_key = sidebar_active | default('') %}
 
@@ -65,9 +69,11 @@
         </a>
           {% endif %}
         {% endfor %}
-        <button type="button" class="sidebar-link sidebar-theme-link" onclick="toggleTheme()" aria-label="تبديل المظهر (فاتح/داكن)">
-          <span class="material-symbols-outlined" id="sidebarThemeIcon">dark_mode</span>
-          <span id="sidebarThemeLabel">الوضع الليلي</span>
+        <button type="button" class="sidebar-link sidebar-theme-link"
+                popovertarget="themePanel" popovertargetaction="show"
+                aria-label="إعدادات المظهر" aria-haspopup="dialog">
+          <span class="material-symbols-outlined" id="sidebarThemeIcon">palette</span>
+          <span>المظهر</span>
         </button>
       </div>
       {% endif %}
@@ -107,6 +113,30 @@
     </div>
 
     <div class="topbar-actions flex items-center gap-sm">
+      {# Notification bell. Gated on the same dashboard.view permission the
+         API enforces, so the button never appears for a role that would get
+         a 403 from /api/notifications. #}
+      {% if user and has_permission('dashboard.view') %}
+      <div class="notif-dropdown">
+        <button type="button" id="notifBellBtn" class="topbar-icon-button notif-bell-btn"
+                aria-expanded="false" aria-controls="notifMenu" aria-haspopup="true"
+                aria-label="الإشعارات" title="الإشعارات">
+          <span class="notif-bell notif-bell-icon-wrap" aria-hidden="true">
+            <span class="material-symbols-outlined notif-bell-icon">notifications</span>
+            <span class="notif-badge" id="notifBadge" style="display:none"></span>
+          </span>
+        </button>
+
+        <div id="notifMenu" class="notif-menu" role="dialog" aria-label="الإشعارات">
+          <div class="notif-menu-header">
+            <span>الإشعارات</span>
+            <button type="button" class="notif-mark-all" id="markAllRead">تعليم الكل كمقروء</button>
+          </div>
+          <div class="notif-menu-body" id="notifList"></div>
+        </div>
+      </div>
+      {% endif %}
+
       {% if header_messages_url %}
       <a href="{{ url_for(header_messages_url) }}" class="topbar-icon-button" aria-label="الرسائل" title="الرسائل">
         <span class="material-symbols-outlined">mail</span>
@@ -120,7 +150,7 @@
       {% if user %}
       {% set user_display = user.username or user.label %}
       {% if hide_sidebar %}
-      <button type="button" id="themeToggleTopbar" class="topbar-icon-button" onclick="toggleTheme()" aria-label="تبديل المظهر (فاتح/داكن)" title="تبديل المظهر">
+      <button type="button" id="themeToggleTopbar" class="topbar-icon-button" data-theme-toggle onclick="toggleTheme()" aria-label="تبديل المظهر (فاتح/داكن)" title="تبديل المظهر">
         <span class="material-symbols-outlined" id="themeToggleIconTopbar">dark_mode</span>
       </button>
       {% endif %}
@@ -169,7 +199,7 @@
     </div>
   </header>
 
-  <main class="main-content" id="mainContent">
+  <main class="main-content" id="mainContent" tabindex="-1">
     <div class="main-content-inner">
       <div class="p-4 sm:p-6">
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -210,6 +240,7 @@
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
 <script src="{{ url_for('static', filename='js/base_role_menu.js') }}"></script>
 <script src="/static/js/preview.js"></script>
+<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
 <script src="{{ url_for('static', filename='js/base_sidebar.js') }}"></script>
 <script src="{{ url_for('static', filename='js/base_double_submit.js') }}"></script>
 <script src="/static/js/mobile.js"></script>
@@ -244,6 +275,11 @@
 {# Mobile app-style bottom navigation (phones only, hidden on desktop) #}
 {% include 'shared/components/bottom_nav.html' %}
 <script src="/static/js/bottom_nav.js"></script>
+
+{% include 'shared/components/theme_panel.html' %}
+<script src="{{ url_for('static', filename='js/theme_panel.js') }}"></script>
+<script src="{{ url_for('static', filename='js/notifications.js') }}"></script>
+<script src="{{ url_for('static', filename='js/print_auto.js') }}"></script>
 
 {% block scripts %}{% endblock %}
 </body>

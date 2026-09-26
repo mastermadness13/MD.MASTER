@@ -1,0 +1,165 @@
+{% extends 'shared/layouts/base.html' %}
+{% set sidebar_active = 'courses' %}
+{% set page_title = 'أكواد المقررات' %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="page-header-info">
+      <span class="material-symbols-outlined page-header-icon">pin</span>
+      <div>
+        <h1 class="page-title">أكواد المقررات</h1>
+        <p class="page-subtitle">تعديل أكواد المقررات دفعة واحدة حسب القسم أو بجميع الكلية</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Department filter -->
+  <form method="get" action="{{ url_for('courses.courses_codes') }}" class="bg-white rounded-2xl border border-border shadow-sm p-4 sm:p-5 mb-5">
+    <div class="flex flex-col md:flex-row md:items-center gap-3">
+      <span class="material-symbols-outlined text-text-faint">account_tree</span>
+      <select name="dept" class="flex-1 px-4 py-2.5 rounded-xl border border-border bg-surface-hover text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition">
+        <option value="">كافة الأقسام</option>
+        {% for d in departments %}
+        <option value="{{ d['id'] }}" {{ 'selected' if dept_id == d['id'] }}>{{ d['name'] }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="flex items-center gap-2 bg-primary text-on-primary px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-primary/90 transition-all shadow-sm">
+        <span class="material-symbols-outlined text-lg">filter_alt</span>
+        عرض
+      </button>
+    </div>
+  </form>
+
+  <div class="flex items-center justify-between gap-2 mb-4">
+    <span class="text-sm text-text-muted">عدد المقررات المعروضة: {{ courses | length }}</span>
+
+    <!-- View Tabs -->
+    <div class="bg-white rounded-2xl border border-border shadow-sm p-1.5 inline-flex gap-1.5">
+      <button type="button" id="tabInlineBtn" onclick="switchCodesView('inline')" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all">
+        <span class="material-symbols-outlined text-lg">edit_square</span>
+        تعديل مباشر
+      </button>
+      <button type="button" id="tabPasteBtn" onclick="switchCodesView('paste')" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all">
+        <span class="material-symbols-outlined text-lg">content_paste</span>
+        لصق قائمة
+      </button>
+    </div>
+  </div>
+
+  <!-- ============ INLINE MODE ============ -->
+  <form id="codesInlineForm" method="post" action="{{ url_for('courses.courses_codes') }}" onsubmit="return confirmCodesSubmit(event)">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="dept" value="{{ dept_id or '' }}">
+    <div class="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[760px] text-sm">
+          <thead class="bg-surface-zebra">
+            <tr>
+              <th class="px-3 py-2 text-center font-semibold text-text-secondary text-xs w-10">ت</th>
+              <th class="px-3 py-2 text-right font-semibold text-text-secondary text-xs">المادة</th>
+              <th class="px-3 py-2 text-right font-semibold text-text-secondary text-xs">القسم</th>
+              <th class="px-3 py-2 text-center font-semibold text-text-secondary text-xs w-32">الكود الحالي</th>
+              <th class="px-3 py-2 text-center font-semibold text-text-secondary text-xs w-44">الكود الجديد</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-border-subtle">
+            {% for c in courses %}
+            <tr>
+              <td class="px-3 py-2 text-center text-text-muted">{{ loop.index }}</td>
+              <td class="px-3 py-2">
+                <div class="font-semibold text-text-primary">{{ c['name'] }}</div>
+                <div class="text-xs text-text-muted">السنة {{ c['year'] }}</div>
+              </td>
+              <td class="px-3 py-2 text-text-secondary text-xs">{{ c['depts'] or '—' }}</td>
+              <td class="px-3 py-2 text-center">
+                <span class="inline-block bg-surface-hover border border-border rounded-lg px-2.5 py-1 text-xs font-bold text-text-secondary" dir="ltr">{{ c['code'] or '—' }}</span>
+              </td>
+              <td class="px-3 py-2 text-center">
+                <input name="code_{{ c['id'] }}" value="{{ c['code'] or '' }}" dir="ltr"
+                       placeholder="SWE402"
+                       class="w-full px-3 py-2 rounded-xl border border-border bg-surface-hover text-sm text-center focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition">
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5" class="px-4 py-10 text-center text-text-muted">لا توجد مقررات</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if courses %}
+      <div class="px-4 py-3 border-t border-border-subtle flex items-center justify-between gap-2">
+        <span class="text-xs text-text-muted">تعديل الكود فقط — بقية بيانات المقرر تبقى كما هي</span>
+        <button type="submit" class="flex items-center gap-2 bg-primary text-on-primary px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-primary/90 transition-all shadow-sm">
+          <span class="material-symbols-outlined text-lg">save</span>
+          حفظ الأكواد
+        </button>
+      </div>
+      {% endif %}
+    </div>
+  </form>
+
+  <!-- ============ PASTE MODE ============ -->
+  <form id="codesPasteForm" method="post" action="{{ url_for('courses.courses_codes') }}" onsubmit="return confirmCodesSubmit(event)" style="display:none">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="dept" value="{{ dept_id or '' }}">
+    <div class="bg-white rounded-xl border border-border shadow-sm p-4 sm:p-5">
+      <div class="flex items-start gap-2 mb-3">
+        <span class="material-symbols-outlined text-primary mt-0.5">info</span>
+        <p class="text-xs text-text-secondary leading-relaxed">
+          الصق كل سطر بصيغة: <b>الكود ثم اسم المادة</b> مفصولين بفاصلة أو تبويب أو "|" —
+          مثال: <span dir="ltr">MATH201 ، رياضيات متقدمة</span>
+        </p>
+      </div>
+      <textarea name="bulk_text" rows="10" dir="ltr" placeholder="MATH201 ، رياضيات متقدمة&#10;PHY102 ، فيزياء عامة&#10;..."
+                class="w-full px-4 py-3 rounded-xl border border-border bg-surface-hover text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition"></textarea>
+      <div class="flex justify-end mt-4">
+        <button type="submit" class="flex items-center gap-2 bg-primary text-on-primary px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-primary/90 transition-all shadow-sm">
+          <span class="material-symbols-outlined text-lg">content_paste_go</span>
+          تطبيق الأكواد
+        </button>
+      </div>
+    </div>
+  </form>
+
+</div>
+
+<script>
+  function switchCodesView(mode) {
+    var isInline = mode === 'inline';
+    document.getElementById('codesInlineForm').style.display = isInline ? '' : 'none';
+    document.getElementById('codesPasteForm').style.display = isInline ? 'none' : '';
+    var tabBtn = document.getElementById('tabInlineBtn').classList;
+    var pasteBtn = document.getElementById('tabPasteBtn').classList;
+    tabBtn.toggle('bg-primary', isInline);
+    tabBtn.toggle('text-on-primary', isInline);
+    tabBtn.toggle('bg-white', !isInline);
+    tabBtn.toggle('text-text-primary', !isInline);
+    pasteBtn.toggle('bg-primary', !isInline);
+    pasteBtn.toggle('text-on-primary', !isInline);
+    pasteBtn.toggle('bg-white', isInline);
+    pasteBtn.toggle('text-text-primary', isInline);
+  }
+  function confirmCodesSubmit(e) {
+    var form = e.target;
+    var changed = 0;
+    var inputs = form.querySelectorAll('input[name^="code_"]');
+    for (var i = 0; i < inputs.length; i++) {
+      if (inputs[i].value.trim()) changed++;
+    }
+    var textarea = form.querySelector('textarea[name="bulk_text"]');
+    if (textarea && textarea.value.trim()) changed++;
+    if (!changed) return true;
+    e.preventDefault();
+    window.askConfirm({
+      message: 'تأكيد حفظ أكواد المقررات؟',
+      onConfirm: function () { form.submit(); }
+    });
+    return false;
+  }
+</script>
+{% endblock %}

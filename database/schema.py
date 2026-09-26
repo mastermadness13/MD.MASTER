@@ -412,6 +412,7 @@ def _ensure_runtime_indexes(conn: sqlite3.Connection) -> None:
         conn.execute('CREATE INDEX IF NOT EXISTS idx_timetable_day_semester ON timetable(day, semester)')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_timetable_course_id ON timetable(course_id)')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_timetable_teacher_id ON timetable(teacher_id)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_timetable_teacher_day ON timetable(teacher_id, day)')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_timetable_room_id ON timetable(room_id)')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_timetable_created_at ON timetable(created_at DESC)')
     # /     /     >---- فهارس المتطلبات السابقة
@@ -2024,7 +2025,7 @@ def _seed_admin_assignment_types(conn: sqlite3.Connection) -> None:
     if existing > 0:
         return
     types = [
-        ('رئيس قسم', 18, 1),
+        ('رئيس القسم العلمي', 18, 1),
         ('رئيس قسم البحث والتطوير', 18, 2),
         ('رئيس قسم الامتحانات', 18, 3),
         ('مدير مكتب أعضاء هيئة التدريس', 12, 4),
@@ -2033,7 +2034,6 @@ def _seed_admin_assignment_types(conn: sqlite3.Connection) -> None:
         ('عميد الكلية', 18, 7),
         ('مدير مكتب الجودة', 12, 8),
         ('مدير مكتب الدراسة العالية', 12, 9),
-        ('رئيس القسم العلمي', 18, 10),
         ('رئيس قسم الشؤون الفنية والمعامل', 12, 11),
         ('رئيس قسم البحث والتطوير والمناهج', 18, 12),
         ('رئيس قسم التدريب الميداني', 12, 13),

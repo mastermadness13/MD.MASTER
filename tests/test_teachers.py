@@ -1,12 +1,14 @@
 """Tests for teacher creation guards — academic_number identity checks."""
 
 import sqlite3
+from itertools import count
 
 import pytest
 
 import flask_db
 from database.connection import connect
 from database.repositories.teacher_repository import TeacherRepository
+from database.repositories.user_repository import UserRepository
 from database.schema import ensure_schema
 from services.teacher_service import TeacherService
 
@@ -36,16 +38,25 @@ def _make_service(db_path):
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
     repo = TeacherRepository(conn)
-    return TeacherService(conn, repo), conn
+    # create_teacher() validates the office-assigned username against the
+    # users table, so the service needs a user repo too.
+    return TeacherService(conn, repo, UserRepository(conn)), conn
+
+
+_username_seq = count(1)
 
 
 def _make_teacher_data(**overrides):
+    # create_teacher() now requires an office-assigned username, so hand every
+    # fixture a unique valid one (USERNAME_PATTERN: letter then alnum/_).
+    # Tests that care about the username pass it explicitly.
     data = {
         'name': 'أحمد علي',
         'email': '',
         'phone': '',
         'department_id': 1,
         'academic_number': '',
+        'username': 'teacher%d' % next(_username_seq),
         'qualification_id': None,
         'rank_id': None,
         'classification_id': None,
@@ -57,19 +68,29 @@ def _make_teacher_data(**overrides):
     return data
 
 
+# The office supplies the initial password too; create_teacher() rejects
+# anything shorter than 6 characters.
+INITIAL_PW = 'Office123'
+
+
+def _create(svc, data, **kw):
+    kw.setdefault('initial_password', INITIAL_PW)
+    return svc.create_teacher(data, **kw)
+
+
 def test_create_teacher_with_academic_number_succeeds(db_fx):
     svc, conn = _make_service(db_fx)
-    result = svc.create_teacher(_make_teacher_data(academic_number='AN-001'))
+    result = _create(svc, _make_teacher_data(academic_number='AN-001'))
     assert result['id'] > 0
     conn.close()
 
 
 def test_create_teacher_rejects_duplicate_academic_number(db_fx):
     svc, conn = _make_service(db_fx)
-    svc.create_teacher(_make_teacher_data(academic_number='AN-100'))
+    _create(svc, _make_teacher_data(academic_number='AN-100'))
 
     with pytest.raises(ValueError, match='AN-100'):
-        svc.create_teacher(_make_teacher_data(
+        _create(svc, _make_teacher_data(
             name='محمد حسن', academic_number='AN-100'
         ))
     conn.close()
@@ -102,10 +123,10 @@ def test_create_teacher_allows_same_name_different_person(db_fx):
 
 def test_create_teacher_allows_different_academic_numbers(db_fx):
     svc, conn = _make_service(db_fx)
-    r1 = svc.create_teacher(_make_teacher_data(
+    r1 = _create(svc, _make_teacher_data(
         name='خالد بن الوليد', academic_number='AN-201'
     ))
-    r2 = svc.create_teacher(_make_teacher_data(
+    r2 = _create(svc, _make_teacher_data(
         name='صالح بن خالد', academic_number='AN-202'
     ))
     assert r1['id'] != r2['id']
@@ -114,9 +135,9 @@ def test_create_teacher_allows_different_academic_numbers(db_fx):
 
 def test_create_teacher_academic_number_sentinels_not_unique(db_fx):
     svc, conn = _make_service(db_fx)
-    r1 = svc.create_teacher(_make_teacher_data(name='الأول', academic_number=''))
-    r2 = svc.create_teacher(_make_teacher_data(name='الثاني', academic_number=''))
-    r3 = svc.create_teacher(_make_teacher_data(name='الثالث', academic_number=None))
+    r1 = _create(svc, _make_teacher_data(name='الأول', academic_number=''))
+    r2 = _create(svc, _make_teacher_data(name='الثاني', academic_number=''))
+    r3 = _create(svc, _make_teacher_data(name='الثالث', academic_number=None))
     assert r1['id'] != r2['id']
     assert r2['id'] != r3['id']
     conn.close()
@@ -126,7 +147,7 @@ def test_initial_login_code_sent_and_lifecycle(db_fx):
     """On teacher creation, an initial code is hashed + expiring; first login
     invalidates it permanently (email-only flow)."""
     svc, conn = _make_service(db_fx)
-    result = svc.create_teacher(_make_teacher_data(
+    result = _create(svc, _make_teacher_data(
         name='حساب جديد', academic_number='AN-900', email='new@example.com'
     ))
     user = conn.execute(
@@ -157,7 +178,7 @@ def test_initial_login_code_sent_and_lifecycle(db_fx):
 def test_initial_login_code_expired_rejected(db_fx):
     """An unused, expired initial code must reject login (recovery via email)."""
     svc, conn = _make_service(db_fx)
-    result = svc.create_teacher(_make_teacher_data(
+    result = _create(svc, _make_teacher_data(
         name='حساب منتهي', academic_number='AN-901'
     ))
     conn.execute(
@@ -204,7 +225,9 @@ def test_credentials_username_password_create_linked_account(db_fx):
     and enables immediate login (no activation code needed)."""
     svc, conn = _make_service(db_fx)
     tid = _insert_teacher_without_account(conn, academic_number='AN-IMP-1')
-    ok = svc.update_teacher_credentials(tid, new_username='imported1', new_password='s3cret!')
+    # Password policy is now 8+ chars with upper, lower and digit.
+    ok = svc.update_teacher_credentials(tid, new_username='imported1',
+                                        new_password='S3cret!Pass')
     assert ok is True
     linked = conn.execute(
         'SELECT user_id FROM teachers WHERE id = ?', (tid,)
@@ -212,7 +235,7 @@ def test_credentials_username_password_create_linked_account(db_fx):
     assert linked is not None
     from services.user_service import UserService
     from database.repositories.user_repository import UserRepository
-    ok2, sess = UserService(conn, UserRepository(conn)).authenticate('imported1', 's3cret!', False, {})
+    ok2, sess = UserService(conn, UserRepository(conn)).authenticate('imported1', 'S3cret!Pass', False, {})
     assert ok2 is True
     assert sess['id'] == linked
     conn.close()
@@ -235,16 +258,38 @@ def test_credentials_username_only_creates_account_with_initial_code(db_fx):
     conn.close()
 
 
-def test_reset_password_creates_account_when_missing(db_fx):
-    """Reset-password generates the account on demand for an unlinked teacher."""
+def test_reset_password_requires_a_linked_account(db_fx):
+    """Reset issues a recovery code for an existing account.
+
+    It deliberately does NOT create a missing account: registering the username
+    is what provisions one (see register_teacher_username), and
+    teachers_reset_password() turns a None return into the "no linked account"
+    flash rather than inventing credentials.
+    """
     svc, conn = _make_service(db_fx)
     tid = _insert_teacher_without_account(conn, name='أستاذ معاد', academic_number='AN-IMP-3')
-    new_code = svc.reset_teacher_password(tid)
+    assert svc.reset_teacher_password(tid) is None
+
+    # Once an account exists, reset returns a recovery code and flags a change.
+    # It records session['user_id'] as the issuer, so it needs a request context.
+    conn.execute(
+        "INSERT INTO users (username, password, role, label) "
+        "VALUES ('resetme', 'x', 'teacher', 'أستاذ معاد')"
+    )
+    uid = conn.execute("SELECT id FROM users WHERE username='resetme'").fetchone()['id']
+    conn.execute('UPDATE teachers SET user_id = ? WHERE id = ?', (uid, tid))
+    conn.commit()
+
+    from flask import Flask
+    with Flask(__name__).test_request_context():
+        new_code = svc.reset_teacher_password(tid)
     assert new_code
     user = conn.execute(
         'SELECT * FROM users JOIN teachers t ON t.user_id = users.id WHERE t.id = ?', (tid,)
     ).fetchone()
-    assert user['force_password_change'] == 1
-    assert user['initial_login_code_used'] == 0
-    assert user['password'] != 'x'
+    # A recovery code is stored hashed, never in plaintext.
+    assert user['recovery_code_hash']
+    assert user['recovery_code_hash'] != new_code
+    assert user['recovery_code_expires_at']
+    assert user['recovery_code_attempts'] == 0
     conn.close()

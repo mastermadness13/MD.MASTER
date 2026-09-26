@@ -384,18 +384,19 @@ def copy_submission_as_draft(db, submission_id, *, new_version_label=''):
     new_id = cur.lastrowid
 
     # /     /     >---- نسخ صفوف المنهاج من الأصل
-    for _row in db.execute(
-            'SELECT * FROM course_content_curriculum WHERE submission_id = ?',
-            (submission_id,)
-    ).fetchall():
+    _cur_rows = db.execute(
+        'SELECT * FROM course_content_curriculum WHERE submission_id = ?',
+        (submission_id,)
+    ).fetchall()
+    if _cur_rows:
         _cc_cur_cols = [c['name'] for c in
                         db.execute('PRAGMA table_info(course_content_curriculum)').fetchall()]
-        _cols = [c for c in _cc_cur_cols if c != 'id' and c != 'submission_id']
+        _cols = [c for c in _cc_cur_cols if c != 'id']
         _ph = ', '.join('?' for _ in _cols)
-        _vals = [dict(_row).get(c) for c in _cols]
-        cur.execute(
+        cur.executemany(
             f'INSERT INTO course_content_curriculum ({", ".join(_cols)}) VALUES ({_ph})',
-            _vals
+            [[new_id if _c == 'submission_id' else dict(_row).get(_c) for _c in _cols]
+             for _row in _cur_rows]
         )
     db.commit()
     return new_id, label

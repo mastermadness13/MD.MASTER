@@ -35,30 +35,9 @@
     overlay.classList.remove('open');
   };
 
-  window.applyTheme = function () {
-    var doc = document.documentElement;
-    var saved = null;
-    try { saved = localStorage.getItem('ropely-theme'); } catch (e) { saved = null; }
-    var dark = saved === 'dark';
-    doc.setAttribute('data-theme', dark ? 'dark' : 'light');
-    var icon = document.getElementById('sidebarThemeIcon');
-    var label = document.getElementById('sidebarThemeLabel');
-    if (icon) icon.textContent = dark ? 'light_mode' : 'dark_mode';
-    if (label) label.textContent = dark ? 'الوضع النهاري' : 'الوضع الليلي';
-    var topIcon = document.getElementById('themeToggleIconTopbar');
-    if (topIcon) topIcon.textContent = dark ? 'light_mode' : 'dark_mode';
-  };
-
-  window.toggleTheme = function () {
-    var doc = document.documentElement;
-    var dark = doc.getAttribute('data-theme') === 'dark';
-    var next = dark ? 'light' : 'dark';
-    try { localStorage.setItem('ropely-theme', next); } catch (e) {}
-    window.applyTheme();
-  };
-
+  /* Theme handling lives in static/js/theme.js, loaded in the <head> before
+     this file. It exposes window.applyTheme and window.toggleTheme. */
   restore();
-  window.applyTheme();
 
   /* ── Sidebar "More" collapsible group ── */
   var moreKey = 'ropely-sidebar-more';

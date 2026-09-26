@@ -59,8 +59,14 @@
   border: 1px solid var(--border); border-radius: var(--radius-xl); box-shadow: 0 10px 30px var(--shadow-lg);
   display: none; z-index: 1001; margin-top: 8px;
 }
+/* .open is the click/touch path added alongside the hover and focus-within
+   rules below. All three are needed: hover alone is unusable on touch and
+   unreachable for some keyboard users. */
+.notif-dropdown.open .notif-menu,
 .notif-dropdown:hover .notif-menu,
 .notif-dropdown:focus-within .notif-menu { display: block; }
+.notif-bell-btn { position: relative; }
+.notif-bell-icon-wrap { position: relative; display: inline-flex; }
 .notif-menu-header {
   display: flex; justify-content: space-between; align-items: center;
   padding: 12px 16px; border-bottom: 1px solid var(--border);

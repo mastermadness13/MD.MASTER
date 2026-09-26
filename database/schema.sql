@@ -383,6 +383,7 @@ CREATE INDEX IF NOT EXISTS idx_courses_code ON courses(code);
 CREATE INDEX IF NOT EXISTS idx_timetable_day_semester ON timetable(day, semester);
 CREATE INDEX IF NOT EXISTS idx_timetable_course_id ON timetable(course_id);
 CREATE INDEX IF NOT EXISTS idx_timetable_teacher_id ON timetable(teacher_id);
+CREATE INDEX IF NOT EXISTS idx_timetable_teacher_day ON timetable(teacher_id, day);
 CREATE INDEX IF NOT EXISTS idx_timetable_room_id ON timetable(room_id);
 CREATE INDEX IF NOT EXISTS idx_timetable_created_at ON timetable(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_attendance_student_date ON attendance(student_id, date);

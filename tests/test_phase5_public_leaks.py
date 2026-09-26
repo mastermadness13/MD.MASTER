@@ -89,41 +89,78 @@ def _teacher_client(app_fx, db_fx):
 # ── H1: uploads path traversal / IDOR ───────────────────────────────────────
 
 
+def _staff_client(app_fx, db_fx, username='office_manager', role='faculty_affairs'):
+    """Client for a role that actually holds ``uploads.serve``.
+
+    A ``teacher`` session is redirected away by ``@permission_required`` before
+    the traversal check runs, so traversal must be exercised with a role that
+    can reach the view.
+    """
+    uid = _q("SELECT id FROM users WHERE username=?", (username,))[0]['id']
+    c = app_fx.test_client()
+    with c.session_transaction() as sess:
+        sess['user_id'] = uid
+        sess['role'] = role
+        sess['username'] = username
+        sess['_csrf_token'] = 't'
+    return c
+
+
 def test_uploads_rejects_traversal(app_fx, db_fx, tmp_path, monkeypatch):
     monkeypatch.setitem(app_fx.config, 'UPLOAD_FOLDER', str(tmp_path))
-    c = _teacher_client(app_fx, db_fx)
+    c = _staff_client(app_fx, db_fx)
     for evil in [
         '/uploads/../../etc/passwd',
         '/uploads/teacher_1/../../../secret.db',
         '/uploads/photos/../../teacher_2/file.pdf',
+        '/uploads/photos\\..\\..\\secret.db',
     ]:
         r = c.get(evil)
-        assert r.status_code == 403, f'{evil} must be rejected'
+        assert r.status_code == 403, f'{evil} must be rejected, got {r.status_code}'
+
+
+def test_uploads_denies_role_without_serve_permission(app_fx, db_fx, tmp_path, monkeypatch):
+    """``teacher`` does not hold uploads.serve, so the endpoint must not serve."""
+    monkeypatch.setitem(app_fx.config, 'UPLOAD_FOLDER', str(tmp_path))
+    (tmp_path / 'photos').mkdir()
+    (tmp_path / 'photos' / 'a.png').write_bytes(b'img')
+    c = _teacher_client(app_fx, db_fx)
+    assert c.get('/uploads/photos/a.png').status_code != 200
 
 
 def test_uploads_blocks_other_teachers_folder(app_fx, db_fx, tmp_path, monkeypatch):
     monkeypatch.setitem(app_fx.config, 'UPLOAD_FOLDER', str(tmp_path))
     (tmp_path / 'teacher_999').mkdir()
     (tmp_path / 'teacher_999' / 'secret.pdf').write_bytes(b'secret')
-    c = _teacher_client(app_fx, db_fx)
+    c = _staff_client(app_fx, db_fx)
     r = c.get('/uploads/teacher_999/secret.pdf')
     assert r.status_code == 403, 'cross-teacher file must be denied'
 
 
 def test_uploads_allows_own_folder(app_fx, db_fx, tmp_path, monkeypatch):
+    """A staff account may read the folder of a teacher linked to it, plus the
+    shared photos/ folder (both are the documented allowances)."""
     monkeypatch.setitem(app_fx.config, 'UPLOAD_FOLDER', str(tmp_path))
-    uid = _q("SELECT id FROM users WHERE username='t1'")[0]['id']
-    teacher_id = _q("INSERT INTO teachers (user_id, name) VALUES (?, 'أ. أحمد')",
-                    (uid,))
-    _q("SELECT last_insert_rowid() AS n")
-    tid = _q("SELECT id FROM teachers WHERE user_id=?", (uid,))[0]['id']
-    (tmp_path / 'teacher_1').mkdir(exist_ok=True)
-    (tmp_path / 'teacher_1' / 'x.pdf').write_bytes(b'%PDF')
+    conn = sqlite3.connect(flask_db.DATABASE)
+    conn.execute(
+        "INSERT INTO teachers (user_id, name) "
+        "SELECT id, 'أ. أحمد' FROM users WHERE username='office_manager'"
+    )
+    conn.commit()
+    conn.close()
+    tid = _q(
+        "SELECT t.id FROM teachers t JOIN users u ON u.id = t.user_id "
+        "WHERE u.username='office_manager'"
+    )[0]['id']
+
     (tmp_path / f'teacher_{tid}').mkdir(exist_ok=True)
     (tmp_path / f'teacher_{tid}' / 'y.pdf').write_bytes(b'%PDF')
-    c = _teacher_client(app_fx, db_fx)
+    (tmp_path / 'photos').mkdir(exist_ok=True)
+    (tmp_path / 'photos' / 'a.png').write_bytes(b'img')
+
+    c = _staff_client(app_fx, db_fx)
     assert c.get(f'/uploads/teacher_{tid}/y.pdf').status_code == 200
-    assert c.get('/uploads/teacher_1/x.pdf').status_code == 200
+    assert c.get('/uploads/photos/a.png').status_code == 200
 
 
 def test_uploads_shared_photos_still_readable(app_fx, db_fx, tmp_path, monkeypatch):

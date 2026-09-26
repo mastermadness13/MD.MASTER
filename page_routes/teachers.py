@@ -34,6 +34,7 @@ def _safe_extra_roles(form) -> list:
 
 
 _POSITION_ROLE_MAP = {
+    'رئيس القسم العلمي': 'head_of_department',
     'رئيس قسم': 'head_of_department',
     'رئيس القسم': 'head_of_department',
     'قسم البحث والتطوير': 'research_development',
@@ -43,7 +44,16 @@ _POSITION_ROLE_MAP = {
     'رئيس قسم الدراسة والامتحانات': 'exam',
     'مكتب إدارة أعضاء هيئة التدريس': 'faculty_affairs',
     'مدير مكتب أعضاء هيئة التدريس': 'faculty_affairs',
+    'عميد الكلية': 'dean',
     'العميد': 'dean',
+}
+
+_ADMIN_TASK_ALIASES = {
+    'رئيس قسم': 'رئيس القسم العلمي',
+    'رئيس القسم': 'رئيس القسم العلمي',
+    'قسم البحث والتطوير': 'رئيس قسم البحث والتطوير',
+    'قسم الإدارة والامتحانات': 'رئيس قسم الامتحانات',
+    'العميد': 'عميد الكلية',
 }
 
 
@@ -55,8 +65,9 @@ def _roles_from_position(position: str) -> set:
 
 _DEFAULT_ADMIN_TASKS = [
     'عضو تدريس',
-    'رئيس قسم',
+    'رئيس القسم العلمي',
     'رئيس قسم البحث والتطوير',
+    'رئيس قسم الامتحانات',
     'مدير مكتب أعضاء هيئة التدريس',
     'مدير مكتب الشؤون العلمية',
     'منسق القاعات',
@@ -65,7 +76,6 @@ _DEFAULT_ADMIN_TASKS = [
     'عميد الكلية',
     'مدير مكتب الجودة',
     'مدير مكتب الدراسة العالية',
-    'رئيس القسم العلمي',
     'رئيس قسم الشؤون الفنية والمعامل',
     'رئيس قسم البحث والتطوير والمناهج',
     'رئيس قسم التدريب الميداني',
@@ -82,23 +92,46 @@ _DEFAULT_ADMIN_TASKS = [
 def _admin_task_names(db) -> list:
     """Merged administrative assignment-type names for the 'نوع التكليف' select.
 
-    The current types (``admin_assignment_types``) come first, then the legacy
-    types from the old system (``_POSITION_ROLE_MAP`` keys) are appended.
-    Nothing is replaced or deleted — previous + current are combined and
-    duplicates are skipped. Not every type grants a system role (see
-    ``_POSITION_ROLE_MAP``); all are recorded and shown in the reports.
+    Built-in choices are always available. Saved custom choices are appended,
+    with known legacy labels normalized so they do not duplicate the current
+    wording. Legacy labels remain accepted by ``_POSITION_ROLE_MAP`` for
+    existing records and submitted forms.
     """
     names = list(_DEFAULT_ADMIN_TASKS)
     try:
-        names = [t['name'] for t in fps.get_select_data(db)['admin_task_types']]
+        stored_names = fps.get_select_data(db)['admin_task_types']
     except Exception:
         return names
     seen = set(names)
-    for legacy in _POSITION_ROLE_MAP:
-        if legacy not in seen:
-            names.append(legacy)
-            seen.add(legacy)
+    for item in stored_names:
+        name = (item.get('name') or '').strip()
+        if not name:
+            continue
+        name = _ADMIN_TASK_ALIASES.get(name, name)
+        if name not in seen:
+            names.append(name)
+            seen.add(name)
     return names
+
+
+def _scoped_department_id():
+    """Resolve which department the caller is allowed to query, server-side.
+
+    A caller holding ``departments.view`` may filter by any department; every
+    other role is pinned to the department it actually belongs to.  The
+    ``department_id`` query argument is never trusted on its own, so guessing
+    an id in the URL cannot widen the result set.
+    """
+    from security.authorization import get_active_roles, has_permission
+    roles = get_active_roles()
+    requested = request.args.get('department_id', type=int)
+    if has_permission(roles, 'departments.view'):
+        return requested
+    if 'head_of_department' in roles:
+        own = session.get('hod_department_id')
+    else:
+        own = session.get('department_id')
+    return own
 
 
 def _can_hod_view_teacher(db, teacher_id) -> bool:
@@ -449,7 +482,7 @@ def teachers_list():
 @login_required
 def api_courses():
     db = get_db()
-    dept_id = request.args.get('department_id', type=int)
+    dept_id = _scoped_department_id()
     if not dept_id:
         return jsonify([])
     rows = db.execute('''
@@ -524,26 +557,41 @@ form=form, form_error='الاسم مطلوب',
                                    grantable_roles=_GRANTABLE_ROLES,
                                    admin_tasks=admin_tasks,
                                    user=current_user())
+        # Validate the office-assigned username with the same rules the service
+        # applies, and ahead of the password, so a bad nickname is reported
+        # rather than masked by a password complaint.
+        _username_error = None
         if not form['username']:
+            _username_error = 'اسم المستخدم مطلوب'
+        elif len(form['username']) < 3:
+            _username_error = 'نيك نيم الدخول قصير جداً'
+        else:
+            from services.temp_access_code import validate_username as _validate_username
+            _username_error = _validate_username(form['username'])
+        if _username_error:
             return render_template('teachers/create.html',
-                                  departments=departments, qualifications=qualifications,
-                                  ranks=ranks, classifications=classifications,
-                                  specializations=specializations,
-                                  department_hods=department_hods,
-                                  confirm_replace=confirmed_replace, form=form,
-                                  form_error='اسم المستخدم مطلوب',
-                                  grantable_roles=_GRANTABLE_ROLES,
-                                  admin_tasks=admin_tasks, user=current_user())
-        if len(form['password']) < 6:
+                                   departments=departments, qualifications=qualifications,
+                                   ranks=ranks, classifications=classifications,
+                                   specializations=specializations,
+                                   department_hods=department_hods,
+                                   confirm_replace=confirmed_replace, form=form,
+                                   form_error=_username_error,
+                                   grantable_roles=_GRANTABLE_ROLES,
+                                   admin_tasks=admin_tasks, user=current_user())
+        # Same policy the service enforces, so a submission cannot pass here and
+        # then be rejected downstream with a different message.
+        from security import validate_password as _validate_password
+        _password_error = _validate_password(form['password'])
+        if _password_error:
             return render_template('teachers/create.html',
-                                  departments=departments, qualifications=qualifications,
-                                  ranks=ranks, classifications=classifications,
-                                  specializations=specializations,
-                                  department_hods=department_hods,
-                                  confirm_replace=confirmed_replace, form=form,
-                                  form_error='كلمة المرور يجب أن تكون 6 أحرف على الأقل',
-                                  grantable_roles=_GRANTABLE_ROLES,
-                                  admin_tasks=admin_tasks, user=current_user())
+                                   departments=departments, qualifications=qualifications,
+                                   ranks=ranks, classifications=classifications,
+                                   specializations=specializations,
+                                   department_hods=department_hods,
+                                   confirm_replace=confirmed_replace, form=form,
+                                   form_error=_password_error,
+                                   grantable_roles=_GRANTABLE_ROLES,
+                                   admin_tasks=admin_tasks, user=current_user())
         if 'head_of_department' in effective_roles:
             headship_error, _conflict_name = _validate_headship(
                 db, hod_department_id,
@@ -1186,7 +1234,7 @@ def teaching_record_standalone():
 @login_required
 def api_teachers_by_dept():
     db = get_db()
-    dept_id = request.args.get('department_id', type=int)
+    dept_id = _scoped_department_id()
     if not dept_id:
         return jsonify([])
     rows = db.execute(

@@ -1,7 +1,9 @@
 {% macro admin_tasks_options(selected='', extra=None) %}
+{% set selected = 'رئيس القسم العلمي' if selected in ['رئيس قسم', 'رئيس القسم'] else selected %}
 {% set tasks = [
     'عضو تدريس',
-    'رئيس قسم',
+    'رئيس القسم العلمي',
+    'رئيس قسم الامتحانات',
     'مدير مكتب أعضاء هيئة التدريس',
     'مدير مكتب الشؤون العلمية',
     'منسق القاعات',
@@ -10,7 +12,6 @@
     'عميد الكلية',
     'مدير مكتب الجودة',
     'مدير مكتب الدراسة العالية',
-    'رئيس القسم العلمي',
     'رئيس قسم الشؤون الفنية والمعامل',
     'رئيس قسم البحث والتطوير والمناهج',
     'رئيس قسم التدريب الميداني',
@@ -27,7 +28,7 @@
     {% if item not in tasks %}{% set _ = tasks.append(item) %}{% endif %}
   {% endfor %}
 {% endif %}
-{% set gold = ['رئيس قسم', 'رئيس قسم البحث والتطوير', 'مدير مكتب أعضاء هيئة التدريس',
+{% set gold = ['رئيس القسم العلمي', 'رئيس قسم البحث والتطوير', 'مدير مكتب أعضاء هيئة التدريس',
                'رئيس قسم الدراسة والامتحانات', 'مكتب إدارة أعضاء هيئة التدريس'] %}
 {% for task in tasks %}
 <option value="{{ task }}" {{ 'class="text-amber-600 font-bold"' if task in gold else '' }} {{ 'selected' if selected == task else '' }}>{{ task }}</option>
@@ -162,7 +163,7 @@
   </div>
 </div>
 
-<div class="p-3 bg-secondary-container/50 border border-secondary/30 rounded-xl gap-1.5" id="headshipDeptWrap" {% if selected_position != 'رئيس قسم' %}style="display:none"{% endif %}>
+<div class="p-3 bg-secondary-container/50 border border-secondary/30 rounded-xl gap-1.5" id="headshipDeptWrap" {% if selected_position not in ['رئيس قسم', 'رئيس القسم', 'رئيس القسم العلمي'] %}style="display:none"{% endif %}>
   <div class="flex items-center gap-1.5 text-secondary font-bold text-xs mb-2">
     <span class="material-symbols-outlined text-[18px]">domain</span>
     القسم الذي يرأسه العضو

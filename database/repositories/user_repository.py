@@ -1,8 +1,18 @@
 from __future__ import annotations
 
+import hashlib
 from typing import Any, Dict, List, Optional
 
 from database.repositories.base_repository import BaseRepository
+
+
+# /     /     >---- رموز استرجاع كلمة المرور تُخزَّن مُجزّأة (SHA-256) لا كنص صريح،
+# /     /     >---- حتى لا يستطيع من يقرأ قاعدة البيانات أو نسختها الاحتياطية
+# /     /     >---- أن يعيد تعيين كلمة مرور أي حساب. الرمز نفسه 48 بايت عشوائية
+# /     /     >---- من secrets، فالاحتكاك ليس ضرورياً لمقاومة التخمين.
+def _hash_reset_token(token: str) -> str:
+    return hashlib.sha256(token.encode('utf-8')).hexdigest()
+
 
 # /     /     >---- مستودع المستخدمين — كل العمليات على جدول users
 class UserRepository(BaseRepository):
@@ -179,12 +189,18 @@ class UserRepository(BaseRepository):
 
     # ── استرجاع كلمة المرور ─────────────────────────────────────────
 
-    # /     /     >---- نصنع رمز استرجاع كلمة المرور
+    # /     /     >---- نصنع رمز استرجاع كلمة المرور (نخزّن التجزئة فقط)
     def create_password_reset(self, user_id: int, token: str,
                               expires_at: str) -> None:
         self.db.execute(
             'INSERT INTO password_resets (user_id, token, expires_at) VALUES (?, ?, ?)',
-            (user_id, token, expires_at),
+            (user_id, _hash_reset_token(token), expires_at),
+        )
+        # /     /     >---- ننظّف أي رموز منتهية أو مستعملة لنفس المستخدم
+        self.db.execute(
+            'DELETE FROM password_resets WHERE user_id = ? AND (used = 1 '
+            'OR expires_at <= datetime("now"))',
+            (user_id,),
         )
         self.db.commit()
 
@@ -193,13 +209,14 @@ class UserRepository(BaseRepository):
         row = self.db.execute(
             'SELECT * FROM password_resets WHERE token = ? AND used = 0 '
             'AND expires_at > datetime("now")',
-            (token,),
+            (_hash_reset_token(token),),
         ).fetchone()
         return dict(row) if row else None
 
-    # /     /     >---- نعلّم الرمز كمستعمل
+    # /     /     >---- نعلّم الرمز كمستعمل ونمسح قيمته من السجل
     def mark_reset_used(self, reset_id: int) -> None:
         self.db.execute(
-            'UPDATE password_resets SET used = 1 WHERE id = ?', (reset_id,)
+            'UPDATE password_resets SET used = 1, token = ? WHERE id = ?',
+            ('used:' + str(reset_id), reset_id),
         )
         self.db.commit()

@@ -1,4 +1,4 @@
-from flask import (Blueprint, abort, session, request, render_template,
+from flask import (Blueprint, session, request, render_template,
                    redirect, url_for, flash, jsonify)
 from utils.redirects import redirect_back
 
@@ -408,7 +408,6 @@ def courses_codes():
             academic_periods=context['academic_periods'],
             default_period_id=context['default_period_id'],
         )
-    abort(404)
     db = get_db()
     dept_id = request.form.get('dept', request.args.get('dept', 0, type=int), type=int) or None
     departments = db.execute(

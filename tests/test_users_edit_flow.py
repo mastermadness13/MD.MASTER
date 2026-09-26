@@ -119,13 +119,18 @@ def test_cannot_strip_faculty_affairs_role(db_fx, svc):
 # ── Multi-role grant via teacher create ────────────────────────────────
 
 
-def _tdata(ac, name='عضو تجريبي'):
+def _tdata(ac, name='عضو تجريبي', username=None):
     return {
-        'name': name, 'academic_number': ac, 'email': 'a@b.c', 'phone': '000',
+        'name': name, 'academic_number': ac, 'username': username or f'acc{ac[-4:]}',
+        'email': 'a@b.c', 'phone': '000',
         'department_id': None, 'qualification_id': None, 'rank_id': None,
         'classification_id': None, 'national_id': None, 'contract_date': None,
         'tasks': None,
     }
+
+
+# create_teacher() requires an office-assigned username and initial password.
+_INITIAL_PASSWORD = 'OfficeInit123!'
 
 
 def test_create_teacher_grants_teacher_plus_extras(db_fx):
@@ -135,6 +140,7 @@ def test_create_teacher_grants_teacher_plus_extras(db_fx):
     teacher_service.create_teacher(
         conn, _tdata('ACC-9001'),
         department_ids=None, additional_roles=['exam', 'head_of_department'],
+        initial_password=_INITIAL_PASSWORD,
     )
     t = _q(db_fx, "SELECT id, user_id FROM teachers WHERE academic_number='ACC-9001'")[0]
     roles = sorted(r['role'] for r in _q(
@@ -147,7 +153,10 @@ def test_create_teacher_without_extras_still_has_teacher_role(db_fx):
     conn = sqlite3.connect(db_fx)
     conn.row_factory = sqlite3.Row
     svc = teacher_service.TeacherService(conn, TeacherRepository(conn), UserRepository(conn))
-    teacher_service.create_teacher(conn, _tdata('ACC-9002'), department_ids=None, additional_roles=None)
+    teacher_service.create_teacher(
+        conn, _tdata('ACC-9002'), department_ids=None, additional_roles=None,
+        initial_password=_INITIAL_PASSWORD,
+    )
     t = _q(db_fx, "SELECT id, user_id FROM teachers WHERE academic_number='ACC-9002'")[0]
     roles = sorted(r['role'] for r in _q(
         db_fx, 'SELECT role FROM user_roles WHERE user_id=?', (t['user_id'],)))

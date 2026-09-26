@@ -27,6 +27,16 @@ def db_fx(tmp_path, monkeypatch):
         "INSERT OR IGNORE INTO users (username, password, role, label) "
         "VALUES ('office_manager', 'x', 'faculty_affairs', 'مدير مكتب أعضاء هيئة التدريس')"
     )
+    # /courses/codes is gated on courses.manage, which only
+    # research_development holds; exam keeps courses.view only, and the HOD
+    # must be turned away. Each needs a real row or enforce_session_version
+    # clears the session and the request 302s to /login.
+    conn.execute(
+        "INSERT OR IGNORE INTO users (username, password, role, label) "
+        "VALUES ('rd_officer', 'x', 'research_development', 'مستثير التطوير و التقنية'), "
+        "('hod', 'x', 'head_of_department', 'رئيس القسم'), "
+        "('exam_user', 'x', 'exam', 'مشرف الاحتصالات')"
+    )
     conn.execute(
         "INSERT OR IGNORE INTO departments (name, semesters, majors, hidden, has_sections, type) "
         "VALUES ('قسم الاتصالات', 8, 7, 0, 1, 'academic')"
@@ -54,13 +64,29 @@ def db_fx(tmp_path, monkeypatch):
     return db_path
 
 
+def _user_id(username):
+    """Look up a seeded user id by username.
+
+    Seeded ids depend on what ensure_schema() already inserted, so hardcoding
+    user_id=1 can point at the wrong (or a missing) row. enforce_session_version
+    then clears the session and the request 302s to /login.
+    """
+    conn = sqlite3.connect(flask_db.DATABASE)
+    conn.row_factory = sqlite3.Row
+    row = conn.execute('SELECT id FROM users WHERE username = ?', (username,)).fetchone()
+    conn.close()
+    assert row is not None, f'no seeded user {username!r}'
+    return row['id']
+
+
 @pytest.fixture
 def client(app_fx, db_fx):
     c = app_fx.test_client()
     with c.session_transaction() as sess:
-        sess['user_id'] = 1
-        sess['role'] = 'faculty_affairs'
-        sess['username'] = 'office_manager'
+        sess['user_id'] = _user_id('rd_officer')
+        sess['role'] = 'research_development'
+        sess['roles'] = ['research_development']
+        sess['username'] = 'rd_officer'
         sess['department_id'] = None
         sess['_csrf_token'] = 't'
     return c
@@ -149,7 +175,7 @@ def test_paste_unmatched_name_reported(client):
 def test_hod_cannot_open_codes_page(app_fx, db_fx):
     c = app_fx.test_client()
     with c.session_transaction() as sess:
-        sess['user_id'] = 1
+        sess['user_id'] = _user_id('hod')
         sess['role'] = 'head_of_department'
         sess['roles'] = ['head_of_department']
         sess['username'] = 'hod'
@@ -160,14 +186,22 @@ def test_hod_cannot_open_codes_page(app_fx, db_fx):
     assert r.headers['Location'] != '/courses/codes'
 
 
-def test_codes_tab_embedded_in_courses_page(client):
+def test_codes_tab_not_embedded_in_courses_page(client):
+    """The codes tab is deliberately disabled; /courses/codes is the entry point.
+
+    templates/courses/list.html still carries the embedded editor markup, but it
+    sits behind a literal ``{% if false %}`` guard in every commit of this
+    repository, so it has never rendered. The batch editor is reached through
+    the standalone page instead, covered by test_codes_page_renders.
+    """
     r = client.get('/courses')
     assert r.status_code == 200
     body = r.get_data(as_text=True)
-    assert 'viewCodes' in body, 'embedded codes editor container renders'
-    assert 'tabCodesBtn' in body, 'codes tab button renders'
-    assert 'name="code_1"' in body, 'inline code input renders'
-    assert 'name="embed" value="1"' in body, 'embedded-editor forms carry the embed marker'
+    assert 'viewCodes' not in body, 'embedded codes container stays disabled'
+    assert 'tabCodesBtn' not in body, 'embedded codes tab button stays disabled'
+    assert 'name="code_1"' not in body, 'no inline code inputs on the list page'
+    # The standalone page a managing role actually uses must still work.
+    assert client.get('/courses/codes').status_code == 200
 
 
 def test_codes_embed_post_redirects_back(client):
@@ -187,7 +221,7 @@ def test_codes_embed_post_redirects_back(client):
 def test_view_only_role_has_no_codes_tab(app_fx, db_fx):
     c = app_fx.test_client()
     with c.session_transaction() as sess:
-        sess['user_id'] = 1
+        sess['user_id'] = _user_id('exam_user')
         sess['role'] = 'exam'
         sess['username'] = 'exam_user'
         sess['department_id'] = None

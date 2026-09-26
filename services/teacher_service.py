@@ -624,14 +624,20 @@ def get_form_lookups(db):
     )
 
 
-def create_teacher(db, data, department_ids=None, additional_roles=None):
+def create_teacher(db, data, department_ids=None, additional_roles=None,
+                   initial_password=None):
     from database.repositories.teacher_repository import TeacherRepository
     from database.repositories.user_repository import UserRepository
 
     repo = TeacherRepository(db)
     user_repo = UserRepository(db)
     svc = TeacherService(db, repo, user_repo)
-    return svc.create_teacher(data, department_ids=department_ids, additional_roles=additional_roles)
+    return svc.create_teacher(
+        data,
+        department_ids=department_ids,
+        additional_roles=additional_roles,
+        initial_password=initial_password,
+    )
 
 
 def get_teacher(db, id):

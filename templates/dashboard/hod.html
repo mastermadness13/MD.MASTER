@@ -4,22 +4,51 @@
 {% set user = user | default({}) %}
 {% set page_title = 'لوحة تحكم ' ~ (h.get('department_name') or user.get('department_name') or 'رئيس القسم') %}
 
-{% set stats = stats | default({}) %}
+{% set today_lectures = h.get('today_lectures', []) %}
+{% set today_count = h.get('today_entries_count', 0) %}
 {% set weekly = h.get('weekly_timetable', {}) %}
-{% set periods = h.get('periods', []) %}
-{% set teachers_list = h.get('teachers_list', []) %}
-{% set departments = h.get('departments', []) %}
 {% set dept_courses = h.get('dept_courses', {}) %}
-{% set pending_requests = h.get('pending_requests', []) %}
-{% set week_days = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'] %}
 
+{# dept_courses maps department_id -> list of course rows, so this department's
+   courses are the list itself, not a summary dict. #}
+{% set my_courses = dept_courses.get(h.get('department_id'), []) %}
+{% set _dept_course_count = my_courses | length %}
+{% set _all_courses_count = h.get('total_courses', 0) %}
+
+{# Coverage has to be derived: the service exposes total_courses and the weekly
+   timetable, but no ready-made percentage. Count distinct course ids that
+   actually appear in the schedule. #}
+{% set _ns = namespace(scheduled=[]) %}
+{% for _day, _entries in weekly.items() %}
+  {% for _e in _entries %}
+    {% set _cid = _e.get('course_id') %}
+    {% if _cid is not none and _cid not in _ns.scheduled %}
+      {% set _ns.scheduled = _ns.scheduled + [_cid] %}
+    {% endif %}
+  {% endfor %}
+{% endfor %}
+{% set _scheduled_count = _ns.scheduled | length %}
+{% set _coverage_pct = ((_scheduled_count / _all_courses_count) * 100) | round | int if _all_courses_count else 0 %}
+
+{% set pending_requests = h.get('pending_requests', []) %}
+{% set pending_count = h.get('pending_requests_count', 0) %}
+{% set teachers_list = h.get('teachers_list', []) %}
+{% set occupied_rooms = h.get('occupied_rooms_count', 0) %}
+{% set total_rooms = h.get('total_rooms', 0) %}
+{% set pending_messages = h.get('pending_messages_count', 0) %}
+{% set semester_label = h.get('selected_semester_label', '') %}
+
+{# Days come from the schedule itself so a department with no lectures on a
+   day does not get a row of "لا توجد محاضرات" for all seven days. #}
+{% set week_days = weekly.keys() | list %}
+{% set _today = now() %}
 {% set _ar_days = {0:'الإثنين',1:'الثلاثاء',2:'الأربعاء',3:'الخميس',4:'الجمعة',5:'السبت',6:'الأحد'} %}
 {% set _ar_months = {1:'يناير',2:'فبراير',3:'مارس',4:'أبريل',5:'مايو',6:'يونيو',7:'يوليو',8:'أغسطس',9:'سبتمبر',10:'أكتوبر',11:'نوفمبر',12:'ديسمبر'} %}
 
 {% block content %}
 <div class="max-w-7xl mx-auto">
 
-  <!-- Header -->
+  {# ── Header ─────────────────────────────────────────────── #}
   <div class="fade-in-card bg-white rounded-2xl shadow-sm border border-primary/10 px-5 py-4 mb-5
               flex flex-wrap items-center justify-between gap-3">
 
@@ -30,81 +59,135 @@
 
       <div>
         <h1 class="text-lg font-bold text-on-surface m-0">
-          مساحة عضو هيئة التدريس
+          {# Department names are stored complete ("قسم الحاسوب"), so render
+             the value as-is; prefixing it here produced "قسم قسم الحاسوب". #}
+          {{ h.get('department_name') or 'لوحة رئيس القسم' }}
         </h1>
 
         <p class="text-sm text-on-surface-variant m-0">
-          أ . الهام ابو الشواشي
+          {{ (user.get('label') or user.get('username') or 'رئيس القسم') }}
           <span class="mx-1 text-outline-variant">|</span>
           <span id="todayDateChip" class="font-bold text-on-surface">
-            الخميس، 24 سبتمبر
+            {{ _ar_days.get(_today.weekday(), '') }}، {{ _today.day }} {{ _ar_months.get(_today.month, '') }}
           </span>
+          {% if semester_label %}
+          <span class="mx-1 text-outline-variant">|</span>
+          <span>{{ semester_label }}</span>
+          {% endif %}
         </p>
       </div>
     </div>
 
     <div class="flex flex-wrap items-center gap-2">
+      {% if occupied_rooms > 0 %}
+      <span class="inline-flex items-center gap-1.5 rounded-full bg-primary/10
+                   text-primary px-3 py-1.5 text-xs font-bold">
+        <span class="material-symbols-outlined text-sm">meeting_room</span>
+        {{ occupied_rooms }} قاعة مشغولة الآن
+      </span>
+      {% else %}
       <span class="inline-flex items-center gap-1.5 rounded-full bg-surface-dim
                    text-on-surface-variant px-3 py-1.5 text-xs font-bold">
-        <span class="material-symbols-outlined text-sm">
-          event_available
-        </span>
-        لا توجد محاضرات اليوم
+        <span class="material-symbols-outlined text-sm">meeting_room</span>
+        لا توجد قاعات مشغولة الآن
       </span>
-   </div>
+      {% endif %}
+
+      {% if pending_count > 0 %}
+      <a href="{{ url_for('hod_pages.hod_messages') }}"
+         class="inline-flex items-center gap-1.5 rounded-full bg-error-container text-on-error-container
+                px-3 py-1.5 text-xs font-bold hover:opacity-90 no-underline">
+        <span class="material-symbols-outlined text-sm">pending_actions</span>
+        {{ pending_count }} طلب معلّق
+      </a>
+      {% endif %}
+    </div>
 
   </div>
 
 
-  <!-- 2 × 2 GRID -->
+  {# ── Stat strip ──────────────────────────────────────────── #}
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+    {% set _cards = [
+      ('today', 'محاضرات اليوم', today_count, 'today', 'text-primary bg-primary/10'),
+      ('book', 'مقررات القسم', h.get('total_courses', 0), 'menu_book', 'text-secondary bg-secondary/10'),
+      ('groups', 'أساتذة القسم', teachers_list | length, 'groups', 'text-tertiary bg-tertiary/10'),
+      ('meeting_room', 'القاعات', total_rooms, 'meeting_room', 'text-academic-gold-deep bg-academic-gold/10')
+    ] %}
+    {% for icon, label, value, glyph, tone in _cards %}
+    <div class="fade-in-card bg-white rounded-2xl shadow-sm border border-primary/10 px-4 py-3
+                flex items-center gap-3">
+      <span class="w-10 h-10 rounded-xl {{ tone }} flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined text-xl">{{ glyph }}</span>
+      </span>
+      <div class="min-w-0">
+        <div class="text-xl font-bold text-on-surface leading-tight">{{ value }}</div>
+        <div class="text-xs text-on-surface-variant truncate">{{ label }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+
+  {# ── 2 × 2 GRID ──────────────────────────────────────────── #}
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-    <!-- CELL 1 : Today's lectures -->
-    <div class="fade-in-card bg-white rounded-2xl shadow-sm
-                border border-primary/10 overflow-hidden">
-
-      <div class="px-5 py-3 border-b border-primary/10 bg-surface-dim
-                  flex items-center gap-2">
-
-        <span class="material-symbols-outlined text-primary text-lg">
-          today
-        </span>
-
-        <h3 class="font-bold text-primary m-0 text-sm">
-          محاضرات اليوم
-        </h3>
-
+    {# CELL 1 : Today's lectures #}
+    <div class="fade-in-card bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
+      <div class="px-5 py-3 border-b border-primary/10 bg-surface-dim flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary text-lg">today</span>
+        <h3 class="font-bold text-primary m-0 text-sm">محاضرات اليوم</h3>
         <span class="mr-auto text-xs font-bold text-on-surface-variant">
-          0 محاضرة
+          {{ today_count }} محاضرة
         </span>
       </div>
 
+      {% if today_lectures %}
+      <ul class="divide-y divide-outline/10">
+        {% for lec in today_lectures %}
+        <li class="px-5 py-3 flex items-start gap-3">
+          <span class="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center
+                       justify-center shrink-0 text-xs font-bold" dir="ltr">
+            {{ lec.get('period') or '—' }}
+          </span>
+          <div class="min-w-0 flex-1">
+            <div class="text-sm font-bold text-on-surface truncate">{{ lec.get('course_name') or '—' }}</div>
+            <div class="text-xs text-on-surface-variant mt-0.5">
+              {% if lec.get('teacher_name') %}{{ lec.get('teacher_name') }}{% endif %}
+              {% if lec.get('room_name') %}
+                <span class="mx-1 text-outline-variant">|</span>{{ lec.get('room_name') }}
+              {% endif %}
+            </div>
+          </div>
+          <span class="text-xs text-on-surface-variant shrink-0 tabular-nums" dir="ltr">
+            {{ lec.get('start_time') or '' }}{% if lec.get('end_time') %}-{{ lec.get('end_time') }}{% endif %}
+          </span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
       <div class="px-5 py-4 text-sm text-on-surface-variant">
         لا توجد محاضرات مجدولة لليوم
       </div>
-
+      {% endif %}
     </div>
 
 
-    <!-- CELL 2 : Weekly schedule -->
-    <div class="fade-in-card bg-white rounded-2xl shadow-sm
-                border border-primary/10 overflow-hidden">
-
-      <div class="px-5 py-3 border-b border-primary/10 bg-surface-dim
-                  flex items-center gap-2">
-
-        <span class="material-symbols-outlined text-primary text-lg">
-          calendar_view_week
-        </span>
-
-        <h3 class="font-bold text-primary m-0 text-sm">
-          الجدول الأسبوعي
-        </h3>
-
+    {# CELL 2 : Weekly schedule #}
+    <div class="fade-in-card bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
+      <div class="px-5 py-3 border-b border-primary/10 bg-surface-dim flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary text-lg">calendar_view_week</span>
+        <h3 class="font-bold text-primary m-0 text-sm">الجدول الأسبوعي</h3>
+        {% if h.get('total_courses') %}
+        <a href="{{ url_for('print_routes.print_timetable_department') }}"
+           class="mr-auto text-xs font-bold text-primary hover:underline no-underline">
+          طباعة الجدول
+        </a>
+        {% endif %}
       </div>
 
+      {% if week_days %}
       <div class="overflow-x-auto">
-
         <table class="data-table">
           <thead>
             <tr>
@@ -112,112 +195,132 @@
               <th>الوقت</th>
               <th>المادة</th>
               <th>القاعة</th>
-              <th>ملف PDF</th>
             </tr>
           </thead>
-
           <tbody>
-
-            <tr>
-              <td class="font-bold text-on-surface">السبت</td>
-              <td colspan="4" class="text-on-surface-variant">
-                لا توجد محاضرات
-              </td>
-            </tr>
-
-            <tr>
-              <td class="font-bold text-on-surface">الأحد</td>
-              <td colspan="4" class="text-on-surface-variant">
-                لا توجد محاضرات
-              </td>
-            </tr>
-
-            <tr>
-              <td class="font-bold text-on-surface">الاثنين</td>
-              <td colspan="4" class="text-on-surface-variant">
-                لا توجد محاضرات
-              </td>
-            </tr>
-
-            <tr>
-              <td class="font-bold text-on-surface">الثلاثاء</td>
-              <td colspan="4" class="text-on-surface-variant">
-                لا توجد محاضرات
-              </td>
-            </tr>
-
-            <tr>
-              <td class="font-bold text-on-surface">الأربعاء</td>
-              <td colspan="4" class="text-on-surface-variant">
-                لا توجد محاضرات
-              </td>
-            </tr>
-
-            <tr>
-              <td class="font-bold text-on-surface">الخميس</td>
-              <td colspan="4" class="text-on-surface-variant">
-                لا توجد محاضرات
-              </td>
-            </tr>
-
+            {% for day in week_days %}
+              {% set entries = weekly.get(day) or [] %}
+              {% if entries %}
+                {% for entry in entries %}
+                <tr>
+                  <td class="font-bold text-on-surface">
+                    {{ day }}{% if loop.first %}{% else %}<span class="sr-only"> — {{ day }}</span>{% endif %}
+                  </td>
+                  <td class="tabular-nums text-on-surface-variant" dir="ltr">
+                    {{ entry.get('start_time') or '' }}{% if entry.get('end_time') %}-{{ entry.get('end_time') }}{% endif %}
+                  </td>
+                  <td class="text-on-surface">
+                    {{ entry.get('course_name') or '—' }}
+                    {% if entry.get('teacher_name') %}
+                    <div class="text-xs text-on-surface-variant">{{ entry.get('teacher_name') }}</div>
+                    {% endif %}
+                  </td>
+                  <td class="text-on-surface-variant">{{ entry.get('room_name') or '—' }}</td>
+                </tr>
+                {% endfor %}
+              {% else %}
+              <tr>
+                <td class="font-bold text-on-surface">{{ day }}</td>
+                <td colspan="3" class="text-on-surface-variant">لا توجد محاضرات</td>
+              </tr>
+              {% endif %}
+            {% endfor %}
           </tbody>
         </table>
-
       </div>
+      {% else %}
+      <div class="px-5 py-4 text-sm text-on-surface-variant">
+        لم يتم جدول أي محاضرات لهذا القسم بعد
+      </div>
+      {% endif %}
     </div>
 
 
-    <!-- CELL 3 : Assigned courses -->
-    <div class="fade-in-card bg-white rounded-2xl shadow-sm
-                border border-primary/10 overflow-hidden">
-
-      <div class="px-5 py-3 border-b border-primary/10 bg-surface-dim
-                  flex items-center gap-2">
-
-        <span class="material-symbols-outlined text-primary text-lg">
-          menu_book
-        </span>
-
-        <h3 class="font-bold text-primary m-0 text-sm">
-          المقررات المكلف بها
-        </h3>
-
+    {# CELL 3 : Course coverage #}
+    <div class="fade-in-card bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
+      <div class="px-5 py-3 border-b border-primary/10 bg-surface-dim flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary text-lg">menu_book</span>
+        <h3 class="font-bold text-primary m-0 text-sm">تغطية المقررات</h3>
         <span class="mr-auto text-xs font-bold text-on-surface-variant">
-          0 مقرر
+          {{ _scheduled_count }} من {{ _all_courses_count }}
         </span>
-
       </div>
 
-      <div class="px-5 py-4 text-sm text-on-surface-variant">
-        لا توجد مقررات مكلف بها بعد
-      </div>
+      {% set _pct = _coverage_pct %}
+      <div class="px-5 py-4">
+        {% if _all_courses_count > 0 %}
+        <div class="flex items-center justify-between text-sm mb-2">
+          <span class="text-on-surface-variant">نسبة المقررات المجدولة</span>
+          <span class="font-bold text-on-surface">{{ _pct }}%</span>
+        </div>
+        <div class="h-2 rounded-full bg-surface-dim overflow-hidden" role="progressbar"
+             aria-valuenow="{{ _pct }}" aria-valuemin="0" aria-valuemax="100"
+             aria-label="نسبة المقررات المجدولة">
+          <div class="h-full rounded-full bg-primary" style="width: {{ _pct }}%"></div>
+        </div>
+        <p class="text-xs text-on-surface-variant mt-2 mb-0">
+          {{ _dept_course_count }} مقرر في القسم
+        </p>
+        {% else %}
+        <div class="text-sm text-on-surface-variant">لا توجد مقررات مسجّلة لهذا القسم</div>
+        {% endif %}
 
+        {% if teachers_list %}
+        <div class="mt-4 pt-4 border-t border-outline/10">
+          <div class="text-xs font-bold text-on-surface-variant mb-2">توزيع العبء على الأساتذة</div>
+          <ul class="space-y-1.5">
+            {% for t in teachers_list[:6] %}
+            <li class="flex items-center justify-between text-sm">
+              <a href="{{ url_for('teachers.teacher_detail', id=t.get('id')) }}"
+                 class="text-on-surface hover:underline no-underline truncate">
+                {{ t.get('name') }}
+              </a>
+              <span class="text-xs text-on-surface-variant shrink-0 mr-2">
+                {{ t.get('course_count', 0) }} مقرر
+              </span>
+            </li>
+            {% endfor %}
+          </ul>
+          {% if teachers_list | length > 6 %}
+          <a href="{{ url_for('teachers.teachers_list') }}"
+             class="inline-block mt-2 text-xs font-bold text-primary hover:underline no-underline">
+            عرض كل الأساتذة ({{ teachers_list | length }})
+          </a>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
     </div>
 
 
-    <!-- CELL 4 : Upcoming exams -->
-    <div class="fade-in-card bg-white rounded-2xl shadow-sm
-                border border-primary/10 overflow-hidden">
-
-      <div class="px-5 py-3 border-b border-primary/10 bg-surface-dim
-                  flex items-center gap-2">
-
-        <span class="material-symbols-outlined text-primary text-lg">
-          event_note
-        </span>
-
-        <h3 class="font-bold text-primary m-0 text-sm">
-          الامتحانات القادمة
-        </h3>
-
+    {# CELL 4 : Pending requests #}
+    <div class="fade-in-card bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
+      <div class="px-5 py-3 border-b border-primary/10 bg-surface-dim flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary text-lg">pending_actions</span>
+        <h3 class="font-bold text-primary m-0 text-sm">الطلبات المعلّقة</h3>
+        <span class="mr-auto text-xs font-bold text-on-surface-variant">{{ pending_count }}</span>
       </div>
 
-      <div class="px-5 py-4 text-sm text-on-surface-variant">
-        لا توجد امتحانات قادمة
+      {% if pending_requests %}
+      <ul class="divide-y divide-outline/10">
+        {% for req in pending_requests[:5] %}
+        <li class="px-5 py-3">
+          <div class="text-sm font-bold text-on-surface">{{ req.get('teacher_name') or 'أستاذ' }}</div>
+          <div class="text-xs text-on-surface-variant mt-0.5">{{ req.get('subject') or 'طلب' }}</div>
+        </li>
+        {% endfor %}
+      </ul>
+      <div class="px-5 py-3 border-t border-outline/10">
+        <a href="{{ url_for('hod_pages.hod_messages') }}"
+           class="text-xs font-bold text-primary hover:underline no-underline">
+          عرض كل الطلبات
+        </a>
       </div>
-
+      {% else %}
+      <div class="px-5 py-4 text-sm text-on-surface-variant">لا توجد طلبات معلّقة</div>
+      {% endif %}
     </div>
 
- </div>
+  </div>
 </div>
 {% endblock %}

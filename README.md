@@ -6,7 +6,7 @@ This README consolidates the most important information from the earlier project
 
 ## Project Overview
 
-newRopey is a web application for managing core academic and administrative operations at Zuwaita Technical Engineering College. The system is built around a single Flask application and a SQLite database, with a mix of Bootstrap-based and Tailwind-based templates.
+newRopey is a web application for managing core academic and administrative operations at the College of Engineering Technology in Zuwara (كلية التقنية الهندسية زوارة). The system is built around a single Flask application and a SQLite database, with a mix of Bootstrap-based and Tailwind-based templates.
 
 ### Main Goals
 - Manage users, departments, teachers, rooms, and courses

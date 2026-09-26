@@ -88,3 +88,41 @@
   opacity: 1;
   visibility: visible;
 }
+/* ── Skip link ──
+   The authenticated sidebar carries 10+ navigation items, so a keyboard user
+   would otherwise tab through all of them on every page before reaching the
+   content. Off-screen until focused, then pinned to the top-start corner.
+   The :focus rule (not :focus-visible) is deliberate: the element must
+   appear for any focus, including programmatic focus after activating it. */
+.skip-link {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  z-index: 1000;
+  padding: 0.625rem 1rem;
+  border-radius: 0 0 var(--radius-md) 0;
+  background: var(--primary);
+  color: var(--text-on-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-120%);
+  transition: transform 0.15s ease;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+  outline: 2px solid var(--text-on-primary);
+  outline-offset: -4px;
+}
+
+/* Landing on #mainContent should not draw a focus ring around the whole
+   page, but the element still needs to be focusable for the jump to work. */
+.main-content:focus {
+  outline: none;
+}
+.main-content:focus-visible {
+  outline: 2px solid var(--border-input-focus);
+  outline-offset: -2px;
+}

@@ -450,7 +450,7 @@
 
                 </span>
 
-                نيك نيم (اسم الدخول)
+                (اسم الدخول)
 
               </label>
 
@@ -559,10 +559,8 @@
                  'rank_id',
                  placeholder='اختر الدرجة العلمية',
                  col_class='sm:col-span-2 flex flex-col gap-1.5',
-                 custom_value=teacher.get(
-                   'custom_rank_id',
-                   teacher.get('academic_rank', '')
-                 )
+                 custom_value=teacher.get('custom_rank_id') or
+                   (teacher.get('academic_rank', '') if not teacher.get('rank_id') else '')
                )
             }}
 
@@ -574,10 +572,8 @@
                  'المؤهل الأكاديمي',
                  'qualification_id',
                  placeholder='اختر المؤهل',
-                 custom_value=teacher.get(
-                   'custom_qualification_id',
-                   teacher.get('qualification', '')
-                 )
+                 custom_value=teacher.get('custom_qualification_id') or
+                   (teacher.get('qualification', '') if not teacher.get('qualification_id') else '')
                )
             }}
 
@@ -589,10 +585,8 @@
                  'التصنيف الوظيفي',
                  'classification_id',
                  placeholder='اختر التصنيف',
-                 custom_value=teacher.get(
-                   'custom_classification_id',
-                   teacher.get('classification', '')
-                 )
+                 custom_value=teacher.get('custom_classification_id') or
+                   (teacher.get('classification', '') if not teacher.get('classification_id') else '')
                )
             }}
 

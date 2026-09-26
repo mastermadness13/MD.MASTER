@@ -1,6 +1,6 @@
 import os
 
-from flask import Blueprint, session, request, render_template, redirect, url_for, flash, current_app, send_from_directory
+from flask import Blueprint, session, request, render_template, redirect, url_for, flash, current_app, send_from_directory, abort
 
 from flask_db import get_db
 from security import csrf_required, login_required, permission_required
@@ -8,6 +8,16 @@ from security import current_user
 from services import message_service, notification_service
 
 bp = Blueprint('hod_pages', __name__, url_prefix='/hod')
+
+
+def _hod_department_id():
+    """Return the department this HOD heads, or None when it is not set.
+
+    ``hod_department_id`` is the authoritative key: a head of department may
+    belong to a *different* department than the one they manage, so falling
+    back to ``department_id`` would read and delete another department's rows.
+    """
+    return session.get('hod_department_id')
 
 
 # /     /     >---- رسائل الأقسام: الرد على الطلب وحلّه وإشعار الأستاذ
@@ -53,7 +63,9 @@ def hod_messages():
 @permission_required('materials.manage')
 def hod_materials():
     db = get_db()
-    dept_id = session.get('hod_department_id')
+    dept_id = _hod_department_id()
+    if dept_id is None:
+        abort(403)
     search = request.args.get('search', '').strip()
     file_type = request.args.get('file_type', '').strip()
 
@@ -101,7 +113,9 @@ def hod_materials():
 @csrf_required
 def hod_material_delete(material_id):
     db = get_db()
-    dept_id = session.get('department_id')
+    dept_id = _hod_department_id()
+    if dept_id is None:
+        abort(403)
     mat = db.execute(
         'SELECT * FROM teacher_materials WHERE id = ? AND department_id = ?',
         (material_id, dept_id)
@@ -137,13 +151,14 @@ def hod_material_delete(material_id):
 @permission_required('materials.manage')
 def hod_material_download(material_id):
     db = get_db()
-    dept_id = session.get('department_id')
+    dept_id = _hod_department_id()
+    if dept_id is None:
+        abort(404)
     mat = db.execute(
         'SELECT filename, original_filename FROM teacher_materials WHERE id = ? AND department_id = ?',
         (material_id, dept_id)
     ).fetchone()
     if not mat:
-        from flask import abort
         abort(404)
 
     db.execute('UPDATE teacher_materials SET download_count = download_count + 1 WHERE id = ?', (material_id,))

@@ -157,6 +157,11 @@ def db_fx(tmp_path, monkeypatch):
     conn.execute(
         "INSERT OR IGNORE INTO users (username, password, role, label) VALUES "
         "('exam_officer', 'x', 'exam', 'شعبة الامتحانات')")
+    # courses.manage is held only by research_development, so course-write
+    # validation tests need a real R&D account to reach the handler.
+    conn.execute(
+        "INSERT OR IGNORE INTO users (username, password, role, label) VALUES "
+        "('rd_officer', 'x', 'research_development', 'مستثير التطوير و التقنية')")
     conn.execute(
         "INSERT OR IGNORE INTO departments (name, semesters, majors, hidden, has_sections, type) VALUES "
         "('قسم الحاسوب', 8, 8, 0, 1, 'academic')")
@@ -165,7 +170,25 @@ def db_fx(tmp_path, monkeypatch):
     return db_path
 
 
-def _client(app_fx, user_id, role):
+def _client(app_fx, user_id, role=None):
+    """Build a logged-in test client.
+
+    *user_id* may be an int (legacy) or a role name. Passing the role name is
+    preferred: the seeded ids depend on what ensure_schema() already inserted,
+    and a session pointing at a non-existent user_id is cleared by
+    app.before_request's enforce_session_version, which turns an expected
+    4xx into a 302 to /login.
+    """
+    if not isinstance(user_id, int):
+        role = user_id
+        conn = sqlite3.connect(flask_db.DATABASE)
+        conn.row_factory = sqlite3.Row
+        row = conn.execute(
+            'SELECT id FROM users WHERE role = ? ORDER BY id LIMIT 1', (role,)
+        ).fetchone()
+        conn.close()
+        assert row is not None, f'no seeded user with role {role!r}'
+        user_id = row['id']
     c = app_fx.test_client()
     with c.session_transaction() as sess:
         sess['user_id'] = user_id
@@ -190,7 +213,7 @@ def _session_headers():
 
 
 def test_course_create_rejects_bad_year_http(app_fx, db_fx):
-    c = _client(app_fx, 1, 'faculty_affairs')
+    c = _client(app_fx, 'research_development')
     r = c.post('/api/courses', json={
         'code': 'X1', 'name': 'مادة', 'year': 99, 'semester': 1,
         'theoretical_hours': 0, 'practical_hours': 0, 'total_hours': 0,
@@ -237,7 +260,7 @@ def test_exam_period_rejects_reversed_dates_http(app_fx, db_fx):
 
 
 def test_timetable_entry_update_rejects_bad_time_http(app_fx, db_fx):
-    c = _client(app_fx, 2, 'head_of_department')
+    c = _client(app_fx, 'head_of_department')
     r = c.put('/api/timetable/entries/1', json={
         'day': 'الأحد', 'course_id': 1, 'room_id': 1, 'period_code': 'أ',
         'start_time': '25:99', 'end_time': '09:00', 'hours': 3,

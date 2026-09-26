@@ -480,16 +480,26 @@ def sync_courses_from_timetable(db, dept_id: int):
     skipped = 0
     messages = []
 
+    # /     /     >---- عدّاد لكل مقرر في استعلام واحد بدل استعلام لكل مقرر
+    course_ids = [c['id'] for c in courses]
+    sem_by_course = {}
+    if course_ids:
+        _ph = ','.join('?' * len(course_ids))
+        for _r in db.execute(
+            'SELECT course_id, semester, COUNT(*) as cnt FROM timetable '
+            f'WHERE course_id IN ({_ph}) AND department_id = ? AND deleted_at IS NULL '
+            'GROUP BY course_id, semester ORDER BY cnt DESC, course_id, semester',
+            list(course_ids) + [dept_id],
+        ).fetchall():
+            sem_by_course.setdefault(_r['course_id'], []).append(
+                {'semester': _r['semester'], 'cnt': _r['cnt']}
+            )
+
     for course in courses:
         cid = course['id']
         cname = course['name']
 
-        timetable_rows = db.execute(
-            'SELECT semester, COUNT(*) as cnt FROM timetable '
-            'WHERE course_id = ? AND department_id = ? AND deleted_at IS NULL '
-            'GROUP BY semester ORDER BY cnt DESC',
-            (cid, dept_id),
-        ).fetchall()
+        timetable_rows = sem_by_course.get(cid, [])
 
         if not timetable_rows:
             skipped += 1

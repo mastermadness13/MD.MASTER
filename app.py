@@ -17,6 +17,12 @@ from flask_db import get_db, close_db, init_app as db_init_app
 from security import generate_csrf_token
 from security import current_user, inject_navigation
 from security.csrf import is_request_protected, csrf_failure_response
+from security.security_headers import (
+    apply_cookie_config,
+    apply_security_headers,
+    assert_debug_disabled,
+    block_scanner_probes,
+)
 from utils.format import semester_label, teacher_label, duration_label, format_time12
 from utils.format import submission_status_label, submission_status_color
 from utils.format import academic_title_prefix, teacher_display_name
@@ -89,6 +95,58 @@ from page_routes.faculty_performance import bp as faculty_performance_bp
 from api_routes import register_api
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# ── Deny-by-default policy ─────────────────────────────────────────────────
+# /     /     >---- كل مسار غير مذكور هنا يُرفض تلقائياً لمستخدم مسجّل دخول،
+# /     /     >---- ما لم تصرّح دالة المسار بصلاحية أو بدور.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# /     /     >---- مسارات متاحة للجميع (بدون تسجيل دخول)
+PUBLIC_ENDPOINTS = {
+    'auth.login', 'auth.logout', 'auth.forgot_password', 'auth.reset_password',
+    'dashboard.dashboard',  # role dispatch happens inside the view
+    'dashboard.switch_role',  # يتحقق داخلياً من الأدوار الممنوحة للمستخدم
+    'health_check',
+    'static',
+    'api_auth.api_me', 'api_auth.api_logout', 'api_auth.api_login',
+    'public_library.course_file',
+    'public_library.course_content',
+    'public_library.library_file',
+    'public_library.vocabulary_file',
+    'public_library.teacher_file',
+    'public.departments',
+    'public.department_detail',
+    'public.timetables',
+    'public.public_timetables_api',
+    'public.public_courses_api',
+    'public.public_exams_api',
+    'public.public_exam_schedule_api',
+    'public.exams',
+    'public.courses',
+    'public_library.library',
+    # ── البوابة العامة الثابتة (static/public) ──────────────────────────
+    # /     /     >---- صفحات الموقع العام تُخدم كما هي، وتبقى متاحة سواء
+    # /     /     >---- كان المستخدم مسجّل دخول أو زائراً.
+    'public_site.index_page',
+    'public_site.pages',
+    'public_site.shared',
+    'public_site.data_files',
+    'public_site.images',
+}
+
+# /     /     >---- مسارات تحتاج تسجيل دخول فقط، بلا صلاحية محدّدة.
+# /     /     >---- كل ما هو خارج القائمتين يُمنع افتراضياً.
+AUTHENTICATED_ENDPOINTS = {
+    'spa.app',
+    'api_dashboard.api_dashboard',
+    'teachers.api_courses',
+    'teachers.api_teachers_by_dept',
+}
+
+# /     /     >---- بادئات مسارات لا تخضع لفحص الصلاحيات
+PUBLIC_PREFIXES = ('/static/', '/uploads/', '/favicon.ico')
+
+
 # /     /     >---- الدالة الرئيسية اللي تصنع التطبيق وتهيئ كل شي
 def create_app():
     # /     /     >---- نصنع كائن Flask
@@ -101,6 +159,11 @@ def create_app():
     # /     /     >---- نهيئ قاعدة البيانات واللوقنق
     db_init_app(app)
     _setup_logging(app)
+
+    # /     /     >---- حجب فحوصات البوتات: قبل أي before_request آخر، عشان
+    # /     /     >---- كل فحص عشوائي ما يكلّفنا استعلام قاعدة بيانات ولا
+    # /     /     >---- يستهلك حصة من محددات المحاولات
+    block_scanner_probes(app)
 
     # /     /     >---- نغلق قاعدة البيانات بعد كل طلب
     @app.teardown_appcontext
@@ -149,29 +212,8 @@ def create_app():
         }
 
     # ── Deny-by-default: require permission for all non-public routes ────
-    PUBLIC_ENDPOINTS = {
-        'auth.login', 'auth.logout', 'auth.forgot_password', 'auth.reset_password',
-        'dashboard.dashboard',  # handled by permission_required on the view
-        'dashboard.switch_role',  # يتحقق داخلياً من الأدوار الممنوحة للمستخدم
-        'health_check',
-        'static',
-        'api_auth.api_me', 'api_auth.api_logout',
-        'public_library.course_file',
-        'public_library.course_content',
-        'public_library.library_file',
-        'public_library.vocabulary_file',
-        'public_library.teacher_file',
-        'public.departments',
-        'public.department_detail',
-        'public.timetables',
-        'public.public_timetables_api',
-        'public.public_courses_api',
-        'public.public_exams_api',
-        'public.public_exam_schedule_api',
-        'public.exams',
-        'public.courses',
-    }
-    PUBLIC_PREFIXES = ('/static/', '/uploads/', '/favicon.ico')
+    # /     /     >---- القوائم معرّفة في أعلى الملف (خارج create_app) حتى
+    # /     /     >---- تتمكّن اختبارات الاتساق من قراءتها مباشرة.
 
     @app.before_request
     def enforce_session_version():
@@ -222,19 +264,38 @@ def create_app():
         if endpoint in PUBLIC_ENDPOINTS:
             return None
 
+        # Skip endpoints that need authentication only (no permission gate)
+        if endpoint in AUTHENTICATED_ENDPOINTS:
+            return None
+
         # Get required permission from endpoint's view function
         view_func = app.view_functions.get(endpoint)
         if view_func is None:
             return None
 
         required_perm = getattr(view_func, '_required_permission', None)
+        required_roles = getattr(view_func, '_required_roles', None)
+        required_any_roles = getattr(view_func, '_required_any_roles', None)
+
+        from security.authorization import get_active_roles, get_granted_roles, has_permission
+
+        # /     /     >---- مسارات محكومة بالدور: role_required / any_role_required
+        if required_perm is None and (required_roles or required_any_roles):
+            if required_roles:
+                allowed = session.get('role', '') in required_roles
+            else:
+                allowed = bool(set(get_granted_roles()).intersection(required_any_roles))
+            if not allowed:
+                flash('ليس لديك صلاحية للوصول إلى هذه الصفحة', 'error')
+                return redirect(url_for('dashboard.dashboard'))
+            return None
+
         if required_perm is None:
             # No permission declared — deny by default for safety
             flash('هذا المسار غير مصرح به', 'error')
             return redirect(url_for('dashboard.dashboard'))
 
         # Check permission
-        from security.authorization import get_active_roles, has_permission
         roles = get_active_roles()
         dept_id = session.get('department_id')
         if not has_permission(roles, required_perm, dept_id):
@@ -344,42 +405,15 @@ def create_app():
         return redirect(url_for('auth.login'))
 
     # ── الهيدرز الأمنية والكاش ──────────────────────────────────
-    @app.after_request
-    def add_security_headers(response):
-        # /     /     >---- هيدرز الحماية من الثغرات الأمنية
-        response.headers['X-Content-Type-Options'] = 'nosniff'
-        response.headers['X-Frame-Options'] = 'SAMEORIGIN'
-        response.headers['X-XSS-Protection'] = '1; mode=block'
-        response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-        response.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()'
+    # /     /     >---- المنطق كله في security/security_headers.py — هنا
+    # /     /     >---- نربطه فقط. شوف توثيق الوحدة لسبب عدم استخدام Talisman
+    # /     /     >---- (block_scanner_probes مربوط في أعلى create_app)
+    apply_cookie_config(app)
+    apply_security_headers(app)
 
-        # /     /     >---- سياسة أمان المحتوى (CSP)
-        csp_parts = [
-            "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net",
-            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdn.tailwindcss.com https://cdnjs.cloudflare.com",
-            "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
-            "img-src 'self' data: blob:",
-            "connect-src 'self'",
-            "base-uri 'self'",
-            "frame-ancestors 'self'",
-            "object-src 'none'",
-            "form-action 'self'",
-        ]
-        response.headers['Content-Security-Policy'] = '; '.join(csp_parts)
-
-        # /     /     >---- إعداد الكاش حسب نوع المسار
-        path = request.path
-        if path.startswith('/static/'):
-            # /     /     >---- الملفات الثابتة تكاش لمدة سنة
-            response.cache_control.public = True
-            response.cache_control.max_age = 31536000
-        elif path.startswith('/uploads/'):
-            # /     /     >---- الملفات المرفوعة تكاش لمدة ساعة
-            response.cache_control.private = True
-            response.cache_control.max_age = 3600
-
-        return response
+    # /     /     >---- قفل وضع التصحيح: خطأ P0 لو شغّال بالإنتاج
+    if not app.config.get('TESTING'):
+        assert_debug_disabled(app)
 
     return app
 

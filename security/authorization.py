@@ -200,6 +200,9 @@ def role_required(*roles):
                 return redirect(url_for('dashboard.dashboard'))
             return f(*args, **kwargs)
 
+        # Declare the role gate so the deny-by-default before_request hook
+        # recognises this endpoint as guarded instead of refusing it.
+        decorated_function._required_roles = tuple(roles)
         return decorated_function
 
     return decorator
@@ -228,6 +231,9 @@ def any_role_required(*roles):
                 return redirect(url_for('dashboard.dashboard'))
             return f(*args, **kwargs)
 
+        # Declare the role gate so the deny-by-default before_request hook
+        # recognises this endpoint as guarded instead of refusing it.
+        decorated_function._required_any_roles = tuple(roles)
         return decorated_function
 
     return decorator

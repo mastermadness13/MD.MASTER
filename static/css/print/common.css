@@ -3,6 +3,51 @@
    Loaded globally via app.css.
    Updated: 2026-07-14 — Fixed specificity wars with teachers.css */
 
+/* ==========================================================================
+   Print must never inherit the dark palette.
+
+   Print routes are previewed on screen in whatever mode the user picked, so
+   the on-screen tokens are still live when the print stylesheet runs. Without
+   this remap a dark-mode user gets near-white text on white paper.
+
+   `@media print` adds no specificity, and app.css imports this file
+   (line 33) *before* themes/dark.css (line 46), so plain declarations would
+   lose to `[data-theme="dark"]` on source order. The !important is
+   deliberate and is the correct tool here: "paper is always light" is a hard
+   override that must not depend on import order. Screen preview is unaffected
+   because the whole block is inside the print media query.
+   ========================================================================== */
+
+@media print {
+  :root,
+  [data-theme="dark"] {
+    color-scheme: light !important;
+
+    --page-bg: #ffffff !important;
+    --surface: #ffffff !important;
+    --surface-alt: #f7f9ff !important;
+    --surface-card: #ffffff !important;
+    --surface-hover: #f1f4f9 !important;
+    --surface-zebra: #ebeef3 !important;
+
+    --text-primary: #181c20 !important;
+    --text-secondary: #4c4452 !important;
+    --text-muted: #71687a !important;
+    --text-faint: #6f6a76 !important;
+
+    --border: #d8dbe2 !important;
+    --border-subtle: #f1f4f9 !important;
+    --border-accent: #c2b5cb !important;
+    --table-header: #f7f9ff !important;
+    --table-border: #e0e3e8 !important;
+    --table-row-hover: #f1f4f9 !important;
+    --table-row-alt: #ebeef3 !important;
+    --topbar-bg: #ffffff !important;
+    --header-bg: #ffffff !important;
+    --sidebar-bg: #ffffff !important;
+  }
+}
+
 /* ── Screen: print-header is invisible ── */
 .print-header {
   display: none !important;

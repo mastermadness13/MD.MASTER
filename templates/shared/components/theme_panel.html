@@ -1,0 +1,109 @@
+{# Appearance panel. Opened from the sidebar "المظهر" button.
+   Uses the native popover attribute for top-layer rendering and light
+   dismiss, and native radios so arrow-key navigation and grouping come from
+   the platform instead of hand-rolled JS. State lives in localStorage and is
+   read back by static/js/theme_panel.js on open. #}
+<div id="themePanel" popover="auto" class="theme-panel" role="dialog" aria-labelledby="themePanelTitle">
+  <div class="theme-panel-head">
+    <h2 class="theme-panel-title" id="themePanelTitle">
+      <span class="material-symbols-outlined" aria-hidden="true">palette</span>
+      المظهر
+    </h2>
+    <button type="button" class="theme-panel-close" data-theme-panel-close aria-label="إغلاق إعدادات المظهر">
+      <span class="material-symbols-outlined" aria-hidden="true">close</span>
+    </button>
+  </div>
+
+  <div class="theme-panel-body">
+    <fieldset class="theme-fieldset">
+      <legend class="theme-legend">الوضع</legend>
+      <div class="theme-segmented" role="none">
+        <label class="theme-option">
+          <input type="radio" name="theme-mode" value="light" class="theme-radio">
+          <span class="theme-option-face">
+            <span class="material-symbols-outlined" aria-hidden="true">light_mode</span>
+            <span>نهاري</span>
+          </span>
+        </label>
+        <label class="theme-option">
+          <input type="radio" name="theme-mode" value="dark" class="theme-radio">
+          <span class="theme-option-face">
+            <span class="material-symbols-outlined" aria-hidden="true">dark_mode</span>
+            <span>ليلي</span>
+          </span>
+        </label>
+        <label class="theme-option">
+          <input type="radio" name="theme-mode" value="system" class="theme-radio">
+          <span class="theme-option-face">
+            <span class="material-symbols-outlined" aria-hidden="true">routine</span>
+            <span>حسب النظام</span>
+          </span>
+        </label>
+        <label class="theme-option">
+          <input type="radio" name="theme-mode" value="custom" class="theme-radio">
+          <span class="theme-option-face">
+            <span class="material-symbols-outlined" aria-hidden="true">palette</span>
+            <span>مخصص</span>
+          </span>
+        </label>
+      </div>
+    </fieldset>
+
+    {# Revealed by theme_panel.js only in custom mode. #}
+    <div class="theme-custom" data-theme-custom hidden>
+      <fieldset class="theme-fieldset">
+        <legend class="theme-legend">لون التمييز</legend>
+        <div class="theme-hue-row">
+          <input type="range" min="0" max="359" step="1" value="280"
+                 class="theme-hue-slider" data-theme-hue
+                 aria-label="درجة لون التمييز" aria-describedby="themeHueValue">
+          <output class="theme-hue-value" id="themeHueValue" data-theme-hue-value for="themeHue">280°</output>
+        </div>
+        <div class="theme-swatches" role="group" aria-label="ألوان جاهزة">
+          <button type="button" class="theme-swatch" data-theme-hue-preset="280" style="--swatch:#320058" aria-label="بنفسجي"></button>
+          <button type="button" class="theme-swatch" data-theme-hue-preset="220" style="--swatch:#0b4a9e" aria-label="أزرق"></button>
+          <button type="button" class="theme-swatch" data-theme-hue-preset="172" style="--swatch:#046b62" aria-label="أخضر مزرق"></button>
+          <button type="button" class="theme-swatch" data-theme-hue-preset="38" style="--swatch:#a35a06" aria-label="برتقالي"></button>
+          <button type="button" class="theme-swatch" data-theme-hue-preset="352" style="--swatch:#9c1030" aria-label="أحمر"></button>
+          <button type="button" class="theme-swatch" data-theme-hue-preset="0" style="--swatch:#4a4a4a" aria-label="رمادي"></button>
+        </div>
+      </fieldset>
+
+      <fieldset class="theme-fieldset">
+        <legend class="theme-legend">كثافة العناصر</legend>
+        <div class="theme-segmented">
+          <label class="theme-option">
+            <input type="radio" name="theme-density" value="comfortable" class="theme-radio">
+            <span class="theme-option-face">مريح</span>
+          </label>
+          <label class="theme-option">
+            <input type="radio" name="theme-density" value="compact" class="theme-radio">
+            <span class="theme-option-face">مضغوط</span>
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset class="theme-fieldset">
+        <legend class="theme-legend">استدارة الحواف</legend>
+        <div class="theme-segmented">
+          <label class="theme-option">
+            <input type="radio" name="theme-corner" value="soft" class="theme-radio">
+            <span class="theme-option-face">ناعم</span>
+          </label>
+          <label class="theme-option">
+            <input type="radio" name="theme-corner" value="sharp" class="theme-radio">
+            <span class="theme-option-face">حاد</span>
+          </label>
+          <label class="theme-option">
+            <input type="radio" name="theme-corner" value="round" class="theme-radio">
+            <span class="theme-option-face">دائري</span>
+          </label>
+        </div>
+      </fieldset>
+    </div>
+  </div>
+
+  <div class="theme-panel-foot">
+    <button type="button" class="btn btn-outline-secondary btn-sm" data-theme-reset>استعادة الافتراضي</button>
+  </div>
+</div>

@@ -1,0 +1,23 @@
+[tool.pytest.ini_options]
+# Only the project's own suite. Without this, pytest recurses into
+# github-pages-main/ (third-party reference repos) and fails collection on
+# their unrelated test files.
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+norecursedirs = [
+    "github-pages-main",
+    "static",
+    "templates",
+    "uploads",
+    "logs",
+    "scripts",
+    "node_modules",
+    ".git",
+    "_archive",
+    "*.egg",
+    ".*",
+]
+addopts = "-q"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]

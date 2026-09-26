@@ -30,6 +30,12 @@ def db_fx(tmp_path, monkeypatch):
         "INSERT OR IGNORE INTO users (username, password, role, label) "
         "VALUES ('office_manager', 'x', 'faculty_affairs', 'مدير مكتب أعضاء هيئة التدريس')"
     )
+    # courses.view / courses.manage belong to research_development, not
+    # faculty_affairs, so the course list and write routes 302 for the latter.
+    conn.execute(
+        "INSERT OR IGNORE INTO users (username, password, role, label) "
+        "VALUES ('rd_officer', 'x', 'research_development', 'مستثير التطوير و التقنية')"
+    )
     for name, semesters in [('قسم الاتصالات', 7), ('قسم الحاسوب', 7)]:
         conn.execute(
             "INSERT OR IGNORE INTO departments (name, semesters, majors, hidden, has_sections, type) "
@@ -51,13 +57,29 @@ def dept_ids(db_fx):
     return ids
 
 
+def _user_id(username):
+    """Resolve a seeded user id by username.
+
+    Seeded ids depend on what ensure_schema() already inserted, so a
+    hardcoded user_id=1 can miss; enforce_session_version then clears the
+    session and the request 302s to /login.
+    """
+    conn = sqlite3.connect(flask_db.DATABASE)
+    conn.row_factory = sqlite3.Row
+    row = conn.execute('SELECT id FROM users WHERE username = ?', (username,)).fetchone()
+    conn.close()
+    assert row is not None, f'no seeded user {username!r}'
+    return row['id']
+
+
 @pytest.fixture
 def client(app_fx, db_fx):
     c = app_fx.test_client()
     with c.session_transaction() as sess:
-        sess['user_id'] = 1
-        sess['role'] = 'faculty_affairs'
-        sess['username'] = 'office_manager'
+        sess['user_id'] = _user_id('rd_officer')
+        sess['role'] = 'research_development'
+        sess['roles'] = ['research_development']
+        sess['username'] = 'rd_officer'
         sess['department_id'] = None
         sess['_csrf_token'] = 't'
     return c

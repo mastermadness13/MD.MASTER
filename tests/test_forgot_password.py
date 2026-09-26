@@ -1,6 +1,7 @@
 """Functional tests for the forgot-password / reset-password flow."""
 
 import pathlib
+import re
 import sqlite3
 
 import pytest
@@ -8,6 +9,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 import flask_db
 from database.connection import connect
+from database.repositories.user_repository import _hash_reset_token
 from database.schema import ensure_schema
 from services import user_service
 
@@ -65,6 +67,12 @@ def _active_token(db_path):
     return row[0] if row else None
 
 
+def _reset_token_from_body(body):
+    """Pull the token out of the dev-only reset link shown on the page."""
+    match = re.search(r'/reset-password/([A-Za-z0-9_\-]+)', body)
+    return match.group(1) if match else None
+
+
 def _password(db_path):
     conn = sqlite3.connect(db_path)
     row = conn.execute('SELECT password FROM users WHERE username=?', (USERNAME,)).fetchone()
@@ -111,10 +119,14 @@ def test_forgot_password_creates_token_and_shows_link(setup, monkeypatch):
     r = _post(c, '/forgot-password', {'username': USERNAME})
     body = r.get_data(as_text=True)
     assert r.status_code == 200
-    token = _active_token(db_path)
-    assert token
-    assert token in body
     assert '/reset-password/' in body
+    token = _reset_token_from_body(body)
+    assert token
+    # The database keeps only the SHA-256 digest, never the usable token.
+    stored = _active_token(db_path)
+    assert stored
+    assert stored != token
+    assert stored == _hash_reset_token(token)
 
 
 def test_forgot_password_hides_reset_link_by_default(setup, monkeypatch):
@@ -124,10 +136,8 @@ def test_forgot_password_hides_reset_link_by_default(setup, monkeypatch):
     r = _post(c, '/forgot-password', {'username': USERNAME}, follow_redirects=True)
     body = r.get_data(as_text=True)
     assert r.status_code == 200
-    token = _active_token(db_path)
-    assert token
+    assert _active_token(db_path)
     assert '/reset-password/' not in body
-    assert token not in body
     assert 'إذا كان الحساب موجوداً' in body
 
 

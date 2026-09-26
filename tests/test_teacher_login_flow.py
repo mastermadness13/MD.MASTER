@@ -18,7 +18,13 @@ from database.connection import connect
 from database.schema import ensure_schema
 
 _PASSWORD = 'NewSecurePass123!'
+# create_teacher() now takes an office-assigned username and initial password
+# instead of generating them.
+_INITIAL_PASSWORD = 'OfficeInit123!'
 _CODE_RE = re.compile(r'رمز الدخول المؤقت:\s*([A-Za-z0-9_-]+)')
+# Password reset issues a *recovery* code, which is a separate channel from the
+# initial login code, with its own flash label.
+_RECOVERY_CODE_RE = re.compile(r'رمز الاسترجاع المؤقت:\s*([A-Za-z0-9_-]+)')
 
 
 @pytest.fixture
@@ -94,55 +100,86 @@ def _code_from_flash(flashes):
     raise AssertionError(f'رمز الدخول المؤقت غير موجود في الرسائل: {flashes}')
 
 
-# ── Backend denial: the edit flow must refuse credential fields ─────────
+def _recovery_code_from_flash(flashes):
+    for _, msg in flashes:
+        m = _RECOVERY_CODE_RE.search(msg)
+        if m:
+            return m.group(1)
+    raise AssertionError(f'رمز الاسترجاع المؤقت غير موجود في الرسائل: {flashes}')
 
-def test_edit_rejects_username_and_password_fields(app_fx, db_fx):
-    """Admin can no longer change credentials on /teachers/edit/<id>: the
-    fields are blocked with an explicit 403 message."""
+
+# ── Credential fields are not handled by the edit form ──────────────────
+
+def test_edit_ignores_credential_fields(app_fx, db_fx):
+    """/teachers/edit/<id> no longer manages credentials at all.
+
+    Username and password changes moved to the dedicated, audited and
+    CSRF-protected routes (/teachers/reset-password/<id> and
+    /teachers/register-username/<id>). The edit form must therefore ignore
+    those fields rather than applying them: a teacher without a linked account
+    must stay without one after posting a username and a password.
+    """
     client = _office_client(app_fx)
     r = client.post('/teachers/edit/1', data={
         'name': 'أستاذ مستورد',
         'username': 'imported_t1',
-        'new_password': 'SecurePass123!',
+        'password': 'SecurePass123!',
         'department_ids[]': '1',
         'position': '',
         '_csrf_token': 'test-token',
     })
-    assert r.status_code == 403
-    assert 'إدارة بيانات الدخول متاحة عند إنشاء العضو فقط' in r.get_data(as_text=True)
+    assert r.status_code == 302
+
+    conn = sqlite3.connect(db_fx)
+    conn.row_factory = sqlite3.Row
+    teacher = conn.execute('SELECT user_id FROM teachers WHERE id = 1').fetchone()
+    leaked = conn.execute(
+        "SELECT COUNT(*) AS c FROM users WHERE username = 'imported_t1'"
+    ).fetchone()['c']
+    conn.close()
+    assert teacher['user_id'] is None, 'edit must not create a login account'
+    assert leaked == 0, 'edit must not create the posted username'
 
 
-def test_edit_rejects_username_field_even_when_empty(app_fx, db_fx):
-    """Any presence of the username field (even an empty value) is refused."""
+def test_edit_ignores_empty_credential_fields(app_fx, db_fx):
+    """Even empty credential fields leave the account untouched."""
     client = _office_client(app_fx)
     r = client.post('/teachers/edit/1', data={
         'name': 'أستاذ مستورد',
         'username': '',
+        'password': '',
         'department_ids[]': '1',
         'position': '',
         '_csrf_token': 'test-token',
     })
-    assert r.status_code == 403
+    assert r.status_code == 302
+
+    conn = sqlite3.connect(db_fx)
+    conn.row_factory = sqlite3.Row
+    assert conn.execute('SELECT user_id FROM teachers WHERE id = 1').fetchone()['user_id'] is None
+    conn.close()
 
 
-# ── Creation sets username + a temporary code with forced first change ───
+# ── Creation sets an office-assigned username + password ────────────────
 
-def test_create_with_username_then_login_forces_password_change(app_fx, db_fx):
-    """A member created with a username gets a temporary code, the first login
-    with it forces a mandatory password change, the old code dies and the new
-    password logs in straight to the dashboard afterwards."""
+def test_create_with_office_password_forces_first_change(app_fx, db_fx):
+    """The office assigns both a username and an initial password.
+
+    That password is a temporary first credential: create_teacher() always sets
+    force_password_change, so the member's first login lands on the mandatory
+    change-password page and the office password stops working afterwards.
+    """
     client = _office_client(app_fx)
     r1 = client.post('/teachers/create', data={
         'name': 'أستاذ مستورد',
         'username': 'imported_t1',
+        'password': _PASSWORD,
         'department_ids[]': '1',
         'position': '',
         '_csrf_token': 'test-token',
     })
     assert r1.status_code == 302
-    flashes = _flash(client)
-    assert any('تم إضافة عضو هيئة التدريس' in m for _, m in flashes), flashes
-    code = _code_from_flash(flashes)
+    assert any('تم إضافة عضو هيئة التدريس' in m for _, m in _flash(client)), _flash(client)
 
     conn = sqlite3.connect(db_fx)
     conn.row_factory = sqlite3.Row
@@ -151,28 +188,27 @@ def test_create_with_username_then_login_forces_password_change(app_fx, db_fx):
     ).fetchone()
     conn.close()
     assert user['force_password_change'] == 1
-    assert user['initial_login_code_used'] == 0
-    assert user['initial_login_code_hash']
 
+    # First login with the office password is forced to change it.
     login = app_fx.test_client()
     with login.session_transaction() as sess:
         sess['_csrf_token'] = 'test-token'
     r2 = login.post('/login', data={
         'username': 'imported_t1',
-        'password': code,
+        'password': _PASSWORD,
         '_csrf_token': 'test-token',
     })
     assert r2.status_code == 302
     assert 'change-password' in r2.headers.get('Location', '')
 
-    # the mandatory first change: temporary code as the current password
+    new_password = 'MemberChosen456!'
     r3 = login.post('/change-password', data={
-        'current_password': code,
-        'new_password': _PASSWORD,
-        'confirm_password': _PASSWORD,
+        'current_password': _PASSWORD,
+        'new_password': new_password,
+        'confirm_password': new_password,
         '_csrf_token': 'test-token',
     })
-    assert r3.status_code == 302  # forced change lands on the dashboard
+    assert r3.status_code == 302
 
     conn = sqlite3.connect(db_fx)
     conn.row_factory = sqlite3.Row
@@ -181,22 +217,20 @@ def test_create_with_username_then_login_forces_password_change(app_fx, db_fx):
     ).fetchone()
     conn.close()
     assert user['force_password_change'] == 0
-    assert user['initial_login_code_hash'] is None
-    assert user['initial_login_code_used'] == 1
 
-    # the temporary code is dead after the change
+    # The member's own password now works without another forced change...
     fresh = app_fx.test_client()
     with fresh.session_transaction() as sess:
         sess['_csrf_token'] = 'test-token'
     r4 = fresh.post('/login', data={
         'username': 'imported_t1',
-        'password': code,
+        'password': new_password,
         '_csrf_token': 'test-token',
     })
-    assert r4.status_code == 200
-    assert 'اسم المستخدم أو كلمة المرور غير صحيحة' in r4.get_data(as_text=True)
+    assert r4.status_code == 302
+    assert 'change-password' not in r4.headers.get('Location', '')
 
-    # the new password logs in without any further forced change
+    # ...and the office password is dead.
     fresh2 = app_fx.test_client()
     with fresh2.session_transaction() as sess:
         sess['_csrf_token'] = 'test-token'
@@ -205,53 +239,55 @@ def test_create_with_username_then_login_forces_password_change(app_fx, db_fx):
         'password': _PASSWORD,
         '_csrf_token': 'test-token',
     })
-    assert r5.status_code == 302
-    assert r5.headers.get('Location') != '/login'
-    assert 'change-password' not in r5.headers.get('Location', '')
+    assert r5.status_code == 200
+    assert 'اسم المستخدم أو كلمة المرور غير صحيحة' in r5.get_data(as_text=True)
 
 
-def test_create_username_only_sets_initial_code_then_wrong_password_rejected(app_fx, db_fx):
-    """A username-only creation still produces a temporary code account: a
-    typed guess is rejected even though the username exists, while the real
-    code works and triggers the forced change."""
+
+def test_create_requires_an_initial_password(app_fx, db_fx):
+    """A username alone is not enough any more: the office must issue a
+    password that satisfies the shared policy."""
     client = _office_client(app_fx)
-    r1 = client.post('/teachers/create', data={
-        'name': 'أستاذ مستورد',
-        'username': 'imported_t2',
+    r = client.post('/teachers/create', data={
+        'name': 'أستاذ بلا كلمة مرور',
+        'username': 'nopass_user',
         'department_ids[]': '1',
         'position': '',
         '_csrf_token': 'test-token',
     })
-    assert r1.status_code == 302
-    code = _code_from_flash(_flash(client))
+    assert r.status_code == 200
+    body = r.get_data(as_text=True)
+    assert 'كلمة المرور' in body
 
     conn = sqlite3.connect(db_fx)
     conn.row_factory = sqlite3.Row
-    user = conn.execute(
-        "SELECT u.* FROM users u JOIN teachers t ON t.user_id = u.id "
-        "WHERE u.username = ?", ('imported_t2',),
-    ).fetchone()
+    assert conn.execute(
+        "SELECT COUNT(*) AS c FROM users WHERE username = 'nopass_user'"
+    ).fetchone()['c'] == 0
     conn.close()
-    assert user['force_password_change'] == 1
-    assert user['initial_login_code_used'] == 0
-    assert user['initial_login_code_hash']
 
-    login = app_fx.test_client()
-    with login.session_transaction() as sess:
-        sess['_csrf_token'] = 'test-token'
-    r2 = login.post('/login', data={
-        'username': 'imported_t2', 'password': 'SomethingElse!',
+
+def test_create_rejects_password_below_policy(app_fx, db_fx):
+    """The create form applies the same 8-char complexity policy as the
+    service, so a weak password is refused before anything is written."""
+    client = _office_client(app_fx)
+    r = client.post('/teachers/create', data={
+        'name': 'أستاذ ضعيف',
+        'username': 'weakpw_user',
+        'password': 'abc',
+        'department_ids[]': '1',
+        'position': '',
         '_csrf_token': 'test-token',
     })
-    assert r2.status_code == 200
-    assert 'اسم المستخدم أو كلمة المرور غير صحيحة' in r2.get_data(as_text=True)
+    assert r.status_code == 200
+    assert 'كلمة المرور' in r.get_data(as_text=True)
 
-    r3 = login.post('/login', data={
-        'username': 'imported_t2', 'password': code,
-        '_csrf_token': 'test-token',
-    })
-    assert r3.status_code == 302
-    assert 'change-password' in r3.headers.get('Location', '')
+    conn = sqlite3.connect(db_fx)
+    conn.row_factory = sqlite3.Row
+    assert conn.execute(
+        "SELECT COUNT(*) AS c FROM users WHERE username = 'weakpw_user'"
+    ).fetchone()['c'] == 0
+    conn.close()
 
 
 # ── Username validation errors on the create form ────────────────────────
@@ -261,6 +297,7 @@ def test_create_short_username_shows_arabic_error(app_fx, db_fx):
     r = client.post('/teachers/create', data={
         'name': 'أستاذ قصير',
         'username': 'x',
+        'password': _PASSWORD,
         'department_ids[]': '1',
         'position': '',
         '_csrf_token': 'test-token',
@@ -276,13 +313,13 @@ def test_create_duplicate_username_shows_arabic_error(app_fx, db_fx):
     r = client.post('/teachers/create', data={
         'name': 'أستاذ مكرر',
         'username': 'office_manager',
+        'password': _PASSWORD,
         'department_ids[]': '1',
         'position': '',
         '_csrf_token': 'test-token',
     })
     assert r.status_code == 200
     assert 'نيك نيم الدخول مستخدم مسبقاً' in r.get_data(as_text=True)
-
 
 # ── Initial code lifecycle (service-level creation) ──────────────────────
 
@@ -299,9 +336,10 @@ def test_initial_code_login_forces_change_then_accepts_new_password(app_fx, db_f
     svc = TeacherService(conn, TeacherRepository(conn), UserRepository(conn))
     creds = svc.create_teacher({
         'name': 'عضو برمز أولي', 'email': '', 'phone': '', 'department_id': 1,
-        'academic_number': 'AN-CODEX', 'qualification_id': None, 'rank_id': None,
+        'academic_number': 'AN-CODEX', 'username': 'codex_user',
+        'qualification_id': None, 'rank_id': None,
         'classification_id': None, 'national_id': '', 'contract_date': '', 'tasks': '',
-    }, department_ids=[1], additional_roles=None)
+    }, department_ids=[1], additional_roles=None, initial_password=_INITIAL_PASSWORD)
     conn.close()
 
     client = app_fx.test_client()
@@ -352,10 +390,10 @@ def test_reset_password_releases_stuck_expired_code(app_fx, db_fx, captured_emai
     svc = TeacherService(conn, TeacherRepository(conn), UserRepository(conn))
     creds = svc.create_teacher({
         'name': 'عضو عالق بالرمز', 'email': 'stuck@example.com', 'phone': '',
-        'department_id': 1, 'academic_number': 'AN-STUCK2',
+        'department_id': 1,         'academic_number': 'AN-STUCK2', 'username': 'stuck_user',
         'qualification_id': None, 'rank_id': None, 'classification_id': None,
         'national_id': '', 'contract_date': '', 'tasks': '',
-    }, department_ids=[1], additional_roles=None)
+    }, department_ids=[1], additional_roles=None, initial_password=_INITIAL_PASSWORD)
     # expire the unused code so the login becomes locked
     conn.execute(
         'UPDATE users SET initial_login_code_expires = ? WHERE username = ?',
@@ -393,7 +431,7 @@ def test_reset_password_releases_stuck_expired_code(app_fx, db_fx, captured_emai
     # Hanan's case relies on
     on_screen = [(c, m) for c, m in flashes if 'تم إنشاء رمز دخول جديد' in m]
     assert on_screen
-    new_code = _code_from_flash(on_screen)
+    new_code = _recovery_code_from_flash(on_screen)
 
     conn = sqlite3.connect(db_fx)
     conn.row_factory = sqlite3.Row
@@ -401,12 +439,17 @@ def test_reset_password_releases_stuck_expired_code(app_fx, db_fx, captured_emai
         'SELECT * FROM users WHERE username=?', (creds['username'],)
     ).fetchone()
     conn.close()
+    # The recovery code is stored hashed and is a separate channel: it does not
+    # renew the (still expired) initial login code.
+    assert user['recovery_code_hash']
+    assert user['recovery_code_hash'] != new_code
+    assert user['recovery_code_expires_at']
+    assert user['recovery_code_attempts'] == 0
     assert user['force_password_change'] == 1
-    assert user['initial_login_code_used'] == 0
-    assert user['initial_login_code_hash']
-    assert user['initial_login_code_expires'] > '2000-01-01 00:00:00'
+    assert user['initial_login_code_expires'] == '2000-01-01 00:00:00'
 
-    # the old code is dead afterwards
+    # The office password alone still cannot get in: the account stays blocked
+    # by the expired initial code, so only the recovery code releases it.
     login2 = app_fx.test_client()
     with login2.session_transaction() as sess:
         sess['_csrf_token'] = 'test-token'
@@ -415,9 +458,9 @@ def test_reset_password_releases_stuck_expired_code(app_fx, db_fx, captured_emai
         '_csrf_token': 'test-token',
     })
     assert r2.status_code == 200
-    assert 'اسم المستخدم أو كلمة المرور غير صحيحة' in r2.get_data(as_text=True)
+    assert 'انتهت صلاحية رمز الدخول الأولي' in r2.get_data(as_text=True)
 
-    # the renewed code logs in and triggers the forced change
+    # the recovery code logs in and forces the password change
     r3 = login2.post('/login', data={
         'username': creds['username'], 'password': new_code,
         '_csrf_token': 'test-token',
@@ -439,9 +482,9 @@ def test_expired_unused_code_shows_distinct_login_message(app_fx, db_fx):
     svc = TeacherService(conn, TeacherRepository(conn), UserRepository(conn))
     creds = svc.create_teacher({
         'name': 'عضو رمز منتهي', 'email': '', 'phone': '', 'department_id': 1,
-        'academic_number': 'AN-EXPD', 'qualification_id': None, 'rank_id': None,
+        'academic_number': 'AN-EXPD', 'username': 'expd_user', 'qualification_id': None, 'rank_id': None,
         'classification_id': None, 'national_id': '', 'contract_date': '', 'tasks': '',
-    }, department_ids=[1], additional_roles=None)
+    }, department_ids=[1], additional_roles=None, initial_password=_INITIAL_PASSWORD)
     conn.execute(
         'UPDATE users SET initial_login_code_expires = ? WHERE username = ?',
         ('2000-01-01 00:00:00', creds['username']),
@@ -474,9 +517,9 @@ def test_wrong_password_keeps_generic_login_message(app_fx, db_fx):
     svc = TeacherService(conn, TeacherRepository(conn), UserRepository(conn))
     creds = svc.create_teacher({
         'name': 'عضو كلمة خاطئة', 'email': '', 'phone': '', 'department_id': 1,
-        'academic_number': 'AN-WRONGPW', 'qualification_id': None, 'rank_id': None,
+        'academic_number': 'AN-WRONGPW', 'username': 'wrongpw_user', 'qualification_id': None, 'rank_id': None,
         'classification_id': None, 'national_id': '', 'contract_date': '', 'tasks': '',
-    }, department_ids=[1], additional_roles=None)
+    }, department_ids=[1], additional_roles=None, initial_password=_INITIAL_PASSWORD)
     conn.close()
 
     login = app_fx.test_client()
