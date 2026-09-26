@@ -297,6 +297,17 @@ def test_codes_tab_for_course_without_submission(client):
     assert 'name="practical_curriculum_present" value="1"' in body
 
 
+def test_course_content_editor_has_one_print_and_publish_action(client):
+    cid = _course_id('CS103')
+    body = client.get(
+        f'/teacher/super-admin/course-content/create?course_id={cid}'
+    ).get_data(as_text=True)
+
+    assert body.count('onclick="downloadCourseSheet()"') == 1
+    assert body.count('data-action="send"') == 1
+    assert 'حفظ / تنزيل PDF' not in body
+
+
 def test_curriculum_rows_are_manual_and_both_sections_stop_at_12_weeks():
     script = _read_js('static/js/pages/teachers__course_content_doc.js')
     template = _read_js('templates/teachers/_course_content_doc.html')

@@ -208,13 +208,13 @@
       </div>
     </section>
 
-    <!-- Section: Official Dates & Tasks -->
+    <!-- Section: Official Dates -->
     <section class="rounded-2xl bg-surface-container-lowest border border-outline-variant/50 shadow-sm overflow-hidden">
       <div class="px-5 py-3 border-b border-outline-variant/40 bg-surface/70 flex items-center gap-2">
         <span class="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
           <span class="material-symbols-outlined text-[18px]">calendar_month</span>
         </span>
-        <h2 class="text-sm font-bold text-on-surface">التواريخ الرسمية والمهام</h2>
+        <h2 class="text-sm font-bold text-on-surface">التواريخ الرسمية</h2>
       </div>
 
       <div class="p-5 space-y-3.5">
@@ -224,10 +224,6 @@
           'first_lecture_date': form.get('first_lecture_date', ''),
         } %}
         {{ official_dates_fields(inp, fv_dates) }}
-        <div class="flex flex-col gap-1.5">
-          <label class="text-xs font-semibold text-on-surface-variant">المهام والملاحظات الخاصة</label>
-          <textarea class="w-full rounded-xl border border-outline-variant bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary text-sm text-on-surface placeholder:text-on-surface-variant/50 p-2.5 transition-colors" name="tasks" rows="2" placeholder="أدخل أي لجان علمية، أعباء إضافية، أو ملاحظات خاصة بالعضو...">{{ form.get('tasks', '') }}</textarea>
-        </div>
       </div>
     </section>
 

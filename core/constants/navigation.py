@@ -103,14 +103,25 @@ NAV_ITEMS = [
         'active_keys': ['history'],
         'section': 'more',
     },
-    # الأقسام
+    # الأقسام — للقراءة فقط لكل حامل departments.view؛ أدوات الإنشاء/الحذف
+    # نفسها محجوبة داخل القالب خلف departments.manage (يضعها exam فقط).
     {
         'key': 'departments',
         'endpoint': 'departments.departments_list',
         'icon': 'account_tree',
         'label': 'الأقسام',
-        'permission': 'departments.manage',
+        'permission': 'departments.view',
         'active_keys': ['departments'],
+        'section': 'more',
+    },
+    # القاعات — للقراءة فقط؛ الإنشاء/التعديل/الحذف خلف rooms.manage
+    {
+        'key': 'rooms',
+        'endpoint': 'classrooms.rooms_list',
+        'icon': 'meeting_room',
+        'label': 'القاعات',
+        'permission': 'rooms.view',
+        'active_keys': ['rooms'],
         'section': 'more',
     },
 ]

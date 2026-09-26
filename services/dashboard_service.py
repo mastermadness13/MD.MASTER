@@ -674,3 +674,270 @@ def get_dashboard_stats(role: str, show: int = 5) -> dict:
         ).fetchall()
     ]
     return stats
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  لوحة العميد — نظرة إشرافية شاملة على النطاقات الستة للمنصة (قراءة فقط)
+# ══════════════════════════════════════════════════════════════════════
+
+# /     /     >---- فلتر «المحاضرات المعتمدة» لمقارنة الجدول. يؤخذ اسم اللقب
+# /     /     >---- كوسيط لأن نفس الفلتر يُستخدم على عدة ألقاب مختلفة
+# /     /     >---- (t في العدّ العام، وtt داخل استعلامات أعباء التدريس)
+def _active_tt(alias: str = 't') -> str:
+    """Return the WHERE fragment selecting live (non-deleted, active-version)
+    timetable rows for *alias*.
+
+    Without this, a superseded copy of a lecture would be counted alongside the
+    live one and every department's coverage ratio would exceed reality.
+    """
+    return (
+        f'({alias}.deleted_at IS NULL AND ({alias}.version_id IS NULL OR '
+        f'{alias}.version_id IN '
+        f"(SELECT id FROM timetable_versions WHERE status = 'active')))"
+    )
+
+
+def _scalar(db, sql: str, params=()) -> int:
+    """Run a single-value ``COUNT`` query and return it as ``int``.
+
+    Centralised so every overview count degrades to ``0`` on a missing table
+    rather than raising a 500 on the dean's landing page.
+    """
+    try:
+        row = db.execute(sql, params).fetchone()
+    except Exception:
+        return 0
+    return int(row[0]) if row and row[0] is not None else 0
+
+
+def _rows(db, sql: str, params=()) -> list:
+    """Run a query and return a list of dicts, or ``[]`` if the schema differs."""
+    try:
+        return [dict(r) for r in db.execute(sql, params).fetchall()]
+    except Exception:
+        return []
+
+
+# /     /     >---- نطاق ١: الهوية — الحسابات وتوزيع الأدوار
+def _dean_identity(db) -> dict:
+    return {
+        'users': _scalar(db, 'SELECT COUNT(*) FROM users'),
+        'active_users': _scalar(
+            db, 'SELECT COUNT(*) FROM users WHERE is_active = 1'),
+        'multi_role_users': _scalar(
+            db, 'SELECT COUNT(*) FROM (SELECT user_id FROM user_roles '
+                'GROUP BY user_id HAVING COUNT(*) > 1)'),
+        'by_role': _rows(db, '''
+            SELECT ur.role AS role, COUNT(DISTINCT ur.user_id) AS count
+            FROM user_roles ur
+            JOIN users u ON u.id = ur.user_id
+            WHERE u.is_active = 1
+            GROUP BY ur.role
+            ORDER BY count DESC, ur.role
+        '''),
+    }
+
+
+# /     /     >---- نطاق ٢: الأكاديمية — الأقسام والمقررات وهيئة التدريس
+def _dean_academic(db) -> dict:
+    return {
+        'departments': _scalar(
+            db, 'SELECT COUNT(*) FROM departments WHERE deleted_at IS NULL'),
+        'academic_departments': _scalar(
+            db, "SELECT COUNT(*) FROM departments WHERE deleted_at IS NULL "
+                "AND type = 'academic'"),
+        'teachers': _scalar(
+            db, 'SELECT COUNT(*) FROM teachers WHERE deleted_at IS NULL'),
+        'courses': _scalar(
+            db, 'SELECT COUNT(*) FROM courses WHERE deleted_at IS NULL'),
+        'majors': _scalar(
+            db, 'SELECT COUNT(*) FROM department_majors'),
+        'by_rank': _rows(db, '''
+            SELECT COALESCE(NULLIF(academic_rank, ''), 'غير محدد') AS label,
+                   COUNT(*) AS count
+            FROM teachers WHERE deleted_at IS NULL
+            GROUP BY COALESCE(NULLIF(academic_rank, ''), 'غير محدد')
+            ORDER BY count DESC, label
+        '''),
+        'by_qualification': _rows(db, '''
+            SELECT COALESCE(NULLIF(qualification, ''), 'غير محدد') AS label,
+                   COUNT(*) AS count
+            FROM teachers WHERE deleted_at IS NULL
+            GROUP BY COALESCE(NULLIF(qualification, ''), 'غير محدد')
+            ORDER BY count DESC, label
+        '''),
+    }
+
+
+# /     /     >---- نطاق ٣: الجدولة — القاعات والفترات ونِسَب تغطية الجدول
+def _dean_scheduling(db) -> dict:
+    live = _active_tt('t')
+    rows = _rows(db, f'''
+        SELECT d.id AS id, d.name AS name, d.type AS type,
+               (SELECT COUNT(*) FROM course_departments cd
+                 WHERE cd.department_id = d.id) AS courses,
+               (SELECT COUNT(*) FROM teacher_departments td
+                 WHERE td.department_id = d.id) AS teachers,
+               (SELECT COUNT(*) FROM timetable t
+                 WHERE t.department_id = d.id AND {live}) AS lectures,
+               (SELECT COUNT(*) FROM rooms r
+                 WHERE r.department_id = d.id AND r.deleted_at IS NULL) AS rooms
+        FROM departments d
+        WHERE d.deleted_at IS NULL AND d.hidden = 0
+        ORDER BY d.name
+    ''')
+    # /     /     >---- نسبة تغطية الجدول لكل قسم (0-100) — مقررات لها محاضرة فعلية
+    for r in rows:
+        r['coverage'] = round((r['lectures'] / r['courses'] * 100)) if r['courses'] else 0
+    return {
+        'rooms': _scalar(
+            db, 'SELECT COUNT(*) FROM rooms WHERE deleted_at IS NULL'),
+        'room_capacity': _scalar(
+            db, 'SELECT COALESCE(SUM(capacity), 0) FROM rooms WHERE deleted_at IS NULL'),
+        'periods': _scalar(
+            db, 'SELECT COUNT(*) FROM period_settings WHERE is_enabled = 1'),
+        'lectures': _scalar(
+            db, f'SELECT COUNT(*) FROM timetable t WHERE {_active_tt("t")}'),
+        'active_versions': _scalar(
+            db, "SELECT COUNT(*) FROM timetable_versions WHERE status = 'active'"),
+        'departments': rows,
+    }
+
+
+# /     /     >---- نطاق ٤: الامتحانات — المجدول والقادم وتوزيعه على الأيام
+def _dean_examinations(db) -> dict:
+    return {
+        'total': _scalar(db, 'SELECT COUNT(*) FROM exam_schedule'),
+        'upcoming': _scalar(
+            db, "SELECT COUNT(*) FROM exam_schedule "
+                "WHERE date(exam_date) >= date('now')"),
+        'past': _scalar(
+            db, "SELECT COUNT(*) FROM exam_schedule "
+                "WHERE date(exam_date) < date('now')"),
+        'published': _scalar(
+            db, "SELECT COUNT(*) FROM exam_schedule WHERE status = 'published'"),
+        'periods_configured': _scalar(db, 'SELECT COUNT(*) FROM exam_settings'),
+        'by_status': _rows(db, '''
+            SELECT COALESCE(NULLIF(status, ''), 'غير محدد') AS label,
+                   COUNT(*) AS count
+            FROM exam_schedule
+            GROUP BY COALESCE(NULLIF(status, ''), 'غير محدد')
+            ORDER BY count DESC, label
+        '''),
+        'by_day': _rows(db, '''
+            SELECT COALESCE(NULLIF(day_ar, ''), 'غير محدد') AS label,
+                   COUNT(*) AS count
+            FROM exam_schedule
+            GROUP BY COALESCE(NULLIF(day_ar, ''), 'غير محدد')
+            ORDER BY count DESC, label
+        '''),
+        'next_exams': _rows(db, '''
+            SELECT es.exam_date AS exam_date, es.start_time AS start_time,
+                   es.end_time AS end_time, es.day_ar AS day_ar,
+                   c.name AS course_name, c.code AS course_code,
+                   r.name AS room_name
+            FROM exam_schedule es
+            LEFT JOIN courses c ON c.id = es.course_id
+            LEFT JOIN rooms r ON r.id = es.room_id
+            WHERE date(es.exam_date) >= date('now')
+            ORDER BY es.exam_date ASC, es.start_time ASC
+            LIMIT 8
+        '''),
+    }
+
+
+# /     /     >---- نطاق ٥: التواصل — الرسائل والطلبات والإعلانات
+def _dean_communication(db) -> dict:
+    return {
+        'messages': _scalar(db, 'SELECT COUNT(*) FROM teacher_messages'),
+        'messages_pending': _scalar(
+            db, "SELECT COUNT(*) FROM teacher_messages WHERE status = 'pending'"),
+        'requests': _scalar(db, 'SELECT COUNT(*) FROM teacher_requests'),
+        'requests_pending': _scalar(
+            db, "SELECT COUNT(*) FROM teacher_requests WHERE status = 'pending'"),
+        'announcements': _scalar(
+            db, 'SELECT COUNT(*) FROM department_announcements WHERE is_published = 1'),
+        'notifications': _scalar(db, 'SELECT COUNT(*) FROM notifications'),
+        'recent_announcements': _rows(db, '''
+            SELECT da.title AS title, da.priority AS priority,
+                   da.created_at AS created_at, d.name AS department_name
+            FROM department_announcements da
+            LEFT JOIN departments d ON d.id = da.department_id
+            WHERE da.is_published = 1
+            ORDER BY da.created_at DESC
+            LIMIT 5
+        '''),
+    }
+
+
+# /     /     >---- نطاق ٦: التدقيق — سجل العمليات
+def _dean_auditing(db, show: int) -> dict:
+    return {
+        'total': _scalar(db, 'SELECT COUNT(*) FROM history'),
+        'recent': _rows(db, '''
+            SELECT h.created_at AS created_at, h.actor_username AS actor_username,
+                   h.message AS message, h.action AS action,
+                   h.entity_type AS entity_type, h.entity_id AS entity_id
+            FROM history h
+            ORDER BY h.created_at DESC
+            LIMIT ?
+        ''', (show,)),
+        'by_entity': _rows(db, '''
+            SELECT COALESCE(NULLIF(entity_type, ''), 'غير محدد') AS label,
+                   COUNT(*) AS count
+            FROM history
+            GROUP BY COALESCE(NULLIF(entity_type, ''), 'غير محدد')
+            ORDER BY count DESC, label
+            LIMIT 8
+        '''),
+    }
+
+
+# /     /     >---- أعباء التدريس لكل أستاذ (نفس استعلام مكتب شؤون التدريس)
+def _dean_teaching_load(db) -> list:
+    live = _active_tt('t')
+    return _rows(db, f'''
+        SELECT t.id AS id, t.name AS name, t.academic_number AS academic_number,
+               COALESCE(d.name, '') AS dept_name,
+               (SELECT COUNT(DISTINCT x.course_id) FROM timetable x
+                 WHERE x.teacher_id = t.id AND {_active_tt("x")}
+                   AND x.course_id IS NOT NULL) AS course_count,
+               (SELECT COUNT(*) FROM timetable x
+                 WHERE x.teacher_id = t.id AND {_active_tt("x")}) AS lecture_count,
+               (SELECT COALESCE(SUM(COALESCE(NULLIF(x.hours, 0),
+                          NULLIF(c.total_hours, 0),
+                          COALESCE(c.theoretical_hours, 0)
+                            + COALESCE(c.practical_hours, 0), 0)), 0)
+                  FROM timetable x
+                  LEFT JOIN courses c ON c.id = x.course_id
+                 WHERE x.teacher_id = t.id AND {_active_tt("x")}) AS hours_count
+        FROM teachers t
+        LEFT JOIN departments d ON d.id = t.department_id
+        WHERE t.deleted_at IS NULL
+        ORDER BY hours_count DESC, t.name
+    ''')
+
+
+# /     /     >---- البيانات الكاملة للوحة العميد (قراءة فقط، تغطّي نطاقات المنصة الستة)
+def get_dean_overview_data(db, show: int = 8) -> dict:
+    """College-wide read-only overview for the dean.
+
+    Aggregates every domain of the platform into a single payload so the dean
+    can see the state of the whole college from one page, plus a directory of
+    the read-only pages he is allowed to open.
+
+    Read-only by construction: every statement is a ``SELECT``. Counts use
+    :func:`_scalar` and lists use :func:`_rows`, so a column that a partially
+    migrated schema lacks degrades to ``0`` / ``[]`` instead of 500-ing the
+    landing page.
+    """
+    show = max(1, int(show or 1))
+    return {
+        'identity': _dean_identity(db),
+        'academic': _dean_academic(db),
+        'scheduling': _dean_scheduling(db),
+        'examinations': _dean_examinations(db),
+        'communication': _dean_communication(db),
+        'auditing': _dean_auditing(db, show),
+        'teaching_load': _dean_teaching_load(db),
+    }

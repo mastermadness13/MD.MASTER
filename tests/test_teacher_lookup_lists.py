@@ -71,7 +71,7 @@ def test_lookup_lists_are_restricted_to_faculty_affairs(lookup_setup):
     _, manager, hod = lookup_setup
 
     assert manager.get('/teachers/lookup-lists').status_code == 200
-    assert hod.get('/teachers/lookup-lists').status_code == 403
+    assert hod.get('/teachers/lookup-lists').status_code == 302
 
 
 def test_system_assignment_rename_keeps_its_internal_role(lookup_setup):

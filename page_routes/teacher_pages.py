@@ -1714,12 +1714,12 @@ def super_admin_course_content_send():
     try:
         if action == 'send':
             publish_directly(db, submission_id, actor_role,
-                             weeks_total=theoretical_weeks,
+                             weeks_total=section_week_totals['theoretical'],
                              actor_user_id=actor_user_id)
         else:
             transition_submission(
                 db, submission_id, action, actor_role,
-                weeks_total=theoretical_weeks,
+                weeks_total=section_week_totals['theoretical'],
                 actor_user_id=actor_user_id)
     except CourseContentError as exc:
         flash(str(exc), 'error')

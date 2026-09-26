@@ -3,125 +3,505 @@
 {% set page_title = 'لوحة تحكم العميد' %}
 
 {% set stats = stats | default({}) %}
-{% set recent_activity = stats.get('recent_activity', []) | default([]) %}
+{% set d = dean_data | default({}) %}
+{% set ident = d.get('identity', {}) %}
+{% set acad = d.get('academic', {}) %}
+{% set sched = d.get('scheduling', {}) %}
+{% set exams_d = d.get('examinations', {}) %}
+{% set comm = d.get('communication', {}) %}
+{% set audit = d.get('auditing', {}) %}
+{% set load_rows = d.get('teaching_load', []) %}
+{% set role_ar = role_labels | default({}) %}
 
 {% block content %}
 <div class="max-w-7xl mx-auto">
 
-  <!-- Page Header -->
-  <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
-    <div class="flex items-center gap-3">
-      <span class="material-symbols-outlined text-primary text-3xl">account_balance</span>
+  {# ── الترويسة ─────────────────────────────────────────────────────── #}
+  <div class="page-header">
+    <div class="page-header-info">
+      <span class="material-symbols-outlined page-header-icon">account_balance</span>
       <div>
-        <h1 class="text-2xl font-bold text-on-surface">لوحة العميد</h1>
-        <p class="page-subtitle">مرحباً {{ user.label or user.username }}، نظرة إشرافية قراءة فقط على الكلية.</p>
+        <h1 class="page-title">لوحة العميد</h1>
+        <p class="page-subtitle">نظرة إشرافية شاملة على الكلية — كل النطاقات، قراءة فقط</p>
+      </div>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <span class="inline-flex items-center gap-1.5 rounded-full bg-surface-dim text-on-surface-variant px-3 py-1.5 text-xs font-bold">
+        <span class="material-symbols-outlined text-sm">visibility</span>
+        وضع القراءة فقط
+      </span>
+      <span class="inline-flex items-center gap-1.5 rounded-full bg-surface-dim text-on-surface-variant px-3 py-1.5 text-xs font-bold">
+        <span class="material-symbols-outlined text-sm">badge</span>
+        {{ role_ar.get('dean', 'العميد') }}
+      </span>
+    </div>
+  </div>
+
+  {# ── بطاقات النطاقات الستة ────────────────────────────────────────── #}
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon i1"><span class="material-symbols-outlined">badge</span></div>
+      <div>
+        <div class="stat-value">{{ ident.get('users', 0) }}</div>
+        <div class="stat-label">حساب (نشط {{ ident.get('active_users', 0) }})</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon i2"><span class="material-symbols-outlined">account_tree</span></div>
+      <div>
+        <div class="stat-value">{{ acad.get('departments', 0) }}</div>
+        <div class="stat-label">قسم ({{ acad.get('academic_departments', 0) }} علمي)</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon i3"><span class="material-symbols-outlined">school</span></div>
+      <div>
+        <div class="stat-value">{{ acad.get('teachers', 0) }}</div>
+        <div class="stat-label">عضو هيئة تدريس</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon i4"><span class="material-symbols-outlined">menu_book</span></div>
+      <div>
+        <div class="stat-value">{{ acad.get('courses', 0) }}</div>
+        <div class="stat-label">مقرر دراسي</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon i5"><span class="material-symbols-outlined">meeting_room</span></div>
+      <div>
+        <div class="stat-value">{{ sched.get('rooms', 0) }}</div>
+        <div class="stat-label">قاعة ({{ sched.get('room_capacity', 0) }} مقعد)</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon i1"><span class="material-symbols-outlined">grading</span></div>
+      <div>
+        <div class="stat-value">{{ exams_d.get('total', 0) }}</div>
+        <div class="stat-label">امتحان مجدول</div>
       </div>
     </div>
   </div>
 
-  <!-- Stats Cards -->
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-    <div class="bg-white rounded-xl border border-outline-variant p-4 flex items-center gap-4 shadow-sm">
-      <div class="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-        <span class="material-symbols-outlined">school</span>
+  {# ── النطاق ١: الهوية ─────────────────────────────────────────────── #}
+  <div class="page-card mb-5">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary">badge</span>
+        <h2 class="text-base font-bold text-on-surface m-0">الهوية والصلاحيات</h2>
       </div>
-      <div>
-        <div class="text-2xl font-bold text-on-surface">{{ stats.get('teachers', 0) }}</div>
-        <div class="text-xs font-bold text-on-surface-variant mt-0.5">هيئة التدريس</div>
+      <span class="text-xs font-bold text-on-surface-variant">
+        {{ ident.get('users', 0) }} حساب — {{ ident.get('multi_role_users', 0) }} متعدد الأدوار
+      </span>
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+      <div class="rounded-xl border border-outline-variant p-3">
+        <div class="text-lg font-bold text-on-surface">{{ ident.get('users', 0) }}</div>
+        <div class="text-xs text-on-surface-variant">إجمالي الحسابات</div>
+      </div>
+      <div class="rounded-xl border border-outline-variant p-3">
+        <div class="text-lg font-bold text-on-surface">{{ ident.get('active_users', 0) }}</div>
+        <div class="text-xs text-on-surface-variant">حسابات نشطة</div>
+      </div>
+      <div class="rounded-xl border border-outline-variant p-3">
+        <div class="text-lg font-bold text-on-surface">{{ ident.get('multi_role_users', 0) }}</div>
+        <div class="text-xs text-on-surface-variant">حسابات بأدوار متعددة</div>
+      </div>
+      <div class="rounded-xl border border-outline-variant p-3">
+        <div class="text-lg font-bold text-on-surface">{{ audit.get('total', 0) }}</div>
+        <div class="text-xs text-on-surface-variant">سجل عمليات</div>
       </div>
     </div>
-    <div class="bg-white rounded-xl border border-outline-variant p-4 flex items-center gap-4 shadow-sm">
-      <div class="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-        <span class="material-symbols-outlined">domain</span>
-      </div>
-      <div>
-        <div class="text-2xl font-bold text-on-surface">{{ stats.get('departments', 0) }}</div>
-        <div class="text-xs font-bold text-on-surface-variant mt-0.5">الأقسام</div>
-      </div>
+    {% if ident.get('by_role') %}
+    <div class="flex flex-wrap gap-2">
+      {% for r in ident.get('by_role') %}
+      <span class="inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary px-3 py-1.5 text-xs font-bold">
+        {{ role_ar.get(r.role, r.role) }}
+        <span class="opacity-70">{{ r.count }}</span>
+      </span>
+      {% endfor %}
     </div>
-    <div class="bg-white rounded-xl border border-outline-variant p-4 flex items-center gap-4 shadow-sm">
-      <div class="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-        <span class="material-symbols-outlined">menu_book</span>
-      </div>
-      <div>
-        <div class="text-2xl font-bold text-on-surface">{{ stats.get('courses', 0) }}</div>
-        <div class="text-xs font-bold text-on-surface-variant mt-0.5">المقررات</div>
-      </div>
-    </div>
-    <div class="bg-white rounded-xl border border-outline-variant p-4 flex items-center gap-4 shadow-sm">
-      <div class="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-        <span class="material-symbols-outlined">grading</span>
-      </div>
-      <div>
-        <div class="text-2xl font-bold text-on-surface">{{ stats.get('exams', 0) }}</div>
-        <div class="text-xs font-bold text-on-surface-variant mt-0.5">امتحانات مجدولة</div>
-      </div>
-    </div>
+    {% else %}
+    <p class="text-sm text-on-surface-variant m-0">لا توجد أدوار مسندة بعد</p>
+    {% endif %}
   </div>
 
-  <!-- Quick read-only links -->
-  <div class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden mb-6">
-    <div class="px-5 py-4 border-b border-primary/10 bg-surface-dim flex items-center gap-2">
-      <span class="material-symbols-outlined text-primary">visibility</span>
-      <h3 class="font-bold text-primary">مناطق الإشراف (قراءة فقط)</h3>
+  {# ── النطاق ٢: الأقسام وتغطية الجدول ───────────────────────────────── #}
+  <div class="page-card mb-5">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary">account_tree</span>
+        <h2 class="text-base font-bold text-on-surface m-0">الأقسام ونِسَب تغطية الجدول</h2>
+      </div>
+      {% if has_permission('departments.view') %}
+      <a href="{{ url_for('departments.departments_list') }}" class="btn btn-sm">عرض كل الأقسام</a>
+      {% endif %}
     </div>
-    <div class="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-      <a href="{{ url_for('timetable.timetable') }}" class="flex items-center gap-3 rounded-xl border border-outline-variant p-4 hover:border-primary hover:bg-primary/5 transition-colors">
+    {% set dept_rows = sched.get('departments', []) %}
+    {% if dept_rows %}
+    <div class="overflow-x-auto">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>القسم</th>
+            <th>مقررات</th>
+            <th>أساتذة</th>
+            <th>محاضرات</th>
+            <th>قاعات</th>
+            <th>تغطية الجدول</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in dept_rows %}
+          <tr>
+            <td class="font-bold text-on-surface">{{ r.name }}</td>
+            <td>{{ r.courses }}</td>
+            <td>{{ r.teachers }}</td>
+            <td>{{ r.lectures }}</td>
+            <td>{{ r.rooms }}</td>
+            <td>
+              <div class="flex items-center gap-2">
+                <div class="w-20 h-2 rounded-full bg-surface-dim overflow-hidden">
+                  <div class="h-full rounded-full bg-primary" style="width: {{ [r.coverage, 100] | min }}%"></div>
+                </div>
+                <span class="text-xs font-bold text-on-surface-variant">{{ r.coverage }}%</span>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="text-xs text-on-surface-variant mt-3 mb-0">
+      تغطية الجدول = عدد المحاضرات المعتمدة ÷ عدد المقررات. النسبة تُحسب على النسخة النشطة من الجدول فقط.
+    </p>
+    {% else %}
+    <p class="text-sm text-on-surface-variant m-0">لا توجد أقسام مسجّلة</p>
+    {% endif %}
+  </div>
+
+  {# ── النطاق ٣: الجدولة وهيئة التدريس ──────────────────────────────── #}
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+    <div class="page-card">
+      <div class="flex items-center gap-2 mb-4">
         <span class="material-symbols-outlined text-primary">calendar_today</span>
-        <span class="font-bold text-on-surface">الجدول الدراسي</span>
-      </a>
-      <a href="{{ url_for('exams.exams') }}" class="flex items-center gap-3 rounded-xl border border-outline-variant p-4 hover:border-primary hover:bg-primary/5 transition-colors">
-        <span class="material-symbols-outlined text-primary">grading</span>
-        <span class="font-bold text-on-surface">الجدول الامتحانات</span>
-      </a>
-      <a href="{{ url_for('courses.courses_list') }}" class="flex items-center gap-3 rounded-xl border border-outline-variant p-4 hover:border-primary hover:bg-primary/5 transition-colors">
-        <span class="material-symbols-outlined text-primary">menu_book</span>
-        <span class="font-bold text-on-surface">المقررات الدراسية</span>
-      </a>
-      <a href="{{ url_for('classrooms.rooms_list') }}" class="flex items-center gap-3 rounded-xl border border-outline-variant p-4 hover:border-primary hover:bg-primary/5 transition-colors">
-        <span class="material-symbols-outlined text-primary">meeting_room</span>
-        <span class="font-bold text-on-surface">القاعات</span>
-      </a>
-      <a href="{{ url_for('teachers.teachers_list') }}" class="flex items-center gap-3 rounded-xl border border-outline-variant p-4 hover:border-primary hover:bg-primary/5 transition-colors">
+        <h2 class="text-base font-bold text-on-surface m-0">الجدولة</h2>
+      </div>
+      <div class="grid grid-cols-2 gap-3 mb-4">
+        <div class="rounded-xl border border-outline-variant p-3">
+          <div class="text-lg font-bold text-on-surface">{{ sched.get('lectures', 0) }}</div>
+          <div class="text-xs text-on-surface-variant">محاضرة مجدولة</div>
+        </div>
+        <div class="rounded-xl border border-outline-variant p-3">
+          <div class="text-lg font-bold text-on-surface">{{ sched.get('periods', 0) }}</div>
+          <div class="text-xs text-on-surface-variant">فترة يومية مفعّلة</div>
+        </div>
+        <div class="rounded-xl border border-outline-variant p-3">
+          <div class="text-lg font-bold text-on-surface">{{ sched.get('rooms', 0) }}</div>
+          <div class="text-xs text-on-surface-variant">قاعة</div>
+        </div>
+        <div class="rounded-xl border border-outline-variant p-3">
+          <div class="text-lg font-bold text-on-surface">{{ sched.get('active_versions', 0) }}</div>
+          <div class="text-xs text-on-surface-variant">نسخة جدول معتمدة</div>
+        </div>
+      </div>
+      {% if has_permission('timetable.view') %}
+      <div class="flex flex-wrap gap-2">
+        <a href="{{ url_for('timetable.timetable') }}" class="btn btn-sm">الجدول الدراسي</a>
+        <a href="{{ url_for('timetable.timetable_department_view') }}" class="btn btn-sm">جدول قسم</a>
+        <a href="{{ url_for('timetable.teachers_schedule') }}" class="btn btn-sm">جداول الأساتذة</a>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="page-card">
+      <div class="flex items-center gap-2 mb-4">
         <span class="material-symbols-outlined text-primary">school</span>
-        <span class="font-bold text-on-surface">أعضاء هيئة التدريس</span>
-      </a>
-      <a href="{{ url_for('history.history_list') }}" class="flex items-center gap-3 rounded-xl border border-outline-variant p-4 hover:border-primary hover:bg-primary/5 transition-colors">
-        <span class="material-symbols-outlined text-primary">history</span>
-        <span class="font-bold text-on-surface">سجل التغييرات</span>
-      </a>
+        <h2 class="text-base font-bold text-on-surface m-0">هيئة التدريس</h2>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="rounded-xl border border-outline-variant p-3">
+          <div class="text-lg font-bold text-on-surface">{{ acad.get('teachers', 0) }}</div>
+          <div class="text-xs text-on-surface-variant">عضو هيئة تدريس</div>
+        </div>
+        <div class="rounded-xl border border-outline-variant p-3">
+          <div class="text-lg font-bold text-on-surface">{{ acad.get('majors', 0) }}</div>
+          <div class="text-xs text-on-surface-variant">تخصص مسجّل</div>
+        </div>
+      </div>
+      {% if acad.get('by_rank') %}
+      <div class="mt-4">
+        <div class="text-xs font-bold text-on-surface-variant mb-2">حسب الرتبة العلمية</div>
+        <div class="flex flex-wrap gap-2 mb-3">
+          {% for r in acad.get('by_rank') %}
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-surface-dim px-3 py-1.5 text-xs font-bold text-on-surface">
+            {{ r.label }} <span class="opacity-60">{{ r.count }}</span>
+          </span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      {% if acad.get('by_qualification') %}
+      <div>
+        <div class="text-xs font-bold text-on-surface-variant mb-2">حسب التحصيل العلمي</div>
+        <div class="flex flex-wrap gap-2">
+          {% for r in acad.get('by_qualification') %}
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-surface-dim px-3 py-1.5 text-xs font-bold text-on-surface">
+            {{ r.label }} <span class="opacity-60">{{ r.count }}</span>
+          </span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      {% if has_permission('teachers.view') %}
+      <div class="mt-4">
+        <a href="{{ url_for('teachers.teachers_list') }}" class="btn btn-sm">قائمة هيئة التدريس</a>
+      </div>
+      {% endif %}
     </div>
   </div>
 
-  <!-- Recent activity -->
-  <div class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
-    <div class="px-5 py-4 border-b border-primary/10 bg-surface-dim flex items-center gap-2">
-      <span class="material-symbols-outlined text-primary">receipt_long</span>
-      <h3 class="font-bold text-primary">آخر النشاطات</h3>
+  {# ── النطاق ٤: الامتحانات ─────────────────────────────────────────── #}
+  <div class="page-card mb-5">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary">grading</span>
+        <h2 class="text-base font-bold text-on-surface m-0">الامتحانات</h2>
+      </div>
+      {% if has_permission('exams.view') %}
+      <a href="{{ url_for('exams.exams') }}" class="btn btn-sm">جدول الامتحانات</a>
+      {% endif %}
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+      <div class="rounded-xl border border-outline-variant p-3">
+        <div class="text-lg font-bold text-on-surface">{{ exams_d.get('total', 0) }}</div>
+        <div class="text-xs text-on-surface-variant">إجمالي الامتحانات</div>
+      </div>
+      <div class="rounded-xl border border-outline-variant p-3">
+        <div class="text-lg font-bold text-on-surface">{{ exams_d.get('upcoming', 0) }}</div>
+        <div class="text-xs text-on-surface-variant">قادمة</div>
+      </div>
+      <div class="rounded-xl border border-outline-variant p-3">
+        <div class="text-lg font-bold text-on-surface">{{ exams_d.get('past', 0) }}</div>
+        <div class="text-xs text-on-surface-variant">منتهية</div>
+      </div>
+      <div class="rounded-xl border border-outline-variant p-3">
+        <div class="text-lg font-bold text-on-surface">{{ exams_d.get('published', 0) }}</div>
+        <div class="text-xs text-on-surface-variant">منشورة</div>
+      </div>
+    </div>
+    {% if exams_d.get('next_exams') %}
+    <div class="overflow-x-auto">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>التاريخ</th>
+            <th>اليوم</th>
+            <th>الوقت</th>
+            <th>المقرر</th>
+            <th>القاعة</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in exams_d.get('next_exams') %}
+          <tr>
+            <td class="whitespace-nowrap text-on-surface-variant" dir="ltr">{{ e.exam_date }}</td>
+            <td>{{ e.day_ar or '—' }}</td>
+            <td class="whitespace-nowrap" dir="ltr">{{ e.start_time or '' }}{% if e.end_time %} – {{ e.end_time }}{% endif %}</td>
+            <td class="font-bold text-on-surface">{{ e.course_name or '—' }}</td>
+            <td>{{ e.room_name or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% elif exams_d.get('by_status') %}
+    <div class="flex flex-wrap gap-2">
+      {% for s in exams_d.get('by_status') %}
+      <span class="inline-flex items-center gap-1.5 rounded-full bg-surface-dim px-3 py-1.5 text-xs font-bold text-on-surface">
+        {{ s.label }} <span class="opacity-60">{{ s.count }}</span>
+      </span>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-sm text-on-surface-variant m-0">لا توجد امتحانات مجدولة</p>
+    {% endif %}
+  </div>
+
+  {# ── النطاق ٥: التواصل ────────────────────────────────────────────── #}
+  <div class="page-card mb-5">
+    <div class="flex items-center gap-2 mb-4">
+      <span class="material-symbols-outlined text-primary">forum</span>
+      <h2 class="text-base font-bold text-on-surface m-0">التواصل</h2>
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+      <div class="rounded-xl border border-outline-variant p-3">
+        <div class="text-lg font-bold text-on-surface">{{ comm.get('messages_pending', 0) }}</div>
+        <div class="text-xs text-on-surface-variant">رسالة معلّقة</div>
+      </div>
+      <div class="rounded-xl border border-outline-variant p-3">
+        <div class="text-lg font-bold text-on-surface">{{ comm.get('requests_pending', 0) }}</div>
+        <div class="text-xs text-on-surface-variant">طلب معلّق</div>
+      </div>
+      <div class="rounded-xl border border-outline-variant p-3">
+        <div class="text-lg font-bold text-on-surface">{{ comm.get('announcements', 0) }}</div>
+        <div class="text-xs text-on-surface-variant">إعلان منشور</div>
+      </div>
+      <div class="rounded-xl border border-outline-variant p-3">
+        <div class="text-lg font-bold text-on-surface">{{ comm.get('notifications', 0) }}</div>
+        <div class="text-xs text-on-surface-variant">إشعار</div>
+      </div>
+    </div>
+    {% if comm.get('recent_announcements') %}
+    <div class="overflow-x-auto">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>الإعلان</th>
+            <th>القسم</th>
+            <th>الأولوية</th>
+            <th>التاريخ</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in comm.get('recent_announcements') %}
+          <tr>
+            <td class="font-bold text-on-surface">{{ a.title }}</td>
+            <td>{{ a.department_name or 'عام' }}</td>
+            <td>{{ a.priority or '—' }}</td>
+            <td class="whitespace-nowrap text-on-surface-variant" dir="ltr">{{ (a.created_at or '')[:16] }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-sm text-on-surface-variant m-0">لا توجد إعلانات منشورة</p>
+    {% endif %}
+  </div>
+
+  {# ── أعباء التدريس ────────────────────────────────────────────────── #}
+  {% if load_rows %}
+  <div class="page-card mb-5">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary">speed</span>
+        <h2 class="text-base font-bold text-on-surface m-0">أعباء التدريس</h2>
+      </div>
+      {% if has_permission('faculty_performance.view_summary') %}
+      <a href="{{ url_for('faculty_performance.performance_rate_list') }}" class="btn btn-sm">قائمة معدل الأداء</a>
+      {% endif %}
     </div>
     <div class="overflow-x-auto">
-      {% if recent_activity %}
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>الأستاذ</th>
+            <th>القسم</th>
+            <th>مقررات</th>
+            <th>محاضرات</th>
+            <th>ساعات</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in load_rows %}
+          <tr>
+            <td class="font-bold text-on-surface">{{ r.name }}</td>
+            <td>{{ r.dept_name or '—' }}</td>
+            <td>{{ r.course_count }}</td>
+            <td>{{ r.lecture_count }}</td>
+            <td class="font-bold text-primary">{{ r.hours_count }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── النطاق ٦: التدقيق ────────────────────────────────────────────── #}
+  <div class="page-card mb-5">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary">history</span>
+        <h2 class="text-base font-bold text-on-surface m-0">سجل العمليات</h2>
+      </div>
+      {% if has_permission('history.view') %}
+      <a href="{{ url_for('history.history_list') }}" class="btn btn-sm">السجل الكامل</a>
+      {% endif %}
+    </div>
+    {% if audit.get('recent') %}
+    <div class="overflow-x-auto">
       <table class="data-table">
         <thead>
           <tr>
             <th>التاريخ</th>
             <th>المستخدم</th>
-            <th>النشاط</th>
+            <th>العملية</th>
+            <th>النوع</th>
           </tr>
         </thead>
         <tbody>
-          {% for a in recent_activity %}
+          {% for h in audit.get('recent') %}
           <tr>
-            <td class="whitespace-nowrap text-on-surface-variant" dir="ltr">{{ (a.created_at or '')[:16] }}</td>
-            <td class="font-bold text-on-surface">{{ a.username }}</td>
-            <td class="text-on-surface-variant">{{ a.description }}</td>
+            <td class="whitespace-nowrap text-on-surface-variant" dir="ltr">{{ (h.created_at or '')[:16] }}</td>
+            <td class="font-bold text-on-surface">{{ h.actor_username or '—' }}</td>
+            <td class="text-on-surface-variant">{{ h.message or h.action or '—' }}</td>
+            <td>{{ h.entity_type or '—' }}</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
-      {% else %}
-      <div class="px-5 py-4 text-sm text-on-surface-variant">لا توجد نشاطات مسجلة بعد</div>
-      {% endif %}
+    </div>
+    {% else %}
+    <p class="text-sm text-on-surface-variant m-0">لا توجد عمليات مسجّلة بعد</p>
+    {% endif %}
+  </div>
+
+  {# ── دليل كل صفحات القراءة المتاحة ─────────────────────────────────── #}
+  <div class="page-card">
+    <div class="flex items-center gap-2 mb-4">
+      <span class="material-symbols-outlined text-primary">map</span>
+      <h2 class="text-base font-bold text-on-surface m-0">دليل صفحات المنصة</h2>
+    </div>
+    <p class="text-xs text-on-surface-variant mb-4">
+      كل الروابط أدناه معروضة لك حسب صلاحيات دورك الحالي، وجميعها للعرض فقط.
+    </p>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      {% set directory = [
+        ('teachers.teachers_list',        'teachers.view',                     'school',         'أعضاء هيئة التدريس'),
+        ('teachers.teaching_record_standalone', 'teachers.view',               'summarize',      'سجل التدريس'),
+        ('courses.courses_list',          'courses.view',                      'menu_book',      'المقررات الدراسية'),
+        ('timetable.timetable',           'timetable.view',                    'calendar_today', 'الجدول الدراسي'),
+        ('timetable.timetable_department_view', 'timetable.view',              'domain',         'جدول الأقسام'),
+        ('timetable.teachers_schedule',   'timetable.view',                    'groups',         'جداول الأساتذة'),
+        ('exams.exams',                   'exams.view',                        'grading',        'الجدول الامتحانات'),
+        ('classrooms.rooms_list',         'rooms.view',                        'meeting_room',   'القاعات'),
+        ('departments.departments_list',  'departments.view',                  'account_tree',   'الأقسام'),
+        ('faculty_performance.performance_rate_list', 'faculty_performance.view_summary', 'monitoring', 'قائمة معدل الأداء'),
+        ('faculty_performance.reports_select', 'faculty_performance.view',    'analytics',      'التقارير والإحصاءات'),
+        ('history.history_list',          'history.view',                      'history',        'سجل التغييرات'),
+        ('misc.lecture_schedule',         'timetable.view',                    'schedule',       'جدول المحاضرات'),
+        ('print_routes.print_timetable',  'timetable.view',                    'print',          'طباعة الجدول العام'),
+        ('print_routes.print_timetable_department', 'timetable.view',          'print',          'طباعة جدول قسم'),
+        ('print_routes.print_timetable_teacher', 'timetable.view',             'print',          'طباعة جدول أستاذ'),
+        ('print_routes.print_timetable_all', 'timetable.view',                 'print',          'طباعة كل الجداول'),
+        ('print_routes.print_list_teachers', 'teachers.view',                  'print',          'طباعة قائمة الأساتذة'),
+        ('print_routes.print_list_departments', 'departments.view',            'print',          'طباعة قائمة الأقسام'),
+        ('print_routes.print_list_rooms', 'rooms.view',                        'print',          'طباعة قائمة القاعات'),
+        ('print_routes.print_courses',    'reports.view',                      'print',          'طباعة قائمة المقررات'),
+        ('print_routes.print_exams_schedule', 'exams.view',                   'print',          'طباعة جدول الامتحانات'),
+        ('profile.profile',               'profile.view',                      'manage_accounts', 'إعدادات الحساب')
+      ] %}
+      {% for ep, perm, icon, label in directory %}
+        {% if has_permission(perm) %}
+        <a href="{{ url_for(ep) }}"
+           class="flex items-center gap-3 rounded-xl border border-outline-variant p-4 hover:border-primary hover:bg-primary/5 transition-colors">
+          <span class="material-symbols-outlined text-primary">{{ icon }}</span>
+          <span class="font-bold text-on-surface text-sm">{{ label }}</span>
+        </a>
+        {% endif %}
+      {% endfor %}
     </div>
   </div>
 

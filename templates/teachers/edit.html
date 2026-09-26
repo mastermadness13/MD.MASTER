@@ -508,6 +508,69 @@
         </div>
 
       </div>
+<section class="rounded-2xl bg-surface-container-lowest
+                    border border-outline-variant/50
+                    shadow-sm overflow-hidden">
+
+      <div class="px-5 py-3
+                  border-b border-outline-variant/40
+                  bg-surface/70
+                  flex items-center gap-2">
+
+        <span class="w-7 h-7 rounded-lg bg-primary/10
+                     text-primary flex items-center justify-center">
+
+          <span class="material-symbols-outlined text-[18px]">
+            security
+          </span>
+
+        </span>
+
+        <h2 class="text-sm font-bold text-on-surface">
+          أمان الحساب
+        </h2>
+
+      </div>
+
+
+      <div class="p-5 flex flex-col sm:flex-row
+                  items-start sm:items-center
+                  justify-between gap-4">
+
+        <div>
+
+          <p class="text-sm font-bold text-on-surface">
+            رمز الاسترجاع
+          </p>
+
+          <p class="text-xs text-on-surface-variant mt-1">
+            يمكنك إصدار رمز استرجاع مؤقت دون تغيير كلمة المرور الحالية.
+          </p>
+
+        </div>
+
+
+        <button type="submit"
+                form="reset-password-form"
+                class="inline-flex items-center gap-1.5
+                       px-3.5 py-2 rounded-xl
+                       border border-error/30
+                       bg-surface hover:bg-error/10
+                       hover:text-error transition-colors
+                       text-xs font-semibold text-error
+                       shrink-0">
+
+          <span class="material-symbols-outlined text-[18px]">
+            key
+          </span>
+
+          إصدار رمز استرجاع مؤقت
+
+        </button>
+
+      </div>
+
+    </section>
 
     </section>
 
@@ -665,17 +728,7 @@
           }}
 
         </div>
-
-      </section>
-
-    </div>
-
-
-    <!-- ======================================================= -->
-    <!-- SECTION 3: OFFICIAL DATES -->
-    <!-- ======================================================= -->
-
-    <section class="rounded-2xl bg-surface-container-lowest
+ <section class="rounded-2xl bg-surface-container-lowest
                     border border-outline-variant/50
                     shadow-sm overflow-hidden">
 
@@ -693,7 +746,7 @@
         </span>
 
         <h2 class="text-sm font-bold text-on-surface">
-          التواريخ الرسمية والمهام
+          التواريخ الرسمية
         </h2>
 
       </div>
@@ -709,38 +762,22 @@
 
 
         {{ official_dates_fields(inp, fv_dates) }}
-
-
-        <div class="flex flex-col gap-1.5">
-
-          <label class="text-xs font-semibold
-                        text-on-surface-variant">
-
-            المهام والملاحظات الخاصة
-
-          </label>
-
-
-          <textarea
-            class="w-full rounded-xl border
-                   border-outline-variant
-                   bg-surface-container-lowest
-                   focus:border-primary
-                   focus:ring-1 focus:ring-primary
-                   text-sm text-on-surface
-                   placeholder:text-on-surface-variant/50
-                   p-2.5 transition-colors"
-            name="tasks"
-            rows="3"
-            placeholder="أدخل أي لجان علمية، أعباء إضافية، أو ملاحظات خاصة بالعضو..."
-          >{{ teacher.get('tasks', '') }}</textarea>
-
-        </div>
+        <input type="hidden" name="tasks" value="{{ teacher.get('tasks', '') }}">
 
       </div>
 
     </section>
 
+      </section>
+
+    </div>
+
+
+    <!-- ======================================================= -->
+    <!-- SECTION 3: OFFICIAL DATES -->
+    <!-- ======================================================= -->
+
+   
 
     <!-- ======================================================= -->
     <!-- SECTION 4: LINKED DEPARTMENTS -->
@@ -968,70 +1005,7 @@
     <!-- PASSWORD / ACCOUNT ACTION -->
     <!-- ======================================================= -->
 
-    <section class="rounded-2xl bg-surface-container-lowest
-                    border border-outline-variant/50
-                    shadow-sm overflow-hidden">
-
-      <div class="px-5 py-3
-                  border-b border-outline-variant/40
-                  bg-surface/70
-                  flex items-center gap-2">
-
-        <span class="w-7 h-7 rounded-lg bg-primary/10
-                     text-primary flex items-center justify-center">
-
-          <span class="material-symbols-outlined text-[18px]">
-            security
-          </span>
-
-        </span>
-
-        <h2 class="text-sm font-bold text-on-surface">
-          أمان الحساب
-        </h2>
-
-      </div>
-
-
-      <div class="p-5 flex flex-col sm:flex-row
-                  items-start sm:items-center
-                  justify-between gap-4">
-
-        <div>
-
-          <p class="text-sm font-bold text-on-surface">
-            رمز الاسترجاع
-          </p>
-
-          <p class="text-xs text-on-surface-variant mt-1">
-            يمكنك إصدار رمز استرجاع مؤقت دون تغيير كلمة المرور الحالية.
-          </p>
-
-        </div>
-
-
-        <button type="submit"
-                form="reset-password-form"
-                class="inline-flex items-center gap-1.5
-                       px-3.5 py-2 rounded-xl
-                       border border-error/30
-                       bg-surface hover:bg-error/10
-                       hover:text-error transition-colors
-                       text-xs font-semibold text-error
-                       shrink-0">
-
-          <span class="material-symbols-outlined text-[18px]">
-            key
-          </span>
-
-          إصدار رمز استرجاع مؤقت
-
-        </button>
-
-      </div>
-
-    </section>
-
+    
 
     <!-- ======================================================= -->
     <!-- FINAL ACTION BAR -->

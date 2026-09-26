@@ -7,6 +7,7 @@ from database.history import add_history
 import sqlite3
 from security import csrf_required, login_required, permission_required
 from security import current_user
+from security.authorization import get_active_roles, has_permission
 from utils.format import paginate
 from services import department_service
 from services.search import build_department_search, highlight_text
@@ -34,16 +35,22 @@ def departments_list():
         departments = [d for d in departments if search.lower() in d['name'].lower()]
 
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    # /     /     >---- holders of departments.view may be read-only (dean), so the
+    # /     /     >---- create/delete controls are rendered only for departments.manage
+    can_manage = has_permission(get_active_roles(), 'departments.manage')
+
     if is_ajax:
         return render_template('departments/list_table.html',
                               departments=departments, total=total, page=page,
                               per_page=per_page, search=search,
                               user=current_user(),
+                              can_manage=can_manage,
                               highlight=highlight_text)
 
     return render_template('departments/list.html', departments=departments,
                           total=total, page=page, per_page=per_page,
-                          search=search, user=current_user(), form={})
+                          search=search, user=current_user(), form={},
+                          can_manage=can_manage)
 
 
 # /     /     >---- إنشاء قسم: التحقق من الاسم والفرد قبل الحفظ
@@ -65,6 +72,7 @@ def departments_create():
         return render_template('departments/list.html', departments=departments,
                               total=len(departments), page=1, per_page=20,
                               search='', form=form,
+                              can_manage=True,
                               user=current_user())
     db = get_db()
     # /     /     >---- منع تكرار اسم القسم
@@ -73,6 +81,7 @@ def departments_create():
         return render_template('departments/list.html', departments=departments,
                               total=len(departments), page=1, per_page=20,
                               search='', form=form,
+                              can_manage=True,
                               user=current_user())
     else:
         department_service.create_department(db, name, semesters, majors)

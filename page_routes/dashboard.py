@@ -105,7 +105,14 @@ def dashboard():
         dept_data = dashboard_service.get_rnd_dept_dashboard_data(
             db, page=request.args.get('page', 1, type=int))
 
+    # /     /     >---- نظرة العميد الشاملة على نطاقات المنصة الستة (قراءة فقط)
+    dean_data = {}
+    if role == 'dean':
+        db = get_db()
+        dean_data = dashboard_service.get_dean_overview_data(db, show=show)
+
     return render_template(template, user=current_user(),
                           stats=stats, faculty_data=faculty_data,
                           hod_data=hod_data,
-                          teacher_data=teacher_data, dept_data=dept_data)
+                          teacher_data=teacher_data, dept_data=dept_data,
+                          dean_data=dean_data)

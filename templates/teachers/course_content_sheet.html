@@ -155,13 +155,13 @@
       </div>
     </div>
     <div class="cc-create-toolbar-actions">
-      <button type="button" onclick="window.print()" class="cc-create-toolbar-button">
+      <button type="button" onclick="downloadCourseSheet()" class="cc-create-toolbar-button">
         <span class="material-symbols-outlined text-base">print</span>
         طباعة النموذج
       </button>
-      <button type="submit" form="courseContentForm" class="cc-create-toolbar-button cc-create-toolbar-button--primary">
-        <span class="material-symbols-outlined text-base">download</span>
-        حفظ / تنزيل PDF
+      <button type="submit" form="courseContentForm" data-action="send" class="cc-create-toolbar-button cc-create-toolbar-button--primary">
+        <span class="material-symbols-outlined text-base">save</span>
+        حفظ مفردات المقرر
       </button>
     </div>
   </div>
@@ -500,15 +500,6 @@
       {% include 'teachers/_course_content_doc.html' %}
     </div>
 
-    <!-- Action bar -->
-    <div class="flex flex-wrap items-center gap-3 mt-6 pt-5 border-t border-outline-variant/30 no-point">
-      <div class="flex-1"></div>
-      <button type="submit" data-action="send"
-              class="flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm cursor-pointer">
-        <span class="material-symbols-outlined text-lg">save</span>
-        حفظ مفردات المقرر
-      </button>
-    </div>
   </form>
   {% elif is_view or is_readonly %}
   <!-- Document sheet -->

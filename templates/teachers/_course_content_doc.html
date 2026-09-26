@@ -843,12 +843,14 @@
 
   <!-- Practical content summary -->
   
+  {% if doc_mode != 'edit' %}
   <div class="cc-print-actions no-print">
     <button type="button" onclick="downloadCourseSheet()" class="cc-print-btn">
       <span class="material-symbols-outlined">print</span>
       طباعة / حفظ PDF
     </button>
   </div>
+  {% endif %}
 
   <footer class="cc-sheet-footer">
     <div class="cc-signatures">

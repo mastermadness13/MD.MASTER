@@ -101,12 +101,17 @@
 <div id="popupMenu" class="hidden fixed inset-x-4 top-1/2 -translate-y-1/2 mx-auto max-w-lg z-50 bg-surface rounded-2xl shadow-xl p-5 max-h-[85vh] overflow-y-auto">
   <div id="popupContent"></div>
   <div id="popupActions" class="flex flex-wrap gap-2 mt-4">
+    {# Write actions live here too, not just in the top bar — a read-only role
+       (e.g. dean) would otherwise be offered تعديل/تكرار/حذف that the server
+       rejects with a permission error. #}
+    {% if payload.can_manage %}
     <button type="button" onclick="window.openEdit(window.__ttPopupId())"
             class="inline-flex items-center gap-1.5 rounded-xl bg-primary text-on-primary px-3 py-2 text-sm font-bold">تعديل</button>
     <button type="button" onclick="window.duplicateEntry(window.__ttPopupId())"
             class="inline-flex items-center gap-1.5 rounded-xl bg-surface-container-high border border-outline px-3 py-2 text-sm font-bold">تكرار</button>
     <button type="button" onclick="window.deleteEntry(window.__ttPopupId())"
             class="inline-flex items-center gap-1.5 rounded-xl bg-red-50 text-red-600 border border-red-200 px-3 py-2 text-sm font-bold">حذف</button>
+    {% endif %}
     <button type="button" onclick="window.closePopup()"
             class="inline-flex items-center rounded-xl bg-surface-container-high border border-outline px-3 py-2 text-sm font-bold">إغلاق</button>
   </div>
