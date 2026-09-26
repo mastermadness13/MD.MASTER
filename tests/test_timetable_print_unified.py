@@ -104,6 +104,8 @@ def test_print_department_shares_live_payload_and_stamps_version(client):
     assert 'رمز الإصدار' in body
     token = _token(client, dept_id, 2).get_json()['data']['token']
     assert token in body, 'printed fingerprint must match the live token'
+    assert 'عودة للجدول' in body
+    assert '/timetable/department?department_id={}&amp;semester=2'.format(dept_id) in body
 
 
 def test_print_department_header_shows_period_times(client):

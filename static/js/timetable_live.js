@@ -303,7 +303,7 @@
     var b = document.getElementById('currentBadge');
     var chipCls = 'border-green-200 bg-green-50 text-green-700';
     var dotCls = 'bg-green-500';
-    var label = 'الجدول الحالي · ' + (currentYear || '') + ' · الفصل ' + semesterNumLabel(selSem) + ' — ' + (locked ? 'للعرض فقط' : 'قابل للتعديل');
+    var label = 'الجدول الحالي · ' + (currentYear || '') + ' — ' + (locked ? 'للعرض فقط' : 'قابل للتعديل');
     b.className = 'mr-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border ' + chipCls;
     b.innerHTML =
       '<span class="flex flex-col items-end leading-tight">' +
@@ -586,16 +586,41 @@
 
   function deptCourses() {
     var out = [];
+    var modalDept = parseInt(document.getElementById('lecDept').value, 10) || selDept;
+    var modalSemester = parseInt(document.getElementById('lecSemester').value, 10) || selSem;
     courses.forEach(function (c) {
-      if (c.deptIds && c.deptIds.indexOf(selDept) === -1) return;
+      if (c.deptIds && c.deptIds.indexOf(modalDept) === -1) return;
       var m = c.deptSemesters || {};
-      var sem = m[selDept] != null ? m[selDept] : (c.semester || null);
-      if (sem != null && sem !== selSem) return;
+      var sem = m[modalDept] != null ? m[modalDept] : (c.semester || null);
+      if (sem != null && sem !== modalSemester) return;
       out.push(c);
     });
     return out;
   }
+  function setModalSemesters(semesters, selected) {
+    var semSel = document.getElementById('lecSemester');
+    semSel.innerHTML = '';
+    semesters.forEach(function (semester) {
+      semSel.insertAdjacentHTML('beforeend',
+        '<option value="' + semester + '">الفصل ' +
+        esc(semesterNumLabel(semester)) + '</option>');
+    });
+    semSel.value = String(selected || '');
+    semSel.disabled = semesters.length === 0;
+  }
   function populateModal() {
+    var deptEl = document.getElementById('lecDept');
+    if (deptEl.tagName === 'SELECT') {
+      deptEl.innerHTML = '';
+      departments.forEach(function (d) {
+        deptEl.insertAdjacentHTML('beforeend',
+          '<option value="' + d.id + '">' + esc(d.name) + '</option>');
+      });
+    } else {
+      deptEl.value = selDept || '';
+    }
+    setModalSemesters(availableSemesters, selSem);
+
     var daySel = document.getElementById('lecDay');
     daySel.innerHTML = '';
     days.forEach(function (d) {
@@ -834,8 +859,7 @@ function buildTeacherPool() {
     document.getElementById('lecDay').value = day || days[0];
     document.getElementById('lecPeriod').value = period || (periods.length ? periods[0].code : '');
     var slotRow = document.getElementById('lecSlotRow');
-    if (day && period) slotRow.classList.add('hidden');
-    else slotRow.classList.remove('hidden');
+    slotRow.classList.toggle('hidden', !!(day && period));
     applyPeriodDefaults();
     document.getElementById('lecHours').value = 3;
     resetPickers();
@@ -854,7 +878,7 @@ function buildTeacherPool() {
     hideWarn(); hideHint();
     populateModal();
     document.getElementById('lecDept').value = e.department_id || selDept;
-    document.getElementById('lecSemester').value = e.semester;
+    document.getElementById('lecSemester').value = String(e.semester);
     document.getElementById('lecDay').value = e.day;
     document.getElementById('lecPeriod').value = e.period;
     document.getElementById('lecStartTime').value = e.start_time || '';
@@ -1108,6 +1132,49 @@ function buildTeacherPool() {
       if (id === 'lecPeriod') applyPeriodDefaults();
       refreshRoomOptions();
       refreshTeachersAvailability();
+    });
+  });
+
+  var modalSemesterRequest = 0;
+  ['lecDept', 'lecSemester'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (!el || el.tagName !== 'SELECT') return;
+    el.addEventListener('change', function () {
+      document.getElementById('lecCourse').value = '';
+      document.getElementById('lecCourseSearch').value = '';
+      document.getElementById('lecCourseList').classList.add('hidden');
+      if (id === 'lecDept') {
+        var selectedDept = parseInt(el.value, 10);
+        var semEl = document.getElementById('lecSemester');
+        var requestId = ++modalSemesterRequest;
+        semEl.disabled = true;
+        fetch(BASE + qs({
+          department_id: selectedDept,
+          semester: selSem,
+          format: 'json'
+        }))
+          .then(function (response) {
+            if (!response.ok) throw new Error('تعذر تحميل فصول القسم المختار.');
+            return response.json();
+          })
+          .then(function (result) {
+            if (requestId !== modalSemesterRequest) return;
+            if (!result || !result.ok || !result.data) {
+              throw new Error((result && result.message) || 'تعذر تحميل فصول القسم المختار.');
+            }
+            setModalSemesters(
+              result.data.available_semesters || [],
+              result.data.selected_semester
+            );
+          })
+          .catch(function (error) {
+            if (requestId !== modalSemesterRequest) return;
+            el.value = String(selDept || '');
+            setModalSemesters(availableSemesters, selSem);
+            semEl.disabled = false;
+            toast(error.message || 'تعذر تحميل فصول القسم المختار.', 'error');
+          });
+      }
     });
   });
 

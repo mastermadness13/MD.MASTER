@@ -192,3 +192,39 @@ def test_unified_page_boots_live_assets(client):
     assert 'timetable_live.js' in body
     assert 'initialToken' in body
     assert 'syllabusUrls' in body
+
+
+def test_modal_department_is_fixed_for_department_scoped_user(app_fx, db_fx):
+    dept_id = _dept_id()
+    hod = _hod_client(app_fx, dept_id)
+    body = hod.get(
+        '/timetable/department?department_id={}&semester=2'.format(dept_id)
+    ).get_data(as_text=True)
+
+    assert 'id="lecDept" type="hidden"' in body
+    assert 'id="lecDept" class="mt-1' not in body
+
+
+def test_modal_keeps_department_selector_for_switchable_user(client):
+    body = client.get(
+        '/timetable/department?department_id={}&semester=2'.format(_dept_id())
+    ).get_data(as_text=True)
+
+    assert 'id="lecDept" class="mt-1' in body
+    assert 'id="lecDept" type="hidden"' not in body
+
+
+def test_modal_options_follow_current_department_and_semester(client):
+    with open('static/js/timetable_live.js', encoding='utf-8') as source:
+        js = source.read()
+    body = client.get(
+        '/timetable/department?department_id={}&semester=2'.format(_dept_id())
+    ).get_data(as_text=True)
+
+    assert 'id="semFilter"' in body
+    assert '>الفصل:</label>' in body
+    assert 'setModalSemesters(availableSemesters, selSem)' in js
+    assert "semSel.value = String(selected || '')" in js
+    assert "slotRow.classList.toggle('hidden', !!(day && period))" in js
+    assert "format: 'json'" in js
+    assert 'function deptCourses()' in js

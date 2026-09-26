@@ -45,6 +45,7 @@
       {% endfor %}
     </select>
     {% endif %}
+    <label for="semFilter" class="text-sm font-bold text-on-surface-variant">الفصل:</label>
     <select id="semFilter" onchange="window.__ttSetSem(this.value)"
             class="rounded-xl border border-outline bg-surface px-3 py-2 text-sm font-bold">
       {% for s in payload.available_semesters %}
@@ -147,14 +148,23 @@
 <div id="lecModal" class="hidden fixed inset-x-4 top-1/2 -translate-y-1/2 mx-auto max-w-2xl z-50 bg-surface rounded-2xl shadow-xl p-5 max-h-[90vh] overflow-y-auto">
   <h3 id="lecTitle" class="text-lg font-bold mb-4"></h3>
   <div class="grid grid-cols-2 gap-3">
+    {% if payload.can_switch_department %}
     <label class="text-sm font-bold">القسم
       <select id="lecDept" class="mt-1 w-full rounded-xl border border-outline bg-surface px-3 py-2 text-sm"></select>
     </label>
+    {% else %}
+    <div class="text-sm font-bold">القسم
+      <div class="mt-1 rounded-xl border border-outline bg-surface-container px-3 py-2 text-sm font-normal text-on-surface">
+        {{ payload.dept.name if payload.dept else '—' }}
+      </div>
+      <input id="lecDept" type="hidden" value="{{ payload.dept.id if payload.dept else '' }}">
+    </div>
+    {% endif %}
     <label class="text-sm font-bold">الفصل
       <select id="lecSemester" class="mt-1 w-full rounded-xl border border-outline bg-surface px-3 py-2 text-sm"></select>
     </label>
   </div>
-  <div id="lecSlotRow" class="grid grid-cols-2 gap-3 mt-3">
+  <div id="lecSlotRow" class="hidden grid grid-cols-2 gap-3 mt-3">
     <label class="text-sm font-bold">اليوم
       <select id="lecDay" class="mt-1 w-full rounded-xl border border-outline bg-surface px-3 py-2 text-sm"></select>
     </label>

@@ -1,9 +1,11 @@
 """Authentication pages: login, logout, forgot/reset and change password."""
 
+import logging
 import os
 
 from flask import (
     Blueprint,
+    current_app,
     flash,
     jsonify,
     redirect,
@@ -34,6 +36,28 @@ from security import (
 from services import email_service, user_service
 
 bp = Blueprint('auth', __name__)
+
+logger = logging.getLogger(__name__)
+
+
+def _build_reset_url(token: str) -> str:
+    """Build the password-reset link from a trusted base, not the Host header.
+
+    ``url_for(..., _external=True)`` copies the request's ``Host`` header into
+    the link, so a forged Host would point a genuine credential-bearing email
+    at an attacker-controlled origin. When ``RESET_BASE_URL`` is configured the
+    origin is fixed; otherwise the request-derived URL is kept so local
+    development keeps working, and the downgrade is logged.
+    """
+    path = url_for('auth.reset_password', token=token)
+    base = (current_app.config.get('RESET_BASE_URL') or '').strip()
+    if not base:
+        logger.warning(
+            'RESET_BASE_URL is not configured; the reset link origin is taken '
+            'from the request Host header. Set RESET_BASE_URL in production.'
+        )
+        return url_for('auth.reset_password', token=token, _external=True)
+    return base.rstrip('/') + path
 
 
 def _reset_link_fallback_enabled() -> bool:
@@ -131,7 +155,7 @@ def forgot_password():
         result = user_service.create_password_reset(db, username)
         if result:
             token, email = result
-            reset_url = url_for('auth.reset_password', token=token, _external=True)
+            reset_url = _build_reset_url(token)
             email_sent = bool(email) and email_service.send_reset_email(email, reset_url)
             # /     /     >---- CWE-200: الرابط لا يُعرض إلا في وضع التطوير/الاختبار
             if not email_sent and _reset_link_fallback_enabled():

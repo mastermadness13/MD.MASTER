@@ -102,6 +102,7 @@ class UserRepository(BaseRepository):
 
     # /     /     >---- نحدّث بيانات مستخدم
     def update_user(self, user_id: int, data: Dict[str, Any]) -> None:
+        """Update a user profile, rotating sessions when authority changes."""
         if not data:
             return
         set_clause = ', '.join(f'{k} = ?' for k in data.keys())
@@ -109,6 +110,8 @@ class UserRepository(BaseRepository):
             f'UPDATE users SET {set_clause} WHERE id = ?',
             list(data.values()) + [user_id],
         )
+        if {'role', 'department_id'} & set(data):
+            self._bump_session_version(user_id)
         self.db.commit()
 
     # /     /     >---- نحدّث كلمة المرور (مع تسجيل وقت التغيير)
@@ -120,6 +123,20 @@ class UserRepository(BaseRepository):
             (hashed_password, user_id),
         )
         self.db.commit()
+
+    def _bump_session_version(self, user_id: int) -> None:
+        """Invalidate every live session belonging to *user_id*.
+
+        The session is a signed cookie that carries the granted role set, so
+        any change to a user's authority must rotate this counter. Otherwise
+        an already-issued cookie keeps exercising the previous role until it
+        expires, and a demoted account never actually loses access.
+        """
+        self.db.execute(
+            'UPDATE users SET session_version = session_version + 1 '
+            'WHERE id = ?',
+            (user_id,),
+        )
 
     # /     /     >---- نغير سمة العرض (وضع النهار/الليل)
     def update_theme(self, user_id: int, theme: str) -> None:
@@ -160,6 +177,7 @@ class UserRepository(BaseRepository):
                 'INSERT OR IGNORE INTO user_roles (user_id, role) VALUES (?, ?)',
                 [(user_id, r) for r in roles],
             )
+        self._bump_session_version(user_id)
         self.db.commit()
 
     # /     /     >---- نضيف دور لمستخدم
@@ -168,6 +186,7 @@ class UserRepository(BaseRepository):
             'INSERT OR IGNORE INTO user_roles (user_id, role) VALUES (?, ?)',
             (user_id, role),
         )
+        self._bump_session_version(user_id)
         self.db.commit()
 
     # /     /     >---- نشيل دور من مستخدم
@@ -176,15 +195,21 @@ class UserRepository(BaseRepository):
             'DELETE FROM user_roles WHERE user_id = ? AND role = ?',
             (user_id, role),
         )
+        self._bump_session_version(user_id)
         self.db.commit()
 
     # /     /     >---- نفعّل أو نعطّل حساب مستخدم
     def set_user_active(self, user_id: int, active: bool) -> None:
-        """Enable/disable a user account via the ``is_active`` flag."""
+        """Enable/disable a user account via the ``is_active`` flag.
+
+        The counter is rotated in both directions: re-enabling an account must
+        not resurrect a session cookie captured while it was disabled.
+        """
         self.db.execute(
             'UPDATE users SET is_active = ? WHERE id = ?',
             (1 if active else 0, user_id),
         )
+        self._bump_session_version(user_id)
         self.db.commit()
 
     # ── استرجاع كلمة المرور ─────────────────────────────────────────

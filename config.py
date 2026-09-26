@@ -60,6 +60,12 @@ class Config:
     # /     /     >---- مدة صلاحية الجلسة (7 أيام)
     PERMANENT_SESSION_LIFETIME = timedelta(days=7)
 
+    # ── أساس رابط إعادة تعيين كلمة المرور ──────────────────────────
+    # The reset link is a bearer credential, so its origin must come from a
+    # configured base rather than the request's Host header. Empty means
+    # "derive from the request" and logs a warning; set it in production.
+    RESET_BASE_URL = (os.environ.get('RESET_BASE_URL') or '').strip().rstrip('/')
+
     # ── إعدادات البريد الإلكتروني ──────────────────────────────────
     MAIL_SERVER = os.environ.get('MAIL_SERVER') or 'smtp.gmail.com'
     MAIL_PORT = int(os.environ.get('MAIL_PORT') or 587)

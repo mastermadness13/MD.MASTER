@@ -1,6 +1,14 @@
 {% extends 'print/layouts/print.html' %}
 {% set print_title = 'طباعة الجدول الأسبوعي — ' ~ (payload.dept.name if payload.dept else '') %}
 
+{% block print_back_button %}
+  <a href="{{ url_for('timetable.timetable_department_view', department_id=payload.dept.id if payload.dept else None, semester=payload.selected_semester) }}"
+     class="flex items-center gap-2 bg-surface-container text-on-surface-variant hover:bg-surface-container-high border border-outline-variant px-4 py-2 rounded-lg text-sm font-bold transition no-underline">
+    <span class="material-symbols-outlined text-lg">arrow_back</span>
+    عودة للجدول
+  </a>
+{% endblock %}
+
 {% block print_content %}
 {% include 'print/timetables/_department_content.html' %}
 {% endblock %}
