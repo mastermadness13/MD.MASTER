@@ -270,6 +270,14 @@ _SYSTEM_ADMIN_ASSIGNMENT_SEEDS = (
     ('العميد', 'dean', 18, 12),
 )
 
+_SYSTEM_ASSIGNMENT_ROLE_KEYS = (
+    'head_of_department',
+    'exam',
+    'faculty_affairs',
+    'research_development',
+    'dean',
+)
+
 _GENERAL_ADMIN_ASSIGNMENT_SEEDS = (
     ('مدير مكتب الشؤون العلمية', 12, 5),
     ('منسق القاعات', 6, 6),
@@ -300,6 +308,10 @@ def _ensure_managed_lookup_metadata(conn: sqlite3.Connection) -> None:
         ('admin_assignment_types', (
             ('internal_code', 'TEXT'),
             ('is_system_linked', 'INTEGER NOT NULL DEFAULT 0'),
+            ('is_protected_role', 'INTEGER NOT NULL DEFAULT 0'),
+        )),
+        ('teachers', (
+            ('admin_assignment_type_id', 'INTEGER REFERENCES admin_assignment_types(id) ON DELETE SET NULL'),
         )),
     ):
         for column, ddl in columns:
@@ -307,36 +319,100 @@ def _ensure_managed_lookup_metadata(conn: sqlite3.Connection) -> None:
                 _safe_add_column(conn, table, column, ddl)
 
     migration_key = 'managed_admin_assignment_values_v1'
-    if _migration_done(conn, migration_key):
-        return
-
-    conn.execute(
-        '''INSERT OR IGNORE INTO admin_assignment_types
-           (name, default_hours, is_active, sort_order)
-           VALUES ('عضو تدريس', 0, 1, 0)'''
-    )
-    for name, hours, order in _GENERAL_ADMIN_ASSIGNMENT_SEEDS:
+    if not _migration_done(conn, migration_key):
         conn.execute(
             '''INSERT OR IGNORE INTO admin_assignment_types
                (name, default_hours, is_active, sort_order)
-               VALUES (?, ?, 1, ?)''',
-            (name, hours, order),
+               VALUES ('عضو تدريس', 0, 1, 0)'''
         )
-    for name, code, hours, order in _SYSTEM_ADMIN_ASSIGNMENT_SEEDS:
+        for name, hours, order in _GENERAL_ADMIN_ASSIGNMENT_SEEDS:
+            conn.execute(
+                '''INSERT OR IGNORE INTO admin_assignment_types
+                   (name, default_hours, is_active, sort_order)
+                   VALUES (?, ?, 1, ?)''',
+                (name, hours, order),
+            )
+        for name, code, hours, order in _SYSTEM_ADMIN_ASSIGNMENT_SEEDS:
+            conn.execute(
+                '''INSERT OR IGNORE INTO admin_assignment_types
+                   (name, default_hours, is_active, sort_order,
+                    internal_code, is_system_linked)
+                   VALUES (?, ?, 1, ?, ?, 1)''',
+                (name, hours, order, code),
+            )
+            conn.execute(
+                '''UPDATE admin_assignment_types
+                   SET internal_code = ?, is_system_linked = 1
+                   WHERE name = ? AND (internal_code IS NULL OR internal_code = ?)''',
+                (code, name, code),
+            )
+        _mark_migration_done(conn, migration_key)
+
+    alias_migration = 'managed_admin_assignment_aliases_v2'
+    if not _migration_done(conn, alias_migration):
         conn.execute(
-            '''INSERT OR IGNORE INTO admin_assignment_types
-               (name, default_hours, is_active, sort_order,
-                internal_code, is_system_linked)
-               VALUES (?, ?, 1, ?, ?, 1)''',
-            (name, hours, order, code),
+            '''UPDATE admin_assignment_types SET is_active = 0
+               WHERE is_system_linked = 1 AND name IN (?, ?)''',
+            ('رئيس قسم', 'قسم الإدارة والامتحانات'),
         )
+        _mark_migration_done(conn, alias_migration)
+
+    protection_migration = 'managed_admin_assignment_role_protection_v1'
+    if not _migration_done(conn, protection_migration):
+        # Retain inactive role rows when they are the last entry for a key;
+        # unused aliases are removable only while another active/used entry
+        # continues to represent that stable RBAC role.
+        role_placeholders = ', '.join('?' for _ in _SYSTEM_ASSIGNMENT_ROLE_KEYS)
         conn.execute(
-            '''UPDATE admin_assignment_types
-               SET internal_code = ?, is_system_linked = 1
-               WHERE name = ? AND (internal_code IS NULL OR internal_code = ?)''',
-            (code, name, code),
+            f'''UPDATE admin_assignment_types
+                SET is_protected_role = 1
+                WHERE is_system_linked = 1
+                  AND internal_code IN ({role_placeholders})
+                  AND (
+                    is_active = 1
+                    OR EXISTS (
+                        SELECT 1 FROM teachers t
+                        WHERE t.admin_assignment_type_id = admin_assignment_types.id
+                           OR (t.admin_assignment_type_id IS NULL
+                               AND t.position = admin_assignment_types.name)
+                    )
+                    OR EXISTS (
+                        SELECT 1 FROM faculty_admin_assignments f
+                        WHERE f.task_name = admin_assignment_types.name
+                          AND f.deleted_at IS NULL
+                    )
+                    OR NOT EXISTS (
+                        SELECT 1 FROM admin_assignment_types peer
+                        WHERE peer.id != admin_assignment_types.id
+                          AND peer.is_system_linked = 1
+                          AND peer.internal_code = admin_assignment_types.internal_code
+                          AND (
+                            peer.is_active = 1
+                            OR EXISTS (
+                                SELECT 1 FROM teachers t
+                                WHERE t.admin_assignment_type_id = peer.id
+                                   OR (t.admin_assignment_type_id IS NULL
+                                       AND t.position = peer.name)
+                            )
+                            OR EXISTS (
+                                SELECT 1 FROM faculty_admin_assignments f
+                                WHERE f.task_name = peer.name
+                                  AND f.deleted_at IS NULL
+                            )
+                          )
+                    )
+                  )''',
+            _SYSTEM_ASSIGNMENT_ROLE_KEYS,
         )
-    _mark_migration_done(conn, migration_key)
+        _mark_migration_done(conn, protection_migration)
+
+    conn.execute(
+        '''UPDATE teachers
+           SET admin_assignment_type_id = (
+               SELECT a.id FROM admin_assignment_types a WHERE a.name = teachers.position
+           )
+           WHERE admin_assignment_type_id IS NULL AND COALESCE(position, '') != '' '''
+    )
 
 
 # /     /     >---- نعيد تسمية قيمة في قائمة مرجعية (مع تحديث كل المراجع)
@@ -2074,7 +2150,8 @@ def _ensure_faculty_performance_tables(conn: sqlite3.Connection, existing_tables
                 is_active       INTEGER NOT NULL DEFAULT 1,
                 sort_order      INTEGER NOT NULL DEFAULT 0,
                 internal_code   TEXT,
-                is_system_linked INTEGER NOT NULL DEFAULT 0
+                is_system_linked INTEGER NOT NULL DEFAULT 0,
+                is_protected_role INTEGER NOT NULL DEFAULT 0
             )
         """)
         _seed_admin_assignment_types(conn)
@@ -2612,6 +2689,7 @@ def _ensure_core_identity_schema(conn: sqlite3.Connection) -> None:
                 qualification_id INTEGER REFERENCES qualifications(id) ON DELETE SET NULL,
                 rank_id INTEGER REFERENCES academic_ranks(id) ON DELETE SET NULL,
                 classification_id INTEGER REFERENCES classifications(id) ON DELETE SET NULL,
+                admin_assignment_type_id INTEGER REFERENCES admin_assignment_types(id) ON DELETE SET NULL,
                 user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )

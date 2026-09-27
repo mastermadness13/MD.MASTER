@@ -43,6 +43,28 @@ document.addEventListener('DOMContentLoaded', function () {
     sync();
   });
 
+  (function () {
+    var positionSelect = document.getElementById('positionSelect');
+    var assignmentTypeId = document.getElementById('adminAssignmentTypeId');
+    var customPosition = document.querySelector('[data-editable-input="position"]');
+    if (!positionSelect || !assignmentTypeId) return;
+
+    function syncAssignmentType() {
+      if (customPosition && customPosition.value.trim()) {
+        assignmentTypeId.value = '';
+        return;
+      }
+      var option = positionSelect.options[positionSelect.selectedIndex];
+      assignmentTypeId.value = option
+        ? option.getAttribute('data-assignment-type-id') || ''
+        : '';
+    }
+
+    positionSelect.addEventListener('change', syncAssignmentType);
+    if (customPosition) customPosition.addEventListener('input', syncAssignmentType);
+    syncAssignmentType();
+  })();
+
   // ── Specialization filtered by linked department checkboxes ──
   (function () {
     var specSel = document.getElementById('create_specialization') || document.getElementById('edit_specialization');

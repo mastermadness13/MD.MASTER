@@ -718,6 +718,7 @@
                sel,
                departments,
                selected_position=teacher.get('position'),
+               selected_assignment_type_id=teacher.get('admin_assignment_type_id'),
                hod_value=teacher.get('hod_department_id'),
                assignment_date=assignment_date,
                department_hods=department_hods|default({}),

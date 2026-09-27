@@ -147,7 +147,7 @@
         (canEdit ? ' data-clickable="1" title="تعديل الامتحان"' : '') +
         ' data-schedule-id="' + esc(exam.id) + '" data-day="' + esc(day) + '" data-sem="' + sem + '">' +
           '<div class="font-bold text-on-surface text-[15px] mb-1 truncate" title="' + esc(exam.course) + '">' + esc(exam.course || '—') + '</div>' +
-          '<div><span style="display:inline-block;direction:ltr;background:#eef1f5;color:#3f3a46;border:1px solid #d9dfe7;border-radius:4px;padding:2px 6px;font-size:12px;font-weight:500;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;">' + esc(exam.code || '—') + '</span></div>' +
+          '<div><span style="display:inline-block;direction:ltr;background:#eef1f5;color:#3f3a46;border:1px solid #d9dfe7;border-radius:4px;padding:2px 6px;font-size:0.75rem;font-weight:500;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;">' + esc(exam.code || '—') + '</span></div>' +
           '<div class="mt-auto pt-2 flex flex-col gap-1 text-xs text-on-surface-variant border-t border-outline-variant/30">' +
             (exam.hall ? '<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]" style="color:var(--color-primary,#320058)">meeting_room</span>' + esc(exam.hall) + '</span>' : '') +
             (exam.time ? '<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]" style="color:var(--color-primary,#320058)">schedule</span><span dir="ltr">' + esc(exam.time) + '</span></span>' : '') +

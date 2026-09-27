@@ -124,6 +124,7 @@
         <div class="p-5 space-y-4 flex-1">
           {{ position_hod_fields(inp, sel, departments,
                                  selected_position=form.get('position'),
+                                 selected_assignment_type_id=form.get('admin_assignment_type_id'),
                                  hod_value=form.get('hod_department_id'),
                                  assignment_date=form.get('assignment_date'),
                                  department_hods=department_hods|default({}),

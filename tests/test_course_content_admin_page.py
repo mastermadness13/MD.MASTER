@@ -211,10 +211,20 @@ def test_send_new_form_publishes(client, app_fx, tmp_path, monkeypatch):
             'credits': '3', 'course_objective': 'هدف'}
     r = client.post('/teacher/super-admin/course-content/send', data=data)
     assert r.status_code == 302
-    sub = _q("SELECT status, course_objective FROM course_content_submissions "
+    sub = _q("SELECT id, status, course_objective FROM course_content_submissions "
              "WHERE course_id=? ORDER BY id DESC LIMIT 1", (cid,))[0]
     assert sub['status'] == 'published'
     assert sub['course_objective'] == 'هدف'
+
+    public_client = app_fx.test_client()
+    payload = public_client.get('/public/api/courses').get_json()
+    published_course = next(course for course in payload['courses'] if course['id'] == cid)
+    assert published_course['formFile']['url'] == f"/course-content/{sub['id']}"
+
+    downloaded = public_client.get(published_course['formFile']['url'] + '?download=1')
+    assert downloaded.status_code == 200
+    assert downloaded.headers['Content-Disposition'].startswith('attachment;')
+    assert 'هدف' in downloaded.get_data(as_text=True)
 
 
 def test_send_saves_draft(client, app_fx, tmp_path, monkeypatch):
@@ -331,7 +341,7 @@ def test_codes_tab_is_sheet_only(client):
     # Single combined button: save + publish (data-action="send") with default send
     assert 'data-action="send"' in body
     assert 'data-action="save"' not in body, 'draft-only button removed'
-    assert 'حفظ مفردات المقرر' in body
+    assert 'حفظ ونشر مفردات المقرر' in body
     assert 'value="send" id="formAction"' in body
     # Old heavy cards/header are gone
     assert 'id="ccCourseSelect"' not in body
@@ -721,6 +731,8 @@ def test_course_content_document_keeps_english_left_and_arabic_right(client):
     assert 'direction: ltr;' in body
     assert '.cc-sheet .cc-value-cell.cc-ar {' in body
     assert '.cc-sheet .cc-block-cell.cc-ar { direction: rtl; }' in body
+    assert 'body .cc-sheet {' in body
+    assert 'color-scheme: light;' in body
     assert body.index('Course Title') < body.index('اسم المادة')
 
 

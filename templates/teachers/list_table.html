@@ -139,8 +139,8 @@
   <div class="flex items-center gap-2">
     {% if total_pages > 1 %}
     <button type="button" id="selectAllTotalBtn"
-            class="px-3 py-2 rounded-lg border border-primary/30 bg-white hover:bg-primary/10 text-primary text-sm font-bold transition disabled:opacity-40 disabled:cursor-not-allowed" disabled>
-      <span class="material-symbols-outlined text-lg align-middle" style="font-size:18px">select_all</span>
+            class="px-3 py-2 rounded-lg border border-primary/30 bg-surface-card hover:bg-primary/10 text-primary text-sm font-bold transition disabled:opacity-40 disabled:cursor-not-allowed" disabled>
+      <span class="material-symbols-outlined text-lg align-middle" style="font-size:1.125rem">select_all</span>
       تحديد الكل ({{ total }})
     </button>
     {% endif %}
@@ -151,7 +151,7 @@
       <input type="hidden" name="search" value="{{ search or '' }}">
       <input type="hidden" name="department_id" value="{{ department_id or '' }}">
       <button type="button" id="clearSelectionBtn"
-              class="px-3 py-2 rounded-lg border border-outline-variant bg-white hover:bg-primary/10 text-on-surface text-sm font-bold transition disabled:opacity-40 disabled:cursor-not-allowed" disabled>
+              class="px-3 py-2 rounded-lg border border-outline-variant bg-surface-card hover:bg-primary/10 text-on-surface text-sm font-bold transition disabled:opacity-40 disabled:cursor-not-allowed" disabled>
         إلغاء التحديد
       </button>
       <button type="submit" id="bulkDeleteBtn"

@@ -1,14 +1,13 @@
-{# Appearance panel. Opened from the sidebar "المظهر" button.
-   Uses the native popover attribute for top-layer rendering and light
-   dismiss, and native radios so arrow-key navigation and grouping come from
-   the platform instead of hand-rolled JS. State lives in localStorage and is
-   read back by static/js/theme_panel.js on open. #}
+{# Appearance panel. Settings are persisted by theme.js and applied live. #}
 <div id="themePanel" popover="auto" class="theme-panel" role="dialog" aria-labelledby="themePanelTitle">
   <div class="theme-panel-head">
-    <h2 class="theme-panel-title" id="themePanelTitle">
-      <span class="material-symbols-outlined" aria-hidden="true">palette</span>
-      المظهر
-    </h2>
+    <div class="theme-panel-heading">
+      <span class="theme-panel-icon material-symbols-outlined" aria-hidden="true">palette</span>
+      <div>
+        <h2 class="theme-panel-title" id="themePanelTitle">المظهر وتخصيص الواجهة</h2>
+        <p class="theme-panel-subtitle">خصّص الألوان والخطوط والبطاقات والأزرار فورياً</p>
+      </div>
+    </div>
     <button type="button" class="theme-panel-close" data-theme-panel-close aria-label="إغلاق إعدادات المظهر">
       <span class="material-symbols-outlined" aria-hidden="true">close</span>
     </button>
@@ -16,116 +15,276 @@
 
   <div class="theme-panel-body">
     <fieldset class="theme-fieldset">
-      <legend class="theme-legend">الوضع</legend>
-      <div class="theme-segmented" role="none">
+      <div class="theme-field-heading">
+        <legend class="theme-legend">الوضع العام</legend>
+        <output class="theme-mode-badge" data-theme-mode-label>نهاري</output>
+      </div>
+      <div class="theme-segmented theme-mode-segmented" role="radiogroup" aria-label="الوضع العام">
         <label class="theme-option">
           <input type="radio" name="theme-mode" value="light" class="theme-radio">
-          <span class="theme-option-face">
-            <span class="material-symbols-outlined" aria-hidden="true">light_mode</span>
-            <span>نهاري</span>
-          </span>
+          <span class="theme-option-face"><span class="material-symbols-outlined" aria-hidden="true">light_mode</span><span>نهاري</span></span>
         </label>
         <label class="theme-option">
           <input type="radio" name="theme-mode" value="dark" class="theme-radio">
-          <span class="theme-option-face">
-            <span class="material-symbols-outlined" aria-hidden="true">dark_mode</span>
-            <span>ليلي</span>
-          </span>
+          <span class="theme-option-face"><span class="material-symbols-outlined" aria-hidden="true">dark_mode</span><span>ليلي</span></span>
         </label>
         <label class="theme-option">
           <input type="radio" name="theme-mode" value="system" class="theme-radio">
-          <span class="theme-option-face">
-            <span class="material-symbols-outlined" aria-hidden="true">routine</span>
-            <span>حسب النظام</span>
-          </span>
+          <span class="theme-option-face"><span class="material-symbols-outlined" aria-hidden="true">routine</span><span>تلقائي</span></span>
         </label>
         <label class="theme-option">
           <input type="radio" name="theme-mode" value="custom" class="theme-radio">
-          <span class="theme-option-face">
-            <span class="material-symbols-outlined" aria-hidden="true">palette</span>
-            <span>مخصص</span>
-          </span>
+          <span class="theme-option-face"><span class="material-symbols-outlined" aria-hidden="true">palette</span><span>مخصص</span></span>
         </label>
       </div>
     </fieldset>
 
-    {# Revealed by theme_panel.js only in custom mode. #}
     <div class="theme-custom" data-theme-custom hidden>
-      <fieldset class="theme-fieldset">
-        <legend class="theme-legend">لون التمييز</legend>
-        <div class="theme-hue-row">
-          <input type="range" min="0" max="359" step="1" value="280"
-                 class="theme-hue-slider" data-theme-hue
-                 aria-label="درجة لون التمييز" aria-describedby="themeHueValue">
-          <output class="theme-hue-value" id="themeHueValue" data-theme-hue-value for="themeHue">280°</output>
-        </div>
-        <div class="theme-swatches" role="group" aria-label="ألوان جاهزة">
-          <button type="button" class="theme-swatch" data-theme-hue-preset="280" style="--swatch:#320058" aria-label="بنفسجي"></button>
-          <button type="button" class="theme-swatch" data-theme-hue-preset="220" style="--swatch:#0b4a9e" aria-label="أزرق"></button>
-          <button type="button" class="theme-swatch" data-theme-hue-preset="172" style="--swatch:#046b62" aria-label="أخضر مزرق"></button>
-          <button type="button" class="theme-swatch" data-theme-hue-preset="38" style="--swatch:#a35a06" aria-label="برتقالي"></button>
-          <button type="button" class="theme-swatch" data-theme-hue-preset="352" style="--swatch:#9c1030" aria-label="أحمر"></button>
-          <button type="button" class="theme-swatch" data-theme-hue-preset="0" style="--swatch:#4a4a4a" aria-label="رمادي"></button>
-        </div>
-      </fieldset>
+      <div class="theme-section-heading">
+        <span class="material-symbols-outlined" aria-hidden="true">tune</span>
+        <span>لوحة الألوان المتقدمة</span>
+        <small>تُحفظ وتُطبّق فوراً</small>
+      </div>
 
-      <fieldset class="theme-fieldset">
-        <legend class="theme-legend">نوع الخط</legend>
-        <select class="theme-select" data-theme-font-family aria-label="نوع الخط">
-          <option value="Cairo">Cairo</option>
-          <option value="Tajawal">Tajawal</option>
-          <option value="Almarai">Almarai</option>
-          <option value="IBM Plex Sans Arabic">IBM Plex Sans Arabic</option>
-          <option value="Noto Kufi Arabic">Noto Kufi Arabic</option>
-        </select>
-      </fieldset>
-
-      <fieldset class="theme-fieldset">
-        <legend class="theme-legend">حجم الخط</legend>
-        <div class="theme-font-size-row">
-          <input type="range" id="themeFontSize" min="13" max="20" step="0.5" value="16"
-                 class="theme-font-size-slider" data-theme-font-size
-                 aria-label="حجم الخط" aria-describedby="themeFontSizeValue">
-          <output class="theme-font-size-value" id="themeFontSizeValue"
-                  data-theme-font-size-value for="themeFontSize">16 px</output>
+      <details class="theme-accordion" data-theme-accordion="accent">
+        <summary class="theme-accordion-summary">
+          <span class="theme-accordion-title"><span class="material-symbols-outlined" aria-hidden="true">palette</span>لون التمييز</span>
+          <span class="theme-accordion-value"><i data-theme-color-dot="accent"></i><output data-theme-hue-value>280°</output></span>
+        </summary>
+        <div class="theme-accordion-content">
+          <label class="theme-range-row">
+            <span class="sr-only">درجة لون التمييز</span>
+            <input type="range" min="0" max="359" step="1" value="280" class="theme-hue-slider" data-theme-hue aria-label="درجة لون التمييز">
+            <output class="theme-hue-value" data-theme-hue-value>280°</output>
+          </label>
+          <div class="theme-swatches theme-color-grid" role="group" aria-label="ألوان التمييز الجاهزة">
+            <button type="button" class="theme-swatch" data-theme-hue-preset="280" style="--swatch:#320058" aria-label="بنفسجي"></button>
+            <button type="button" class="theme-swatch" data-theme-hue-preset="220" style="--swatch:#0b4a9e" aria-label="أزرق"></button>
+            <button type="button" class="theme-swatch" data-theme-hue-preset="172" style="--swatch:#046b62" aria-label="أخضر مزرق"></button>
+            <button type="button" class="theme-swatch" data-theme-hue-preset="38" style="--swatch:#a35a06" aria-label="برتقالي"></button>
+            <button type="button" class="theme-swatch" data-theme-hue-preset="352" style="--swatch:#9c1030" aria-label="أحمر"></button>
+            <button type="button" class="theme-swatch" data-theme-hue-preset="0" style="--swatch:#4a4a4a" aria-label="رمادي"></button>
+          </div>
         </div>
-      </fieldset>
+      </details>
 
-      <fieldset class="theme-fieldset">
-        <legend class="theme-legend">كثافة العناصر</legend>
-        <div class="theme-segmented">
-          <label class="theme-option">
-            <input type="radio" name="theme-density" value="comfortable" class="theme-radio">
-            <span class="theme-option-face">مريح</span>
-          </label>
-          <label class="theme-option">
-            <input type="radio" name="theme-density" value="compact" class="theme-radio">
-            <span class="theme-option-face">مضغوط</span>
-          </label>
-        </div>
-      </fieldset>
-
-      <fieldset class="theme-fieldset">
-        <legend class="theme-legend">استدارة الحواف</legend>
-        <div class="theme-segmented">
-          <label class="theme-option">
-            <input type="radio" name="theme-corner" value="soft" class="theme-radio">
-            <span class="theme-option-face">ناعم</span>
-          </label>
-          <label class="theme-option">
-            <input type="radio" name="theme-corner" value="sharp" class="theme-radio">
-            <span class="theme-option-face">حاد</span>
-          </label>
-          <label class="theme-option">
-            <input type="radio" name="theme-corner" value="round" class="theme-radio">
-            <span class="theme-option-face">دائري</span>
+      <details class="theme-accordion" data-theme-accordion="cards">
+        <summary class="theme-accordion-summary">
+          <span class="theme-accordion-title"><span class="material-symbols-outlined" aria-hidden="true">view_compact_alt</span>ألوان البطاقات واللوحات</span>
+          <span class="theme-accordion-value"><i data-theme-color-dot="card"></i><output data-theme-color-value="card">#ffffff</output></span>
+        </summary>
+        <div class="theme-accordion-content">
+          <div class="theme-color-grid" role="group" aria-label="ألوان البطاقات الجاهزة">
+            <button type="button" class="theme-color-swatch" data-theme-color-preset="cardColor" data-color="#ffffff" style="--swatch:#ffffff" aria-label="أبيض ناصع"></button>
+            <button type="button" class="theme-color-swatch" data-theme-color-preset="cardColor" data-color="#fffdfa" style="--swatch:#fffdfa" aria-label="كريمي دافئ"></button>
+            <button type="button" class="theme-color-swatch" data-theme-color-preset="cardColor" data-color="#f8fafc" style="--swatch:#f8fafc" aria-label="رمادي هادئ"></button>
+            <button type="button" class="theme-color-swatch" data-theme-color-preset="cardColor" data-color="#f0f7ff" style="--swatch:#f0f7ff" aria-label="سماوي ثلجي"></button>
+            <button type="button" class="theme-color-swatch" data-theme-color-preset="cardColor" data-color="#1e293b" style="--swatch:#1e293b" aria-label="كحلي داكن"></button>
+          </div>
+          <label class="theme-color-picker-row">
+            <span>لون مخصص للبطاقات</span>
+            <input type="color" value="#ffffff" data-theme-color-input="cardColor" aria-label="لون مخصص للبطاقات">
           </label>
         </div>
-      </fieldset>
+      </details>
+
+      <details class="theme-accordion" data-theme-accordion="modal">
+        <summary class="theme-accordion-summary">
+          <span class="theme-accordion-title"><span class="material-symbols-outlined" aria-hidden="true">dialogs</span>لون النوافذ المنبثقة</span>
+          <span class="theme-accordion-value"><i data-theme-color-dot="modal"></i><output data-theme-color-value="modal">#ffffff</output></span>
+        </summary>
+        <div class="theme-accordion-content">
+          <div class="theme-color-grid" role="group" aria-label="ألوان النوافذ المنبثقة الجاهزة">
+            <button type="button" class="theme-color-swatch" data-theme-color-preset="modalColor" data-color="#ffffff" style="--swatch:#ffffff" aria-label="أبيض"></button>
+            <button type="button" class="theme-color-swatch" data-theme-color-preset="modalColor" data-color="#f8fafc" style="--swatch:#f8fafc" aria-label="رمادي فاتح"></button>
+            <button type="button" class="theme-color-swatch" data-theme-color-preset="modalColor" data-color="#1e293b" style="--swatch:#1e293b" aria-label="كحلي داكن"></button>
+          </div>
+          <label class="theme-color-picker-row">
+            <span>لون مخصص للنوافذ</span>
+            <input type="color" value="#ffffff" data-theme-color-input="modalColor" aria-label="لون مخصص للنوافذ المنبثقة">
+          </label>
+        </div>
+      </details>
+
+      <details class="theme-accordion" data-theme-accordion="buttons">
+        <summary class="theme-accordion-summary">
+          <span class="theme-accordion-title"><span class="material-symbols-outlined" aria-hidden="true">smart_button</span>لون ونمط الأزرار</span>
+          <span class="theme-accordion-value"><i data-theme-color-dot="button"></i><output data-theme-color-value="button">#7c3aed</output></span>
+        </summary>
+        <div class="theme-accordion-content">
+          <fieldset class="theme-fieldset">
+            <legend class="theme-legend">نمط الزر الأساسي</legend>
+            <div class="theme-segmented theme-button-styles" role="radiogroup">
+              <label class="theme-option"><input type="radio" name="theme-button-style" value="filled" class="theme-radio"><span class="theme-option-face">صلب</span></label>
+              <label class="theme-option"><input type="radio" name="theme-button-style" value="subtle" class="theme-radio"><span class="theme-option-face">ناعم</span></label>
+              <label class="theme-option"><input type="radio" name="theme-button-style" value="outline" class="theme-radio"><span class="theme-option-face">مفرغ</span></label>
+            </div>
+          </fieldset>
+          <div class="theme-color-grid" role="group" aria-label="ألوان الأزرار الجاهزة">
+            <button type="button" class="theme-color-swatch" data-theme-color-preset="buttonColor" data-color="#7c3aed" style="--swatch:#7c3aed" aria-label="بنفسجي"></button>
+            <button type="button" class="theme-color-swatch" data-theme-color-preset="buttonColor" data-color="#0f172a" style="--swatch:#0f172a" aria-label="كحلي داكن"></button>
+            <button type="button" class="theme-color-swatch" data-theme-color-preset="buttonColor" data-color="#2563eb" style="--swatch:#2563eb" aria-label="أزرق نيلي"></button>
+            <button type="button" class="theme-color-swatch" data-theme-color-preset="buttonColor" data-color="#059669" style="--swatch:#059669" aria-label="أخضر زمردي"></button>
+            <button type="button" class="theme-color-swatch" data-theme-color-preset="buttonColor" data-color="#e11d48" style="--swatch:#e11d48" aria-label="أحمر قرمزي"></button>
+            <button type="button" class="theme-color-swatch" data-theme-color-preset="buttonColor" data-color="#ea580c" style="--swatch:#ea580c" aria-label="برتقالي"></button>
+          </div>
+          <label class="theme-color-picker-row">
+            <span>لون مخصص للأزرار</span>
+            <input type="color" value="#7c3aed" data-theme-color-input="buttonColor" aria-label="لون مخصص للأزرار">
+          </label>
+        </div>
+      </details>
+
+      <details class="theme-accordion" data-theme-accordion="background">
+        <summary class="theme-accordion-summary">
+          <span class="theme-accordion-title"><span class="material-symbols-outlined" aria-hidden="true">wallpaper</span>لون خلفية الصفحة</span>
+          <span class="theme-accordion-value"><i data-theme-color-dot="page"></i><output data-theme-color-value="page">#f7f9ff</output></span>
+        </summary>
+        <div class="theme-accordion-content">
+          <div class="theme-color-grid" role="group" aria-label="ألوان الخلفية الجاهزة">
+            <button type="button" class="theme-color-swatch" data-theme-color-preset="pageColor" data-color="#ffffff" style="--swatch:#ffffff" aria-label="أبيض"></button>
+            <button type="button" class="theme-color-swatch" data-theme-color-preset="pageColor" data-color="#f7f9ff" style="--swatch:#f7f9ff" aria-label="رمادي سحابي"></button>
+            <button type="button" class="theme-color-swatch" data-theme-color-preset="pageColor" data-color="#fcfbf7" style="--swatch:#fcfbf7" aria-label="كريمي"></button>
+            <button type="button" class="theme-color-swatch" data-theme-color-preset="pageColor" data-color="#f0f9ff" style="--swatch:#f0f9ff" aria-label="أزرق ثلجي"></button>
+            <button type="button" class="theme-color-swatch" data-theme-color-preset="pageColor" data-color="#0f172a" style="--swatch:#0f172a" aria-label="كحلي عميق"></button>
+            <button type="button" class="theme-color-swatch" data-theme-color-preset="pageColor" data-color="#18181b" style="--swatch:#18181b" aria-label="فحمي داكن"></button>
+          </div>
+          <label class="theme-color-picker-row">
+            <span>لون خلفية مخصص</span>
+            <input type="color" value="#f7f9ff" data-theme-color-input="pageColor" aria-label="لون خلفية مخصص">
+          </label>
+        </div>
+      </details>
+
+      <details class="theme-accordion" data-theme-accordion="borders">
+        <summary class="theme-accordion-summary">
+          <span class="theme-accordion-title"><span class="material-symbols-outlined" aria-hidden="true">border_style</span>لون الحدود والفواصل</span>
+          <span class="theme-accordion-value"><i data-theme-color-dot="border"></i><output data-theme-color-value="border">#d1d5db</output></span>
+        </summary>
+        <div class="theme-accordion-content">
+          <div class="theme-color-grid" role="group" aria-label="ألوان الحدود الجاهزة">
+            <button type="button" class="theme-color-swatch" data-theme-color-preset="borderColor" data-color="#d1d5db" style="--swatch:#d1d5db" aria-label="رمادي فاتح"></button>
+            <button type="button" class="theme-color-swatch" data-theme-color-preset="borderColor" data-color="#94a3b8" style="--swatch:#94a3b8" aria-label="رمادي متوسط"></button>
+            <button type="button" class="theme-color-swatch" data-theme-color-preset="borderColor" data-color="#475569" style="--swatch:#475569" aria-label="رمادي داكن"></button>
+          </div>
+          <label class="theme-color-picker-row">
+            <span>لون مخصص للحدود</span>
+            <input type="color" value="#d1d5db" data-theme-color-input="borderColor" aria-label="لون مخصص للحدود والفواصل">
+          </label>
+        </div>
+      </details>
+
+      <details class="theme-accordion" data-theme-accordion="text">
+        <summary class="theme-accordion-summary">
+          <span class="theme-accordion-title"><span class="material-symbols-outlined" aria-hidden="true">format_color_text</span>لون النص والتباين</span>
+          <span class="theme-accordion-value"><i data-theme-color-dot="text"></i><output data-theme-color-value="text">#181c20</output></span>
+        </summary>
+        <div class="theme-accordion-content">
+          <div class="theme-contrast-row">
+            <span>التباين مع الخلفية والبطاقات</span>
+            <output data-theme-contrast role="status">يُفحص تلقائياً</output>
+          </div>
+          <div class="theme-color-grid" role="group" aria-label="ألوان النص الجاهزة">
+            <button type="button" class="theme-color-swatch" data-theme-color-preset="textColor" data-color="#181c20" style="--swatch:#181c20" aria-label="أسود عميق"></button>
+            <button type="button" class="theme-color-swatch" data-theme-color-preset="textColor" data-color="#334155" style="--swatch:#334155" aria-label="رمادي داكن"></button>
+            <button type="button" class="theme-color-swatch" data-theme-color-preset="textColor" data-color="#475569" style="--swatch:#475569" aria-label="فحمي"></button>
+            <button type="button" class="theme-color-swatch" data-theme-color-preset="textColor" data-color="#cbd5e1" style="--swatch:#cbd5e1" aria-label="رمادي فاتح"></button>
+            <button type="button" class="theme-color-swatch" data-theme-color-preset="textColor" data-color="#ffffff" style="--swatch:#ffffff" aria-label="أبيض"></button>
+          </div>
+          <label class="theme-color-picker-row">
+            <span>لون نص مخصص</span>
+            <input type="color" value="#181c20" data-theme-color-input="textColor" aria-label="لون نص مخصص">
+          </label>
+          <label class="theme-color-picker-row">
+            <span>لون النص الثانوي</span>
+            <input type="color" value="#4c4452" data-theme-color-input="mutedColor" aria-label="لون النص الثانوي">
+          </label>
+          <label class="theme-color-picker-row">
+            <span>لون النص على السطح المعكوس</span>
+            <input type="color" value="#ffffff" data-theme-color-input="inverseTextColor" aria-label="لون النص المعكوس">
+          </label>
+        </div>
+      </details>
+
+      <details class="theme-accordion" data-theme-accordion="layout">
+        <summary class="theme-accordion-summary">
+          <span class="theme-accordion-title"><span class="material-symbols-outlined" aria-hidden="true">text_fields</span>الخط والحجم والكثافة والحواف</span>
+          <span class="theme-accordion-value"><output data-theme-font-size-value>16 px</output></span>
+        </summary>
+        <div class="theme-accordion-content">
+          <fieldset class="theme-fieldset">
+            <legend class="theme-legend">نوع الخط العربي</legend>
+            <select class="theme-select" data-theme-font-family aria-label="نوع الخط العربي">
+              <option value="Cairo">Cairo — عصري ومتوازن</option>
+              <option value="Tajawal">Tajawal — أنيق ومقروء</option>
+              <option value="Almarai">Almarai — هندسي وواضح</option>
+              <option value="IBM Plex Sans Arabic">IBM Plex Sans Arabic — تقني</option>
+              <option value="Noto Kufi Arabic">Noto Kufi Arabic — كوفي معاصر</option>
+            </select>
+          </fieldset>
+          <fieldset class="theme-fieldset">
+            <div class="theme-field-heading">
+              <legend class="theme-legend">حجم الخط الأساسي</legend>
+              <output class="theme-font-size-value" id="themeFontSizeValue" data-theme-font-size-value>16 px</output>
+            </div>
+            <div class="theme-font-size-row">
+              <span aria-hidden="true">A−</span>
+              <input type="range" id="themeFontSize" min="12" max="22" step="0.5" value="16"
+                     class="theme-font-size-slider" data-theme-font-size
+                     aria-label="حجم الخط الأساسي" aria-describedby="themeFontSizeValue">
+              <span aria-hidden="true">A+</span>
+            </div>
+          </fieldset>
+          <fieldset class="theme-fieldset">
+            <legend class="theme-legend">كثافة العناصر وتباعدها</legend>
+            <div class="theme-segmented theme-two-options">
+              <label class="theme-option"><input type="radio" name="theme-density" value="comfortable" class="theme-radio"><span class="theme-option-face">واسع ومريح</span></label>
+              <label class="theme-option"><input type="radio" name="theme-density" value="compact" class="theme-radio"><span class="theme-option-face">مضغوط ومكثف</span></label>
+            </div>
+          </fieldset>
+          <fieldset class="theme-fieldset">
+            <legend class="theme-legend">استدارة الحواف</legend>
+            <div class="theme-segmented theme-three-options">
+              <label class="theme-option"><input type="radio" name="theme-corner" value="soft" class="theme-radio"><span class="theme-option-face">ناعم</span></label>
+              <label class="theme-option"><input type="radio" name="theme-corner" value="sharp" class="theme-radio"><span class="theme-option-face">حاد</span></label>
+              <label class="theme-option"><input type="radio" name="theme-corner" value="round" class="theme-radio"><span class="theme-option-face">دائري</span></label>
+            </div>
+          </fieldset>
+        </div>
+      </details>
     </div>
+
+    <section class="theme-live-preview" data-theme-live-preview aria-label="معاينة حية للمظهر">
+      <div class="theme-preview-heading">
+        <span><span class="material-symbols-outlined" aria-hidden="true">visibility</span>معاينة مباشرة</span>
+        <output data-theme-mode-label>الوضع الحالي</output>
+      </div>
+      <div class="theme-preview-canvas">
+        <div class="theme-preview-nav">
+          <span class="theme-preview-mark material-symbols-outlined" aria-hidden="true">space_dashboard</span>
+          <span><strong>منصة الكلية</strong><small>كلية التقنية الهندسية زوارة</small></span>
+          <span class="material-symbols-outlined theme-preview-muted" aria-hidden="true">notifications</span>
+        </div>
+        <article class="theme-preview-card">
+          <span class="theme-preview-tag">لوحة التحكم</span>
+          <h3>مرحباً بك في المنصة</h3>
+          <p>تتغير هذه المعاينة فورياً مع إعدادات الألوان والخطوط.</p>
+          <div class="theme-preview-actions">
+            <button type="button" class="theme-preview-primary">إجراء أساسي</button>
+            <button type="button" class="theme-preview-secondary">إجراء ثانوي</button>
+          </div>
+        </article>
+      </div>
+    </section>
+    <p class="theme-live-status" data-theme-live-status role="status" aria-live="polite">المزامنة الحية مفعّلة</p>
   </div>
 
   <div class="theme-panel-foot">
-    <button type="button" class="btn btn-outline-secondary btn-sm" data-theme-reset>استعادة الافتراضي</button>
+    <button type="button" class="btn btn-outline-secondary btn-sm" data-theme-reset>
+      <span class="material-symbols-outlined" aria-hidden="true">restart_alt</span>استعادة الافتراضي
+    </button>
+    <button type="button" class="btn btn-primary btn-sm" data-theme-apply>
+      <span class="material-symbols-outlined" aria-hidden="true">done_all</span>تم
+    </button>
   </div>
 </div>

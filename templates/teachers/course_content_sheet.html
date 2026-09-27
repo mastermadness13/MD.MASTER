@@ -56,14 +56,14 @@
     border-radius: 8px;
     background: #eef2ff;
     color: #4f46e5;
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 700;
   }
   .cc-create-toolbar-copy { min-width: 0; }
   .cc-create-toolbar-copy h1,
   .cc-create-toolbar-copy p { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .cc-create-toolbar-copy h1 { color: #111827; font-size: 14px; font-weight: 700; }
-  .cc-create-toolbar-copy p { margin-top: 2px; color: #6b7280; font-size: 12px; }
+  .cc-create-toolbar-copy h1 { color: #111827; font-size: 0.875rem; font-weight: 700; }
+  .cc-create-toolbar-copy p { margin-top: 2px; color: #6b7280; font-size: 0.75rem; }
   .cc-create-toolbar-actions { display: flex; flex-wrap: wrap; gap: 8px; flex: 0 0 auto; }
   .cc-create-toolbar-button {
     display: inline-flex;
@@ -75,7 +75,7 @@
     border-radius: 8px;
     background: #fff;
     color: #374151;
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 700;
     cursor: pointer;
     transition: background .15s ease, border-color .15s ease;
@@ -93,8 +93,8 @@
     padding-bottom: 20px;
     border-bottom: 0;
   }
-  .cc-create-page .cc-sheet--form .cc-doc-title h1 { font-size: 28px; color: #111827; }
-  .cc-create-page .cc-sheet--form .cc-doc-title p { color: #374151; font-size: 14px; }
+  .cc-create-page .cc-sheet--form .cc-doc-title h1 { font-size: 1.75rem; color: #111827; }
+  .cc-create-page .cc-sheet--form .cc-doc-title p { color: #374151; font-size: 0.875rem; }
   .cc-create-page .cc-sheet--form .cc-sheet-meta { display: none; }
   @media (max-width: 700px) {
     .cc-create-toolbar { align-items: flex-start; flex-direction: column; margin-left: -8px; margin-right: -8px; }
@@ -123,7 +123,7 @@
     </div>
     <div class="flex flex-wrap items-center gap-2">
       <button type="button" onclick="window.print()"
-              class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-outline-variant px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm">
+              class="flex items-center gap-2 bg-surface-card hover:bg-primary/10 text-primary border border-outline-variant px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm">
         <span class="material-symbols-outlined text-lg">print</span>
         طباعة
       </button>
@@ -161,7 +161,7 @@
       </button>
       <button type="submit" form="courseContentForm" data-action="send" class="cc-create-toolbar-button cc-create-toolbar-button--primary">
         <span class="material-symbols-outlined text-base">save</span>
-        حفظ مفردات المقرر
+        حفظ ونشر مفردات المقرر
       </button>
     </div>
   </div>
@@ -176,7 +176,7 @@
     </div>
     <div class="flex items-center gap-2">
       <button type="button" onclick="window.print()"
-              class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm cursor-pointer">
+              class="flex items-center gap-2 bg-surface-card hover:bg-primary/10 text-primary border border-primary/30 px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm cursor-pointer">
         <span class="material-symbols-outlined text-lg">print</span>
         طباعة
       </button>
@@ -186,7 +186,7 @@
       </span>
       {% endif %}
       <a href="{{ '/index.html#courses' if public_view else url_for('teacher_pages.teacher_course_content' if is_readonly else 'teacher_pages.super_admin_course_content_list') }}"
-         class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm no-underline">
+         class="flex items-center gap-2 bg-surface-card hover:bg-primary/10 text-primary border border-primary/30 px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm no-underline">
         <span class="material-symbols-outlined text-lg">arrow_forward</span>
         العودة
       </a>
@@ -261,7 +261,7 @@
                 <div class="flex flex-wrap items-center gap-2">
                   {% if c.syllabus_download_url %}
                   <a href="{{ c.syllabus_download_url }}" target="_blank" rel="noopener"
-                     class="inline-flex items-center gap-1.5 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-3 py-2 rounded-lg text-xs font-bold transition no-underline">
+                     class="inline-flex items-center gap-1.5 bg-surface-card hover:bg-primary/10 text-primary border border-primary/30 px-3 py-2 rounded-lg text-xs font-bold transition no-underline">
                     <span class="material-symbols-outlined text-base">download</span>
                     تحميل المنهج
                   </a>
@@ -273,7 +273,7 @@
                           data-course-code="{{ c.course_code or '' }}"
                           data-dept="{{ c.dept_name or '' }}"
                           data-semester="{{ c.semester_display or '' }}"
-                          class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition cursor-pointer {% if c.has_upload %}bg-white hover:bg-primary/10 text-primary border border-primary/30{% else %}bg-primary hover:bg-primary/90 text-on-primary shadow-sm{% endif %}">
+                          class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition cursor-pointer {% if c.has_upload %}bg-surface-card hover:bg-primary/10 text-primary border border-primary/30{% else %}bg-primary hover:bg-primary/90 text-on-primary shadow-sm{% endif %}">
                     <span class="material-symbols-outlined text-base">{{ 'swap_vert' if c.has_upload else 'upload_file' }}</span>
                     {{ 'استبدال' if c.has_upload else 'رفع المنهج' }}
                   </button>
@@ -305,7 +305,7 @@
                   {% endif %}
                   {% if c.rnd_form_url %}
                   <a href="{{ c.rnd_form_url }}" target="_blank" rel="noopener"
-                     class="inline-flex items-center gap-1.5 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-3 py-2 rounded-lg text-xs font-bold transition no-underline">
+                     class="inline-flex items-center gap-1.5 bg-surface-card hover:bg-primary/10 text-primary border border-primary/30 px-3 py-2 rounded-lg text-xs font-bold transition no-underline">
                     <span class="material-symbols-outlined text-base">visibility</span>
                     عرض نموذج R&amp;D
                   </a>
@@ -406,19 +406,19 @@
       <div class="flex flex-wrap gap-2">
         {% if page > 1 %}
         <a href="{{ url_for('teacher_pages.super_admin_course_content_list', page=page - 1, search=search, department=dept_filter, semester=sem_filter, status=status_filter) }}"
-           class="px-3 py-2 rounded-lg border border-outline-variant bg-white hover:bg-primary/10 text-on-surface text-sm font-bold transition no-underline">السابق</a>
+           class="px-3 py-2 rounded-lg border border-outline-variant bg-surface-card hover:bg-primary/10 text-on-surface text-sm font-bold transition no-underline">السابق</a>
         {% endif %}
         {% for p in range(1, _total_pages + 1) %}
         {% if p == page %}
         <span class="px-3 py-2 rounded-lg bg-primary text-on-primary text-sm font-bold">{{ p }}</span>
         {% elif p >= page - 2 and p <= page + 2 %}
         <a href="{{ url_for('teacher_pages.super_admin_course_content_list', page=p, search=search, department=dept_filter, semester=sem_filter, status=status_filter) }}"
-           class="px-3 py-2 rounded-lg border border-outline-variant bg-white hover:bg-primary/10 text-on-surface text-sm font-bold transition no-underline">{{ p }}</a>
+           class="px-3 py-2 rounded-lg border border-outline-variant bg-surface-card hover:bg-primary/10 text-on-surface text-sm font-bold transition no-underline">{{ p }}</a>
         {% endif %}
         {% endfor %}
         {% if page * per_page < total %}
         <a href="{{ url_for('teacher_pages.super_admin_course_content_list', page=page + 1, search=search, department=dept_filter, semester=sem_filter, status=status_filter) }}"
-           class="px-3 py-2 rounded-lg border border-outline-variant bg-white hover:bg-primary/10 text-on-surface text-sm font-bold transition no-underline">التالي</a>
+           class="px-3 py-2 rounded-lg border border-outline-variant bg-surface-card hover:bg-primary/10 text-on-surface text-sm font-bold transition no-underline">التالي</a>
         {% endif %}
       </div>
     </div>
@@ -521,7 +521,7 @@
       فتح ملف PDF
     </a>
     <a href="{{ url_for('teacher_pages.super_admin_course_content_file', submission_id=submission.id, download=1) }}"
-       class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-4 py-2.5 rounded-lg text-sm font-bold transition shadow-sm no-underline">
+       class="flex items-center gap-2 bg-surface-card hover:bg-primary/10 text-primary border border-primary/30 px-4 py-2.5 rounded-lg text-sm font-bold transition shadow-sm no-underline">
       <span class="material-symbols-outlined text-lg">download</span>
       تحميل ملف PDF
     </a>
@@ -547,7 +547,7 @@
         <div>
           <label class="block text-xs font-bold text-on-surface-variant mb-1.5">الفصل الدراسي</label>
           <select name="academic_period_id"
-                  class="bg-white border border-outline-variant rounded-lg px-3 py-2.5 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer">
+                  class="bg-surface-card border border-outline-variant rounded-lg px-3 py-2.5 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer">
             {% for p in academic_periods | default([]) %}
             <option value="{{ p.id }}"{% if (submission.academic_period_id or default_period_id) == p.id %} selected{% endif %}>{{ p.label or (p.term ~ ' ' ~ p.year) }}</option>
             {% endfor %}

@@ -30,6 +30,68 @@ body .bg-success-teal { background-color: var(--success); }
 body .bg-academic-gold { background-color: var(--tertiary); }
 body .bg-info-container { background-color: var(--info-faint); }
 
+/* Core brand fills. Tailwind's config ships these as static hex, so without
+   these rules `bg-primary` stayed #320058 in dark mode and rendered the dark
+   `--text-on-primary` on a near-black background. Bridging them makes every
+   existing chain follow the theme (and accent) automatically. */
+body .bg-primary { background-color: var(--primary); }
+body .bg-error { background-color: var(--error); }
+body .bg-success { background-color: var(--success); }
+/* Confirmed palette reconciliation: these two had stale legacy hex in the
+   Tailwind config (#9d4300 / #440f8d) that disagreed with the design-system
+   variables. The variables are the source of truth. */
+body .bg-secondary { background-color: var(--secondary); }
+body .bg-tertiary { background-color: var(--tertiary); }
+
+body .bg-primary\/5 { background-color: color-mix(in srgb, var(--primary) 5%, transparent); }
+body .bg-primary\/10 { background-color: color-mix(in srgb, var(--primary) 10%, transparent); }
+body .bg-primary\/15 { background-color: color-mix(in srgb, var(--primary) 15%, transparent); }
+body .bg-primary\/20 { background-color: color-mix(in srgb, var(--primary) 20%, transparent); }
+body .bg-error\/10 { background-color: color-mix(in srgb, var(--error) 10%, transparent); }
+body .bg-secondary\/10 { background-color: color-mix(in srgb, var(--secondary) 10%, transparent); }
+body .bg-tertiary\/10 { background-color: color-mix(in srgb, var(--tertiary) 10%, transparent); }
+
+body .hover\:bg-primary:hover { background-color: var(--primary-dark); }
+body .hover\:bg-primary\/90:hover { background-color: var(--primary-dark); }
+body .hover\:bg-primary\/20:hover { background-color: color-mix(in srgb, var(--primary) 20%, transparent); }
+body .hover\:bg-primary\/15:hover { background-color: color-mix(in srgb, var(--primary) 15%, transparent); }
+body .hover\:bg-primary\/10:hover { background-color: color-mix(in srgb, var(--primary) 10%, transparent); }
+body .hover\:bg-primary\/5:hover { background-color: color-mix(in srgb, var(--primary) 5%, transparent); }
+body .active\:bg-primary\/90:active { background-color: var(--primary-dark); }
+body .hover\:bg-error\/10:hover { background-color: color-mix(in srgb, var(--error) 10%, transparent); }
+body .hover\:bg-error\/90:hover { background-color: var(--error-dark); }
+body .hover\:bg-error\/5:hover { background-color: color-mix(in srgb, var(--error) 5%, transparent); }
+
+body .border-primary\/10 { border-color: color-mix(in srgb, var(--primary) 10%, transparent); }
+body .border-primary\/15 { border-color: color-mix(in srgb, var(--primary) 15%, transparent); }
+body .border-primary\/20 { border-color: color-mix(in srgb, var(--primary) 20%, transparent); }
+body .border-primary\/30 { border-color: color-mix(in srgb, var(--primary) 30%, transparent); }
+body .border-primary\/40 { border-color: color-mix(in srgb, var(--primary) 40%, transparent); }
+body .border-primary\/50 { border-color: color-mix(in srgb, var(--primary) 50%, transparent); }
+body .border-primary\/60 { border-color: color-mix(in srgb, var(--primary) 60%, transparent); }
+body .border-error\/20 { border-color: color-mix(in srgb, var(--error) 20%, transparent); }
+body .border-error\/30 { border-color: color-mix(in srgb, var(--error) 30%, transparent); }
+body .border-error\/40 { border-color: color-mix(in srgb, var(--error) 40%, transparent); }
+body .border-secondary\/20 { border-color: color-mix(in srgb, var(--secondary) 20%, transparent); }
+body .border-secondary\/30 { border-color: color-mix(in srgb, var(--secondary) 30%, transparent); }
+body .border-tertiary { border-color: var(--tertiary); }
+body .hover\:border-primary\/30:hover { border-color: color-mix(in srgb, var(--primary) 30%, transparent); }
+body .hover\:border-primary\/40:hover { border-color: color-mix(in srgb, var(--primary) 40%, transparent); }
+body .hover\:border-primary\/50:hover { border-color: color-mix(in srgb, var(--primary) 50%, transparent); }
+body .text-primary\/70 { color: color-mix(in srgb, var(--primary) 70%, transparent); }
+body .text-error\/50 { color: color-mix(in srgb, var(--error) 50%, transparent); }
+body .hover\:text-primary\/80:hover { color: color-mix(in srgb, var(--primary) 80%, transparent); }
+
+/* Legacy aliases -> canonical variables. These class names are not valid
+   Tailwind colors, so without these rules they were silently dropped. */
+body .bg-primary-faint { background-color: var(--primary-faint); }
+body .bg-primary-light { background-color: var(--primary-light); }
+body .bg-secondary-faint { background-color: var(--secondary-faint); }
+body .bg-success-container { background-color: var(--success-faint); }
+body .bg-surface-hover { background-color: var(--surface-hover); }
+body .bg-surface-zebra { background-color: var(--surface-zebra); }
+body .bg-gray { background-color: var(--surface-zebra); }
+
 body .bg-white { background-color: var(--surface); }
 body .bg-gray-50 { background-color: var(--surface-hover); }
 body .bg-gray-100 { background-color: var(--surface-zebra); }
@@ -41,6 +103,28 @@ body .text-gray-700 { color: var(--text-secondary); }
 body .text-gray-800 { color: var(--text-primary); }
 
 /* === TEXT COLORS === */
+
+/* Arbitrary Tailwind text sizes use px rather than rem and otherwise ignore
+   the user's root font-size preference. Preserve each intended size while
+   scaling it against the 16px default. */
+body [class~="text-[10px]"] { font-size: calc(var(--user-font-size, 16px) * 0.625) !important; }
+body [class~="text-[10.5px]"] { font-size: calc(var(--user-font-size, 16px) * 0.65625) !important; }
+body [class~="text-[11px]"] { font-size: calc(var(--user-font-size, 16px) * 0.6875) !important; }
+body [class~="text-[12px]"] { font-size: calc(var(--user-font-size, 16px) * 0.75) !important; }
+body [class~="text-[13px]"] { font-size: calc(var(--user-font-size, 16px) * 0.8125) !important; }
+body [class~="text-[14px]"] { font-size: calc(var(--user-font-size, 16px) * 0.875) !important; }
+body [class~="text-[15px]"] { font-size: calc(var(--user-font-size, 16px) * 0.9375) !important; }
+body [class~="text-[16px]"] { font-size: var(--user-font-size, 16px) !important; }
+body [class~="text-[17px]"] { font-size: calc(var(--user-font-size, 16px) * 1.0625) !important; }
+body [class~="text-[18px]"] { font-size: calc(var(--user-font-size, 16px) * 1.125) !important; }
+body [class~="text-[20px]"] { font-size: calc(var(--user-font-size, 16px) * 1.25) !important; }
+body [class~="text-[22px]"] { font-size: calc(var(--user-font-size, 16px) * 1.375) !important; }
+body [class~="text-[36px]"] { font-size: calc(var(--user-font-size, 16px) * 2.25) !important; }
+body [class~="text-[40px]"] { font-size: calc(var(--user-font-size, 16px) * 2.5) !important; }
+body [class~="text-[48px]"] { font-size: calc(var(--user-font-size, 16px) * 3) !important; }
+body [class~="file:text-[11px]"]::file-selector-button {
+  font-size: calc(var(--user-font-size, 16px) * 0.6875) !important;
+}
 
 /* Semantic status text that stays readable on tinted fills in both themes
    (e.g. ● مقرر / ● منهاج markers inside --primary-container cells) */
@@ -79,6 +163,13 @@ body .text-inverse-surface { color: var(--surface); }
 body .text-error-container { color: var(--error-faint); }
 body .text-warning-text { color: var(--warning-text); }
 
+/* Legacy aliases -> canonical variables (see background note above). */
+body .text-text-primary { color: var(--text-primary); }
+body .text-text-secondary { color: var(--text-secondary); }
+body .text-text-muted { color: var(--text-muted); }
+body .text-text-faint { color: var(--text-faint); }
+body .text-success { color: var(--success); }
+
 /* === BORDER COLORS === */
 
 body .border-outline { border-color: var(--border); }
@@ -90,13 +181,17 @@ body .border-secondary { border-color: var(--secondary); }
 body .border-secondary-container { border-color: var(--secondary-faint); }
 body .border-error { border-color: var(--error); }
 body .ring-error { --tw-ring-color: var(--error); }
-.field-error { color: var(--error); font-size: 12px; margin-top: 2px; }
+.field-error { color: var(--error); font-size: 0.75rem; margin-top: 2px; }
 body .border-success-green { border-color: var(--success); }
 body .border-success-teal { border-color: var(--success); }
 body .border-surface { border-color: var(--surface); }
 body .border-surface-container { border-color: var(--surface-zebra); }
 body .border-academic-gold { border-color: var(--tertiary); }
 body .border-warning-border { border-color: var(--warning-border); }
+
+/* Legacy aliases -> canonical variables (see background note above). */
+body .border-border { border-color: var(--border); }
+body .border-border-subtle { border-color: var(--border-subtle); }
 
 /* === RING COLORS === */
 
@@ -107,3 +202,12 @@ body .ring-primary { --tw-ring-color: var(--primary); }
 body .divide-outline-variant > :not([hidden]) ~ :not([hidden]) {
   border-color: var(--border-accent);
 }
+
+body .divide-border-subtle > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--border-subtle);
+}
+
+/* Variant-prefixed legacy aliases — the escaped colon targets Tailwind's
+   `hover:` utility naming so these resolve on hover too. */
+body .hover\:text-text-primary:hover { color: var(--text-primary); }
+body .hover\:bg-surface-hover:hover { background-color: var(--surface-hover); }

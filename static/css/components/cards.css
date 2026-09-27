@@ -13,7 +13,7 @@
 }
 
 .card-title {
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -54,7 +54,7 @@
   padding: 6px 14px;
   border: none;
   border-radius: var(--radius-md);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
   background: transparent;
@@ -74,13 +74,13 @@
 }
 
 .section-header h3 {
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 700;
   margin: 0 0 4px;
 }
 
 .section-header p {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--text-muted);
   margin: 0;
 }
@@ -100,13 +100,13 @@
 }
 
 .table-head h3 {
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 700;
   margin: 0 0 4px;
 }
 
 .table-head p {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--text-muted);
   margin: 0;
 }

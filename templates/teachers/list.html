@@ -39,14 +39,14 @@
       {% endif %}
       {% if has_permission('teachers.assign') %}
       <button type="button" onclick="openAssignDrawer()"
-              class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm">
+              class="flex items-center gap-2 bg-surface-card hover:bg-primary/10 text-primary border border-primary/30 px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm">
         <span class="material-symbols-outlined text-lg">person_add</span>
         + إضافة أستاذ للقسم
       </button>
       {% endif %}
       {% if show_full_table %}
       <button type="button" onclick="window.print()"
-              class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-outline-variant px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm">
+              class="flex items-center gap-2 bg-surface-card hover:bg-primary/10 text-primary border border-outline-variant px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm">
         <span class="material-symbols-outlined text-lg">print</span>
         طباعة
       </button>
@@ -92,7 +92,7 @@
                  value="{{ search or '' }}"
                  autocomplete="off"
                  placeholder="ابحث بالاسم أو البريد أو الرقم الكلية..."
-                 class="search-input w-full rounded-xl border border-outline-variant bg-surface-container-lowest py-2.5 pr-11 pl-10 text-sm font-bold text-on-surface transition placeholder:font-medium placeholder:text-on-surface-variant/60 focus:border-primary focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary/15">
+                 class="search-input w-full rounded-xl border border-outline-variant bg-surface-container-lowest py-2.5 pr-11 pl-10 text-sm font-bold text-on-surface transition placeholder:font-medium placeholder:text-on-surface-variant/60 focus:border-primary focus:bg-surface-card focus:outline-none focus:ring-4 focus:ring-primary/15">
 
           <!-- زر المسح -->
           <button type="button"
@@ -118,7 +118,7 @@
         <div class="relative">
           <select id="departmentFilter"
                   name="department_id"
-                  class="w-full appearance-none rounded-xl border border-outline-variant bg-surface-container-lowest py-2.5 pr-3 pl-9 text-sm font-bold text-on-surface transition focus:border-primary focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary/15">
+                  class="w-full appearance-none rounded-xl border border-outline-variant bg-surface-container-lowest py-2.5 pr-3 pl-9 text-sm font-bold text-on-surface transition focus:border-primary focus:bg-surface-card focus:outline-none focus:ring-4 focus:ring-primary/15">
             <option value="">جميع الأقسام</option>
             {% for d in departments %}
             <option value="{{ d.id }}" {{ 'selected' if department_id|string == d.id|string }}>{{ d.name }}</option>

@@ -71,19 +71,43 @@ def _safe_extra_roles(form) -> list:
     return [r for r in form.getlist('extra_roles[]') if r in VALID]
 
 
-def _roles_from_position(db, position: str) -> set:
-    """Resolve permission roles through the immutable lookup code."""
+def _admin_assignment_type_id(db, position: str, requested_id=None):
+    """Resolve the stable assignment lookup ID for the selected display label."""
+    position = (position or '').strip()
+    if not position:
+        if _safe_fk(requested_id):
+            abort(400)
+        return None
+    assignment_type_id = _safe_fk(requested_id)
+    if assignment_type_id:
+        row = db.execute(
+            'SELECT id, name FROM admin_assignment_types WHERE id = ?',
+            (assignment_type_id,),
+        ).fetchone()
+        if not row or row['name'] != position:
+            abort(400)
+        return row['id']
+    row = db.execute(
+        'SELECT id FROM admin_assignment_types WHERE name = ?', (position,)
+    ).fetchone()
+    return row['id'] if row else None
+
+
+def _roles_from_assignment_type(db, assignment_type_id) -> set:
+    """Resolve RBAC roles from a stable lookup ID, never from its display text."""
+    if not assignment_type_id:
+        return set()
     row = db.execute(
         '''SELECT internal_code FROM admin_assignment_types
-           WHERE name = ? AND is_system_linked = 1''',
-        ((position or '').strip(),),
+           WHERE id = ? AND is_protected_role = 1''',
+        (assignment_type_id,),
     ).fetchone()
     role = row['internal_code'] if row else ''
     return {role} if role in _GRANTABLE_ROLES else set()
 
 
-def _admin_task_names(db, selected='') -> list:
-    """Return managed choices, retaining a selected inactive/legacy value."""
+def _admin_task_names(db, selected_id=None, selected='') -> list:
+    """Return active choices plus a selected inactive or legacy value."""
     rows = db.execute(
         '''SELECT id, name, default_hours, is_active, sort_order,
                   internal_code, is_system_linked
@@ -93,7 +117,16 @@ def _admin_task_names(db, selected='') -> list:
     ).fetchall()
     tasks = [dict(row) for row in rows]
     selected = (selected or '').strip()
-    if selected and not any(task['name'] == selected for task in tasks):
+    if selected_id and not any(task['id'] == selected_id for task in tasks):
+        row = db.execute(
+            '''SELECT id, name, default_hours, is_active, sort_order,
+                      internal_code, is_system_linked
+               FROM admin_assignment_types WHERE id = ?''',
+            (selected_id,),
+        ).fetchone()
+        if row:
+            tasks.append(dict(row))
+    elif selected and not selected_id and not any(task['name'] == selected for task in tasks):
         row = db.execute(
             '''SELECT id, name, default_hours, is_active, sort_order,
                       internal_code, is_system_linked
@@ -329,7 +362,7 @@ def _resolve_custom_lookups(db, form, department_id=None):
         form['specialization_id'] = None
     custom_pos = (form.get('custom_position') or '').strip()
     if custom_pos:
-        _ensure_admin_task(db, custom_pos)
+        form['admin_assignment_type_id'] = _ensure_admin_task(db, custom_pos)
         form['position'] = custom_pos
 
 
@@ -396,7 +429,9 @@ def _lookup_rows(db, category):
     if category == 'admin_assignment_type':
         return [dict(row) for row in db.execute(
             '''SELECT a.*,
-                      (SELECT COUNT(*) FROM teachers t WHERE t.position = a.name)
+                      (SELECT COUNT(*) FROM teachers t
+                       WHERE t.admin_assignment_type_id = a.id
+                          OR (t.admin_assignment_type_id IS NULL AND t.position = a.name))
                       AS member_count,
                       (SELECT COUNT(*) FROM faculty_admin_assignments f
                        WHERE f.task_name = a.name AND f.deleted_at IS NULL)
@@ -424,7 +459,10 @@ def _lookup_rows(db, category):
 def _lookup_usage(db, category, row):
     if category == 'admin_assignment_type':
         members = db.execute(
-            'SELECT COUNT(*) FROM teachers WHERE position = ?', (row['name'],)
+            '''SELECT COUNT(*) FROM teachers
+               WHERE admin_assignment_type_id = ?
+                  OR (admin_assignment_type_id IS NULL AND position = ?)''',
+            (row['id'], row['name']),
         ).fetchone()[0]
         assignments = db.execute(
             '''SELECT COUNT(*) FROM faculty_admin_assignments
@@ -468,9 +506,11 @@ def _lookup_choices(db, category, exclude_id):
         ).fetchall()
     else:
         table, name_col = config['table'], config['name_col']
+        linked_filter = ' AND is_protected_role = 0' if category == 'admin_assignment_type' else ''
         choices = db.execute(
             f'''SELECT id, {name_col} AS name FROM {table}
-                WHERE id != ? AND is_active = 1 ORDER BY sort_order, {name_col}''',
+                WHERE id != ? AND is_active = 1{linked_filter}
+                ORDER BY sort_order, {name_col}''',
             (exclude_id,),
         ).fetchall()
     return [dict(choice) for choice in choices]
@@ -517,8 +557,14 @@ def _delete_lookup_value(db, category, row, replacement_id=None, clear=False):
 
     if category == 'admin_assignment_type':
         new_name = replacement['name'] if replacement else ''
-        db.execute('UPDATE teachers SET position = ? WHERE position = ?',
-                   (new_name, old_name))
+        db.execute(
+            '''UPDATE teachers
+               SET position = ?, admin_assignment_type_id = ?
+               WHERE admin_assignment_type_id = ?
+                  OR (admin_assignment_type_id IS NULL AND position = ?)''',
+            (new_name, replacement['id'] if replacement else None,
+             row['id'], old_name),
+        )
         db.execute(
             'UPDATE faculty_admin_assignments SET task_name = ? WHERE task_name = ?',
             (new_name, old_name),
@@ -577,6 +623,11 @@ def lookup_lists():
         action = request.form.get('action', '')
         row_id = _safe_fk(request.form.get('id'))
         config = _LOOKUP_CATEGORIES[category]
+        ajax_action = (
+            request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+            and action in ('add', 'rename', 'toggle')
+        )
+        ajax_error = None
         try:
             if action == 'add':
                 name = request.form.get('name', '').strip()
@@ -619,7 +670,8 @@ def lookup_lists():
                         (name, name),
                     )
                 db.commit()
-                flash('تمت إضافة القيمة بنجاح', 'success')
+                if not ajax_action:
+                    flash('تمت إضافة القيمة بنجاح', 'success')
 
             elif action in ('rename', 'toggle', 'delete'):
                 if not row_id:
@@ -642,8 +694,10 @@ def lookup_lists():
                         )
                         if category == 'admin_assignment_type':
                             db.execute(
-                                'UPDATE teachers SET position = ? WHERE position = ?',
-                                (name, old_name),
+                                '''UPDATE teachers SET position = ?
+                                   WHERE admin_assignment_type_id = ?
+                                      OR (admin_assignment_type_id IS NULL AND position = ?)''',
+                                (name, row_id, old_name),
                             )
                             db.execute(
                                 'UPDATE faculty_admin_assignments SET task_name = ? '
@@ -656,24 +710,33 @@ def lookup_lists():
                                 (name, row_id),
                             )
                     db.commit()
-                    flash('تم تحديث نص القيمة', 'success')
+                    if not ajax_action:
+                        flash('تم تحديث نص القيمة', 'success')
 
                 elif action == 'toggle':
-                    if category != 'admin_assignment_type' or not row['is_system_linked']:
+                    if category != 'admin_assignment_type' or not row['is_protected_role']:
                         abort(400)
                     db.execute(
                         'UPDATE admin_assignment_types SET is_active = ? WHERE id = ?',
                         (0 if row['is_active'] else 1, row_id),
                     )
                     db.commit()
-                    flash('تم تحديث حالة التكليف النظامي', 'success')
+                    if not ajax_action:
+                        flash('تم تحديث حالة التكليف النظامي', 'success')
 
                 else:
-                    if category == 'admin_assignment_type' and row['is_system_linked']:
-                        abort(400)
                     member_count, assignment_count, linked_count = _lookup_usage(
                         db, category, row
                     )
+                    if category == 'admin_assignment_type':
+                        if row['is_protected_role']:
+                            raise ValueError(
+                                'لا يمكن حذف دور نظامي؛ استخدم التعطيل بدلاً من ذلك'
+                            )
+                        if member_count + assignment_count:
+                            raise ValueError(
+                                'لا يمكن حذف التكليف ما دام مرتبطاً بأعضاء أو تكليفات محفوظة'
+                            )
                     replacement_id = _safe_fk(
                         request.form.get('replacement_id')
                     )
@@ -704,11 +767,19 @@ def lookup_lists():
                     )
         except ValueError as exc:
             db.rollback()
-            flash(str(exc), 'error')
+            ajax_error = str(exc)
+            if not ajax_action:
+                flash(str(exc), 'error')
         except sqlite3.IntegrityError:
             db.rollback()
-            flash('تعذر الحفظ: توجد قيمة مطابقة أو علاقة تمنع هذا التغيير', 'error')
+            ajax_error = 'تعذر الحفظ: توجد قيمة مطابقة أو علاقة تمنع هذا التغيير'
+            if not ajax_action:
+                flash(ajax_error, 'error')
 
+        if ajax_action:
+            if ajax_error:
+                return jsonify(ok=False, message=ajax_error), 400
+            return jsonify(ok=True, message='تم الحفظ بنجاح')
         return redirect(url_for('teachers.lookup_lists', category=category))
 
     return _render_lookup_lists(db, category)
@@ -831,10 +902,10 @@ def teachers_create():
         specialization_id = _safe_fk(request.form.get('specialization_id'))
         extra_roles = _safe_extra_roles(request.form)
         position = request.form.get('position', '').strip()
+        assignment_type_id = _admin_assignment_type_id(
+            db, position, request.form.get('admin_assignment_type_id')
+        )
         hod_department_id = _safe_fk(request.form.get('hod_department_id'))
-        effective_roles = set(extra_roles) | _roles_from_position(db, position)
-        if 'head_of_department' not in effective_roles:
-            hod_department_id = None
         form = {
             'name': name,
             'username': request.form.get('username', '').strip(),
@@ -851,6 +922,7 @@ def teachers_create():
             'contract_date': request.form.get('contract_date', '').strip(),
             'tasks': request.form.get('tasks', '').strip(),
             'position': position,
+            'admin_assignment_type_id': assignment_type_id,
             'specialization': request.form.get('specialization', '').strip(),
             'specialization_id': specialization_id,
             'semester': request.form.get('semester', '').strip(),
@@ -864,7 +936,15 @@ def teachers_create():
                     'custom_specialization_id', 'custom_position'):
             form[_ck] = request.form.get(_ck, '').strip()
         _resolve_custom_lookups(db, form, department_id)
-        admin_tasks = _admin_task_names(db, form.get('position'))
+        effective_roles = set(extra_roles) | _roles_from_assignment_type(
+            db, form.get('admin_assignment_type_id')
+        )
+        if 'head_of_department' not in effective_roles:
+            hod_department_id = None
+        form['hod_department_id'] = hod_department_id
+        admin_tasks = _admin_task_names(
+            db, form.get('admin_assignment_type_id'), form.get('position')
+        )
         if not name:
             return render_template('teachers/create.html',
                                   departments=departments, qualifications=qualifications,
@@ -1000,7 +1080,9 @@ def teachers_edit(id):
         flash('عضو هيئة التدريس غير موجود', 'error')
         return redirect(url_for('teachers.teachers_list'))
     departments, qualifications, ranks, classifications, _courses, specializations = teacher_service.get_form_lookups(db)
-    admin_tasks = _admin_task_names(db, t.get('position'))
+    admin_tasks = _admin_task_names(
+        db, t.get('admin_assignment_type_id'), t.get('position')
+    )
     department_hods = hod_resolution.department_hod_map(db)
     confirmed_replace = request.form.get('confirm_replace_hod') == '1' if request.method == 'POST' else False
     teacher_dept_rows = db.execute(
@@ -1023,10 +1105,10 @@ def teachers_edit(id):
         specialization_id = _safe_fk(request.form.get('specialization_id'))
         extra_roles = _safe_extra_roles(request.form)
         position = request.form.get('position', '').strip()
+        assignment_type_id = _admin_assignment_type_id(
+            db, position, request.form.get('admin_assignment_type_id')
+        )
         hod_department_id = _safe_fk(request.form.get('hod_department_id'))
-        effective_roles = set(extra_roles) | _roles_from_position(db, position)
-        if 'head_of_department' not in effective_roles:
-            hod_department_id = None
         form = {
             'name': name,
             'email': request.form.get('email', '').strip(),
@@ -1042,6 +1124,7 @@ def teachers_edit(id):
             'specialization': request.form.get('specialization', '').strip(),
             'specialization_id': specialization_id,
             'position': position,
+            'admin_assignment_type_id': assignment_type_id,
             'first_lecture_date': request.form.get('first_lecture_date', '').strip(),
             'work_start_date': request.form.get('work_start_date', '').strip(),
             'general_notes': request.form.get('general_notes', '').strip(),
@@ -1052,7 +1135,15 @@ def teachers_edit(id):
                     'custom_specialization_id', 'custom_position'):
             form[_ck] = request.form.get(_ck, '').strip()
         _resolve_custom_lookups(db, form, department_id)
-        admin_tasks = _admin_task_names(db, form.get('position'))
+        effective_roles = set(extra_roles) | _roles_from_assignment_type(
+            db, form.get('admin_assignment_type_id')
+        )
+        if 'head_of_department' not in effective_roles:
+            hod_department_id = None
+        form['hod_department_id'] = hod_department_id
+        admin_tasks = _admin_task_names(
+            db, form.get('admin_assignment_type_id'), form.get('position')
+        )
         # Profile photo: replace / remove while keeping the previous file on
         # validation failures so nothing is lost.
         photo_filename = t['photo_filename']

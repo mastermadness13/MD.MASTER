@@ -12,12 +12,12 @@
   padding: 12px 14px;
   text-align: right;
   border-bottom: 1px solid var(--border);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .students-table th, .courses-table th {
   background: var(--table-header);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 700;
   color: var(--text-muted);
   white-space: nowrap;
@@ -29,7 +29,7 @@
 
 .row-num {
   color: var(--text-faint);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .teacher-name-link {
@@ -46,7 +46,7 @@
   display: inline-block;
   padding: 2px 10px;
   border-radius: 20px;
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 600;
 }
 
@@ -68,7 +68,7 @@
 
 .actions-cell .btn {
   padding: 4px 10px;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .search-table thead th,
@@ -106,7 +106,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 8px 12px;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-family: inherit;
   width: 240px;
   background: var(--surface-card);
@@ -134,7 +134,7 @@ table th {
   background: var(--table-header);
   padding: 12px 16px;
   text-align: right;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
   color: var(--text-muted);
   border-bottom: 1px solid var(--table-border);
@@ -143,7 +143,7 @@ table th {
 
 table td {
   padding: 12px 16px;
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--text-primary);
   border-bottom: 1px solid var(--border-subtle);
 }
@@ -158,14 +158,14 @@ table tr:hover td {
   align-items: center;
   padding: 12px 16px;
   border-top: 1px solid var(--border);
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--text-muted);
 }
 
 .gradebook-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .gradebook-table th {
@@ -206,7 +206,7 @@ table tr:hover td {
   text-align: center;
   border: 1px solid var(--border-heavy);
   border-radius: var(--radius-md);
-  font-size: 13px;
+  font-size: 0.8125rem;
   background: var(--surface-card);
   transition: all 0.15s;
 }
@@ -305,14 +305,14 @@ table tr:hover td {
     background: #e8e8e8 !important;
     color: #000 !important;
     border: 0.5pt solid #999 !important;
-    font-size: 10pt !important;
+    font-size: 0.8333rem !important;
     padding: 6pt 8pt !important;
   }
 
   .courses-table td,
   .students-table td {
     border: 0.5pt solid #ccc !important;
-    font-size: 10.5pt !important;
+    font-size: 0.875rem !important;
     padding: 5pt 8pt !important;
     color: #000 !important;
   }

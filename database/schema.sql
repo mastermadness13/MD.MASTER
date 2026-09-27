@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS teachers (
     qualification_id INTEGER REFERENCES qualifications(id) ON DELETE SET NULL,
     rank_id INTEGER REFERENCES academic_ranks(id) ON DELETE SET NULL,
     classification_id INTEGER REFERENCES classifications(id) ON DELETE SET NULL,
+    admin_assignment_type_id INTEGER REFERENCES admin_assignment_types(id) ON DELETE SET NULL,
     user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

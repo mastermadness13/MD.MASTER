@@ -25,7 +25,7 @@
 
 {% block head_extra %}
 <style>
-  .filter-btn { display: inline-flex; align-items: center; justify-content: center; padding: 10px 18px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-card); color: var(--text-secondary); font-size: 14px; font-weight: 500; cursor: pointer; text-decoration: none; transition: .25s; }
+  .filter-btn { display: inline-flex; align-items: center; justify-content: center; padding: 10px 18px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-card); color: var(--text-secondary); font-size: 0.875rem; font-weight: 500; cursor: pointer; text-decoration: none; transition: .25s; }
   .filter-btn:hover { background: var(--surface-hover); }
   .filter-btn.active { background: var(--primary); color: var(--text-on-primary); border-color: var(--primary); }
   @media print {
@@ -52,18 +52,18 @@
     </div>
     <div class="flex flex-wrap items-center gap-2">
       <button type="button" title="طباعة الجدول الحالي" onclick="window.print()"
-              class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-outline-variant px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm no-underline">
+              class="flex items-center gap-2 bg-surface-card hover:bg-primary/10 text-primary border border-outline-variant px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm no-underline">
         <span class="material-symbols-outlined text-lg">print</span>
         طباعة
       </button>
 {% if can_manage %}
       <button type="button" id="nextYearBtn" title="{{ 'متاح على الجدول الحالي فقط' if locked else 'إنشاء نسخة العام القادم' }}" onclick="openNextYear()"
-              class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-outline-variant px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm">
+              class="flex items-center gap-2 bg-surface-card hover:bg-primary/10 text-primary border border-outline-variant px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm">
         <span class="material-symbols-outlined text-lg">calendar_add_on</span>
         إنشاء نسخة العام القادم
       </button>
       <a href="{{ url_for('timetable.timetable_department_view', department_id=dept.id if dept else None) }}"
-         class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-outline-variant px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm no-underline">
+         class="flex items-center gap-2 bg-surface-card hover:bg-primary/10 text-primary border border-outline-variant px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm no-underline">
         <span class="material-symbols-outlined text-lg">edit</span>
         فتح المحرر
       </a>
@@ -72,7 +72,7 @@
   </div>
 
   {% if not dept %}
-  <div class="bg-white rounded-2xl shadow-sm border border-border py-16 text-center text-text-secondary">
+  <div class="bg-surface-card rounded-2xl shadow-sm border border-border py-16 text-center text-text-secondary">
     <span class="material-symbols-outlined block text-[40px] mb-2 text-text-faint">calendar_today</span>
     لا توجد أقسام لعرض جداولها
   </div>

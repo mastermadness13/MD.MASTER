@@ -33,7 +33,7 @@
     color: #111827;
     color-scheme: light;
     font-family: 'Inter', 'Cairo', sans-serif;
-    font-size: 13px;
+    font-size: 0.8125rem;
     line-height: 1.65;
     width: 100%;
     max-width: 896px;
@@ -43,6 +43,11 @@
     border-radius: 8px;
     box-shadow: 0 10px 25px -5px rgba(0, 0, 0, .1), 0 8px 10px -6px rgba(0, 0, 0, .1);
     box-sizing: border-box;
+  }
+  body .cc-sheet {
+    background: #fff;
+    color: #111827;
+    color-scheme: light;
   }
   .cc-sheet * { box-sizing: border-box; }
   .cc-sheet h1,
@@ -74,7 +79,7 @@
     margin-bottom: 6px;
   }
   .cc-sheet .cc-header-side {
-    font-size: 11px;
+    font-size: 0.6875rem;
     font-weight: 700;
     line-height: 1.4;
   }
@@ -91,18 +96,18 @@
     object-fit: contain;
   }
   .cc-sheet .cc-college-name {
-    font-size: 19px;
+    font-size: 1.1875rem;
     line-height: 1.4;
     font-weight: 800;
     text-align: center;
   }
   .cc-sheet .cc-college-name-en {
-    font-size: 11px;
+    font-size: 0.6875rem;
     font-weight: 700;
     text-align: center;
   }
   .cc-sheet .cc-office-name {
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 700;
     text-align: center;
     margin-top: 2px;
@@ -112,12 +117,12 @@
     margin: 10px 0 6px;
   }
   .cc-sheet .cc-doc-title h1 {
-    font-size: 21px;
+    font-size: 1.3125rem;
     line-height: 1.4;
     font-weight: 800;
   }
   .cc-sheet .cc-doc-title p {
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 700;
     letter-spacing: .02em;
     text-transform: uppercase;
@@ -128,7 +133,7 @@
     flex-wrap: wrap;
     gap: 8px 24px;
     justify-content: center;
-    font-size: 11px;
+    font-size: 0.6875rem;
     margin-bottom: 8px;
   }
   .cc-sheet .cc-sheet-meta > div {
@@ -152,7 +157,7 @@
     width: 100%;
     border-collapse: collapse;
     table-layout: fixed;
-    font-size: 12.5px;
+    font-size: 0.7813rem;
     direction: ltr;
   }
   .cc-sheet .document-table th,
@@ -220,7 +225,7 @@
   }
   .cc-sheet .cc-hours-label {
     display: block;
-    font-size: 11px;
+    font-size: 0.6875rem;
     line-height: 1.3;
     font-weight: 700;
   }
@@ -233,11 +238,11 @@
   /* ── Curriculum tables ───────────────────────────────────── */
   .cc-sheet .cc-section { margin-top: 14px; }
   .cc-sheet .cc-section-title-table th {
-    font-size: 13px;
+    font-size: 0.8125rem;
     background: #f3f4f6;
   }
   .cc-sheet .cc-section-title-table th + th { border-right: 1.5px solid #1f2937; }
-  .cc-sheet .cc-curriculum-table thead th { font-size: 12px; }
+  .cc-sheet .cc-curriculum-table thead th { font-size: 0.75rem; }
   .cc-sheet .cc-curriculum-table .cc-week-cell {
     width: 10%;
     text-align: center;
@@ -267,11 +272,11 @@
     background: #fff;
     color: #111827;
     font: inherit;
-    font-size: 11px;
+    font-size: 0.6875rem;
     font-weight: 700;
     cursor: pointer;
   }
-  .cc-sheet .cc-add-row-button span { font-size: 16px; line-height: 1; }
+  .cc-sheet .cc-add-row-button span { font-size: 1rem; line-height: 1; }
   .cc-sheet .cc-add-row-button:disabled {
     opacity: .45;
     cursor: not-allowed;
@@ -357,7 +362,7 @@
   }
   .cc-sheet .cc-signature { text-align: center; min-width: 0; }
   .cc-sheet .cc-signature-title {
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 700;
     margin-bottom: 18px;
   }
@@ -366,14 +371,14 @@
     min-height: 22px;
     margin-bottom: 4px;
   }
-  .cc-sheet .cc-signature-label { font-size: 10px; color: #333; }
+  .cc-sheet .cc-signature-label { font-size: 0.625rem; color: #333; }
   .cc-sheet .cc-footer-line {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    font-size: 11px;
+    font-size: 0.6875rem;
     color: #333;
     margin-top: 10px;
   }
@@ -398,7 +403,7 @@
     background: #fff;
     color: #111827;
     font-family: inherit;
-    font-size: 13px;
+    font-size: 0.8125rem;
     font-weight: 700;
     cursor: pointer;
     text-decoration: none;
@@ -406,11 +411,11 @@
   .cc-print-btn:hover { opacity: .85; }
 
   @media (max-width: 720px) {
-    .cc-sheet { padding: 24px; font-size: 12px; }
+    .cc-sheet { padding: 24px; font-size: 0.75rem; }
     .cc-sheet .cc-header-top { gap: 6px; }
-    .cc-sheet .cc-header-side { font-size: 9px; }
-    .cc-sheet .cc-college-name { font-size: 16px; }
-    .cc-sheet .cc-doc-title h1 { font-size: 17px; }
+    .cc-sheet .cc-header-side { font-size: 0.5625rem; }
+    .cc-sheet .cc-college-name { font-size: 1rem; }
+    .cc-sheet .cc-doc-title h1 { font-size: 1.0625rem; }
     .cc-sheet .cc-signatures { gap: 12px; padding: 0; }
   }
 
@@ -494,7 +499,7 @@
       padding-top: 3px;
       border-top: 1px solid #000;
       background: #fff;
-      font-size: 8.5pt;
+      font-size: 0.7083rem;
       color: #000;
     }
 

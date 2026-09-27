@@ -8,7 +8,7 @@
   padding: 10px 20px;
   border: 1px solid transparent;
   border-radius: var(--control-radius);
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
@@ -105,21 +105,21 @@
 .btn-cta {
   min-height: 52px;
   padding: 14px 32px;
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 700;
 }
 
 .btn-sm {
   min-height: 36px;
   padding: 6px 14px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   border-radius: calc(var(--control-radius) - 2px);
 }
 
 .btn-lg {
   min-height: 52px;
   padding: 12px 28px;
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 .btn-icon {
@@ -139,7 +139,7 @@
   padding: 10px 20px;
   border: 1.5px solid var(--primary);
   border-radius: var(--control-radius);
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
@@ -167,7 +167,7 @@
   padding: 10px 20px;
   border: 1.5px solid var(--error);
   border-radius: var(--control-radius);
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
@@ -195,7 +195,7 @@
   padding: 10px 20px;
   border: 1.5px solid var(--border-accent);
   border-radius: var(--control-radius);
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
@@ -220,7 +220,7 @@
   padding: 10px 20px;
   border: 1.5px solid var(--warning);
   border-radius: var(--control-radius);
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
@@ -244,7 +244,7 @@
   padding: 10px 20px;
   border: 1.5px solid var(--secondary);
   border-radius: var(--control-radius);
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;

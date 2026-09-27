@@ -27,7 +27,7 @@
     </div>
     <div class="flex flex-wrap items-center gap-2">
       <button type="button" onclick="window.print()"
-              class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-outline-variant px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm">
+              class="flex items-center gap-2 bg-surface-card hover:bg-primary/10 text-primary border border-outline-variant px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm">
         <span class="material-symbols-outlined text-lg">print</span>
         طباعة
       </button>
@@ -62,7 +62,7 @@
                class="w-24 bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
       </div>
       <button type="submit"
-              class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm">
+              class="btn btn-primary shadow-sm">
         <span class="material-symbols-outlined text-lg">add</span>
         + قسم
       </button>
@@ -76,7 +76,7 @@
     <div class="relative flex-1 min-w-[240px]">
       <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">search</span>
       <input type="text" name="search" value="{{ search or '' }}" placeholder="البحث باسم القسم..."
-             class="search-input w-full bg-white border border-outline-variant rounded-lg pr-10 pl-10 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+             class="search-input w-full bg-surface-card border border-outline-variant rounded-lg pr-10 pl-10 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
       <button type="button" class="search-clear absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-error transition-colors bg-transparent border-0 cursor-pointer"
               style="display: {{ 'flex' if search else 'none' }}" title="مسح البحث">
         <span class="material-symbols-outlined text-lg">close</span>
@@ -84,7 +84,7 @@
       <span class="material-symbols-outlined search-spinner absolute left-3 top-1/2 -translate-y-1/2 text-primary animate-spin" style="display:none">hourglass_empty</span>
     </div>
     <button type="submit"
-            class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm">
+            class="btn btn-primary shadow-sm">
       <span class="material-symbols-outlined text-lg">search</span>
       بحث
     </button>

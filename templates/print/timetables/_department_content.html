@@ -16,9 +16,9 @@
     background: #ececec !important;
     font-weight: 700;
     padding: 7px 8px !important;
-    font-size: 13px !important;
+    font-size: 0.8125rem !important;
   }
-  .timetable-print tbody td { padding: 7px 8px !important; font-size: 13px !important; height: 60px !important; overflow: hidden; }
+  .timetable-print tbody td { padding: 7px 8px !important; font-size: 0.8125rem !important; height: 60px !important; overflow: hidden; }
   .timetable-print tbody td.day-cell { font-weight: 700; background: #f5f5f5 !important; }
 
   @media print {
@@ -35,12 +35,12 @@
 <div class="timetable-print">
   <!-- Word-style document header (centered) -->
   <div class="text-center" style="margin-bottom: 10px;">
-    <div style="font-size: 20px; font-weight: 800; color: #000;">كلية التقنية الهندسية زوارة</div>
-    <div style="font-size: 16px; font-weight: 700; color: #000; margin-top: 2px;">قسم {{ dept_name }}</div>
-    <div style="font-size: 14px; font-weight: 700; color: #000; margin-top: 2px;">{{ sem_label }}</div>
-    <div style="font-size: 14px; font-weight: 700; color: #000; margin-top: 2px;">{{ table_label }}</div>
+    <div style="font-size: 1.25rem; font-weight: 800; color: #000;">كلية التقنية الهندسية زوارة</div>
+    <div style="font-size: 1rem; font-weight: 700; color: #000; margin-top: 2px;">قسم {{ dept_name }}</div>
+    <div style="font-size: 0.875rem; font-weight: 700; color: #000; margin-top: 2px;">{{ sem_label }}</div>
+    <div style="font-size: 0.875rem; font-weight: 700; color: #000; margin-top: 2px;">{{ table_label }}</div>
     {% if payload.locked %}
-    <div style="font-size: 12px; font-weight: 400; color: #333; margin-top: 2px;">نسخة معتمدة</div>
+    <div style="font-size: 0.75rem; font-weight: 400; color: #333; margin-top: 2px;">نسخة معتمدة</div>
     {% endif %}
   </div>
 
@@ -55,7 +55,7 @@
           <th>
             <div>{{ p.label if p.label else p.code }}</div>
             {% if p.start_time %}
-            <div dir="ltr" style="font-weight: 400; font-size: 11px; color: #333; margin-top: 1px;">{{ format_time12(p.start_time) }}{% if p.end_time %} ← {{ format_time12(p.end_time) }}{% endif %}</div>
+            <div dir="ltr" style="font-weight: 400; font-size: 0.6875rem; color: #333; margin-top: 1px;">{{ format_time12(p.start_time) }}{% if p.end_time %} ← {{ format_time12(p.end_time) }}{% endif %}</div>
             {% endif %}
           </th>
           {% endfor %}
@@ -95,7 +95,7 @@
   </div>
 
   <!-- Print footer -->
-  <div style="text-align:center; font-size: 11px; color:#333; margin-top: 10px;">
+  <div style="text-align:center; font-size: 0.6875rem; color:#333; margin-top: 10px;">
     تاريخ الطباعة: {{ now().strftime('%Y/%m/%d %H:%M') }}
     {% if payload.fingerprint %}&nbsp;•&nbsp; رمز الإصدار: <span dir="ltr">{{ payload.fingerprint }}</span>{% endif %}
   </div>

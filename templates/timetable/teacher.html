@@ -116,14 +116,14 @@
                     <span class="{% if syk and syk.url %}status-ok{% else %}status-missing{% endif %} text-xs font-bold">● منهاج</span>
                     {% if syk and syk.url %}
                     <a href="{{ syk.url }}{% if '?' in syk.url %}&{% else %}?{% endif %}download=1"
-                       class="inline-flex items-center gap-1 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-2.5 py-1.5 rounded-lg text-xs font-bold transition no-underline">
+                       class="inline-flex items-center gap-1 bg-surface-card hover:bg-primary/10 text-primary border border-primary/30 px-2.5 py-1.5 rounded-lg text-xs font-bold transition no-underline">
                       <span class="material-symbols-outlined text-sm">download</span>
                       تحميل المنهج
                     </a>
                     {% endif %}
                     {% if frm and frm.url %}
                     <a href="{{ frm.url }}{% if '?' in frm.url %}&{% else %}?{% endif %}download=1"
-                       class="inline-flex items-center gap-1 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-2.5 py-1.5 rounded-lg text-xs font-bold transition no-underline">
+                       class="inline-flex items-center gap-1 bg-surface-card hover:bg-primary/10 text-primary border border-primary/30 px-2.5 py-1.5 rounded-lg text-xs font-bold transition no-underline">
                       <span class="material-symbols-outlined text-sm">description</span>
                       تحميل المقرر
                     </a>

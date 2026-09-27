@@ -20,7 +20,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
+  font-size: 1.375rem;
   flex-shrink: 0;
 }
 .dashboard-stats .i1 { background: var(--icon-bg-1); color: var(--primary); }
@@ -28,9 +28,9 @@
 .dashboard-stats .i3 { background: var(--icon-bg-3); color: var(--tertiary); }
 .dashboard-stats .i4 { background: var(--icon-bg-4); color: var(--info); }
 .dashboard-stats .i5 { background: var(--icon-bg-5); color: var(--error); }
-.dashboard-stats .stat-label { font-size: 12px; color: var(--text-muted); margin-bottom: 2px; }
-.dashboard-stats .stat-value { font-size: 24px; font-weight: 800; color: var(--text-primary); line-height: 1.2; }
-.dashboard-stats .stat-change { font-size: 11px; margin-top: 4px; }
+.dashboard-stats .stat-label { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 2px; }
+.dashboard-stats .stat-value { font-size: 1.5rem; font-weight: 800; color: var(--text-primary); line-height: 1.2; }
+.dashboard-stats .stat-change { font-size: 0.6875rem; margin-top: 4px; }
 .dashboard-stats .stat-change.up { color: var(--stat-up); }
 
 
@@ -50,19 +50,19 @@
   background: var(--surface-alt);
 }
 .dashboard-panel-title { font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 8px; }
-.dashboard-panel-badge { background: var(--error); color: white; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; }
+.dashboard-panel-badge { background: var(--error); color: white; padding: 2px 8px; border-radius: 999px; font-size: 0.625rem; font-weight: 700; }
 .dashboard-panel-body { padding: 16px; max-height: 300px; overflow-y: auto; }
 .dashboard-panel-footer { padding: 12px 16px; background: var(--surface-alt); border-top: 1px solid var(--border); text-align: center; }
-.dashboard-panel-link { color: var(--primary); font-weight: 700; font-size: 13px; }
+.dashboard-panel-link { color: var(--primary); font-weight: 700; font-size: 0.8125rem; }
 
 .request-item { padding: 16px; border-bottom: 1px solid var(--border); transition: background 0.2s; }
 .request-item:hover { background: var(--surface-hover); }
 .request-item:last-child { border-bottom: none; }
-.request-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--secondary-fixed); color: var(--secondary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; flex-shrink: 0; }
+.request-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--secondary-fixed); color: var(--secondary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.75rem; flex-shrink: 0; }
 .request-info { flex: 1; min-width: 0; }
-.request-name { font-weight: 700; font-size: 14px; margin-bottom: 2px; }
-.request-time { font-size: 10px; color: var(--text-muted); }
-.request-message { font-size: 13px; line-height: 1.5; margin-top: 8px; color: var(--text-secondary); }
+.request-name { font-weight: 700; font-size: 0.875rem; margin-bottom: 2px; }
+.request-time { font-size: 0.625rem; color: var(--text-muted); }
+.request-message { font-size: 0.8125rem; line-height: 1.5; margin-top: 8px; color: var(--text-secondary); }
 
 .room-status-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
 @media (min-width: 768px) { .room-status-grid { grid-template-columns: repeat(4, 1fr); } }
@@ -82,18 +82,18 @@
 .room-dot { width: 8px; height: 8px; border-radius: 50%; }
 .room-dot.available { background: var(--success-teal); }
 .room-dot.occupied { background: var(--error); }
-.room-name { font-weight: 700; font-size: 13px; }
-.room-status-text { font-size: 11px; font-weight: 700; }
+.room-name { font-weight: 700; font-size: 0.8125rem; }
+.room-status-text { font-size: 0.6875rem; font-weight: 700; }
 .room-status-text.available { color: var(--success-teal); }
 .room-status-text.occupied { color: var(--error); }
-.room-teacher { font-size: 10px; color: var(--text-muted); display: none; }
+.room-teacher { font-size: 0.625rem; color: var(--text-muted); display: none; }
 .room-card.occupied .room-teacher { display: block; }
 
 .faculty-attendance-table { width: 100%; }
-.faculty-attendance-table th { padding: 16px; text-align: right; font-size: 13px; font-weight: 600; color: var(--text-muted); background: var(--surface-alt); border-bottom: 1px solid var(--border); }
-.faculty-attendance-table td { padding: 16px; border-bottom: 1px solid var(--border); font-size: 14px; }
+.faculty-attendance-table th { padding: 16px; text-align: right; font-size: 0.8125rem; font-weight: 600; color: var(--text-muted); background: var(--surface-alt); border-bottom: 1px solid var(--border); }
+.faculty-attendance-table td { padding: 16px; border-bottom: 1px solid var(--border); font-size: 0.875rem; }
 .faculty-attendance-table tr:hover { background: var(--surface-hover); }
-.attendance-badge { padding: 6px 12px; border-radius: 999px; font-size: 11px; font-weight: 700; cursor: pointer; }
+.attendance-badge { padding: 6px 12px; border-radius: 999px; font-size: 0.6875rem; font-weight: 700; cursor: pointer; }
 .attendance-badge.present { background: var(--success-teal); color: white; }
 .attendance-badge.late { background: var(--warning); color: white; }
 .attendance-badge.absent { background: var(--error); color: white; }
@@ -116,11 +116,11 @@
   background-image: radial-gradient(circle at 2px 2px, white 1px, transparent 0);
   background-size: 24px 24px;
 }
-.sidebar-stats-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+.sidebar-stats-title { font-size: 1.125rem; font-weight: 700; margin-bottom: 16px; }
 .sidebar-stats-list { display: flex; flex-direction: column; gap: 16px; }
 .sidebar-stats-item { display: flex; gap: 12px; align-items: flex-start; }
-.sidebar-stats-icon { font-size: 24px; color: var(--tertiary); flex-shrink: 0; }
-.sidebar-stats-text { font-size: 14px; }
+.sidebar-stats-icon { font-size: 1.5rem; color: var(--tertiary); flex-shrink: 0; }
+.sidebar-stats-text { font-size: 0.875rem; }
 
 .download-links { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 16px; }
 .download-link {
@@ -154,9 +154,9 @@
     100% { transform: scale(2.4); opacity: 0; }
   }
 
-  .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .data-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
   .data-table thead th {
-    text-align: right; font-size: 11px; font-weight: 700;
+    text-align: right; font-size: 0.6875rem; font-weight: 700;
     padding: 10px 14px; white-space: nowrap;
     color: var(--text-secondary);
     background: var(--surface-dim);

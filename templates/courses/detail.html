@@ -22,13 +22,13 @@
     </div>
     <div class="flex flex-wrap items-center gap-2">
       <a href="{{ url_for('courses.courses_list') }}"
-         class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-primary/30 px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm no-underline">
+         class="flex items-center gap-2 bg-surface-card hover:bg-primary/10 text-primary border border-primary/30 px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm no-underline">
         <span class="material-symbols-outlined text-lg">arrow_forward</span>
         قائمة المقررات
       </a>
       {% if has_permission('courses.manage') %}
       <a href="{{ url_for('courses.courses_edit', id=course.id) }}"
-         class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm no-underline">
+         class="btn btn-primary shadow-sm">
         <span class="material-symbols-outlined text-lg">edit</span>
         تعديل
       </a>

@@ -2,9 +2,9 @@
 {% set days_order = days_order | default([]) %}
 <div class="timetable-print">
   <div class="text-center" style="margin-bottom: 10px;">
-    <div style="font-size: 20px; font-weight: 800; color: #000;">كلية التقنية الهندسية زوارة</div>
-    <div style="font-size: 16px; font-weight: 700; color: #000; margin-top: 2px;">الجدول الأسبوعي — {{ teacher.name if teacher else '—' }}</div>
-    <div style="font-size: 11px; font-weight: 400; color: #333; margin-top: 2px;">تاريخ الطباعة: {{ now().strftime('%Y/%m/%d %H:%M') }}</div>
+    <div style="font-size: 1.25rem; font-weight: 800; color: #000;">كلية التقنية الهندسية زوارة</div>
+    <div style="font-size: 1rem; font-weight: 700; color: #000; margin-top: 2px;">الجدول الأسبوعي — {{ teacher.name if teacher else '—' }}</div>
+    <div style="font-size: 0.6875rem; font-weight: 400; color: #333; margin-top: 2px;">تاريخ الطباعة: {{ now().strftime('%Y/%m/%d %H:%M') }}</div>
   </div>
 
   {% set any_entries = (weekly_schedule.values() | select() | list | length > 0) %}
@@ -15,7 +15,7 @@
     {% set day_entries = weekly_schedule.get(day, []) %}
     {% if day_entries %}
     <div class="print-sheet">
-      <div style="font-weight: 700; font-size: 14px; margin-bottom: 4px;">اليوم: {{ day }} <span style="font-weight:400;font-size:12px;color:#333;">({{ day_entries|length }} محاضرة)</span></div>
+      <div style="font-weight: 700; font-size: 0.875rem; margin-bottom: 4px;">اليوم: {{ day }} <span style="font-weight:400;font-size:0.75rem;color:#333;">({{ day_entries|length }} محاضرة)</span></div>
       <table>
         <thead>
           <tr>

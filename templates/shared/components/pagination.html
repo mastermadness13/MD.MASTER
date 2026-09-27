@@ -10,19 +10,19 @@
   <div class="flex flex-wrap gap-2">
     {% if page > 1 %}
     <a href="{{ page_url.replace('__page__', (page - 1) | string) }}"
-       class="px-3 py-2 rounded-lg border border-outline-variant bg-white hover:bg-primary/10 text-on-surface text-sm font-bold transition no-underline">السابق</a>
+       class="px-3 py-2 rounded-lg border border-outline-variant bg-surface-card hover:bg-primary/10 text-on-surface text-sm font-bold transition no-underline">السابق</a>
     {% endif %}
     {% for p in range(1, total_pages + 1) %}
     {% if p == page %}
     <span class="px-3 py-2 rounded-lg bg-primary text-on-primary text-sm font-bold">{{ p }}</span>
     {% elif p >= page - 2 and p <= page + 2 %}
     <a href="{{ page_url.replace('__page__', p | string) }}"
-       class="px-3 py-2 rounded-lg border border-outline-variant bg-white hover:bg-primary/10 text-on-surface text-sm font-bold transition no-underline">{{ p }}</a>
+       class="px-3 py-2 rounded-lg border border-outline-variant bg-surface-card hover:bg-primary/10 text-on-surface text-sm font-bold transition no-underline">{{ p }}</a>
     {% endif %}
     {% endfor %}
     {% if page * per_page < total %}
     <a href="{{ page_url.replace('__page__', (page + 1) | string) }}"
-       class="px-3 py-2 rounded-lg border border-outline-variant bg-white hover:bg-primary/10 text-on-surface text-sm font-bold transition no-underline">التالي</a>
+       class="px-3 py-2 rounded-lg border border-outline-variant bg-surface-card hover:bg-primary/10 text-on-surface text-sm font-bold transition no-underline">التالي</a>
     {% endif %}
   </div>
 </div>

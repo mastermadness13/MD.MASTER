@@ -14,10 +14,10 @@
   {% for section in sections %}
   <div class="timetable-print print-sheet">
     <div class="text-center" style="margin-bottom: 8px;">
-      <div style="font-size: 20px; font-weight: 800; color: #000;">كلية التقنية الهندسية زوارة</div>
-      <div style="font-size: 16px; font-weight: 700; color: #000; margin-top: 2px;">قسم {{ section.department.name if section.department else '—' }}</div>
-      <div style="font-size: 14px; font-weight: 700; color: #000; margin-top: 2px;">{{ academic_label or section.semester_name_ar or section.semester_code or '—' }}</div>
-      <div style="font-size: 14px; font-weight: 700; color: #000; margin-top: 2px;">الجدول الدراسي — {{ semester_label(section.semester) if section.semester else '—' }}</div>
+      <div style="font-size: 1.25rem; font-weight: 800; color: #000;">كلية التقنية الهندسية زوارة</div>
+      <div style="font-size: 1rem; font-weight: 700; color: #000; margin-top: 2px;">قسم {{ section.department.name if section.department else '—' }}</div>
+      <div style="font-size: 0.875rem; font-weight: 700; color: #000; margin-top: 2px;">{{ academic_label or section.semester_name_ar or section.semester_code or '—' }}</div>
+      <div style="font-size: 0.875rem; font-weight: 700; color: #000; margin-top: 2px;">الجدول الدراسي — {{ semester_label(section.semester) if section.semester else '—' }}</div>
     </div>
     <div style="overflow: visible;">
       {% if section.periods %}

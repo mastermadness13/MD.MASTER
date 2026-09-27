@@ -32,7 +32,7 @@
     <div class="relative flex-1 min-w-[220px]">
       <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">search</span>
       <input type="text" name="search" value="{{ search or '' }}" placeholder="البحث في سجل التغييرات..."
-             class="search-input w-full bg-white border border-outline-variant rounded-lg pr-10 pl-10 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+             class="search-input w-full bg-surface-card border border-outline-variant rounded-lg pr-10 pl-10 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
       <button type="button" class="search-clear absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-error transition-colors bg-transparent border-0 cursor-pointer"
               style="display: {{ 'flex' if search else 'none' }}" title="مسح البحث">
         <span class="material-symbols-outlined text-lg">close</span>

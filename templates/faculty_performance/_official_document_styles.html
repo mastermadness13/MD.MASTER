@@ -2,8 +2,14 @@
    partial renders identically inside base.html (interface preview) and the
    standalone A4 print layout. Used by _print_document.html + preview/report. #}
 <style>
+  body .official-doc-paper {
+    background: #fff;
+    color: #000;
+    color-scheme: light;
+  }
   .official-doc {
-    font-family: 'Times New Roman', 'Traditional Arabic', 'Simplified Arabic', 'Tahoma', Arial, sans-serif;
+    background: #fff;
+    font-family: var(--user-font-family, 'Times New Roman', 'Traditional Arabic', 'Simplified Arabic', 'Tahoma', Arial, sans-serif);
     color: #000;
     line-height: 1.4;
     direction: rtl;
@@ -11,14 +17,14 @@
   .official-doc .header-title {
     text-align: center;
     font-weight: bold;
-    font-size: 14pt;
+    font-size: 1.1667rem;
     margin-bottom: 16px;
     padding-bottom: 8px;
     border-bottom: 2px solid #000;
   }
   .official-doc .section-title {
     font-weight: bold;
-    font-size: 11pt;
+    font-size: 0.9167rem;
     margin-top: 12px;
     margin-bottom: 6px;
     padding: 4px 0;
@@ -37,17 +43,17 @@
   .official-doc th, .official-doc td {
     padding: 5px 8px;
     text-align: center;
-    font-size: 10pt;
+    font-size: 0.8333rem;
     vertical-align: middle;
     overflow-wrap: anywhere;
   }
   .official-doc th {
     background-color: #d9d9d9;
     font-weight: bold;
-    font-size: 10pt;
+    font-size: 0.8333rem;
   }
   .official-doc td {
-    font-size: 10pt;
+    font-size: 0.8333rem;
   }
   .official-doc .text-right {
     text-align: right;
@@ -76,7 +82,7 @@
     }
     .official-doc th, .official-doc td {
       padding: 4px 5px;
-      font-size: 9pt;
+      font-size: 0.75rem;
     }
     .official-doc th {
       background: #d9d9d9 !important;

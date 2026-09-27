@@ -43,7 +43,7 @@
       </button>
       {% endif %}
       <button type="button" onclick="window.print()"
-              class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-outline-variant px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm">
+              class="flex items-center gap-2 bg-surface-card hover:bg-primary/10 text-primary border border-outline-variant px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm">
         <span class="material-symbols-outlined text-lg">print</span>
         طباعة
       </button>
@@ -136,10 +136,10 @@
         <span id="bulkCount" class="text-sm font-bold">0 مقرر محدد</span>
       </div>
       <div class="flex items-center gap-2">
-        <select id="bulkTargetSem" class="px-3 py-1.5 rounded-lg text-sm font-bold text-on-surface border border-outline-variant bg-white focus:ring-2 focus:ring-primary/30">
+        <select id="bulkTargetSem" class="px-3 py-1.5 rounded-lg text-sm font-bold text-on-surface border border-outline-variant bg-surface-card focus:ring-2 focus:ring-primary/30">
           <option value="">اختر الفصل الهدف…</option>
         </select>
-        <button type="button" onclick="executeBulkMove()" class="bg-white text-primary hover:bg-white/90 px-4 py-1.5 rounded-lg text-sm font-bold transition-colors shadow-sm flex items-center gap-1">
+        <button type="button" onclick="executeBulkMove()" class="bg-surface-card text-primary hover:bg-surface-container px-4 py-1.5 rounded-lg text-sm font-bold transition-colors shadow-sm flex items-center gap-1">
           <span class="material-symbols-outlined text-[16px]">drive_file_move</span>نقل
         </button>
         <button type="button" onclick="clearSelection()" class="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm font-bold transition-colors">إلغاء</button>
@@ -361,7 +361,7 @@
           <span class="material-symbols-outlined text-primary">palette</span>
           <h2 class="font-headline-sm text-headline-sm text-on-surface">مظهر المقرر</h2>
         </div>
-        <p class="font-body-md text-body-sm text-on-surface-variant mb-3">اختر الأيقونة التي ستظهر بجانب اسم المادة، ثم اكتب وصف المادة.</p>
+        <p class="font-body-md text-body-md text-on-surface-variant mb-3">اختر الأيقونة التي ستظهر بجانب اسم المادة، ثم اكتب وصف المادة.</p>
         <div id="mIconPicker" class="mb-3"></div>
         <div>
           <label class="block font-label-md text-label-md text-on-surface-variant mb-xs">وصف المادة</label>

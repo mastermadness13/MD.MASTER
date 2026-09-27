@@ -4,16 +4,155 @@
    (0,1,0), which ties with [data-theme="dark"] in dark.css. Source order
    therefore decides, and this file is imported later. Keep it that way. */
 
-/* The custom hue is reserved for filled actions; other primary accents remain
-   on the application's standard palette. */
+/* ==========================================================================
+   CUSTOM COLOUR SYSTEM
+   The single hue drives the whole palette: accents, buttons, page background,
+   panels/surfaces, text and borders. Lightness and saturation anchors mirror
+   base/variables.css and themes/dark.css, so contrast stays in the same range
+   as the stock themes and only the hue moves.
+
+   Semantic colours (error / success / warning / info / gold / department
+   colours) are deliberately NOT derived from the hue: they carry meaning and
+   must stay recognisable.
+
+   Because everything reads these tokens, the accent now reaches the entire UI
+   automatically -- including any element still using a raw Tailwind colour,
+   because theme-overrides.css maps those onto the same variables.
+   ========================================================================== */
+
 [data-theme-mode="custom"] {
   --user-accent: hsl(var(--user-hue, 280) 58% 42%);
   --custom-button-bg: var(--user-accent);
+
+  /* Accent family */
+  --primary: var(--user-accent);
+  --primary-dark: hsl(var(--user-hue, 280) 58% 33%);
+  --primary-deep: hsl(var(--user-hue, 280) 58% 27%);
+  --primary-light: hsl(var(--user-hue, 280) 50% 62%);
+  --primary-faint: hsl(var(--user-hue, 280) 55% 95%);
+  --primary-container: hsl(var(--user-hue, 280) 55% 93%);
+  --primary-container-deep: hsl(var(--user-hue, 280) 55% 38%);
+  --on-primary-container: hsl(var(--user-hue, 280) 60% 72%);
+  --inverse-primary: hsl(var(--user-hue, 280) 55% 88%);
+  --surface-tint: hsl(var(--user-hue, 280) 50% 55%);
+  --primary-glow: hsl(var(--user-hue, 280) 58% 42% / 0.12);
+  /* Foreground is picked by theme.js via relative luminance so filled
+     buttons stay readable on any hue. */
+  --text-on-primary: var(--custom-button-fg, #ffffff);
+
+  /* Page background and panels */
+  --page-bg: hsl(var(--user-hue, 280) 40% 97%);
+  --surface: hsl(var(--user-hue, 280) 30% 100%);
+  --surface-alt: hsl(var(--user-hue, 280) 38% 97%);
+  --surface-card: hsl(var(--user-hue, 280) 30% 100%);
+  --surface-hover: hsl(var(--user-hue, 280) 32% 95%);
+  --surface-zebra: hsl(var(--user-hue, 280) 30% 92%);
+  --surface-glass: hsl(var(--user-hue, 280) 30% 100% / 0.85);
+  --surface-glass-panel: hsl(var(--user-hue, 280) 30% 100% / 0.8);
+  --sidebar-bg: hsl(var(--user-hue, 280) 30% 100%);
+  --sidebar-hover-bg: hsl(var(--user-hue, 280) 32% 95%);
+  --sidebar-active-bg: hsl(var(--user-hue, 280) 55% 93%);
+  --sidebar-active-text: hsl(var(--user-hue, 280) 58% 30%);
+  --sidebar-settings-bg: hsl(var(--user-hue, 280) 32% 95%);
+  --topbar-bg: hsl(var(--user-hue, 280) 30% 100%);
+  --header-bg: hsl(var(--user-hue, 280) 30% 100%);
+  --main-content-bg: hsl(var(--user-hue, 280) 22% 91%);
+
+  /* Text */
+  --text-primary: hsl(var(--user-hue, 280) 22% 11%);
+  --text-secondary: hsl(var(--user-hue, 280) 18% 28%);
+  --text-muted: hsl(var(--user-hue, 280) 16% 38%);
+  --text-faint: hsl(var(--user-hue, 280) 14% 46%);
+  --sidebar-text: hsl(var(--user-hue, 280) 18% 28%);
+
+  /* Borders and inputs */
+  --border: hsl(var(--user-hue, 280) 18% 87%);
+  --border-subtle: hsl(var(--user-hue, 280) 25% 95%);
+  --border-accent: hsl(var(--user-hue, 280) 18% 76%);
+  --border-input: hsl(var(--user-hue, 280) 18% 50%);
+  --border-input-focus: var(--user-accent);
+  --border-heavy: hsl(var(--user-hue, 280) 16% 84%);
+  --sidebar-border: hsl(var(--user-hue, 280) 18% 80%);
+  --sidebar-footer-border: hsl(var(--user-hue, 280) 18% 87%);
+
+  /* Tables */
+  --table-header: hsl(var(--user-hue, 280) 38% 97%);
+  --table-border: hsl(var(--user-hue, 280) 18% 87%);
+  --table-row-hover: hsl(var(--user-hue, 280) 32% 95%);
+  --table-row-alt: hsl(var(--user-hue, 280) 30% 92%);
+  --table-row-tint: hsl(var(--user-hue, 280) 58% 42% / 0.04);
+
+  /* Small brand-tinted accents */
+  --empty-icon: hsl(var(--user-hue, 280) 18% 78%);
+  --notif-unread: hsl(var(--user-hue, 280) 55% 96%);
+  --notif-unread-hover: hsl(var(--user-hue, 280) 55% 92%);
+  --icon-bg-1: hsl(var(--user-hue, 280) 55% 93%);
+  --skeleton-base: hsl(var(--user-hue, 280) 22% 92%);
+  --skeleton-shine: hsl(var(--user-hue, 280) 28% 96%);
 }
 
-/* Increase lightness in dark mode to preserve button contrast. */
+/* Dark base: same hue, dark anchors. Translucent accent tints are used where
+   the stock dark palette uses rgba so surfaces stay layered. */
 [data-theme="dark"][data-theme-mode="custom"] {
   --user-accent: hsl(var(--user-hue, 280) 68% 66%);
+
+  --primary: var(--user-accent);
+  --primary-dark: hsl(var(--user-hue, 280) 62% 48%);
+  --primary-deep: hsl(var(--user-hue, 280) 62% 40%);
+  --primary-light: hsl(var(--user-hue, 280) 55% 74%);
+  --primary-faint: hsl(var(--user-hue, 280) 68% 66% / 0.16);
+  --primary-container: hsl(var(--user-hue, 280) 68% 66% / 0.22);
+  --primary-container-deep: hsl(var(--user-hue, 280) 62% 48%);
+  --on-primary-container: hsl(var(--user-hue, 280) 70% 80%);
+  --inverse-primary: hsl(var(--user-hue, 280) 58% 24%);
+  --surface-tint: var(--user-accent);
+  --primary-glow: hsl(var(--user-hue, 280) 68% 66% / 0.2);
+  --text-on-primary: var(--custom-button-fg, #1a1424);
+
+  --page-bg: hsl(var(--user-hue, 280) 22% 7%);
+  --surface: hsl(var(--user-hue, 280) 20% 12%);
+  --surface-alt: hsl(var(--user-hue, 280) 22% 10%);
+  --surface-card: hsl(var(--user-hue, 280) 20% 15%);
+  --surface-hover: hsl(var(--user-hue, 280) 20% 19%);
+  --surface-zebra: hsl(var(--user-hue, 280) 22% 12%);
+  --surface-glass: hsl(var(--user-hue, 280) 20% 12% / 0.85);
+  --surface-glass-panel: hsl(var(--user-hue, 280) 20% 12% / 0.8);
+  --sidebar-bg: hsl(var(--user-hue, 280) 22% 10%);
+  --sidebar-hover-bg: hsl(var(--user-hue, 280) 20% 19%);
+  --sidebar-active-bg: hsl(var(--user-hue, 280) 68% 66% / 0.2);
+  --sidebar-active-text: hsl(var(--user-hue, 280) 55% 74%);
+  --sidebar-settings-bg: hsl(var(--user-hue, 280) 20% 15%);
+  --topbar-bg: hsl(var(--user-hue, 280) 22% 10%);
+  --header-bg: hsl(var(--user-hue, 280) 22% 10%);
+  --main-content-bg: hsl(var(--user-hue, 280) 18% 16%);
+
+  --text-primary: hsl(var(--user-hue, 280) 25% 93%);
+  --text-secondary: hsl(var(--user-hue, 280) 20% 81%);
+  --text-muted: hsl(var(--user-hue, 280) 16% 68%);
+  --text-faint: hsl(var(--user-hue, 280) 14% 57%);
+  --sidebar-text: hsl(var(--user-hue, 280) 20% 81%);
+
+  --border: hsl(var(--user-hue, 280) 20% 24%);
+  --border-subtle: hsl(var(--user-hue, 280) 20% 19%);
+  --border-accent: hsl(var(--user-hue, 280) 20% 36%);
+  --border-input: hsl(var(--user-hue, 280) 18% 53%);
+  --border-input-focus: var(--user-accent);
+  --border-heavy: hsl(var(--user-hue, 280) 20% 32%);
+  --sidebar-border: hsl(var(--user-hue, 280) 20% 24%);
+  --sidebar-footer-border: hsl(var(--user-hue, 280) 20% 24%);
+
+  --table-header: hsl(var(--user-hue, 280) 22% 10%);
+  --table-border: hsl(var(--user-hue, 280) 20% 24%);
+  --table-row-hover: hsl(var(--user-hue, 280) 20% 19%);
+  --table-row-alt: hsl(var(--user-hue, 280) 22% 12%);
+  --table-row-tint: hsl(var(--user-hue, 280) 68% 66% / 0.06);
+
+  --empty-icon: hsl(var(--user-hue, 280) 20% 38%);
+  --notif-unread: hsl(var(--user-hue, 280) 68% 66% / 0.1);
+  --notif-unread-hover: hsl(var(--user-hue, 280) 68% 66% / 0.16);
+  --icon-bg-1: hsl(var(--user-hue, 280) 68% 66% / 0.18);
+  --skeleton-base: hsl(var(--user-hue, 280) 20% 19%);
+  --skeleton-shine: hsl(var(--user-hue, 280) 20% 24%);
 }
 
 /* Custom typography preferences are safe, validated values from theme.js. */
@@ -26,17 +165,6 @@ body {
   font-family: var(--user-font-family, inherit);
 }
 
-/* Keep the custom hue on filled primary buttons only. Text-only primary
-   accents continue using the application's normal --primary token. */
-[data-theme-mode="custom"] button.bg-primary,
-[data-theme-mode="custom"] a.bg-primary,
-[data-theme-mode="custom"] input.bg-primary,
-[data-theme-mode="custom"] .theme-button {
-  background-color: var(--custom-button-bg);
-  border-color: var(--custom-button-bg);
-  color: var(--custom-button-fg);
-}
-
 /* ==========================================================================
    DENSITY — orthogonal to the colour mode.
    ========================================================================== */
@@ -44,6 +172,9 @@ body {
 [data-density="compact"] {
   --control-h: 38px;
   --control-radius: 0.625rem;
+  --density-space-y: 0.65rem;
+  --density-space-x: 0.85rem;
+  --density-gap: 0.75rem;
   --radius-sm: 0.25rem;
   --radius-default: 0.625rem;
   --radius-md: 0.625rem;
@@ -54,6 +185,35 @@ body {
 [data-density="comfortable"] {
   --control-h: 44px;
   --control-radius: 0.875rem;
+  --density-space-y: 1rem;
+  --density-space-x: 1.25rem;
+  --density-gap: 1.25rem;
+}
+
+:root[data-density="compact"] body .card,
+:root[data-density="compact"] body .page-card {
+  padding: var(--density-space-x);
+}
+
+:root[data-density="compact"] body .form-input,
+:root[data-density="compact"] body .form-select {
+  min-height: var(--control-h);
+  padding-block: 0.5rem;
+  padding-inline: 0.7rem;
+}
+
+:root[data-density="compact"] body .btn:not(.btn-lg):not(.btn-cta),
+:root[data-density="compact"] body .btn-outline-primary,
+:root[data-density="compact"] body .btn-outline-secondary {
+  min-height: var(--control-h);
+  padding-block: 0.4rem;
+  padding-inline: 0.8rem;
+}
+
+:root[data-density="compact"] body .btn-sm {
+  min-height: 2rem;
+  padding-block: 0.3rem;
+  padding-inline: 0.65rem;
 }
 
 /* ==========================================================================
@@ -76,6 +236,182 @@ body {
   --radius-lg: 1.75rem;
   --radius-xl: 2rem;
   --control-radius: 1.5rem;
+}
+
+/* User-selected surface/text palette, button style, and sample preview. */
+:root[data-theme-mode="custom"] {
+  --page-bg: var(--user-page-color, #f7f9ff);
+  --surface: var(--user-card-color, #ffffff);
+  --surface-alt: var(--user-page-color, #f7f9ff);
+  --surface-card: var(--user-card-color, #ffffff);
+  --surface-hover: color-mix(in srgb, var(--user-card-color, #ffffff) 93%, var(--user-text-color, #181c20));
+  --surface-zebra: color-mix(in srgb, var(--user-card-color, #ffffff) 88%, var(--user-text-color, #181c20));
+  --surface-glass: color-mix(in srgb, var(--user-card-color, #ffffff) 86%, transparent);
+  --surface-glass-panel: color-mix(in srgb, var(--user-card-color, #ffffff) 80%, transparent);
+
+  --text-primary: var(--user-text-color, #181c20);
+  --text-secondary: var(--user-muted-color, #4c4452);
+  --text-muted: var(--user-muted-color, #4c4452);
+  --text-faint: var(--user-muted-color, #4c4452);
+
+  --border: var(--user-border-color, color-mix(in srgb, var(--user-card-color, #ffffff) 72%, var(--user-text-color, #181c20)));
+  --border-subtle: color-mix(in srgb, var(--user-border-color, #d1d5db) 55%, var(--user-card-color, #ffffff));
+  --border-accent: color-mix(in srgb, var(--user-border-color, #d1d5db) 78%, var(--user-text-color, #181c20));
+  --border-input: var(--user-border-color, color-mix(in srgb, var(--user-card-color, #ffffff) 45%, var(--user-text-color, #181c20)));
+
+  --sidebar-bg: var(--user-card-color, #ffffff);
+  --sidebar-text: var(--user-muted-color, #4c4452);
+  --sidebar-hover-bg: var(--surface-hover);
+  --sidebar-active-bg: var(--primary-faint);
+  --sidebar-active-text: var(--primary);
+  --sidebar-settings-bg: var(--surface-hover);
+  --topbar-bg: var(--user-card-color, #ffffff);
+  --header-bg: var(--user-card-color, #ffffff);
+  --main-content-bg: var(--user-page-color, #f7f9ff);
+
+  --table-header: var(--surface);
+  --table-border: var(--border);
+  --table-row-hover: var(--surface-hover);
+  --table-row-alt: var(--surface-zebra);
+  --table-row-tint: color-mix(in srgb, var(--user-accent) 5%, transparent);
+}
+
+:root[data-theme-mode="custom"] body {
+  color: var(--user-text-color, #181c20);
+}
+
+:root[data-theme-mode="custom"] body .modal,
+:root[data-theme-mode="custom"] body .modal-sheet,
+:root[data-theme-mode="custom"] body .paste-modal-content {
+  background: var(--user-modal-color, var(--surface-card));
+  color: var(--user-modal-text-color, #181c20);
+  --text-primary: var(--user-modal-text-color, #181c20);
+  --text-secondary: var(--user-modal-muted-color, #4c4452);
+  --text-muted: var(--user-modal-muted-color, #4c4452);
+  --text-faint: var(--user-modal-muted-color, #4c4452);
+}
+
+:root[data-theme-mode="custom"] body .text-inverse-surface {
+  color: var(--user-inverse-text-color, var(--surface));
+}
+
+:root[data-theme-mode="custom"] body .card,
+:root[data-theme-mode="custom"] body .surface-card,
+:root[data-theme-mode="custom"] body .bg-white,
+:root[data-theme-mode="custom"] body .bg-surface,
+:root[data-theme-mode="custom"] body .bg-surface-card {
+  color: var(--user-card-text-color, #181c20);
+}
+
+:root[data-theme-mode="custom"] body .card .text-on-surface,
+:root[data-theme-mode="custom"] body .surface-card .text-on-surface,
+:root[data-theme-mode="custom"] body .bg-white .text-on-surface,
+:root[data-theme-mode="custom"] body .bg-surface .text-on-surface,
+:root[data-theme-mode="custom"] body .bg-surface-card .text-on-surface,
+:root[data-theme-mode="custom"] body .card .text-on-background,
+:root[data-theme-mode="custom"] body .surface-card .text-on-background,
+:root[data-theme-mode="custom"] body .bg-white .text-on-background,
+:root[data-theme-mode="custom"] body .bg-surface .text-on-background,
+:root[data-theme-mode="custom"] body .bg-surface-card .text-on-background {
+  color: var(--user-card-text-color, #181c20);
+}
+
+:root[data-theme-mode="custom"] body .card .text-on-surface-variant,
+:root[data-theme-mode="custom"] body .surface-card .text-on-surface-variant,
+:root[data-theme-mode="custom"] body .bg-white .text-on-surface-variant,
+:root[data-theme-mode="custom"] body .bg-surface .text-on-surface-variant,
+:root[data-theme-mode="custom"] body .bg-surface-card .text-on-surface-variant {
+  color: var(--user-card-muted-color, #4c4452);
+}
+
+:root[data-theme-mode="custom"][data-button-style="filled"] body .btn-primary,
+:root[data-theme-mode="custom"][data-button-style="filled"] body .btn-outline-primary,
+:root[data-theme-mode="custom"][data-button-style="filled"] body button.bg-primary,
+:root[data-theme-mode="custom"][data-button-style="filled"] body a.bg-primary,
+:root[data-theme-mode="custom"][data-button-style="filled"] body input.bg-primary {
+  background: var(--user-button-color, #7c3aed);
+  border-color: var(--user-button-color, #7c3aed);
+  color: var(--user-button-fg, #ffffff);
+}
+
+:root[data-theme-mode="custom"][data-button-style="filled"] body .btn-primary:hover,
+:root[data-theme-mode="custom"][data-button-style="filled"] body .btn-outline-primary:hover,
+:root[data-theme-mode="custom"][data-button-style="filled"] body button.bg-primary:hover,
+:root[data-theme-mode="custom"][data-button-style="filled"] body a.bg-primary:hover,
+:root[data-theme-mode="custom"][data-button-style="filled"] body input.bg-primary:hover {
+  background: color-mix(in srgb, var(--user-button-color, #7c3aed) 86%, #000000);
+  border-color: color-mix(in srgb, var(--user-button-color, #7c3aed) 86%, #000000);
+}
+
+:root[data-theme-mode="custom"][data-button-style="subtle"] body .btn-primary,
+:root[data-theme-mode="custom"][data-button-style="subtle"] body .btn-outline-primary,
+:root[data-theme-mode="custom"][data-button-style="subtle"] body button.bg-primary,
+:root[data-theme-mode="custom"][data-button-style="subtle"] body a.bg-primary,
+:root[data-theme-mode="custom"][data-button-style="subtle"] body input.bg-primary {
+  background: color-mix(in srgb, var(--user-button-color, #7c3aed) 14%, var(--surface-card));
+  border-color: color-mix(in srgb, var(--user-button-color, #7c3aed) 28%, transparent);
+  color: var(--user-button-text, var(--user-button-color, #7c3aed));
+}
+
+:root[data-theme-mode="custom"][data-button-style="outline"] body .btn-primary,
+:root[data-theme-mode="custom"][data-button-style="outline"] body .btn-outline-primary,
+:root[data-theme-mode="custom"][data-button-style="outline"] body button.bg-primary,
+:root[data-theme-mode="custom"][data-button-style="outline"] body a.bg-primary,
+:root[data-theme-mode="custom"][data-button-style="outline"] body input.bg-primary {
+  background: transparent;
+  border-color: var(--user-button-color, #7c3aed);
+  color: var(--user-button-text, var(--user-button-color, #7c3aed));
+}
+
+.theme-preview-canvas {
+  color: var(--text-primary);
+  background: var(--page-bg);
+}
+
+.theme-preview-nav {
+  background: var(--surface-card);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+.theme-preview-card {
+  background: var(--surface-card);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+.theme-preview-muted {
+  color: var(--text-secondary);
+}
+
+.theme-preview-primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--text-on-primary);
+}
+
+.theme-preview-secondary {
+  background: var(--surface-hover);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+:root[data-theme-mode="custom"] .theme-preview-primary {
+  background: var(--user-button-color, var(--primary));
+  border-color: var(--user-button-color, var(--primary));
+  color: var(--user-button-fg, var(--text-on-primary));
+}
+
+:root[data-theme-mode="custom"][data-button-style="subtle"] .theme-preview-primary {
+  background: color-mix(in srgb, var(--user-button-color, #7c3aed) 14%, var(--surface-card));
+  border-color: color-mix(in srgb, var(--user-button-color, #7c3aed) 28%, transparent);
+  color: var(--user-button-text, var(--user-button-color, #7c3aed));
+}
+
+:root[data-theme-mode="custom"][data-button-style="outline"] .theme-preview-primary {
+  background: transparent;
+  border-color: var(--user-button-color, #7c3aed);
+  color: var(--user-button-text, var(--user-button-color, #7c3aed));
 }
 
 /* ==========================================================================

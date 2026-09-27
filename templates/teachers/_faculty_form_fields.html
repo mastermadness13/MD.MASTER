@@ -1,10 +1,19 @@
-{% macro admin_tasks_options(selected='', extra=None) %}
-{% for task in extra or [] %}
+{% macro admin_tasks_options(selected='', selected_id=None, extra=None) %}
+<optgroup label="الأدوار التي تمنح صلاحيات">
+{% for task in extra or [] if task.is_system_linked %}
 <option value="{{ task.name }}" data-role="{{ task.internal_code or '' }}"
-        data-system-linked="{{ '1' if task.is_system_linked else '0' }}"
-        {{ 'class="text-amber-600 font-bold"' if task.is_system_linked else '' }}
-        {{ 'selected' if selected == task.name else '' }}>{{ task.name }}</option>
+        data-assignment-type-id="{{ task.id or '' }}" data-system-linked="1"
+        class="text-amber-600 font-bold"
+        {{ 'selected' if (selected_id and selected_id|string == task.id|string) or (not selected_id and selected == task.name) else '' }}>{{ task.name }}</option>
 {% endfor %}
+</optgroup>
+<optgroup label="التكليفات النصية">
+{% for task in extra or [] if not task.is_system_linked %}
+<option value="{{ task.name }}" data-role=""
+        data-assignment-type-id="{{ task.id or '' }}" data-system-linked="0"
+        {{ 'selected' if (selected_id and selected_id|string == task.id|string) or (not selected_id and selected == task.name) else '' }}>{{ task.name }}</option>
+{% endfor %}
+</optgroup>
 {% endmacro %}
 
 
@@ -110,7 +119,7 @@
 {% endmacro %}
 
 
-{% macro position_hod_fields(inp, sel, departments, selected_position='', hod_value='', assignment_date='', department_hods=None, confirm_replace=False, custom_value='', admin_tasks=None) %}
+{% macro position_hod_fields(inp, sel, departments, selected_position='', selected_assignment_type_id=None, hod_value='', assignment_date='', department_hods=None, confirm_replace=false, custom_value='', admin_tasks=None) %}
 {% set _hods = department_hods | default({}) %}
 {% set _hod_key = hod_value | int if hod_value else none %}
 {% set _selected_occupied = _hods.get(_hod_key) if _hod_key else none %}
@@ -120,8 +129,10 @@
     <div class="relative">
       <select class="{{ sel }} appearance-none cursor-pointer" id="positionSelect" data-editable-select="position" name="position">
         <option value="">لا يوجد تكليف إداري</option>
-        {{ admin_tasks_options(selected_position, extra=admin_tasks) }}
+        {{ admin_tasks_options(selected_position, selected_assignment_type_id, extra=admin_tasks) }}
       </select>
+      <input type="hidden" name="admin_assignment_type_id" id="adminAssignmentTypeId"
+             value="{{ selected_assignment_type_id or '' }}">
       <span class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-on-surface-variant/70">
         <span class="material-symbols-outlined text-[18px]">expand_more</span>
       </span>

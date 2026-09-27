@@ -23,6 +23,14 @@
   };
   var DEFAULT_FONT_FAMILY = 'Cairo';
   var DEFAULT_FONT_SIZE = 16;
+  var DEFAULT_COLORS = {
+    page: '#f7f9ff',
+    card: '#ffffff',
+    text: '#181c20',
+    muted: '#4c4452',
+    button: '#7c3aed'
+  };
+  var BUTTON_STYLES = ['filled', 'subtle', 'outline'];
 
   var media = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
 
@@ -47,6 +55,10 @@
     return MODES.indexOf(saved) === -1 ? 'light' : saved;
   }
 
+  function normalizeHexColor(value) {
+    return typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : null;
+  }
+
   var prefs = readJSON(PREF_KEY, {});
   var mode = readMode();
   if (DENSITIES.indexOf(prefs.density) === -1) prefs.density = 'comfortable';
@@ -54,6 +66,7 @@
   var hue = typeof prefs.hue === 'number' && isFinite(prefs.hue)
     ? Math.max(0, Math.min(359, Math.round(prefs.hue)))
     : 280;
+  prefs.hue = hue;
 
   function normalizeFontFamily(value) {
     if (typeof value !== 'string') return null;
@@ -70,13 +83,24 @@
     if (typeof value !== 'number' && typeof value !== 'string') return null;
     if (typeof value === 'string' && !/^(?:\d{1,2})(?:\.0|\.5)?$/.test(value.trim())) return null;
     if (typeof value === 'string') value = Number(value.trim());
-    if (!isFinite(value) || value < 13 || value > 20) return null;
+    if (!isFinite(value) || value < 12 || value > 22) return null;
     return Math.abs(value * 2 - Math.round(value * 2)) < 0.000001 ? value : null;
   }
 
   prefs.fontFamily = normalizeFontFamily(prefs.fontFamily) || DEFAULT_FONT_FAMILY;
   prefs.fontSize = normalizeFontSize(prefs.fontSize);
   if (prefs.fontSize === null) prefs.fontSize = DEFAULT_FONT_SIZE;
+  var darkCustomBase = mode === 'custom' && prefs.base === 'dark';
+  prefs.pageColor = normalizeHexColor(prefs.pageColor) || (darkCustomBase ? '#14101c' : DEFAULT_COLORS.page);
+  prefs.cardColor = normalizeHexColor(prefs.cardColor) || (darkCustomBase ? '#241e31' : DEFAULT_COLORS.card);
+  prefs.textColor = normalizeHexColor(prefs.textColor) || (darkCustomBase ? '#ece6f4' : DEFAULT_COLORS.text);
+  prefs.mutedColor = normalizeHexColor(prefs.mutedColor) || (darkCustomBase ? '#c9c0d9' : DEFAULT_COLORS.muted);
+  prefs.modalColor = normalizeHexColor(prefs.modalColor) || prefs.cardColor;
+  prefs.borderColor = normalizeHexColor(prefs.borderColor) || (darkCustomBase ? '#475569' : '#d1d5db');
+  prefs.inverseTextColor = normalizeHexColor(prefs.inverseTextColor) ||
+    readableColor('#ffffff', [prefs.textColor]);
+  prefs.buttonColor = normalizeHexColor(prefs.buttonColor) || DEFAULT_COLORS.button;
+  if (BUTTON_STYLES.indexOf(prefs.buttonStyle) === -1) prefs.buttonStyle = 'filled';
 
   function systemPrefersDark() {
     return !!(media && media.matches);
@@ -84,8 +108,9 @@
 
   function resolveDark() {
     if (mode === 'dark') return true;
+    if (mode === 'light') return false;
     if (mode === 'system') return systemPrefersDark();
-    /* light and custom both follow the user's explicit light/dark pick. */
+    /* Custom mode keeps the resolved light/dark base selected by the user. */
     return prefs.base === 'dark';
   }
 
@@ -95,6 +120,44 @@
       return channel <= 0.04045 ? channel / 12.92 : Math.pow((channel + 0.055) / 1.055, 2.4);
     }
     return 0.2126 * linearize(rgb[0]) + 0.7152 * linearize(rgb[1]) + 0.0722 * linearize(rgb[2]);
+  }
+
+  function hexRgb(hex) {
+    return [
+      parseInt(hex.slice(1, 3), 16),
+      parseInt(hex.slice(3, 5), 16),
+      parseInt(hex.slice(5, 7), 16)
+    ];
+  }
+
+  function contrastRatio(first, second) {
+    var firstLuminance = relativeLuminance(hexRgb(first));
+    var secondLuminance = relativeLuminance(hexRgb(second));
+    var brightest = Math.max(firstLuminance, secondLuminance);
+    var darkest = Math.min(firstLuminance, secondLuminance);
+    return (brightest + 0.05) / (darkest + 0.05);
+  }
+
+  function readableColor(candidate, backgrounds) {
+    var valid = backgrounds.every(function (background) {
+      return contrastRatio(candidate, background) >= 4.5;
+    });
+    if (valid) return candidate;
+
+    var blackScore = Math.min.apply(null, backgrounds.map(function (background) {
+      return contrastRatio('#000000', background);
+    }));
+    var whiteScore = Math.min.apply(null, backgrounds.map(function (background) {
+      return contrastRatio('#ffffff', background);
+    }));
+    return blackScore >= whiteScore ? '#000000' : '#ffffff';
+  }
+
+  function getButtonForeground(color) {
+    var luminance = relativeLuminance(hexRgb(color));
+    var blackContrast = (luminance + 0.05) / 0.05;
+    var whiteContrast = 1.05 / (luminance + 0.05);
+    return blackContrast >= whiteContrast ? '#000000' : '#ffffff';
   }
 
   function customAccentRgb(dark) {
@@ -162,8 +225,28 @@
     doc.style.setProperty('--user-hue', String(hue));
     doc.style.setProperty('--user-font-family', FONT_FAMILIES[prefs.fontFamily]);
     doc.style.setProperty('--user-font-size', prefs.fontSize + 'px');
+    doc.style.fontSize = prefs.fontSize + 'px';
     doc.style.setProperty('--custom-button-bg', 'var(--user-accent)');
     doc.style.setProperty('--custom-button-fg', customButtonForeground(dark));
+    doc.style.setProperty('--user-page-color', prefs.pageColor);
+    doc.style.setProperty('--user-card-color', prefs.cardColor);
+    doc.style.setProperty('--user-modal-color', prefs.modalColor);
+    doc.style.setProperty('--user-border-color', prefs.borderColor);
+    doc.style.setProperty('--user-text-color', readableColor(prefs.textColor, [prefs.pageColor]));
+    doc.style.setProperty('--user-card-text-color', readableColor(prefs.textColor, [prefs.cardColor]));
+    doc.style.setProperty('--user-modal-text-color', readableColor(prefs.textColor, [prefs.modalColor]));
+    doc.style.setProperty('--user-muted-color', readableColor(prefs.mutedColor, [prefs.pageColor]));
+    doc.style.setProperty('--user-card-muted-color', readableColor(prefs.mutedColor, [prefs.cardColor]));
+    doc.style.setProperty('--user-modal-muted-color', readableColor(prefs.mutedColor, [prefs.modalColor]));
+    doc.style.setProperty(
+      '--user-inverse-text-color',
+      readableColor(prefs.inverseTextColor, [readableColor(prefs.textColor, [prefs.pageColor])])
+    );
+    doc.style.setProperty('--user-button-color', prefs.buttonColor);
+    doc.style.setProperty('--user-button-fg', getButtonForeground(prefs.buttonColor));
+    doc.style.setProperty('--user-button-text', readableColor(prefs.buttonColor, [prefs.pageColor, prefs.cardColor]));
+    doc.style.setProperty('--user-button-style', prefs.buttonStyle);
+    doc.setAttribute('data-button-style', prefs.buttonStyle);
 
     /* Tailwind is configured with darkMode: 'class', so the .dark class has to
        mirror data-theme or every dark: utility stays inert. */
@@ -198,7 +281,7 @@
       mode = systemPrefersDark() ? 'light' : 'dark';
     } else {
       mode = resolveDark() ? 'light' : 'dark';
-      if (mode === 'light') prefs.base = 'light';
+      prefs.base = mode;
     }
     save();
     apply();
@@ -213,7 +296,7 @@
       if (next === 'custom' && prefs.base === undefined) {
         prefs.base = resolveDark() ? 'dark' : 'light';
       }
-      if (next !== 'custom') prefs.base = resolveDark() ? 'dark' : 'light';
+      if (next === 'light' || next === 'dark') prefs.base = next;
       mode = next;
       save();
       apply();
@@ -247,6 +330,71 @@
       var size = normalizeFontSize(value);
       if (size === null) return;
       prefs.fontSize = size;
+      save();
+      apply();
+    },
+    setPageColor: function (value) {
+      var color = normalizeHexColor(value);
+      if (!color) return;
+      prefs.pageColor = color;
+      if (mode === 'custom') {
+        prefs.base = relativeLuminance(hexRgb(color)) < 0.22 ? 'dark' : 'light';
+      }
+      save();
+      apply();
+    },
+    setCardColor: function (value) {
+      var color = normalizeHexColor(value);
+      if (!color) return;
+      prefs.cardColor = color;
+      save();
+      apply();
+    },
+    setModalColor: function (value) {
+      var color = normalizeHexColor(value);
+      if (!color) return;
+      prefs.modalColor = color;
+      save();
+      apply();
+    },
+    setBorderColor: function (value) {
+      var color = normalizeHexColor(value);
+      if (!color) return;
+      prefs.borderColor = color;
+      save();
+      apply();
+    },
+    setTextColor: function (value) {
+      var color = normalizeHexColor(value);
+      if (!color) return;
+      prefs.textColor = color;
+      save();
+      apply();
+    },
+    setMutedColor: function (value) {
+      var color = normalizeHexColor(value);
+      if (!color) return;
+      prefs.mutedColor = color;
+      save();
+      apply();
+    },
+    setInverseTextColor: function (value) {
+      var color = normalizeHexColor(value);
+      if (!color) return;
+      prefs.inverseTextColor = color;
+      save();
+      apply();
+    },
+    setButtonColor: function (value) {
+      var color = normalizeHexColor(value);
+      if (!color) return;
+      prefs.buttonColor = color;
+      save();
+      apply();
+    },
+    setButtonStyle: function (value) {
+      if (BUTTON_STYLES.indexOf(value) === -1) return;
+      prefs.buttonStyle = value;
       save();
       apply();
     }

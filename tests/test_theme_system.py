@@ -123,12 +123,148 @@ def test_custom_theme_font_controls_use_valid_persisted_manager_settings():
     assert 'data-theme-font-family' in panel_script
     assert 'data-theme-font-size' in panel_script
     assert "manager.setFontFamily('Cairo')" in panel_script
+    assert "value=\"16\"" in panel
+    assert 'min="12" max="22" step="0.5"' in panel
     assert 'fontFamily' in init and 'fontSize' in init
     assert '--user-font-family' in init
     assert '--user-font-size' in init
     assert 'Cairo:wght@' in typography
     assert 'IBM+Plex+Sans+Arabic:wght@' in typography
     assert 'Noto+Kufi+Arabic:wght@' in typography
+
+
+def test_font_size_preference_scales_fixed_ui_and_official_report_text():
+    with open('static/js/theme.js', encoding='utf-8') as fh:
+        manager = fh.read()
+    with open('templates/shared/components/theme_init.html', encoding='utf-8') as fh:
+        init = fh.read()
+    with open('static/css/utilities/theme-overrides.css', encoding='utf-8') as fh:
+        overrides = fh.read()
+    with open('templates/faculty_performance/_print_document.html', encoding='utf-8') as fh:
+        print_layout = fh.read()
+    with open('templates/faculty_performance/_official_document_styles.html', encoding='utf-8') as fh:
+        official_styles = fh.read()
+
+    assert "doc.style.fontSize = prefs.fontSize + 'px'" in manager
+    assert "doc.style.fontSize = fontSize + 'px'" in init
+    assert "body [class~=\"text-[11px]\"]" in overrides
+    assert "body [class~=\"text-[40px]\"]" in overrides
+    assert 'body [class~="file:text-[11px]"]::file-selector-button' in overrides
+    assert "{% include 'shared/components/theme_init.html' %}" in print_layout
+    assert "var(--user-font-family" in official_styles
+    assert not re.search(r'font-size\s*:\s*\d+(?:\.\d+)?pt', official_styles)
+
+
+def test_official_document_previews_keep_readable_paper_surface_in_dark_mode():
+    with open('templates/faculty_performance/preview.html', encoding='utf-8') as fh:
+        teacher_preview = fh.read()
+    with open('templates/faculty_performance/report_course.html', encoding='utf-8') as fh:
+        course_preview = fh.read()
+    with open('templates/faculty_performance/_official_document_styles.html', encoding='utf-8') as fh:
+        official_styles = fh.read()
+    with open('templates/teachers/_course_content_doc.html', encoding='utf-8') as fh:
+        course_content = fh.read()
+
+    assert 'official-doc-paper bg-white text-black' in teacher_preview
+    assert 'official-doc-paper bg-white text-black' in course_preview
+    assert 'body .official-doc-paper {' in official_styles
+    assert 'background: #fff;' in official_styles
+    assert 'color-scheme: light;' in official_styles
+    assert 'body .cc-sheet {' in course_content
+    assert 'color: #111827;' in course_content
+
+
+def test_theme_panel_range_labels_match_normalized_and_selected_values():
+    with open('static/js/theme.js', encoding='utf-8') as fh:
+        manager = fh.read()
+    with open('static/js/theme_panel.js', encoding='utf-8') as fh:
+        panel_script = fh.read()
+    with open('templates/shared/components/theme_panel.html', encoding='utf-8') as fh:
+        panel = fh.read()
+
+    assert re.search(
+        r'var hue = typeof prefs\.hue === \'number\' && isFinite\(prefs\.hue\)'
+        r'\s*\?\s*Math\.max\(0, Math\.min\(359, Math\.round\(prefs\.hue\)\)\)'
+        r'\s*:\s*280;\s*prefs\.hue = hue;',
+        manager,
+    )
+    assert "each('[data-theme-hue-value]').forEach" in panel_script
+    assert "output.textContent = prefs.hue + '°'" in panel_script
+    assert "output.textContent = (prefs.fontSize || 16) + ' px'" in panel_script
+    assert re.search(
+        r'<input[^>]*type="range"[^>]*value="280"[^>]*data-theme-hue[^>]*>.*?'
+        r'<output[^>]*data-theme-hue-value[^>]*>280°</output>',
+        panel,
+        re.S,
+    )
+    assert re.search(r'id="themeFontSize"[^>]*value="16"', panel)
+    assert re.search(
+        r'<output[^>]*data-theme-font-size-value[^>]*>16 px</output>',
+        panel,
+    )
+
+
+def test_theme_panel_reference_controls_apply_and_persist_every_palette_group():
+    with open('static/js/theme.js', encoding='utf-8') as fh:
+        manager = fh.read()
+    with open('static/js/theme_panel.js', encoding='utf-8') as fh:
+        controller = fh.read()
+    with open('templates/shared/components/theme_panel.html', encoding='utf-8') as fh:
+        panel = fh.read()
+    with open('static/css/utilities/theme-custom.css', encoding='utf-8') as fh:
+        css = fh.read()
+    with open('templates/shared/components/theme_init.html', encoding='utf-8') as fh:
+        init = fh.read()
+
+    for key, setter in (
+        ('pageColor', 'setPageColor'),
+        ('cardColor', 'setCardColor'),
+        ('modalColor', 'setModalColor'),
+        ('borderColor', 'setBorderColor'),
+        ('textColor', 'setTextColor'),
+        ('mutedColor', 'setMutedColor'),
+        ('inverseTextColor', 'setInverseTextColor'),
+        ('buttonColor', 'setButtonColor'),
+        ('buttonStyle', 'setButtonStyle'),
+    ):
+        assert key in manager
+        assert setter in manager
+    for group in ('accent', 'cards', 'modal', 'buttons', 'background', 'borders', 'text', 'layout'):
+        assert f'data-theme-accordion="{group}"' in panel
+    for setting in (
+        'pageColor', 'cardColor', 'modalColor', 'borderColor', 'textColor',
+        'inverseTextColor', 'buttonColor',
+    ):
+        assert f'data-theme-color-input="{setting}"' in panel
+        if setting != 'inverseTextColor':
+            assert f'data-theme-color-preset="{setting}"' in panel
+    assert 'data-theme-color-input="mutedColor"' in panel
+    assert 'data-theme-contrast' in panel
+    assert 'data-theme-live-preview' in panel
+    assert 'data-theme-apply' in panel
+    assert 'manager[config.setter]' in controller
+    assert 'localStorage' in manager
+    assert '--user-page-color' in init
+    assert '--user-card-color' in init
+    assert '--user-modal-color' in init
+    assert '--user-border-color' in init
+    assert '--user-modal-text-color' in init
+    assert '--user-modal-muted-color' in init
+    assert '--user-inverse-text-color' in init
+    assert '--user-text-color' in init
+    assert '--user-button-color' in init
+    assert ':root[data-theme-mode="custom"][data-button-style="outline"]' in css
+    assert '--text-primary: var(--user-modal-text-color' in css
+    assert '--text-secondary: var(--user-modal-muted-color' in css
+    assert 'readableColor' in manager and 'contrastRatio' in manager
+
+
+def test_theme_light_and_dark_mode_selection_is_not_stuck_to_old_base():
+    with open('static/js/theme.js', encoding='utf-8') as fh:
+        manager = fh.read()
+
+    assert "if (mode === 'light') return false;" in manager
+    assert "if (next === 'light' || next === 'dark') prefs.base = next;" in manager
 
 
 def test_custom_accent_is_applied_to_filled_actions_only_with_computed_contrast():

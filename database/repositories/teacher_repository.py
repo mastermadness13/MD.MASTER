@@ -188,8 +188,9 @@ class TeacherRepository(BaseRepository):
             'INSERT INTO teachers (name, email, phone, department_id, hod_department_id, academic_number,\n'
             '               qualification_id, rank_id, classification_id, national_id,\n'
             '               contract_date, tasks, position, specialization, specialization_id,\n'
-            '               semester, first_lecture_date, work_start_date, general_notes)\n'
-            '               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            '               semester, first_lecture_date, work_start_date, general_notes,\n'
+            '               admin_assignment_type_id)\n'
+            '               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             (
                 data['name'],
                 data['email'],
@@ -210,6 +211,7 @@ class TeacherRepository(BaseRepository):
                 data.get('first_lecture_date', ''),
                 data.get('work_start_date', ''),
                 data.get('general_notes', ''),
+                data.get('admin_assignment_type_id'),
             ),
         )
         self.db.commit()
@@ -228,7 +230,7 @@ class TeacherRepository(BaseRepository):
         for optional in [
             'specialization', 'specialization_id', 'position', 'photo_filename',
             'semester', 'first_lecture_date', 'work_start_date', 'general_notes',
-            'hod_department_id',
+            'hod_department_id', 'admin_assignment_type_id',
         ]:
             if optional in data:
                 cols.append(optional)

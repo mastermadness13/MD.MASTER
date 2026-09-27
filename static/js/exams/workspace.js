@@ -55,10 +55,10 @@
         var ar = dayDisplays[day] || '';
         var datePart = '';
         if (ar) {
-          datePart = '<span style="font-size:11px; font-weight:400; color:#4b4450; margin-top:2px; display:block;">' + escapeHtml(ar) + '</span>';
+          datePart = '<span style="font-size:0.6875rem; font-weight:400; color:#4b4450; margin-top:2px; display:block;">' + escapeHtml(ar) + '</span>';
         } else if (raw) {
           var pt = raw.split('-');
-          datePart = '<span style="font-size:11px; font-weight:400; color:#4b4450; margin-top:2px; display:block;">' +
+          datePart = '<span style="font-size:0.6875rem; font-weight:400; color:#4b4450; margin-top:2px; display:block;">' +
             (parseInt(pt[2], 10) + '/' + parseInt(pt[1], 10)) + '</span>';
         }
         body += '<tr><td style="font-weight:700; background:#f8f9ff; vertical-align:middle; padding:8px 5px;">' +
@@ -77,11 +77,11 @@
           var isPractical = e.type === 'practical';
           body += '<td class="' + (isPractical ? 'exam-cell-practical' : 'exam-cell-written') +
             '" style="vertical-align:top; padding:8px 6px;">' +
-            '<div style="font-weight:700; font-size:11px; text-align:center; color:#320058; margin-bottom:4px; line-height:1.2;">' + escapeHtml(e.course || '—') + '</div>' +
+            '<div style="font-weight:700; font-size:0.6875rem; text-align:center; color:#320058; margin-bottom:4px; line-height:1.2;">' + escapeHtml(e.course || '—') + '</div>' +
             '<div class="' + (isPractical ? 'exam-badge-practical' : 'exam-badge-written') +
-            '" style="font-size:9px; padding:1px 6px; border-radius:3px; display:inline-block; font-weight:500;">' +
+            '" style="font-size:0.5625rem; padding:1px 6px; border-radius:3px; display:inline-block; font-weight:500;">' +
             (isPractical ? 'عملي' : 'نظري') + '</div>' +
-            '<div style="font-size:10px; margin-top:4px; padding-top:4px; border-top:1px solid rgba(0,0,0,0.1); display:flex; flex-direction:column; gap:2px; text-align:right;">' +
+            '<div style="font-size:0.625rem; margin-top:4px; padding-top:4px; border-top:1px solid rgba(0,0,0,0.1); display:flex; flex-direction:column; gap:2px; text-align:right;">' +
             '<span style="font-weight:500; white-space:nowrap;">القاعة: ' + escapeHtml(e.hall || '—') + '</span>' +
             '<span style="font-weight:500; white-space:nowrap;" dir="ltr">' + escapeHtml(e.time || '—') + '</span>' +
             '</div></td>';
@@ -91,38 +91,38 @@
 
       var periodLine = '';
       if (semStart) {
-        periodLine = '<p style="margin:0; font-size:11px;">فترة الامتحانات: ' + escapeHtml(semStart) + ' — ' + escapeHtml(semEnd || '') + '</p>';
+        periodLine = '<p style="margin:0; font-size:0.6875rem;">فترة الامتحانات: ' + escapeHtml(semStart) + ' — ' + escapeHtml(semEnd || '') + '</p>';
       }
 
       sheets += '' +
         '<div class="a4-document print-sheet">' +
           '<header class="exam-print-header" style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; padding-bottom:10px;">' +
             '<div style="text-align:right; flex:1;">' +
-              '<h2 style="font-size:14px; font-weight:700; color:#320058; margin:0 0 2px 0; line-height:1.3;">كلية التقنية الهندسية زوارة</h2>' +
-              '<p style="font-size:12px; color:#4b4450; margin:0;">' + escapeHtml(dept.name) + '</p>' +
+              '<h2 style="font-size:0.875rem; font-weight:700; color:#320058; margin:0 0 2px 0; line-height:1.3;">كلية التقنية الهندسية زوارة</h2>' +
+              '<p style="font-size:0.75rem; color:#4b4450; margin:0;">' + escapeHtml(dept.name) + '</p>' +
             '</div>' +
             '<div style="text-align:center; flex:1; display:flex; flex-direction:column; align-items:center;">' +
               '<img src="/static/image/logo.png" alt="شعار الكلية" style="width:44px; height:44px; object-fit:contain; margin-bottom:4px;">' +
-              '<h1 style="font-size:20px; font-weight:700; color:#320058; margin:0; line-height:1.2;">جدول الامتحانات</h1>' +
+              '<h1 style="font-size:1.25rem; font-weight:700; color:#320058; margin:0; line-height:1.2;">جدول الامتحانات</h1>' +
             '</div>' +
-            '<div style="text-align:left; flex:1; color:#4b4450; font-size:12px;">' +
+            '<div style="text-align:left; flex:1; color:#4b4450; font-size:0.75rem;">' +
               '<p style="margin:0 0 2px 0;">سنة ' + escapeHtml(yearLabel || '—') + '</p>' +
               '<p style="margin:0 0 2px 0;">الأسبوع ' + escapeHtml(week) + '</p>' +
               periodLine +
             '</div>' +
           '</header>' +
           '<div style="flex:1;">' +
-            '<table class="exam-grid" style="text-align:center; font-size:11px; width:100%; table-layout:fixed;">' +
+            '<table class="exam-grid" style="text-align:center; font-size:0.6875rem; width:100%; table-layout:fixed;">' +
               '<thead><tr style="background:#eff4ff;">' + headers + '</tr></thead>' +
               '<tbody>' + body + '</tbody>' +
             '</table>' +
           '</div>' +
           '<div style="margin-top:auto; padding-top:24px; display:flex; justify-content:space-between; align-items:flex-end;">' +
             '<div style="text-align:center; width:200px; border-top:1px solid #7d7481; padding-top:8px;">' +
-              '<p style="font-weight:500; color:#0b1c30; margin:0; font-size:12px;">توقيع رئيس القسم</p>' +
+              '<p style="font-weight:500; color:#0b1c30; margin:0; font-size:0.75rem;">توقيع رئيس القسم</p>' +
             '</div>' +
             '<div style="text-align:center; width:200px; border-top:1px solid #7d7481; padding-top:8px;">' +
-              '<p style="font-weight:500; color:#0b1c30; margin:0; font-size:12px;">اعتماد إدارة الكلية</p>' +
+              '<p style="font-weight:500; color:#0b1c30; margin:0; font-size:0.75rem;">اعتماد إدارة الكلية</p>' +
             '</div>' +
           '</div>' +
         '</div>';

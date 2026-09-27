@@ -3,30 +3,42 @@
 {% set page_title = 'إدارة القوائم المرجعية' %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto pb-8 space-y-5">
-  <div>
-    <h1 class="text-xl font-bold text-on-surface">إدارة القوائم المرجعية</h1>
+<div class="max-w-6xl mx-auto pb-8 space-y-5" id="lookupListsPage">
+  <div class="rounded-2xl border border-outline-variant bg-surface-card p-4 sm:p-5">
+    <h1 class="text-xl font-bold text-on-surface">
+      {% if selected_category == 'admin_assignment_type' %}إدارة التكليفات الإدارية{% else %}إدارة القوائم المرجعية{% endif %}
+    </h1>
     <p class="text-sm text-on-surface-variant mt-1">
+      {% if selected_category == 'admin_assignment_type' %}
+      أضف التكليفات العامة، أو غيّر اسم التكليفات المرتبطة بالنظام وفعّلها أو عطّلها.
+      {% else %}
       إدارة الخيارات المستخدمة في ملفات أعضاء هيئة التدريس وتقارير الأداء.
+      {% endif %}
     </p>
   </div>
 
-  <nav class="flex flex-wrap gap-2" aria-label="فئات القوائم">
-    {% for key, item in categories.items() %}
-    <a href="{{ url_for('teachers.lookup_lists', category=key) }}"
-       class="px-3 py-2 rounded-xl border text-sm font-semibold no-underline
-              {% if selected_category == key %}bg-primary text-on-primary border-primary
-              {% else %}bg-surface border-outline-variant text-on-surface-variant{% endif %}">
-      {{ item.label }}
-    </a>
-    {% endfor %}
-  </nav>
+  <label class="flex items-center gap-3 rounded-xl border border-outline-variant bg-surface-card px-3 py-2 text-sm font-semibold text-on-surface-variant">
+    <span>القائمة</span>
+    <select id="lookupCategorySelect" class="min-w-0 flex-1 rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm text-on-surface">
+      {% for key, item in categories.items() %}
+      <option value="{{ key }}" {{ 'selected' if selected_category == key else '' }}>{{ item.label }}</option>
+      {% endfor %}
+    </select>
+  </label>
 
-  <section class="bg-surface rounded-2xl border border-outline-variant p-4 sm:p-5">
-    <h2 class="font-bold text-on-surface mb-4">
-      إضافة قيمة إلى {{ categories[selected_category].label }}
-    </h2>
-    <form method="post" class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+  <section class="bg-surface-card rounded-2xl border border-outline-variant p-4 sm:p-5">
+    <div class="flex items-start gap-3 mb-4">
+      <span class="material-symbols-outlined text-primary" aria-hidden="true">add_circle</span>
+      <div>
+        <h2 class="font-bold text-on-surface">
+          {% if selected_category == 'admin_assignment_type' %}إضافة تكليف إداري{% else %}إضافة خيار جديد{% endif %}
+        </h2>
+        {% if selected_category == 'admin_assignment_type' %}
+        <p class="text-xs text-on-surface-variant mt-1">التكليف الجديد عام ولا يمنح صلاحية نظامية.</p>
+        {% endif %}
+      </div>
+    </div>
+    <form method="post" id="lookupAddForm" data-lookup-ajax class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
       <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="category" value="{{ selected_category }}">
       <input type="hidden" name="action" value="add">
@@ -43,19 +55,22 @@
       </label>
       {% endif %}
       <label class="flex flex-col gap-1.5 text-xs font-semibold text-on-surface-variant">
-        نص الخيار
+        {{ 'اسم التكليف' if selected_category == 'admin_assignment_type' else 'نص الخيار' }}
         <input name="name" required maxlength="120"
+               placeholder="اكتب الاسم ثم اضغط Enter"
                class="h-10 rounded-xl border border-outline-variant bg-surface px-3 text-sm text-on-surface">
       </label>
       <button type="submit"
-              class="h-10 rounded-xl bg-primary px-4 text-sm font-bold text-on-primary">
-        إضافة قيمة
+              class="h-10 rounded-xl bg-primary px-4 text-sm font-bold text-on-primary transition hover:opacity-90">
+        {{ 'إضافة التكليف' if selected_category == 'admin_assignment_type' else 'إضافة قيمة' }}
       </button>
     </form>
+    <p id="lookupFeedback" class="mt-3 text-sm" role="status" aria-live="polite"></p>
     {% if selected_category == 'admin_assignment_type' %}
-    <p class="text-xs text-on-surface-variant mt-3">
-      القيم الجديدة تكليفات عامة؛ التكليفات النظامية الحالية لا يمكن حذفها، ويمكن تغيير اسمها أو تعطيلها.
-    </p>
+    <div class="flex flex-wrap gap-x-4 gap-y-1 mt-4 text-xs text-on-surface-variant">
+      <span><strong class="text-primary">نظامي:</strong> يبقى مرتبطًا بصلاحيته؛ يمكن إعادة تسميته أو تعطيله.</span>
+      <span><strong class="text-on-surface">عام:</strong> يمكن إعادة تسميته أو حذفه.</span>
+    </div>
     {% endif %}
   </section>
 
@@ -105,95 +120,122 @@
   </section>
   {% endif %}
 
-  <section class="overflow-x-auto rounded-2xl border border-outline-variant bg-surface">
-    <table class="w-full min-w-[680px] text-sm">
-      <thead class="bg-surface-container text-on-surface-variant">
-        <tr>
-          <th class="p-3 text-right">القيمة</th>
-          {% if selected_category == 'specialization' %}
-          <th class="p-3 text-right">القسم</th>
-          {% endif %}
+  <section id="lookup-values" class="space-y-2">
+    <div class="flex flex-col sm:flex-row sm:items-center gap-2 rounded-xl border border-outline-variant bg-surface-card p-2">
+      <label class="relative flex-1">
+        <span class="sr-only">البحث في القيم</span>
+        <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant" aria-hidden="true">search</span>
+        <input id="lookupSearch" type="search" autocomplete="off"
+               placeholder="ابحث بالاسم أو النوع أو الصلاحية..."
+               class="h-9 w-full rounded-lg border border-outline-variant bg-surface px-10 text-sm text-on-surface">
+      </label>
+      {% if selected_category == 'admin_assignment_type' %}
+      <label class="flex items-center gap-2 text-sm text-on-surface-variant">
+        <span>عرض</span>
+        <select id="lookupStatusFilter" class="h-9 rounded-lg border border-outline-variant bg-surface px-3 text-sm text-on-surface">
+          <option value="all">الكل</option>
+          <option value="active">النشطة</option>
+          <option value="inactive">المعطّلة</option>
+          <option value="system">النظامية</option>
+          <option value="general">العامة</option>
+        </select>
+      </label>
+      {% endif %}
+      <span id="lookupResultCount" class="text-xs font-bold text-on-surface-variant whitespace-nowrap" aria-live="polite">
+        {{ rows|length }} قيمة
+      </span>
+    </div>
+
+    <div class="overflow-hidden rounded-xl border border-outline-variant bg-surface-card divide-y divide-outline-variant" id="lookupRows">
+      {% for row in rows %}
+      {% set row_name = row[categories[selected_category].name_col] if categories[selected_category].name_col is defined else row.name %}
+      {% set row_system = selected_category == 'admin_assignment_type' and row.is_protected_role %}
+      <article class="group grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 px-3 py-2 hover:bg-surface-container-low"
+               data-lookup-row
+               data-id="{{ row.id }}"
+               data-name="{{ row_name|lower }}"
+               data-system="{{ '1' if row_system else '0' }}"
+               data-active="{{ '1' if row.is_active|default(true) else '0' }}"
+               data-search="{{ (row_name ~ ' ' ~ ('نظامي' if row_system else 'عام') ~ ' ' ~ ('نشط' if row.is_active|default(true) else 'معطل'))|lower }}">
+        <form method="post" data-lookup-ajax data-lookup-rename class="flex min-w-0 items-center gap-2">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="category" value="{{ selected_category }}">
+          <input type="hidden" name="action" value="rename">
+          <input type="hidden" name="id" value="{{ row.id }}">
+          <span class="lookup-row-name min-w-0 truncate py-1 text-sm font-semibold text-on-surface"
+                data-lookup-name tabindex="0" title="انقر مرتين لتعديل الاسم">{{ row_name }}</span>
+          <input name="name" value="{{ row_name }}" maxlength="120" required
+                 class="lookup-row-input hidden h-8 min-w-0 flex-1 rounded-md border border-outline-variant bg-surface px-2 text-sm font-semibold text-on-surface"
+                 aria-label="تعديل الاسم: {{ row_name }}">
+          <button type="button" data-lookup-edit aria-label="تعديل {{ row_name }}"
+                  class="rounded p-1 text-on-surface-variant opacity-0 transition-opacity hover:bg-surface-container group-hover:opacity-100 focus:opacity-100 focus-visible:opacity-100">
+            <span class="material-symbols-outlined text-base" aria-hidden="true">edit</span>
+          </button>
+          <button type="submit" data-lookup-save aria-label="حفظ الاسم"
+                  class="lookup-row-save hidden rounded p-1 text-success hover:bg-success-container">
+            <span class="material-symbols-outlined text-base" aria-hidden="true">check</span>
+          </button>
+          <button type="button" data-lookup-cancel aria-label="إلغاء تعديل الاسم"
+                  class="lookup-row-cancel hidden rounded p-1 text-on-surface-variant hover:bg-surface-container">
+            <span class="material-symbols-outlined text-base" aria-hidden="true">close</span>
+          </button>
+        </form>
+        <div class="flex flex-wrap items-center gap-2 text-xs">
           {% if selected_category == 'admin_assignment_type' %}
-          <th class="p-3 text-center">النوع والحالة</th>
+          <span class="inline-flex items-center gap-1.5 text-on-surface-variant">
+            <i class="h-2 w-2 rounded-full {{ 'bg-success' if row.is_active else 'bg-outline' }}" aria-hidden="true"></i>
+            {{ 'نشط' if row.is_active else 'معطّل' }}
+          </span>
+          <span class="rounded px-1.5 py-0.5 font-semibold {{ 'bg-primary/10 text-primary' if row_system else 'bg-surface-container text-on-surface-variant' }}">
+            {{ 'نظامي' if row_system else 'عام' }}
+          </span>
+          <span class="text-on-surface-variant">{{ row.member_count }} عضو · {{ row.assignment_count }} تكليف</span>
+          {% if row_system %}
+          <form method="post" data-lookup-ajax>
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="category" value="{{ selected_category }}">
+            <input type="hidden" name="action" value="toggle">
+            <input type="hidden" name="id" value="{{ row.id }}">
+            <button type="submit" class="rounded px-2 py-1 font-semibold text-on-surface-variant hover:bg-surface-container">
+              {{ 'تفعيل' if not row.is_active else 'تعطيل' }}
+            </button>
+          </form>
           {% else %}
-          <th class="p-3 text-center">الأعضاء المستخدمون</th>
+          {% if row.member_count or row.assignment_count %}
+          <span class="rounded px-2 py-1 text-on-surface-variant"
+                title="فك الارتباط بالأعضاء والتكليفات المحفوظة قبل الحذف">
+            مرتبط — لا يمكن الحذف
+          </span>
+          {% else %}
+          <form method="post">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="category" value="{{ selected_category }}">
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="id" value="{{ row.id }}">
+            <button type="submit" class="rounded px-2 py-1 font-semibold text-error hover:bg-error/5">حذف</button>
+          </form>
           {% endif %}
-          <th class="p-3 text-center">الإجراءات</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in rows %}
-        <tr class="border-t border-outline-variant/60">
-          <td class="p-3">
-            <form method="post" class="flex items-center gap-2">
-              <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-              <input type="hidden" name="category" value="{{ selected_category }}">
-              <input type="hidden" name="action" value="rename">
-              <input type="hidden" name="id" value="{{ row.id }}">
-              <input name="name" value="{{ row[categories[selected_category].name_col] if categories[selected_category].name_col is defined else row.name }}"
-                     maxlength="120" required
-                     class="h-9 min-w-40 flex-1 rounded-lg border border-outline-variant bg-surface px-2 text-on-surface">
-              <button type="submit" class="rounded-lg border border-outline-variant px-3 py-2 text-xs font-bold">
-                حفظ الاسم
-              </button>
-            </form>
-          </td>
-          {% if selected_category == 'specialization' %}
-          <td class="p-3 text-on-surface-variant">{{ row.department_name }}</td>
           {% endif %}
-          <td class="p-3 text-center">
-            {% if selected_category == 'admin_assignment_type' %}
-              {% if row.is_system_linked %}
-              <span class="font-bold text-primary" title="هذا التكليف مرتبط بصلاحية أو صفحة في النظام">
-                نظامي · {{ 'نشط' if row.is_active else 'معطّل' }}
-              </span>
-              {% else %}
-              <span class="text-on-surface-variant">عام</span>
-              {% endif %}
-              <div class="text-xs text-on-surface-variant mt-1">
-                {{ row.member_count }} عضو · {{ row.assignment_count }} تكليف محفوظ
-              </div>
-            {% else %}
-              {{ row.member_count }}
-            {% endif %}
-          </td>
-          <td class="p-3">
-            <div class="flex flex-wrap justify-center gap-2">
-              {% if selected_category == 'admin_assignment_type' and row.is_system_linked %}
-              <form method="post">
-                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                <input type="hidden" name="category" value="{{ selected_category }}">
-                <input type="hidden" name="action" value="toggle">
-                <input type="hidden" name="id" value="{{ row.id }}">
-                <button type="submit" title="هذا التكليف مرتبط بصفحة أو صلاحية في النظام"
-                        class="rounded-lg border border-outline-variant px-3 py-2 text-xs font-bold">
-                  {{ 'تفعيل' if not row.is_active else 'تعطيل' }}
-                </button>
-              </form>
-              {% else %}
-              <form method="post">
-                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                <input type="hidden" name="category" value="{{ selected_category }}">
-                <input type="hidden" name="action" value="delete">
-                <input type="hidden" name="id" value="{{ row.id }}">
-                <button type="submit"
-                        class="rounded-lg border border-error/40 px-3 py-2 text-xs font-bold text-error">
-                  حذف
-                </button>
-              </form>
-              {% endif %}
-            </div>
-          </td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="4" class="p-8 text-center text-on-surface-variant">
-            لا توجد قيم مسجلة في هذه الفئة.
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+          {% elif selected_category == 'specialization' %}
+          <span class="text-on-surface-variant">{{ row.department_name }} · {{ row.member_count }} عضو</span>
+          {% else %}
+          <span class="text-on-surface-variant">{{ row.member_count }} عضو</span>
+          {% endif %}
+        </div>
+      </article>
+      {% else %}
+      <div class="p-5 text-center text-sm text-on-surface-variant">
+        لا توجد قيم مسجلة في هذه الفئة.
+      </div>
+      {% endfor %}
+    </div>
+    <div id="lookupEmptyState" class="hidden rounded-2xl border border-dashed border-outline-variant bg-surface-card p-8 text-center text-sm text-on-surface-variant">
+      لا توجد نتائج تطابق البحث أو التصفية.
+    </div>
   </section>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/pages/teachers_lookup_lists.js') }}"></script>
 {% endblock %}

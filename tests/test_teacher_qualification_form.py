@@ -6,7 +6,7 @@ import flask_db
 import pytest
 from database.connection import connect
 from database.schema import ensure_schema
-from page_routes.teachers import _roles_from_position
+from page_routes.teachers import _roles_from_assignment_type
 from tests.test_bottom_nav import _client_for, _user_id
 
 
@@ -85,5 +85,15 @@ def test_admin_assignment_options_use_canonical_titles(office_client):
     assert option_labels.count('رئيس القسم العلمي') == 1
     assert option_labels.count('رئيس قسم') == 0
     assert option_labels.count('قسم الإدارة والامتحانات') == 0
+    assert '<optgroup label="الأدوار التي تمنح صلاحيات">' in position_select.group(1)
+    assert '<optgroup label="التكليفات النصية">' in position_select.group(1)
+    assert 'name="admin_assignment_type_id"' in body
     assert option_labels.count('رئيس قسم الامتحانات') == 1
-    assert _roles_from_position('رئيس القسم العلمي') == {'head_of_department'}
+    conn = connect(flask_db.DATABASE)
+    assignment_type_id = conn.execute(
+        "SELECT id FROM admin_assignment_types WHERE name = 'رئيس القسم العلمي'"
+    ).fetchone()['id']
+    assert _roles_from_assignment_type(conn, assignment_type_id) == {
+        'head_of_department'
+    }
+    conn.close()

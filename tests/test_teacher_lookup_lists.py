@@ -1,3 +1,5 @@
+import json
+import re
 import sqlite3
 
 import pytest
@@ -59,6 +61,19 @@ def _post(client, category, action, **values):
     )
 
 
+def _ajax_post(client, category, action, **values):
+    return client.post(
+        '/teachers/lookup-lists',
+        data={
+            '_csrf_token': 'test-token',
+            'category': category,
+            'action': action,
+            **values,
+        },
+        headers={'X-Requested-With': 'XMLHttpRequest'},
+    )
+
+
 def _fetchone(db_path, sql, params=()):
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
@@ -67,11 +82,100 @@ def _fetchone(db_path, sql, params=()):
     return dict(row) if row else None
 
 
+def _flash_messages(response):
+    body = response.get_data(as_text=True)
+    match = re.search(
+        r'window\.BASE_FLASH_BOOT = \{ messages: (\[.*?\]) \};', body
+    )
+    if not match:
+        return []
+    return [
+        message for _category, message in json.loads(match.group(1))
+    ]
+
+
 def test_lookup_lists_are_restricted_to_faculty_affairs(lookup_setup):
     _, manager, hod = lookup_setup
 
     assert manager.get('/teachers/lookup-lists').status_code == 200
     assert hod.get('/teachers/lookup-lists').status_code == 302
+
+
+def test_lookup_list_add_rename_and_toggle_are_ajax_actions(lookup_setup):
+    db_path, manager, _ = lookup_setup
+    response = _ajax_post(
+        manager, 'admin_assignment_type', 'add', name='منسق الاختبارات'
+    )
+    assert response.status_code == 200
+    assert response.get_json() == {'ok': True, 'message': 'تم الحفظ بنجاح'}
+    added = _fetchone(
+        db_path,
+        "SELECT id FROM admin_assignment_types WHERE name = 'منسق الاختبارات'",
+    )
+    assert added
+
+    response = _ajax_post(
+        manager, 'admin_assignment_type', 'rename',
+        id=str(added['id']), name='منسق الامتحانات',
+    )
+    assert response.status_code == 200
+    assert _fetchone(
+        db_path, 'SELECT name FROM admin_assignment_types WHERE id = ?',
+        (added['id'],),
+    ) == {'name': 'منسق الامتحانات'}
+
+    system_id = _fetchone(
+        db_path,
+        "SELECT id FROM admin_assignment_types WHERE internal_code = 'head_of_department'",
+    )['id']
+    response = _ajax_post(
+        manager, 'admin_assignment_type', 'toggle', id=str(system_id)
+    )
+    assert response.status_code == 200
+    assert _fetchone(
+        db_path, 'SELECT is_active FROM admin_assignment_types WHERE id = ?',
+        (system_id,),
+    ) == {'is_active': 0}
+
+
+def test_lookup_page_has_fast_search_and_ajax_management_controls(lookup_setup):
+    _, manager, _ = lookup_setup
+    body = manager.get(
+        '/teachers/lookup-lists?category=admin_assignment_type'
+    ).get_data(as_text=True)
+    with open('static/js/pages/teachers_lookup_lists.js', encoding='utf-8') as js_file:
+        script = js_file.read()
+
+    assert 'id="lookupCategorySelect"' in body
+    assert 'id="lookupSearch"' in body
+    assert 'id="lookupStatusFilter"' in body
+    assert 'data-lookup-ajax' in body
+    assert 'id="lookupFeedback"' in body
+    assert 'data-lookup-row' in body
+    assert 'data-lookup-rename' in body
+    assert 'data-lookup-name' in body
+    assert 'divide-y divide-outline-variant' in body
+    assert 'إضافة تكليف إداري' in body
+    assert "event.key === 'Escape'" in script
+    assert "target.closest('[data-lookup-edit]')" in script
+    assert "window.location.assign(url.toString())" in script
+    assert 'data-lookup-save aria-label="حفظ الاسم"' in body
+
+
+def test_ajax_lookup_validation_returns_inline_error_without_redirect(lookup_setup):
+    _, manager, _ = lookup_setup
+    response = _ajax_post(
+        manager, 'admin_assignment_type', 'add', name='   '
+    )
+
+    assert response.status_code == 400
+    assert response.get_json() == {
+        'ok': False,
+        'message': 'اكتب نص القيمة أولاً',
+    }
+    assert 'BASE_FLASH_BOOT' not in manager.get(
+        '/teachers/lookup-lists'
+    ).get_data(as_text=True)
 
 
 def test_system_assignment_rename_keeps_its_internal_role(lookup_setup):
@@ -87,6 +191,10 @@ def test_system_assignment_rename_keeps_its_internal_role(lookup_setup):
     teacher_id = conn.execute(
         "SELECT id FROM teachers WHERE name = 'عضو رئيس قسم'"
     ).fetchone()['id']
+    conn.execute(
+        "UPDATE teachers SET position = 'رئيس قسم', admin_assignment_type_id = ? "
+        "WHERE id = ?", (row['id'], teacher_id),
+    )
     conn.commit()
     conn.close()
 
@@ -105,14 +213,64 @@ def test_system_assignment_rename_keeps_its_internal_role(lookup_setup):
         'internal_code': 'head_of_department',
         'is_system_linked': 1,
     }
+    assert _fetchone(
+        db_path,
+        'SELECT position, admin_assignment_type_id FROM teachers WHERE id = ?',
+        (teacher_id,),
+    ) == {
+        'position': 'رئيس القسم الأكاديمي',
+        'admin_assignment_type_id': row['id'],
+    }
     page = manager.get(f'/teachers/edit/{teacher_id}')
     assert page.status_code == 200
-    assert 'data-role="head_of_department"' in page.get_data(as_text=True)
+    assert f'data-assignment-type-id="{row["id"]}"' in page.get_data(as_text=True)
 
 
-def test_deleting_an_assignment_in_use_requires_confirmation_and_clears_references(
-    lookup_setup,
-):
+def test_legacy_assignment_text_is_backfilled_to_stable_lookup_id(lookup_setup):
+    db_path, _manager, _ = lookup_setup
+    conn = connect(str(db_path))
+    conn.execute(
+        "DELETE FROM _migration_log "
+        "WHERE migration_name = 'managed_admin_assignment_role_protection_v1'"
+    )
+    conn.execute(
+        "INSERT INTO teachers (name, position) VALUES ('عضو تكليف قديم', 'رئيس قسم')"
+    )
+    teacher_id = conn.execute(
+        "SELECT id FROM teachers WHERE name = 'عضو تكليف قديم'"
+    ).fetchone()['id']
+    ensure_schema(conn)
+
+    teacher = conn.execute(
+        'SELECT position, admin_assignment_type_id FROM teachers WHERE id = ?',
+        (teacher_id,),
+    ).fetchone()
+    assert teacher['position'] == 'رئيس قسم'
+    assert teacher['admin_assignment_type_id'] is not None
+    from page_routes.teachers import _roles_from_assignment_type
+    assert _roles_from_assignment_type(
+        conn, teacher['admin_assignment_type_id']
+    ) == {'head_of_department'}
+    conn.close()
+
+
+def test_general_assignment_never_maps_to_a_dashboard_role(lookup_setup):
+    db_path, _manager, _ = lookup_setup
+    conn = connect(str(db_path))
+    conn.execute(
+        "INSERT INTO admin_assignment_types "
+        "(name, default_hours, is_active, sort_order, internal_code, is_system_linked) "
+        "VALUES ('منسق الجودة', 0, 1, 1, 'head_of_department', 0)"
+    )
+    assignment_type_id = conn.execute(
+        "SELECT id FROM admin_assignment_types WHERE name = 'منسق الجودة'"
+    ).fetchone()['id']
+    from page_routes.teachers import _roles_from_assignment_type
+    assert _roles_from_assignment_type(conn, assignment_type_id) == set()
+    conn.close()
+
+
+def test_used_general_assignment_cannot_be_deleted_or_cleared(lookup_setup):
     db_path, manager, _ = lookup_setup
     conn = connect(str(db_path))
     conn.execute(
@@ -126,25 +284,188 @@ def test_deleting_an_assignment_in_use_requires_confirmation_and_clears_referenc
     conn.execute(
         "INSERT INTO teachers (name, position) VALUES ('عضو تجريبي', 'تكليف تجريبي')"
     )
+    teacher_id = conn.execute(
+        "SELECT id FROM teachers WHERE name = 'عضو تجريبي'"
+    ).fetchone()['id']
+    conn.execute(
+        '''INSERT INTO faculty_admin_assignments
+           (teacher_id, task_name, start_date)
+           VALUES (?, 'تكليف تجريبي', '2026-09-01')''',
+        (teacher_id,),
+    )
     conn.commit()
     conn.close()
 
     response = _post(
         manager, 'admin_assignment_type', 'delete', id=str(task_id)
     )
-    assert 'تأكيد حذف «تكليف تجريبي»' in response.get_data(as_text=True)
-
+    assert response.status_code == 200
+    assert any(
+        'لا يمكن حذف التكليف ما دام مرتبطاً' in message
+        for message in _flash_messages(response)
+    )
     response = _post(
         manager, 'admin_assignment_type', 'delete',
         id=str(task_id), clear_references='1',
     )
     assert response.status_code == 200
+    assert any(
+        'لا يمكن حذف التكليف ما دام مرتبطاً' in message
+        for message in _flash_messages(response)
+    )
     assert _fetchone(
         db_path, 'SELECT position FROM teachers WHERE name = ?', ('عضو تجريبي',)
-    )['position'] == ''
+    )['position'] == 'تكليف تجريبي'
+    assert _fetchone(
+        db_path,
+        'SELECT COUNT(*) AS count FROM faculty_admin_assignments WHERE task_name = ?',
+        ('تكليف تجريبي',),
+    ) == {'count': 1}
+    assert _fetchone(
+        db_path, 'SELECT id FROM admin_assignment_types WHERE id = ?', (task_id,)
+    ) == {'id': task_id}
+
+
+def test_unused_general_assignment_can_be_deleted(lookup_setup):
+    db_path, manager, _ = lookup_setup
+    conn = connect(str(db_path))
+    conn.execute(
+        "INSERT INTO admin_assignment_types "
+        "(name, default_hours, is_active, sort_order, is_system_linked) "
+        "VALUES ('تكليف غير مستخدم', 0, 1, 99, 0)"
+    )
+    task_id = conn.execute(
+        "SELECT id FROM admin_assignment_types WHERE name = 'تكليف غير مستخدم'"
+    ).fetchone()['id']
+    conn.commit()
+    conn.close()
+
+    response = _post(
+        manager, 'admin_assignment_type', 'delete', id=str(task_id)
+    )
+
+    assert response.status_code == 200
     assert _fetchone(
         db_path, 'SELECT id FROM admin_assignment_types WHERE id = ?', (task_id,)
     ) is None
+
+
+def test_active_system_role_is_protected_even_without_assignment_references(
+    lookup_setup,
+):
+    db_path, manager, _ = lookup_setup
+    role = _fetchone(
+        db_path,
+        "SELECT id, is_active, is_protected_role FROM admin_assignment_types "
+        "WHERE internal_code = 'exam' AND name = 'رئيس قسم الامتحانات'",
+    )
+    assert role is not None
+    assert role['is_active'] == 1
+    assert role['is_protected_role'] == 1
+    assert _fetchone(
+        db_path,
+        'SELECT COUNT(*) AS count FROM teachers WHERE admin_assignment_type_id = ?',
+        (role['id'],),
+    ) == {'count': 0}
+
+    response = _post(
+        manager, 'admin_assignment_type', 'delete',
+        id=str(role['id']), clear_references='1',
+    )
+
+    assert response.status_code == 200
+    assert any(
+        'لا يمكن حذف دور نظامي' in message
+        for message in _flash_messages(response)
+    )
+    assert _fetchone(
+        db_path,
+        'SELECT id FROM admin_assignment_types WHERE id = ?', (role['id'],),
+    ) == {'id': role['id']}
+
+
+def test_inactive_unreferenced_orphan_role_record_is_removable(lookup_setup):
+    db_path, manager, _ = lookup_setup
+    conn = connect(str(db_path))
+    conn.execute(
+        "INSERT INTO admin_assignment_types "
+        "(name, default_hours, is_active, sort_order, internal_code, "
+        "is_system_linked) VALUES ('رئيس القسم ذ', 0, 0, 99, "
+        "'head_of_department', 1)"
+    )
+    orphan_id = conn.execute(
+        "SELECT id FROM admin_assignment_types WHERE name = 'رئيس القسم ذ'"
+    ).fetchone()['id']
+    conn.execute(
+        "DELETE FROM _migration_log "
+        "WHERE migration_name = 'managed_admin_assignment_role_protection_v1'"
+    )
+    ensure_schema(conn)
+    conn.close()
+
+    orphan = _fetchone(
+        db_path,
+        'SELECT is_protected_role FROM admin_assignment_types WHERE id = ?',
+        (orphan_id,),
+    )
+    assert orphan == {'is_protected_role': 0}
+    from page_routes.teachers import _roles_from_assignment_type
+    conn = connect(str(db_path))
+    roles = _roles_from_assignment_type(conn, orphan_id)
+    conn.close()
+    assert roles == set()
+
+    response = _post(
+        manager, 'admin_assignment_type', 'delete', id=str(orphan_id)
+    )
+
+    assert response.status_code == 200
+    assert any('تم حذف القيمة' in message for message in _flash_messages(response))
+    assert _fetchone(
+        db_path, 'SELECT id FROM admin_assignment_types WHERE id = ?', (orphan_id,)
+    ) is None
+
+
+def test_disabled_last_role_entry_stays_protected_with_no_users_or_references(
+    lookup_setup,
+):
+    db_path, manager, _ = lookup_setup
+    conn = connect(str(db_path))
+    conn.execute(
+        '''UPDATE admin_assignment_types SET is_active = 0
+           WHERE internal_code = 'dean' AND is_system_linked = 1'''
+    )
+    conn.execute(
+        "DELETE FROM _migration_log "
+        "WHERE migration_name = 'managed_admin_assignment_role_protection_v1'"
+    )
+    ensure_schema(conn)
+    conn.close()
+
+    role = _fetchone(
+        db_path,
+        "SELECT id, is_protected_role FROM admin_assignment_types "
+        "WHERE internal_code = 'dean' AND name = 'عميد الكلية'",
+    )
+    assert role == {'id': role['id'], 'is_protected_role': 1}
+    assert _fetchone(
+        db_path,
+        "SELECT COUNT(*) AS count FROM users WHERE role = 'dean'",
+    ) == {'count': 0}
+
+    response = _post(
+        manager, 'admin_assignment_type', 'delete',
+        id=str(role['id']), clear_references='1',
+    )
+
+    assert any(
+        'لا يمكن حذف دور نظامي' in message
+        for message in _flash_messages(response)
+    )
+    assert _fetchone(
+        db_path,
+        'SELECT id FROM admin_assignment_types WHERE id = ?', (role['id'],),
+    ) == {'id': role['id']}
 
 
 def test_rank_replacement_migrates_teacher_and_workload_rules(lookup_setup):

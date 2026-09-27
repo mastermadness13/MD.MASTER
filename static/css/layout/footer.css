@@ -13,7 +13,7 @@
 }
 
 .footer-content span {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--text-faint);
 }
 
@@ -25,7 +25,7 @@
 .footer-links a {
   color: var(--text-muted);
   text-decoration: none;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .footer-links a:hover {
@@ -43,7 +43,7 @@
   background: var(--primary);
   color: var(--text-on-primary);
   border: none;
-  font-size: 18px;
+  font-size: 1.125rem;
   cursor: pointer;
   display: flex;
   align-items: center;

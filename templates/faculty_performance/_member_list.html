@@ -9,7 +9,7 @@
 <div class="relative mb-4">
   <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">search</span>
   <input type="text" id="memberSearch" placeholder="ابحث بالاسم أو الرقم الكلية..."
-         class="w-full bg-white border border-outline-variant rounded-lg pr-10 pl-4 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
+         class="w-full bg-surface-card border border-outline-variant rounded-lg pr-10 pl-4 py-2 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40">
 </div>
 
 <!-- All Members List -->
@@ -19,7 +19,7 @@
       <span class="material-symbols-outlined">group</span>
       أعضاء هيئة التدريس
     </h3>
-    <span id="memberCount" class="text-xs font-bold text-on-surface-variant bg-white/70 px-3 py-1 rounded-full">{{ members | length }} عضو</span>
+    <span id="memberCount" class="text-xs font-bold text-on-surface-variant bg-surface-container px-3 py-1 rounded-full">{{ members | length }} عضو</span>
   </div>
   {% if members %}
   <ul class="divide-y divide-outline-variant">
