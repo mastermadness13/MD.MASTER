@@ -304,8 +304,8 @@ def test_create_short_username_shows_arabic_error(app_fx, db_fx):
     })
     assert r.status_code == 200
     body = r.get_data(as_text=True)
-    assert 'نيك نيم الدخول قصير جداً' in body
-    assert 'value="x"' in body  # the typed nickname is preserved
+    assert 'اسم الدخول قصير جداً' in body
+    assert 'value="x"' in body  # the typed username is preserved
 
 
 def test_create_duplicate_username_shows_arabic_error(app_fx, db_fx):
@@ -319,7 +319,7 @@ def test_create_duplicate_username_shows_arabic_error(app_fx, db_fx):
         '_csrf_token': 'test-token',
     })
     assert r.status_code == 200
-    assert 'نيك نيم الدخول مستخدم مسبقاً' in r.get_data(as_text=True)
+    assert 'اسم الدخول مستخدم مسبقاً' in r.get_data(as_text=True)
 
 # ── Initial code lifecycle (service-level creation) ──────────────────────
 

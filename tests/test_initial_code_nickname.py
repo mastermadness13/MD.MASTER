@@ -81,7 +81,7 @@ def test_office_custom_nickname_used_and_duplicate_rejected(db_fx):
             department_ids=[1], additional_roles=None,
             initial_password=_INITIAL_PASSWORD,
         )
-    assert 'نيك نيم الدخول مستخدم مسبقاً' in str(exc.value)
+    assert 'اسم الدخول مستخدم مسبقاً' in str(exc.value)
     conn.close()
 
 

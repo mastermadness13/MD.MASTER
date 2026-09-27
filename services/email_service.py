@@ -108,11 +108,11 @@ def send_initial_login_code(
         body = (
             'مرحباً بك في بوابة كلية التقنية الهندسية زوارة.\n\n'
             f'{intro}\n\n'
-            f'نيك نيم (اسم الدخول): {username}\n'
+            f'اسم الدخول: {username}\n'
             f'رمز الدخول المؤقت: {code}\n\n' if renewed else
             'مرحباً بك في بوابة كلية التقنية الهندسية زوارة.\n\n'
             f'{intro}\n\n'
-            f'نيك نيم (اسم الدخول): {username}\n'
+            f'اسم الدخول: {username}\n'
             f'رمز الدخول المؤقت: {code}\n\n'
         ) + (
             f'يرجى تسجيل الدخول بهذا الرمز خلال {expiry_days} أيام؛ '
@@ -126,7 +126,7 @@ def send_initial_login_code(
             '<div dir="rtl" style="font-family:sans-serif">'
             f'<p>مرحباً {html.escape(username)}،</p>'
             f'<p>{html.escape(intro)}</p>'
-            f'<p><strong>نيك نيم:</strong> {html.escape(username)}<br>'
+            f'<p><strong>اسم الدخول:</strong> {html.escape(username)}<br>'
             f'<strong>رمز الدخول المؤقت:</strong> {html.escape(code)}</p>'
             f'<p>يرجى استخدام الرمز خلال {expiry_days} أيام، ثم تعيين كلمة مرور جديدة.</p>'
             '</div>'

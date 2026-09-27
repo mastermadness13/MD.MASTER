@@ -89,9 +89,9 @@ def api_teachers_create():
         if 'academic_number' in message:
             return err('الرقم الكلية مستخدم مسبقاً', 422)
         if 'Username' in message:
-            return err('نيك نيم الدخول مستخدم مسبقاً — اختر نيك نيم آخر', 422)
+            return err('اسم الدخول مستخدم مسبقاً — اختر اسم دخول آخر', 422)
         if 'too short' in message:
-            return err('نيك نيم الدخول قصير جداً — حرفان على الأقل', 422)
+            return err('اسم الدخول قصير جداً — حرفان على الأقل', 422)
         return err(message, 422)
     log_history(db, 'create', 'teacher', creds.get('id'),
                 f'إنشاء عضو هيئة التدريس: {form["name"]}')

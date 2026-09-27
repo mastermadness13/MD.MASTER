@@ -963,7 +963,7 @@ form=form, form_error='الاسم مطلوب',
         if not form['username']:
             _username_error = 'اسم المستخدم مطلوب'
         elif len(form['username']) < 3:
-            _username_error = 'نيك نيم الدخول قصير جداً'
+            _username_error = 'اسم الدخول قصير جداً'
         else:
             from services.temp_access_code import validate_username as _validate_username
             _username_error = _validate_username(form['username'])
@@ -1031,9 +1031,9 @@ form=form, form_error=spec_error,
             if 'academic_number' in message:
                 form_error = 'الرقم الكلية مستخدم مسبقاً'
             elif 'too short' in message:
-                form_error = 'نيك نيم الدخول قصير جداً — حرفان على الأقل'
+                form_error = 'اسم الدخول قصير جداً — حرفان على الأقل'
             elif 'Username' in message:
-                form_error = 'نيك نيم الدخول مستخدم مسبقاً — اختر نيك نيم آخر'
+                form_error = 'اسم الدخول مستخدم مسبقاً — اختر اسم دخول آخر'
             else:
                 form_error = message
             return render_template('teachers/create.html',
@@ -1053,7 +1053,7 @@ form=form, form_error=spec_error,
             )
             db.commit()
         flash(
-            f'تم إضافة عضو هيئة التدريس — نيك نيم: {creds["username"]} — '
+            f'تم إضافة عضو هيئة التدريس — اسم الدخول: {creds["username"]} — '
             f'رمز الدخول المؤقت: {creds["password"]} (أُرسل أيضاً إلى بريده، صالح {INITIAL_CODE_EXPIRY_DAYS} أيام)',
             'success',
         )
@@ -1411,7 +1411,7 @@ def teachers_register_username(id):
         return redirect(url_for('teachers.teachers_edit', id=id))
     except sqlite3.IntegrityError:
         db.rollback()
-        flash('نيك نيم الدخول مستخدم مسبقاً', 'error')
+        flash('اسم الدخول مستخدم مسبقاً', 'error')
         return redirect(url_for('teachers.teachers_edit', id=id))
     flash('تم تسجيل اسم الدخول وتثبيته نهائياً', 'success')
     return redirect(url_for('teachers.teachers_edit', id=id))

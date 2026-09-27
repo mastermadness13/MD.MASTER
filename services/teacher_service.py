@@ -109,13 +109,13 @@ class TeacherService:
         if not nickname:
             raise ValueError('اسم المستخدم مطلوب')
         if len(nickname) < 3:
-            raise ValueError('نيك نيم الدخول قصير جداً')
+            raise ValueError('اسم الدخول قصير جداً')
         from services.temp_access_code import validate_username
         username_error = validate_username(nickname)
         if username_error:
             raise ValueError(username_error)
         if self._user_repo.username_exists(nickname):
-            raise ValueError('نيك نيم الدخول مستخدم مسبقاً')
+            raise ValueError('اسم الدخول مستخدم مسبقاً')
         if not initial_password or len(initial_password) < 6:
             raise ValueError('كلمة المرور يجب أن تكون 6 أحرف على الأقل')
 
@@ -127,7 +127,7 @@ class TeacherService:
             )
             self.db.commit()
 
-        # /     /     >---- إنشاء حساب الدخول: نيك نيم المكتب + رمز دخول أولي
+        # /     /     >---- إنشاء حساب الدخول: اسم الدخول المخصص + رمز دخول أولي
         # /     /     >---- الرمز يُرسل بالبريد الشخصي ويُعرض للمكتب مرة واحدة بعد الإنشاء
         username = nickname or _generate_username(teacher_id)
         code = initial_password
@@ -224,7 +224,7 @@ class TeacherService:
         if username_error:
             raise ValueError(username_error)
         if self._user_repo.username_exists(username):
-            raise ValueError('نيك نيم الدخول مستخدم مسبقاً')
+            raise ValueError('اسم الدخول مستخدم مسبقاً')
 
         # Legacy/imported teachers may not have a users row yet. Create the
         # linked account with a one-time initial code instead of rejecting the
