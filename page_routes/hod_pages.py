@@ -31,26 +31,30 @@ def hod_messages():
     if request.method == 'POST':
         request_id = request.form.get('request_id', type=int)
         reply_text = request.form.get('reply', '').strip()
-        if reply_text:
-            req = db.execute(
-                'SELECT user_id, subject FROM teacher_requests WHERE id = ?', (request_id,)
-            ).fetchone()
+        if not reply_text:
+            flash('اكتب رداً قبل الإرسال', 'error')
+            return redirect(url_for('hod_pages.hod_messages'))
+        if not request_id:
+            abort(400)
+        # /     /     >---- الطلب مقيّد بقسم رئيسه. قبل هذا لم يكن هناك أي
+        # /     /     >---- تحقق، فكان أي رئيس قسم يقدر يرد على طلبات قسم
+        # /     /     >---- آخر بمجرد تخمين معرف متسلسل.
+        req = message_service.reply_to_request(
+            db, request_id, dept_id, reply_text, session['user_id'],
+        )
+        if req is None:
+            abort(404)
 
-            message_service.add_message_reply(db, request_id, session['user_id'], reply_text)
-            message_service.resolve_message(db, request_id, session['user_id'])
-            message_service.update_teacher_request(db, request_id, 'resolved', session['user_id'], reply_text)
-            db.commit()
+        # /     /     >---- إشعار للأستاذ بأن رئيس القسم رد على طلبه
+        if req['user_id']:
+            notification_service.create_notification(
+                db, req['user_id'],
+                'رد رئيس القسم على رسالتك',
+                f'رد رئيس القسم على طلبك "{req["subject"] or ""}"',
+                'info', 'teacher_request', request_id
+            )
 
-            # /     /     >---- إشعار للأستاذ بأن رئيس القسم رد على طلبه
-            if req and req['user_id']:
-                notification_service.create_notification(
-                    db, req['user_id'],
-                    'رد رئيس القسم على رسالتك',
-                    f'رد رئيس القسم على طلبك "{req["subject"] or ""}"',
-                    'info', 'teacher_request', request_id
-                )
-
-            flash('تم الرد على الرسالة', 'success')
+        flash('تم الرد على الرسالة', 'success')
         return redirect(url_for('hod_pages.hod_messages'))
     requests = message_service.list_teacher_requests(db, dept_id)
     return render_template('departments/messages.html', requests=requests,

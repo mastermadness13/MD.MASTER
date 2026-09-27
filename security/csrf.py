@@ -48,7 +48,10 @@ def _accept_token() -> bool:
     if not token:
         # /     /     >---- وأخيراً من الهيدر X-CSRFToken
         token = request.headers.get('X-CSRFToken', '')
-    return bool(token) and token == session.get('_csrf_token', '')
+    expected = session.get('_csrf_token', '')
+    # /     /     >---- مقارنة ثابتة الزمن بدل == : التوكن 256 بت فالنفع
+    # /     /     >---- عملي صفر، لكن الكلفة صفرية أيضاً.
+    return bool(token) and bool(expected) and secrets.compare_digest(token, expected)
 
 # ─────────────────────────────────────────────
 
@@ -70,10 +73,15 @@ def is_request_protected() -> bool:
 # /     /     >---- استجابة الفشل (نفسها في الطبقتين: JSON لأجاكس، وإلا توجيه)
 def csrf_failure_response():
     """The browser and API responses used when CSRF validation fails."""
-    # /     /     >---- إذا طلب AJAX نرجع JSON بخطأ
+    # /     /     >---- نطابق Accept كقائمة قيم لا كنص متطابق: axios يرسل
+    # /     /     >---- "application/json, text/plain, */*" فالمقارنة بالمساواة
+    # /     /     >---- كانت تفوته وتعيد HTML لعميل ينتظر JSON.
+    accept = request.headers.get('Accept', '')
     if (
         request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-        or request.headers.get('Accept') == 'application/json'
+        or request.is_json
+        or 'application/json' in accept
+        or '*/*' in accept
     ):
         return jsonify({'ok': False, 'message': 'خطأ في التحقق الأمني (CSRF)'}), 403
     # /     /     >---- وإلا نعرض رسالة ونرجع للمستخدم

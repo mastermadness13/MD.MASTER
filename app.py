@@ -2,20 +2,20 @@ import logging
 import os
 import secrets
 import sys
+
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
 
 from flask import (
     Flask, session, redirect, url_for, render_template, request, jsonify, flash
 )
-from jinja2 import FileSystemLoader
 
 from config import Config
 from core.constants import INITIAL_CODE_EXPIRY_DAYS
 from flask_db import get_db, close_db, init_app as db_init_app
 
 from security import generate_csrf_token
-from security import current_user, inject_navigation
+from security import inject_navigation
 from security.csrf import is_request_protected, csrf_failure_response
 from security.security_headers import (
     apply_cookie_config,
@@ -30,6 +30,25 @@ from utils.redirects import redirect_back
 
 # /     /     >---- تسجيل الأخطاء والرسوم
 logger = logging.getLogger(__name__)
+
+
+# /     /     >---- معالج يتحمّل خطأ الكتابة بدل ما يطبعه في السجل
+# /     /     >---- (``OSError: write error``) لمّا الطرفية مغلقة أو الأنبوب مقطوع،
+# /     /     >---- وهو وضع طبيعي وقت التشغيل تحت مدير خدمة (systemd/no-hup).
+class _SafeStreamHandler(logging.StreamHandler):
+    """StreamHandler that never lets a broken stream break the request.
+
+    A closed or full stderr (daemonised deploy, ``nohup``, systemd) makes every
+    ``emit`` raise ``OSError``. The base class reports that through
+    ``handleError`` -> stderr, which fails again and floods the log. Swallow it
+    so console output stays best-effort while the rotating file handler — the
+    one that actually matters — keeps working.
+    """
+
+    def handleError(self, record):
+        if isinstance(sys.exc_info()[1], OSError):
+            return
+        super().handleError(record)
 
 
 # /     /     >---- دالة إعداد اللوقنق (تسجل الأخطاء في ملف وتشوفها في الترمينال)
@@ -49,7 +68,7 @@ def _setup_logging(app):
     file_handler.setLevel(logging.WARNING)
 
     # /     /     >---- شاشة الترمينال للرسوم المهمة
-    stream_handler = logging.StreamHandler()
+    stream_handler = _SafeStreamHandler()
     stream_handler.setFormatter(formatter)
     stream_handler.setLevel(logging.INFO)
 
@@ -62,8 +81,21 @@ def _setup_logging(app):
     # /     /     >---- نضبط مستوى التسجيل الرئيسي
     root = logging.getLogger()
     root.setLevel(logging.INFO)
-    root.addHandler(file_handler)
-    root.addHandler(stream_handler)
+    # /     /     >---- منعت التكرار: create_app ممكن ينادى أكثر من مرة
+    # /     /     >---- (الاختبارات، الـ reloader) فبدون هذا تتضاعف السطور
+    # /     /     >---- في الملف وفي الترمينال.
+    # /     /     >---- المطابقة بالنوع والمسار لا بالكائن: الـ handlers
+    # /     /     >---- تُبنى من جديد كل نداء، فالكائن الجديد لا يساوي
+    # /     /     >---- القديم أبداً.
+    existing = {
+        (type(h), getattr(h, 'baseFilename', None))
+        for h in root.handlers
+    }
+    for handler in (file_handler, stream_handler):
+        key = (type(handler), getattr(handler, 'baseFilename', None))
+        if key not in existing:
+            root.addHandler(handler)
+            existing.add(key)
 
     # /     /     >---- نخفي رسوم المكتبات الزايدة
     logging.getLogger('waitress').setLevel(logging.INFO)
@@ -146,13 +178,25 @@ AUTHENTICATED_ENDPOINTS = {
 # /     /     >---- بادئات مسارات لا تخضع لفحص الصلاحيات
 PUBLIC_PREFIXES = ('/static/', '/uploads/', '/favicon.ico')
 
+# /     /     >---- بادئات ملفات ثابتة فقط: لا جلسة فيها تستحق الإبطال،
+# /     /     >---- فتعفى من استعلام session_version في كل طلب.
+# /     /     >---- /uploads/ مستثناة عمداً: هي ليست أصلاً ساكناً بل مسار
+# /     /     >---- محمي، فتحميلها ب جلسة منتهية يجب أن يُرفض.
+ASSET_PREFIXES = ('/static/', '/favicon.ico')
+
 
 # /     /     >---- الدالة الرئيسية اللي تصنع التطبيق وتهيئ كل شي
-def create_app():
+def create_app(*, allow_debug: bool = False):
+    # /     /     >---- allow_debug يمرّر من نقطة الدخول التفاعلية فقط
+    # /     /     >---- (أدناه). wsgi.py و serve.py يناديانها بدون وسائط فيبقى
+    # /     /     >---- قفل وضع التصحيح شغّالاً كما هو في الإنتاج.
     # /     /     >---- نصنع كائن Flask
+    # /     /     >---- ملاحظة: ما ن overriding للـ jinja_loader — Flask
+    # /     /     >---- الافتراضي (DispatchingJinjaLoader) أدق لأنه يبحث في
+    # /     /     >---- مجلد القوالب ومجلد القوالب الخاص بكل blueprint.
     app = Flask(__name__)
-    app.jinja_loader = FileSystemLoader(os.path.join(app.root_path, 'templates'))
     app.config.from_object(Config)
+
     # /     /     >---- نتأكد مجلد الرفع موجود
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
@@ -219,7 +263,13 @@ def create_app():
     def enforce_session_version():
         """Invalidate sessions created before a password change."""
         user_id = session.get('user_id')
-        if not user_id or request.path.startswith(PUBLIC_PREFIXES):
+        if not user_id:
+            return None
+        # /     /     >---- الأصول الساكنة ما فيها جلسة تستحق الإبطال.
+        # /     /     >---- أما /uploads/ فهو محمي بمصادقة وصلاحية داخل
+        # /     /     >---- دالته نفسها، فيُعامل هنا مثل باقي المسارات حتى
+        # /     /     >---- لا تبقى جلسة قديمة تنزّل ملفاً بعد تغيير كلمة المرور.
+        if request.path.startswith(ASSET_PREFIXES):
             return None
 
         row = get_db().execute(
@@ -271,6 +321,8 @@ def create_app():
         # Get required permission from endpoint's view function
         view_func = app.view_functions.get(endpoint)
         if view_func is None:
+            # /     /     >---- ما وُجدت دالة لهذا الرابط، فالقواعد الأخرى
+            # /     /     >---- (تسجيل الدخول، CSRF) هي ما تحكمه.
             return None
 
         required_perm = getattr(view_func, '_required_permission', None)
@@ -353,10 +405,26 @@ def create_app():
     # ── معالجات الأخطاء ───────────────────────────────────────────
     from core.exceptions import AppError
 
+    def _wants_json():
+        """True when the caller is an API client rather than a browser form.
+
+        Checks ``X-Requested-With`` and the ``Accept`` header. The latter is
+        matched as a *list*: ``axios`` sends ``application/json, text/plain,
+        */*`` and a bare equality test against ``application/json`` silently
+        misses it, so those clients got an HTML redirect instead of the JSON
+        error body they were parsing.
+        """
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return True
+        if request.is_json:
+            return True
+        accept = request.headers.get('Accept', '')
+        return 'application/json' in accept or '*/*' in accept
+
     @app.errorhandler(AppError)
     def handle_app_error(e):
         # /     /     >---- إذا الطلب من AJAX نرجع JSON، وإلا نرجع صفحة
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        if _wants_json():
             return jsonify({'ok': False, 'message': e.message}), e.status_code
         flash(e.message, 'error')
         return redirect_back()
@@ -370,7 +438,7 @@ def create_app():
     def file_too_large(e):
         # /     /     >---- الملف أكبر من الحد المسموح
         msg = f'حجم الملف أكبر من الحد المسموح ({app.config.get("MAX_CONTENT_LENGTH", 0) // (1024 * 1024)} ميجابايت)'
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        if _wants_json():
             return jsonify({'ok': False, 'message': msg}), 413
         flash(msg, 'error')
         return redirect_back()
@@ -379,7 +447,7 @@ def create_app():
     def too_many_requests(e):
         # /     /     >---- تجاوز الحد المسموح من الطلبات
         msg = 'تم تجاوز الحد المسموح من الطلبات، يرجى المحاولة لاحقاً'
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        if _wants_json():
             return jsonify({'ok': False, 'message': msg}), 429
         flash(msg, 'error')
         return redirect_back()
@@ -396,13 +464,25 @@ def create_app():
             session.get('user_id'),
             request.endpoint,
         )
+        if _wants_json():
+            return jsonify({
+                'ok': False,
+                'message': 'حدث خطأ داخلي في السيرفر',
+                'error_id': error_id,
+            }), 500
+        # /     /     >---- نمرّر المستخدم كما هو في الجلسة بدل استدعاء
+        # /     /     >---- current_user(): ذاك يستعلم القاعدة، وقاعدة البيانات
+        # /     /     >---- هي غالباً سبب الخطأ — فكان المعالج ينهار بنفسه
+        # /     /     >---- ويضيع رقم الخطأ على المستخدم.
         if 'user_id' in session:
             return render_template(
                 'errors/500.html',
-                user=current_user(),
+                user={'username': session.get('username', '')},
                 error_id=error_id,
             ), 500
-        return redirect(url_for('auth.login'))
+        # /     /     >---- زائر: صفحة 500 صريحة، لا تحويل 302 — حتى يبقى
+        # /     /     >---- المراقب والرصد يريان الحالة الصحيحة.
+        return render_template('errors/500.html', user=None, error_id=error_id), 500
 
     # ── الهيدرز الأمنية والكاش ──────────────────────────────────
     # /     /     >---- المنطق كله في security/security_headers.py — هنا
@@ -412,7 +492,7 @@ def create_app():
     apply_security_headers(app)
 
     # /     /     >---- قفل وضع التصحيح: خطأ P0 لو شغّال بالإنتاج
-    if not app.config.get('TESTING'):
+    if not app.config.get('TESTING') and not allow_debug:
         assert_debug_disabled(app)
 
     return app
@@ -421,7 +501,6 @@ def create_app():
 
 # /     /     >---- نقطة الدخول الرئيسية للتشغيل المباشر
 if __name__ == '__main__':
-    import sys
     if 'init-db' in sys.argv:
         # /     /     >---- إذا كتبنا flask init-db نهيئ القاعدة فقط
         from flask_db import init_db, bootstrap_defaults as _seed
@@ -433,8 +512,10 @@ if __name__ == '__main__':
         from flask_db import init_db, bootstrap_defaults as _seed
         init_db()
         _seed()
-        app = create_app()
         # /     /     >---- وضع التصحيح اختياري (FLASK_DEBUG=1) — إعادة التشغيل التلقائية
         # /     /     >---- تمسح عدادات تحديد معدل المحاولات من الذاكرة
+        # /     /     >---- نقرأ المتغير قبل create_app لأنها ترفض البدء لو
+        # /     /     >---- كان محلياً على وضع التصحيح (قفل الإنتاج P0).
         debug = os.environ.get('FLASK_DEBUG', '').strip().lower() in ('1', 'true', 'yes', 'on')
+        app = create_app(allow_debug=debug)
         app.run(debug=debug, host='127.0.0.1', port=5000)

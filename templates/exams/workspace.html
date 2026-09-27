@@ -58,6 +58,37 @@
     </div>
   </div>
 
+  {# Technical note: current entry method + the manual flow. Editors only —
+     matches canEdit in static/js/exams/schedule.js. Hidden when printing. #}
+  {% if role in ('exam', 'head_of_department') %}
+  <details class="group mb-6 no-print bg-surface-card rounded-xl border border-outline-variant">
+    <summary class="flex items-center gap-3 px-4 py-3 cursor-pointer select-none text-body-md font-bold text-on-surface hover:text-primary transition-colors">
+      <span class="material-symbols-outlined text-[20px] text-primary shrink-0">info</span>
+      <span class="flex-1 flex flex-col">
+        <span>طريقة الإدخال الحالية: يدوية حقلاً بحقل، بلا إنشاء أو استيراد تلقائي.</span>
+        {% if period_year %}
+        <span class="text-label-sm font-normal text-on-surface-variant">
+          جدول {{ period_year }}{% if season_word %} — {{ season_word }}{% endif %}
+        </span>
+        {% endif %}
+      </span>
+      <span class="material-symbols-outlined text-[20px] text-on-surface-variant shrink-0 transition-transform group-open:rotate-180">expand_more</span>
+    </summary>
+    <div class="px-4 pb-4 pt-1 border-t border-outline-variant">
+      <ol class="list-decimal pr-5 mt-3 space-y-1.5 text-body-md text-on-surface-variant leading-relaxed">
+        <li>اختر <strong class="text-on-surface">القسم</strong> ثم <strong class="text-on-surface">الأسبوع</strong>، ويمكن إضافة أسبوع جديد من زر «+ أسبوع» (حتى 5 أسابيع).</li>
+        <li>مرّر المؤشر فوق الخلية <strong class="text-on-surface">يوم × فصل</strong> واضغط زر <strong class="text-on-surface">+</strong>.</li>
+        <li>في النافذة حدّد <strong class="text-on-surface">المادة</strong> و<strong class="text-on-surface">القاعة</strong> و<strong class="text-on-surface">وقت البداية</strong> و<strong class="text-on-surface">وقت النهاية</strong> ثم «إضافة الامتحان»؛ ونوع الامتحان يُحتسب تلقائياً من ساعات المقرر.</li>
+        <li>للتعديل أو الحذف: اضغط بطاقة الامتحان داخل الخلية.</li>
+      </ol>
+      <p class="mt-4 flex items-start gap-2 rounded-lg bg-surface-container-low border border-outline-variant p-3 text-body-md text-on-surface-variant leading-relaxed">
+        <span class="material-symbols-outlined text-[18px] text-primary shrink-0 mt-0.5">warning</span>
+        <span>تظهر تحذيرات التعارض داخل النافذة قبل الحفظ. أما الاستيراد الجماعي والتوزيع التلقائي للمواعيد والقاعات فغير متاحين في الإصدار الحالي.</span>
+      </p>
+    </div>
+  </details>
+  {% endif %}
+
   <!-- Context switchers: departments + weeks -->
   <div id="exam-switchers"
        class="hidden flex-col md:flex-row justify-between gap-4 bg-surface-container-lowest p-4 rounded-xl border border-outline-variant mb-6 no-print">

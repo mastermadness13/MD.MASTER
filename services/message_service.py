@@ -41,6 +41,12 @@ class MessageService:
                                reviewed_by: int, admin_reply: str) -> None:
         self._repo.update_request(request_id, status, reviewed_by, admin_reply)
 
+    def reply_to_request(self, request_id: int, department_id: Optional[int],
+                         admin_reply: str, reviewed_by: int) -> Optional[Dict]:
+        return self._repo.reply_to_request(
+            request_id, department_id, admin_reply, reviewed_by,
+        )
+
     def list_teacher_requests(self, department_id: int) -> List[Dict]:
         return self._repo.list_requests_for_dept(department_id)
 
@@ -97,6 +103,14 @@ def update_teacher_request(db, request_id, status, reviewed_by, admin_reply):
     MessageRepository(db).update_request(request_id, status, reviewed_by, admin_reply)
 
 
+# /     /     >---- رد رئيس القسم على طلب، مقيّداً بقسمه (يكتب في teacher_requests)
+def reply_to_request(db, request_id, department_id, admin_reply, reviewed_by):
+    from database.repositories.message_repository import MessageRepository
+    return MessageRepository(db).reply_to_request(
+        request_id, department_id, admin_reply, reviewed_by,
+    )
+
+
 def list_teacher_requests(db, department_id):
     from database.repositories.message_repository import MessageRepository
     return MessageRepository(db).list_requests_for_dept(department_id)
@@ -129,3 +143,4 @@ def create_teacher_request(db, teacher_id, user_id, department_id, request_type,
 def list_user_requests(db, user_id):
     from database.repositories.message_repository import MessageRepository
     return MessageRepository(db).list_user_requests(user_id)
+

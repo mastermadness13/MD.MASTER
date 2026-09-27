@@ -283,7 +283,10 @@ def get_hod_dashboard_data(db, dept_id, semester=None):
     ).fetchall()
     hod_data['pending_requests'] = [dict(r) for r in rows]
     hod_data['pending_requests_count'] = len(rows)
-
+    # /     /     >---- كان هنا pending_messages_count يقرأ من teacher_messages،
+    # /     /     >---- جدول قديم لا يكتب فيه شيء فكان دائماً صفراً.
+    # /     /     >---- الطلبات نفسها هي teacher_requests التي فوق، ولا حاجة
+    # /     /     >---- لعداد موازٍ يعرض الرقم نفسه تحت اسم آخر.
     hod_data['departments'] = [dict(r) for r in db.execute(
         'SELECT * FROM departments WHERE hidden = 0 AND deleted_at IS NULL ORDER BY name'
     ).fetchall()]
@@ -309,11 +312,6 @@ def get_hod_dashboard_data(db, dept_id, semester=None):
     hod_data['dept_courses'] = dept_courses
     hod_data['total_courses'] = db.execute(
         'SELECT COUNT(*) FROM course_departments WHERE department_id = ?', (dept_id,)
-    ).fetchone()[0]
-    hod_data['pending_messages_count'] = db.execute(
-        '''SELECT COUNT(*) FROM teacher_messages
-           WHERE status = 'pending' AND (department_id = ? OR ? IS NULL)''',
-        (dept_id, dept_id)
     ).fetchone()[0]
 
     hod_data['teachers_list'] = [dict(r) for r in db.execute(
@@ -566,10 +564,14 @@ def get_teacher_dashboard_data(db, user_id):
     else:
         teacher_data['recent_activity'] = []
 
-    # /     /     >---- عدد طلبات الأستاذ المعلّقة للقسم
+    # /     /     >---- عدد طلبات الأستاذ المعلّقة
+    # /     /     >---- الطلبات تعيش في teacher_requests (ينشئها
+    # /     /     >---- page_routes/teacher_pages.teacher_messages). كان هذا
+    # /     /     >---- العدد يقرأ teacher_messages — جدولاً قديماً لا يُكتب
+    # /     /     >---- فيه — فكان يرجع صفراً دائماً.
     if teacher_id:
         teacher_data['pending_requests_count'] = db.execute(
-            'SELECT COUNT(*) FROM teacher_messages WHERE teacher_id = ? AND status = ?',
+            'SELECT COUNT(*) FROM teacher_requests WHERE teacher_id = ? AND status = ?',
             (teacher_id, 'pending')
         ).fetchone()[0]
     else:
@@ -848,10 +850,12 @@ def _dean_examinations(db) -> dict:
 
 # /     /     >---- نطاق ٥: التواصل — الرسائل والطلبات والإعلانات
 def _dean_communication(db) -> dict:
+    # /     /     >---- كان هنا messages / messages_pending يقرآن من
+    # /     /     >---- teacher_messages (جدول قديم لا يُكتب فيه)، فكان الرقمان
+    # /     /     >---- صفراً دائماً بينما الطلبات الحقيقية في teacher_requests.
+    # /     /     >---- حُذف Card الرسائل المعلّقة من القالب لأنه يكرّر رقم
+    # /     /     >---- الطلبات تحت اسم مختلف.
     return {
-        'messages': _scalar(db, 'SELECT COUNT(*) FROM teacher_messages'),
-        'messages_pending': _scalar(
-            db, "SELECT COUNT(*) FROM teacher_messages WHERE status = 'pending'"),
         'requests': _scalar(db, 'SELECT COUNT(*) FROM teacher_requests'),
         'requests_pending': _scalar(
             db, "SELECT COUNT(*) FROM teacher_requests WHERE status = 'pending'"),
