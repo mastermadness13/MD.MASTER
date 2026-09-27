@@ -615,6 +615,14 @@
         <th class="cc-label-cell" scope="row">الفصل الدراسي</th>
       </tr>
       <tr>
+        <th class="cc-en-label-cell" scope="row" dir="ltr">Credit<br>Hours</th>
+        <td colspan="2">
+          <input type="number" name="credits" min="0" value="{{ doc.credits or 0 }}"
+                 class="cc-cell-input cc-num" {% if read_only %}disabled{% endif %}>
+        </td>
+        <th class="cc-label-cell" scope="row">عدد الساعات المعتمدة</th>
+      </tr>
+      <tr>
         <th class="cc-en-label-cell" scope="row" dir="ltr">No. Of hours<br>per week</th>
         <td colspan="2">
           <div class="cc-hours-grid">

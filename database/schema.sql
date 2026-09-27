@@ -53,6 +53,47 @@ CREATE TABLE IF NOT EXISTS user_roles (
     UNIQUE(user_id, role)
 );
 
+-- أنواع المهام الإدارية (admin assignment types) — catalogues the administrative
+-- posts a teacher can be assigned to, with the workload hours each one costs.
+-- Must be declared before `teachers`, which references it via
+-- admin_assignment_type_id. Mirrors the block in
+-- _ensure_faculty_performance_tables (database/schema.py) so a DB built from
+-- this file matches one built by ensure_schema(). The managed rows added later
+-- by the managed_admin_assignment_values_v1 migration remain ensure_schema's
+-- job; this file only carries the base catalogue.
+CREATE TABLE IF NOT EXISTS admin_assignment_types (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    name             TEXT NOT NULL UNIQUE,
+    default_hours    INTEGER NOT NULL DEFAULT 0,
+    is_active        INTEGER NOT NULL DEFAULT 1,
+    sort_order       INTEGER NOT NULL DEFAULT 0,
+    internal_code    TEXT,
+    is_system_linked INTEGER NOT NULL DEFAULT 0,
+    is_protected_role INTEGER NOT NULL DEFAULT 0
+);
+
+-- Same default rows as _seed_admin_assignment_types (name, hours, sort_order).
+INSERT OR IGNORE INTO admin_assignment_types (name, default_hours, is_active, sort_order) VALUES
+    ('رئيس القسم العلمي', 18, 1, 1),
+    ('رئيس قسم البحث والتطوير', 18, 1, 2),
+    ('رئيس قسم الامتحانات', 18, 1, 3),
+    ('مدير مكتب أعضاء هيئة التدريس', 12, 1, 4),
+    ('مدير مكتب الشؤون العلمية', 12, 1, 5),
+    ('منسق القاعات', 6, 1, 6),
+    ('عميد الكلية', 18, 1, 7),
+    ('مدير مكتب الجودة', 12, 1, 8),
+    ('مدير مكتب الدراسة العالية', 12, 1, 9),
+    ('رئيس قسم الشؤون الفنية والمعامل', 12, 1, 11),
+    ('رئيس قسم البحث والتطوير والمناهج', 18, 1, 12),
+    ('رئيس قسم التدريب الميداني', 12, 1, 13),
+    ('رئيس قسم الدبلوم المهني', 12, 1, 14),
+    ('منسق الشعبة العلمية', 6, 1, 15),
+    ('منسق الجودة بالقسم', 6, 1, 16),
+    ('منسق الدراسة العالية بالقسم', 6, 1, 17),
+    ('منسق المواد العامة بالقسم العلمي', 6, 1, 18),
+    ('منسق تدريب ميداني', 6, 1, 19),
+    ('عضو تحرير مجلة علمية', 6, 1, 20);
+
 CREATE TABLE IF NOT EXISTS teachers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
