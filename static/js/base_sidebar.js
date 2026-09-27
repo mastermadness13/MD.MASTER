@@ -39,30 +39,4 @@
      this file. It exposes window.applyTheme and window.toggleTheme. */
   restore();
 
-  /* ── Sidebar "More" collapsible group ── */
-  var moreKey = 'ropely-sidebar-more';
-  var moreGroup = document.getElementById('sidebarMoreGroup');
-  var moreIcon = document.getElementById('sidebarMoreIcon');
-  var moreDivider = document.getElementById('sidebarMoreDivider');
-
-  function restoreMore() {
-    if (!moreGroup) return;
-    var saved;
-    try { saved = localStorage.getItem(moreKey); } catch (e) { saved = null; }
-    if (saved === '1') {
-      moreGroup.classList.remove('collapsed');
-      if (moreIcon) moreIcon.textContent = 'expand_less';
-      if (moreDivider) moreDivider.setAttribute('aria-expanded', 'true');
-    }
-  }
-
-  window.toggleSidebarMore = function () {
-    if (!moreGroup) return;
-    var collapsed = moreGroup.classList.toggle('collapsed');
-    if (moreIcon) moreIcon.textContent = collapsed ? 'expand_more' : 'expand_less';
-    if (moreDivider) moreDivider.setAttribute('aria-expanded', String(!collapsed));
-    try { localStorage.setItem(moreKey, collapsed ? '0' : '1'); } catch (e) {}
-  };
-
-  restoreMore();
 })();

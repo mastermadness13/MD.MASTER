@@ -5,12 +5,16 @@
 {% set search = search | default('') %}
 {% set department_id = department_id | default('') %}
 {% set total_pages = (total // per_page) + (1 if total % per_page else 0) %}
+{# /teachers is reachable by any teachers.view holder (e.g. the dean), so every
+   write control here is gated — the server would reject these POSTs anyway. #}
+{% set can_manage = can_manage | default(has_permission('teachers.manage')) %}
 {% from 'shared/components/pagination.html' import pagination %}
 {% from 'shared/components/empty_state.html' import render as empty_state %}
 
 <table class="search-table w-full text-right border-collapse text-sm">
   <thead>
     <tr class="bg-surface-dim font-label-md text-label-md text-on-surface-variant">
+      {% if can_manage %}
       <th class="px-4 py-3 border-b border-outline-variant font-bold w-16">
         <div class="flex items-center gap-1.5">
           <label class="inline-flex items-center cursor-pointer" title="تحديد الكل">
@@ -21,21 +25,26 @@
                   style="display:none" title="حذف المحدد">delete</button>
         </div>
       </th>
+      {% endif %}
       <th class="px-4 py-3 border-b border-outline-variant font-bold w-14">#</th>
       <th class="px-4 py-3 border-b border-outline-variant font-bold">أعضاء هيئة التدريس</th>
       <th class="px-4 py-3 border-b border-outline-variant font-bold">الرقم الكلية</th>
       <th class="px-4 py-3 border-b border-outline-variant font-bold">البريد</th>
       <th class="px-4 py-3 border-b border-outline-variant font-bold">الهاتف</th>
+      {% if can_manage %}
       <th class="px-4 py-3 border-b border-outline-variant font-bold text-center w-44">الإجراءات</th>
+      {% endif %}
     </tr>
   </thead>
   <tbody>
     {% if teachers %}
     {% for t in teachers %}
     <tr class="hover:bg-primary/5 transition-colors border-b border-outline-variant last:border-b-0">
+      {% if can_manage %}
       <td class="px-4 py-3">
         <input type="checkbox" name="teacher_ids" value="{{ t.id }}" class="teacher-check w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary/40 cursor-pointer">
       </td>
+      {% endif %}
       <td class="px-4 py-3 text-on-surface-variant">{{ (page - 1) * per_page + loop.index }}</td>
       <td class="px-4 py-3">
         <div class="flex items-center gap-2.5">
@@ -77,11 +86,13 @@
               <span class="material-symbols-outlined text-lg text-primary shrink-0">person</span>
               الملف التفصيلي
             </a>
+            {% if can_manage %}
             <a href="{{ url_for('teachers.teachers_edit', id=t.id) }}"
                class="flex items-center gap-2.5 px-3.5 py-2.5 text-sm font-bold text-on-surface hover:bg-primary/10 transition-colors no-underline">
               <span class="material-symbols-outlined text-lg text-primary shrink-0">edit</span>
               تعديل
             </a>
+            {% endif %}
             {% if has_permission('teachers.assign') %}
             <form method="post" action="{{ url_for('teachers.dept_unassign') }}"
                   data-confirm-message="إزالة هذا العضو من القسم؟">
@@ -93,6 +104,7 @@
               </button>
             </form>
             {% endif %}
+            {% if can_manage %}
             <form method="post" action="{{ url_for('teachers.teachers_delete', id=t.id) }}"
                   data-confirm-message="حذف عضو هيئة التدريس؟">
               <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
@@ -101,6 +113,7 @@
                 حذف
               </button>
             </form>
+            {% endif %}
           </div>
         </div>
       </td>
@@ -108,7 +121,7 @@
     {% endfor %}
     {% else %}
     <tr>
-      <td colspan="7" class="px-4 py-6">
+      <td colspan="{{ 7 if can_manage else 6 }}" class="px-4 py-6">
         {% if search or department_id %}
         {{ empty_state(icon='search_off', title='لا توجد نتائج', text='لا توجد نتائج تطابق البحث المحدد') }}
         {% else %}
@@ -120,7 +133,7 @@
   </tbody>
 </table>
 
-{% if teachers %}
+{% if teachers and can_manage %}
 <div class="px-4 py-3 bg-surface-dim/60 border-t border-outline-variant flex flex-wrap items-center justify-between gap-3">
   <span class="text-sm font-bold text-on-surface-variant"><span id="selectedCount">0</span> محدد</span>
   <div class="flex items-center gap-2">

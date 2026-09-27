@@ -8,6 +8,59 @@
   var MODES = ['light', 'dark', 'system', 'custom'];
   var DENSITIES = ['comfortable', 'compact'];
   var CORNERS = ['soft', 'sharp', 'round'];
+  var FONT_FAMILIES = {
+    'Cairo': '"Cairo", sans-serif',
+    'Tajawal': '"Tajawal", sans-serif',
+    'Almarai': '"Almarai", sans-serif',
+    'IBM Plex Sans Arabic': '"IBM Plex Sans Arabic", sans-serif',
+    'Noto Kufi Arabic': '"Noto Kufi Arabic", sans-serif'
+  };
+
+  function normalizeFontFamily(value) {
+    if (typeof value !== 'string') return null;
+    var normalized = value.trim().toLowerCase().replace(/[-_]+/g, ' ').replace(/\s+/g, ' ');
+    var families = Object.keys(FONT_FAMILIES);
+    for (var i = 0; i < families.length; i++) {
+      if (families[i].toLowerCase() === normalized ||
+          FONT_FAMILIES[families[i]].toLowerCase() === value.trim().toLowerCase()) return families[i];
+    }
+    return null;
+  }
+
+  function normalizeFontSize(value) {
+    if (typeof value !== 'number' && typeof value !== 'string') return null;
+    if (typeof value === 'string' && !/^(?:\d{1,2})(?:\.0|\.5)?$/.test(value.trim())) return null;
+    if (typeof value === 'string') value = Number(value.trim());
+    if (!isFinite(value) || value < 13 || value > 20) return null;
+    return Math.abs(value * 2 - Math.round(value * 2)) < 0.000001 ? value : null;
+  }
+
+  function relativeLuminance(rgb) {
+    function linearize(channel) {
+      channel /= 255;
+      return channel <= 0.04045 ? channel / 12.92 : Math.pow((channel + 0.055) / 1.055, 2.4);
+    }
+    return 0.2126 * linearize(rgb[0]) + 0.7152 * linearize(rgb[1]) + 0.0722 * linearize(rgb[2]);
+  }
+
+  function customAccentRgb(hue, dark) {
+    var saturation = dark ? 0.68 : 0.58;
+    var lightness = dark ? 0.66 : 0.42;
+    var chroma = (1 - Math.abs(2 * lightness - 1)) * saturation;
+    var hueSection = hue / 60;
+    var secondary = chroma * (1 - Math.abs(hueSection % 2 - 1));
+    var rgb;
+    if (hueSection < 1) rgb = [chroma, secondary, 0];
+    else if (hueSection < 2) rgb = [secondary, chroma, 0];
+    else if (hueSection < 3) rgb = [0, chroma, secondary];
+    else if (hueSection < 4) rgb = [0, secondary, chroma];
+    else if (hueSection < 5) rgb = [secondary, 0, chroma];
+    else rgb = [chroma, 0, secondary];
+    var offset = lightness - chroma / 2;
+    return [rgb[0], rgb[1], rgb[2]].map(function (channel) {
+      return (channel + offset) * 255;
+    });
+  }
 
   var mode = 'light';
   try {
@@ -33,7 +86,12 @@
 
   var density = DENSITIES.indexOf(prefs.density) === -1 ? 'comfortable' : prefs.density;
   var corner = CORNERS.indexOf(prefs.corner) === -1 ? 'soft' : prefs.corner;
-  var hue = typeof prefs.hue === 'number' && isFinite(prefs.hue) ? prefs.hue : 280;
+  var hue = typeof prefs.hue === 'number' && isFinite(prefs.hue)
+    ? Math.max(0, Math.min(359, Math.round(prefs.hue)))
+    : 280;
+  var fontFamily = normalizeFontFamily(prefs.fontFamily) || 'Cairo';
+  var fontSize = normalizeFontSize(prefs.fontSize);
+  if (fontSize === null) fontSize = 16;
 
   var theme = dark ? 'dark' : 'light';
   doc.setAttribute('data-theme', theme);
@@ -42,6 +100,13 @@
   doc.setAttribute('data-density', density);
   doc.setAttribute('data-corner', corner);
   doc.style.setProperty('--user-hue', String(hue));
+  doc.style.setProperty('--user-font-family', FONT_FAMILIES[fontFamily]);
+  doc.style.setProperty('--user-font-size', fontSize + 'px');
+  doc.style.setProperty('--custom-button-bg', 'var(--user-accent)');
+  var luminance = relativeLuminance(customAccentRgb(hue, dark));
+  var blackContrast = (luminance + 0.05) / 0.05;
+  var whiteContrast = 1.05 / (luminance + 0.05);
+  doc.style.setProperty('--custom-button-fg', blackContrast >= whiteContrast ? '#000000' : '#ffffff');
   /* Tailwind darkMode: 'class' — mirror data-theme so dark: utilities work. */
   doc.classList.toggle('dark', dark);
 })();

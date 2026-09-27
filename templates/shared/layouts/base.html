@@ -51,46 +51,9 @@
         {% endif %}
       {% endfor %}
 
-      {% set has_more = nav_items | selectattr('section', 'equalto', 'more') | list %}
-      {% if has_more %}
-      <div class="sidebar-nav-divider" id="sidebarMoreDivider" onclick="toggleSidebarMore()" role="button" tabindex="0" aria-expanded="false" aria-label="خيارات إضافية">
-        <span class="material-symbols-outlined sidebar-nav-divider-icon" id="sidebarMoreIcon">expand_more</span>
-        <span class="sidebar-nav-divider-label">خيارات إضافية</span>
-        <span class="sidebar-nav-divider-line"></span>
-      </div>
-      <div class="sidebar-nav-more collapsed" id="sidebarMoreGroup">
-        {% for item in nav_items %}
-          {% if item.get('section') == 'more' %}
-        <a href="{{ url_for(item.endpoint) }}"
-           class="sidebar-link {% if active_key in item.active_keys %}active{% endif %}"
-           {% if active_key in item.active_keys %}aria-current="page"{% endif %}>
-          <span class="material-symbols-outlined">{{ item.icon }}</span>
-          <span>{{ item.label }}</span>
-        </a>
-          {% endif %}
-        {% endfor %}
-        <button type="button" class="sidebar-link sidebar-theme-link"
-                popovertarget="themePanel" popovertargetaction="show"
-                aria-label="إعدادات المظهر" aria-haspopup="dialog">
-          <span class="material-symbols-outlined" id="sidebarThemeIcon">palette</span>
-          <span>المظهر</span>
-        </button>
-      </div>
-      {% endif %}
     </nav>
   </div>
 
-  <div class="sidebar-footer">
-    {% if user %}
-    <form action="{{ url_for('auth.logout') }}" method="post" class="logout-link-form">
-      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-      <button type="submit" class="sidebar-link logout-link text-red-500 hover:bg-red-500/10 w-full bg-transparent border-0 cursor-pointer">
-        <span class="material-symbols-outlined">logout</span>
-        <span>تسجيل الخروج</span>
-      </button>
-    </form>
-    {% endif %}
-  </div>
 </aside>
 {% endif %}
 
@@ -154,12 +117,6 @@
         <span class="material-symbols-outlined" id="themeToggleIconTopbar">dark_mode</span>
       </button>
       {% endif %}
-      <form action="{{ url_for('auth.logout') }}" method="post" class="inline">
-        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="topbar-icon-button text-red-500 hover:bg-red-500/10 bg-transparent border-0 cursor-pointer" title="تسجيل الخروج" aria-label="تسجيل الخروج">
-          <span class="material-symbols-outlined">logout</span>
-        </button>
-      </form>
       {% if user_roles and user_roles | length > 1 %}
       <div class="relative" id="roleSwitcher">
         <button type="button" id="roleSwitchBtn" onclick="toggleRoleMenu()"
@@ -188,13 +145,57 @@
         </div>
       </div>
       {% endif %}
-      <a href="{{ url_for('profile.profile') }}" class="topbar-avatar-btn flex items-center gap-3 rounded-xl border border-outline px-3 py-2 hover:bg-surface-container transition-colors no-underline">
-        <span class="user-avatar inline-flex items-center justify-center w-10 h-10 rounded-xl bg-primary text-on-primary font-bold">{{ user_display[:1] }}</span>
-        <span class="hidden lg:flex flex-col text-right">
-          <strong class="text-sm text-on-surface">{{ user_display }}</strong>
-          <small class="text-xs text-on-surface-variant">{{ role_labels.get(session.get('role') or user.role, session.get('role') or user.role) }}</small>
-        </span>
-      </a>
+      <div class="relative" id="userMenuDropdown">
+        <button type="button" id="userMenuBtn" onclick="toggleUserMenu()"
+                class="topbar-avatar-btn flex items-center gap-3 rounded-xl border border-outline px-3 py-2 hover:bg-surface-container transition-colors"
+                aria-expanded="false" aria-controls="userMenu" aria-haspopup="true">
+          <span class="user-avatar inline-flex items-center justify-center w-10 h-10 rounded-xl bg-primary text-on-primary font-bold">{{ user_display[:1] }}</span>
+          <span class="hidden lg:flex flex-col text-right">
+            <strong class="text-sm text-on-surface">{{ user_display }}</strong>
+            <small class="text-xs text-on-surface-variant">{{ role_labels.get(session.get('role') or user.role, session.get('role') or user.role) }}</small>
+          </span>
+          <span class="material-symbols-outlined text-base text-on-surface-variant" aria-hidden="true">expand_more</span>
+        </button>
+        <div id="userMenu" style="display:none"
+             class="absolute end-0 top-full mt-2 w-56 rounded-xl border border-outline bg-surface-container-lowest shadow-lg overflow-hidden z-50"
+             role="menu" aria-labelledby="userMenuBtn">
+          <a href="{{ url_for('profile.profile') }}"
+             class="flex items-center gap-2 w-full text-right px-4 py-2.5 text-sm font-bold hover:bg-primary/10 transition text-on-surface no-underline"
+             role="menuitem">
+            <span class="material-symbols-outlined text-base" aria-hidden="true">person</span>
+            الملف الشخصي
+          </a>
+          {% set more_items = nav_items | selectattr('section', 'equalto', 'more') | list %}
+          {% if more_items %}
+          <div class="border-t border-outline"></div>
+          {% for item in more_items %}
+          <a href="{{ url_for(item.endpoint) }}"
+             class="flex items-center gap-2 w-full text-right px-4 py-2.5 text-sm font-bold hover:bg-primary/10 transition text-on-surface no-underline"
+             role="menuitem" {% if active_key in item.active_keys %}aria-current="page"{% endif %}>
+            <span class="material-symbols-outlined text-base" aria-hidden="true">{{ item.icon }}</span>
+            {{ item.label }}
+          </a>
+          {% endfor %}
+          {% endif %}
+          <button type="button"
+                  class="flex items-center gap-2 w-full text-right px-4 py-2.5 text-sm font-bold hover:bg-primary/10 transition text-on-surface bg-transparent border-0 cursor-pointer"
+                  popovertarget="themePanel" popovertargetaction="show"
+                  onclick="closeUserMenu()" role="menuitem">
+            <span class="material-symbols-outlined text-base" aria-hidden="true">palette</span>
+            المظهر
+          </button>
+          <div class="border-t border-outline"></div>
+          <form action="{{ url_for('auth.logout') }}" method="post" class="m-0">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            <button type="submit"
+                    class="flex items-center gap-2 w-full text-right px-4 py-2.5 text-sm font-bold hover:bg-red-500/10 transition text-red-500 bg-transparent border-0 cursor-pointer"
+                    role="menuitem">
+              <span class="material-symbols-outlined text-base" aria-hidden="true">logout</span>
+              تسجيل الخروج
+            </button>
+          </form>
+        </div>
+      </div>
       {% endif %}
     </div>
   </header>

@@ -12,6 +12,41 @@
     }
   });
 
+  function setUserMenuOpen(open) {
+    var menu = document.getElementById('userMenu');
+    var button = document.getElementById('userMenuBtn');
+    if (!menu || !button) return;
+    menu.style.display = open ? 'block' : 'none';
+    button.setAttribute('aria-expanded', String(open));
+  }
+
+  window.toggleUserMenu = function () {
+    var menu = document.getElementById('userMenu');
+    if (!menu) return;
+    setUserMenuOpen(menu.style.display === 'none');
+  };
+
+  window.closeUserMenu = function () {
+    setUserMenuOpen(false);
+  };
+
+  document.addEventListener('click', function (e) {
+    var wrapper = document.getElementById('userMenuDropdown');
+    var menu = document.getElementById('userMenu');
+    if (wrapper && menu && menu.style.display === 'block' && !wrapper.contains(e.target)) {
+      setUserMenuOpen(false);
+    }
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    var menu = document.getElementById('userMenu');
+    if (!menu || menu.style.display !== 'block') return;
+    setUserMenuOpen(false);
+    var button = document.getElementById('userMenuBtn');
+    if (button) button.focus();
+  });
+
   var ROLE_SWITCH_LOADING_LABEL = window.ROLE_SWITCH_LABEL || 'جاري التبديل...';
 
   function setRoleSwitchLoading(btn, loading) {

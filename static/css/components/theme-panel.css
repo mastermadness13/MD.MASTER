@@ -223,6 +223,51 @@
   gap: 0.5rem;
 }
 
+.theme-select {
+  inline-size: 100%;
+  min-block-size: 2.5rem;
+  padding: 0.5rem 0.625rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.theme-select:focus-visible {
+  outline: 2px solid var(--border-input-focus);
+  outline-offset: 2px;
+}
+
+.theme-font-size-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.theme-font-size-slider {
+  flex: 1;
+  min-width: 0;
+  block-size: 1.25rem;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.theme-font-size-value {
+  flex: none;
+  min-inline-size: 3.5rem;
+  padding: 0.125rem 0.375rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-hover);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
 .theme-swatch {
   inline-size: 1.75rem;
   block-size: 1.75rem;

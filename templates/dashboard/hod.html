@@ -49,7 +49,7 @@
 <div class="max-w-7xl mx-auto">
 
   {# ── Header ─────────────────────────────────────────────── #}
-  <div class="fade-in-card bg-white rounded-2xl shadow-sm border border-primary/10 px-5 py-4 mb-5
+  <div class="fade-in-card bg-surface-card rounded-2xl shadow-sm border border-primary/10 px-5 py-4 mb-5
               flex flex-wrap items-center justify-between gap-3">
 
     <div class="flex items-center gap-3">
@@ -115,7 +115,7 @@
       ('meeting_room', 'القاعات', total_rooms, 'meeting_room', 'text-academic-gold-deep bg-academic-gold/10')
     ] %}
     {% for icon, label, value, glyph, tone in _cards %}
-    <div class="fade-in-card bg-white rounded-2xl shadow-sm border border-primary/10 px-4 py-3
+    <div class="fade-in-card bg-surface-card rounded-2xl shadow-sm border border-primary/10 px-4 py-3
                 flex items-center gap-3">
       <span class="w-10 h-10 rounded-xl {{ tone }} flex items-center justify-center shrink-0">
         <span class="material-symbols-outlined text-xl">{{ glyph }}</span>
@@ -133,7 +133,7 @@
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
     {# CELL 1 : Today's lectures #}
-    <div class="fade-in-card bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
+    <div class="fade-in-card bg-surface-card rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
       <div class="px-5 py-3 border-b border-primary/10 bg-surface-dim flex items-center gap-2">
         <span class="material-symbols-outlined text-primary text-lg">today</span>
         <h3 class="font-bold text-primary m-0 text-sm">محاضرات اليوم</h3>
@@ -174,7 +174,7 @@
 
 
     {# CELL 2 : Weekly schedule #}
-    <div class="fade-in-card bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
+    <div class="fade-in-card bg-surface-card rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
       <div class="px-5 py-3 border-b border-primary/10 bg-surface-dim flex items-center gap-2">
         <span class="material-symbols-outlined text-primary text-lg">calendar_view_week</span>
         <h3 class="font-bold text-primary m-0 text-sm">الجدول الأسبوعي</h3>
@@ -237,7 +237,7 @@
 
 
     {# CELL 3 : Course coverage #}
-    <div class="fade-in-card bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
+    <div class="fade-in-card bg-surface-card rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
       <div class="px-5 py-3 border-b border-primary/10 bg-surface-dim flex items-center gap-2">
         <span class="material-symbols-outlined text-primary text-lg">menu_book</span>
         <h3 class="font-bold text-primary m-0 text-sm">تغطية المقررات</h3>
@@ -294,7 +294,7 @@
 
 
     {# CELL 4 : Pending requests #}
-    <div class="fade-in-card bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
+    <div class="fade-in-card bg-surface-card rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
       <div class="px-5 py-3 border-b border-primary/10 bg-surface-dim flex items-center gap-2">
         <span class="material-symbols-outlined text-primary text-lg">pending_actions</span>
         <h3 class="font-bold text-primary m-0 text-sm">الطلبات المعلّقة</h3>

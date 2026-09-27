@@ -14,6 +14,15 @@
   var MODES = ['light', 'dark', 'system', 'custom'];
   var DENSITIES = ['comfortable', 'compact'];
   var CORNERS = ['soft', 'sharp', 'round'];
+  var FONT_FAMILIES = {
+    'Cairo': '"Cairo", sans-serif',
+    'Tajawal': '"Tajawal", sans-serif',
+    'Almarai': '"Almarai", sans-serif',
+    'IBM Plex Sans Arabic': '"IBM Plex Sans Arabic", sans-serif',
+    'Noto Kufi Arabic': '"Noto Kufi Arabic", sans-serif'
+  };
+  var DEFAULT_FONT_FAMILY = 'Cairo';
+  var DEFAULT_FONT_SIZE = 16;
 
   var media = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
 
@@ -42,7 +51,32 @@
   var mode = readMode();
   if (DENSITIES.indexOf(prefs.density) === -1) prefs.density = 'comfortable';
   if (CORNERS.indexOf(prefs.corner) === -1) prefs.corner = 'soft';
-  var hue = typeof prefs.hue === 'number' && isFinite(prefs.hue) ? prefs.hue : 280;
+  var hue = typeof prefs.hue === 'number' && isFinite(prefs.hue)
+    ? Math.max(0, Math.min(359, Math.round(prefs.hue)))
+    : 280;
+
+  function normalizeFontFamily(value) {
+    if (typeof value !== 'string') return null;
+    var normalized = value.trim().toLowerCase().replace(/[-_]+/g, ' ').replace(/\s+/g, ' ');
+    var families = Object.keys(FONT_FAMILIES);
+    for (var i = 0; i < families.length; i++) {
+      if (families[i].toLowerCase() === normalized ||
+          FONT_FAMILIES[families[i]].toLowerCase() === value.trim().toLowerCase()) return families[i];
+    }
+    return null;
+  }
+
+  function normalizeFontSize(value) {
+    if (typeof value !== 'number' && typeof value !== 'string') return null;
+    if (typeof value === 'string' && !/^(?:\d{1,2})(?:\.0|\.5)?$/.test(value.trim())) return null;
+    if (typeof value === 'string') value = Number(value.trim());
+    if (!isFinite(value) || value < 13 || value > 20) return null;
+    return Math.abs(value * 2 - Math.round(value * 2)) < 0.000001 ? value : null;
+  }
+
+  prefs.fontFamily = normalizeFontFamily(prefs.fontFamily) || DEFAULT_FONT_FAMILY;
+  prefs.fontSize = normalizeFontSize(prefs.fontSize);
+  if (prefs.fontSize === null) prefs.fontSize = DEFAULT_FONT_SIZE;
 
   function systemPrefersDark() {
     return !!(media && media.matches);
@@ -53,6 +87,40 @@
     if (mode === 'system') return systemPrefersDark();
     /* light and custom both follow the user's explicit light/dark pick. */
     return prefs.base === 'dark';
+  }
+
+  function relativeLuminance(rgb) {
+    function linearize(channel) {
+      channel /= 255;
+      return channel <= 0.04045 ? channel / 12.92 : Math.pow((channel + 0.055) / 1.055, 2.4);
+    }
+    return 0.2126 * linearize(rgb[0]) + 0.7152 * linearize(rgb[1]) + 0.0722 * linearize(rgb[2]);
+  }
+
+  function customAccentRgb(dark) {
+    var saturation = dark ? 0.68 : 0.58;
+    var lightness = dark ? 0.66 : 0.42;
+    var chroma = (1 - Math.abs(2 * lightness - 1)) * saturation;
+    var hueSection = hue / 60;
+    var secondary = chroma * (1 - Math.abs(hueSection % 2 - 1));
+    var rgb;
+    if (hueSection < 1) rgb = [chroma, secondary, 0];
+    else if (hueSection < 2) rgb = [secondary, chroma, 0];
+    else if (hueSection < 3) rgb = [0, chroma, secondary];
+    else if (hueSection < 4) rgb = [0, secondary, chroma];
+    else if (hueSection < 5) rgb = [secondary, 0, chroma];
+    else rgb = [chroma, 0, secondary];
+    var offset = lightness - chroma / 2;
+    return [rgb[0], rgb[1], rgb[2]].map(function (channel) {
+      return (channel + offset) * 255;
+    });
+  }
+
+  function customButtonForeground(dark) {
+    var luminance = relativeLuminance(customAccentRgb(dark));
+    var blackContrast = (luminance + 0.05) / 0.05;
+    var whiteContrast = 1.05 / (luminance + 0.05);
+    return blackContrast >= whiteContrast ? '#000000' : '#ffffff';
   }
 
   var ICON = { light: 'light_mode', dark: 'dark_mode', system: 'routine', custom: 'palette' };
@@ -92,6 +160,10 @@
     doc.setAttribute('data-density', prefs.density);
     doc.setAttribute('data-corner', prefs.corner);
     doc.style.setProperty('--user-hue', String(hue));
+    doc.style.setProperty('--user-font-family', FONT_FAMILIES[prefs.fontFamily]);
+    doc.style.setProperty('--user-font-size', prefs.fontSize + 'px');
+    doc.style.setProperty('--custom-button-bg', 'var(--user-accent)');
+    doc.style.setProperty('--custom-button-fg', customButtonForeground(dark));
 
     /* Tailwind is configured with darkMode: 'class', so the .dark class has to
        mirror data-theme or every dark: utility stays inert. */
@@ -161,6 +233,20 @@
     setHue: function (value) {
       hue = Math.max(0, Math.min(359, Math.round(Number(value) || 0)));
       prefs.hue = hue;
+      save();
+      apply();
+    },
+    setFontFamily: function (value) {
+      var family = normalizeFontFamily(value);
+      if (!family) return;
+      prefs.fontFamily = family;
+      save();
+      apply();
+    },
+    setFontSize: function (value) {
+      var size = normalizeFontSize(value);
+      if (size === null) return;
+      prefs.fontSize = size;
       save();
       apply();
     }

@@ -102,6 +102,71 @@ def test_theme_manager_owns_all_four_modes():
     assert 'addEventListener' in src
 
 
+def test_custom_theme_font_controls_use_valid_persisted_manager_settings():
+    with open('static/js/theme.js', encoding='utf-8') as fh:
+        manager = fh.read()
+    with open('static/js/theme_panel.js', encoding='utf-8') as fh:
+        panel_script = fh.read()
+    with open('templates/shared/components/theme_panel.html', encoding='utf-8') as fh:
+        panel = fh.read()
+    with open('templates/shared/components/theme_init.html', encoding='utf-8') as fh:
+        init = fh.read()
+    with open('static/css/base/typography.css', encoding='utf-8') as fh:
+        typography = fh.read()
+
+    for family in ('Cairo', 'Tajawal', 'Almarai', 'IBM Plex Sans Arabic', 'Noto Kufi Arabic'):
+        assert f'<option value="{family}">' in panel
+        assert family in manager
+    assert 'setFontFamily' in manager
+    assert 'setFontSize' in manager
+    assert 'fontFamily' in manager and 'fontSize' in manager
+    assert 'data-theme-font-family' in panel_script
+    assert 'data-theme-font-size' in panel_script
+    assert "manager.setFontFamily('Cairo')" in panel_script
+    assert 'fontFamily' in init and 'fontSize' in init
+    assert '--user-font-family' in init
+    assert '--user-font-size' in init
+    assert 'Cairo:wght@' in typography
+    assert 'IBM+Plex+Sans+Arabic:wght@' in typography
+    assert 'Noto+Kufi+Arabic:wght@' in typography
+
+
+def test_custom_accent_is_applied_to_filled_actions_only_with_computed_contrast():
+    with open('static/js/theme.js', encoding='utf-8') as fh:
+        manager = fh.read()
+    with open('static/css/utilities/theme-custom.css', encoding='utf-8') as fh:
+        css = fh.read()
+
+    assert 'customButtonForeground' in manager
+    assert 'relativeLuminance' in manager
+    assert '--custom-button-fg' in manager
+    assert '--custom-button-bg' in manager
+    assert '[data-theme-mode="custom"] button.bg-primary' in css
+    assert '[data-theme-mode="custom"] a.bg-primary' in css
+    assert '[data-theme-mode="custom"] .theme-button' in css
+    assert '[data-theme-mode="custom"] .bg-primary,' not in css
+    assert '--primary: var(--user-accent)' not in css
+    assert '--primary-faint: color-mix' not in css
+    assert '--sidebar-active-bg: color-mix' not in css
+    assert '--auth-brand-mid: var(--user-accent)' not in css
+
+
+def test_all_role_dashboards_use_theme_aware_neutral_surfaces():
+    dashboard_templates = (
+        'dean.html',
+        'exam_dept.html',
+        'faculty_affairs.html',
+        'hod.html',
+        'rnd.html',
+        'teacher.html',
+        'visitor.html',
+    )
+    for filename in dashboard_templates:
+        with open(f'templates/dashboard/{filename}', encoding='utf-8') as fh:
+            source = fh.read()
+        assert 'bg-white' not in source, f'{filename} has a fixed white dashboard surface'
+
+
 def test_theme_js_loaded_before_base_sidebar():
     """base_sidebar.js no longer defines the toggles, so it must load after
     theme.js or the first paint would use a stale handler."""
@@ -147,18 +212,47 @@ def test_appearance_panel_is_reachable_and_wired(client):
         assert 'value="%s"' % value in body
 
 
-def test_sidebar_theme_button_opens_the_panel(client):
-    """The sidebar entry opens the panel instead of bypassing it."""
+def test_theme_panel_is_reachable_from_user_menu_not_sidebar(client):
     body = client.get('/timetable/department').get_data(as_text=True)
-    sidebar_btn = re.search(
-        r'<button[^>]*sidebar-theme-link[^>]*>', body, re.S
-    )
-    assert sidebar_btn, 'sidebar appearance button is missing'
-    assert 'onclick="toggleTheme()"' not in sidebar_btn.group(0), (
-        'the sidebar entry should open the panel, not bypass it'
-    )
-    assert 'popovertarget="themePanel"' in sidebar_btn.group(0)
-    assert 'aria-haspopup="dialog"' in sidebar_btn.group(0)
+    user_menu_start = body.index('id="userMenu"')
+    user_menu_end = body.index('</form>', user_menu_start) + len('</form>')
+    user_menu = body[user_menu_start:user_menu_end]
+
+    assert 'popovertarget="themePanel"' in user_menu
+    assert 'id="sidebarMoreGroup"' not in body
+    assert 'خيارات إضافية' not in body
+
+
+def test_additional_navigation_items_are_in_user_menu(client):
+    body = client.get('/timetable/department').get_data(as_text=True)
+    user_menu_start = body.index('id="userMenu"')
+    user_menu_end = body.index('</form>', user_menu_start) + len('</form>')
+    user_menu = body[user_menu_start:user_menu_end]
+
+    for label in ('سجل التغييرات', 'الأقسام', 'القاعات'):
+        assert label in user_menu
+
+
+def test_user_settings_dropdown_contains_profile_theme_and_single_logout(client):
+    body = client.get('/timetable/department').get_data(as_text=True)
+
+    assert 'id="userMenuDropdown"' in body
+    assert 'id="userMenuBtn"' in body
+    assert 'href="/profile"' in body
+    assert 'popovertarget="themePanel"' in body
+    assert body.count('action="/logout"') == 1
+    assert 'aria-controls="userMenu"' in body
+    assert 'onclick="toggleRoleMenu()"' in body
+
+    with open('templates/shared/layouts/base.html', encoding='utf-8') as fh:
+        layout = fh.read()
+    assert layout.count("url_for('auth.logout')") == 1
+
+    with open('static/js/base_role_menu.js', encoding='utf-8') as fh:
+        script = fh.read()
+    assert 'window.toggleUserMenu' in script
+    assert 'window.closeUserMenu' in script
+    assert "e.key !== 'Escape'" in script
 
 
 def test_topbar_quick_toggle_keeps_the_two_state_flip():

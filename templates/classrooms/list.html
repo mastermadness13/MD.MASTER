@@ -29,11 +29,16 @@
       </div>
     </div>
     <div class="flex flex-wrap items-center gap-2">
+      {# Create trigger + modal are write controls. rooms_list already re-checks
+         rooms.manage on POST, so hiding them keeps a viewer (e.g. the dean)
+         from being offered a form the server would reject. #}
+      {% if can_manage %}
       <button type="button" onclick="openRoomModal()"
          class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm">
         <span class="material-symbols-outlined text-lg">add</span>
         + إضافة
       </button>
+      {% endif %}
       <button type="button" onclick="window.print()"
               class="flex items-center gap-2 bg-white hover:bg-primary/10 text-primary border border-outline-variant px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm">
         <span class="material-symbols-outlined text-lg">print</span>
@@ -43,6 +48,7 @@
   </div>
 
   <!-- Create Room Modal -->
+  {% if can_manage %}
   <div id="roomModalOverlay" class="fixed inset-0 bg-black/40 z-40 hidden" onclick="closeRoomModal()"></div>
   <div id="roomModal" class="fixed inset-0 z-50 hidden p-4 overflow-y-auto flex items-center justify-center">
     <div class="w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden border border-outline-variant">
@@ -126,6 +132,7 @@
       </div>
     </div>
   </div>
+  {% endif %}
 
   <!-- Search Bar -->
   <form id="roomsSearchForm" method="GET" action="{{ url_for('classrooms.rooms_list') }}"

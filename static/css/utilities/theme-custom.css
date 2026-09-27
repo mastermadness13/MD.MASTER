@@ -4,51 +4,37 @@
    (0,1,0), which ties with [data-theme="dark"] in dark.css. Source order
    therefore decides, and this file is imported later. Keep it that way. */
 
-/* ==========================================================================
-   CUSTOM MODE — accent hue
-   The user picks one hue. Every accent token is derived by mixing that hue
-   with the *current theme's* surface/text tokens, so a single definition
-   stays readable in both light and dark without a second dark-only block.
-   ========================================================================== */
-
+/* The custom hue is reserved for filled actions; other primary accents remain
+   on the application's standard palette. */
 [data-theme-mode="custom"] {
   --user-accent: hsl(var(--user-hue, 280) 58% 42%);
-
-  /* Solid accent steps */
-  --primary: var(--user-accent);
-  --primary-dark: color-mix(in oklab, var(--user-accent) 78%, #000);
-  --primary-light: color-mix(in oklab, var(--user-accent) 78%, #fff);
-  --primary-deep: var(--primary-dark);
-  --surface-tint: var(--user-accent);
-  --border-input-focus: var(--user-accent);
-
-  /* Tinted containers: mixed toward --surface so they stay subtle */
-  --primary-faint: color-mix(in oklab, var(--user-accent) 14%, var(--surface));
-  --primary-container: color-mix(in oklab, var(--user-accent) 16%, var(--surface));
-  --primary-container-deep: color-mix(in oklab, var(--user-accent) 72%, #000);
-  --on-primary-container: color-mix(in oklab, var(--user-accent) 72%, var(--text-primary));
-  --inverse-primary: color-mix(in oklab, var(--user-accent) 76%, #fff);
-  --primary-glow: color-mix(in oklab, var(--user-accent) 12%, transparent);
-
-  --sidebar-active-bg: color-mix(in oklab, var(--user-accent) 15%, var(--surface));
-  --sidebar-active-text: color-mix(in oklab, var(--user-accent) 76%, var(--text-primary));
-  --notif-unread: color-mix(in oklab, var(--user-accent) 7%, var(--surface));
-  --notif-unread-hover: color-mix(in oklab, var(--user-accent) 15%, var(--surface));
-  --table-row-tint: color-mix(in oklab, var(--user-accent) 4%, transparent);
-  --icon-bg-1: color-mix(in oklab, var(--user-accent) 16%, var(--surface));
-
-  /* Auth page brand gradient */
-  --auth-brand-mid: var(--user-accent);
-  --auth-brand-end: color-mix(in oklab, var(--user-accent) 70%, var(--surface));
-  --auth-shape: var(--user-accent);
-  --auth-deep: var(--primary-dark);
+  --custom-button-bg: var(--user-accent);
 }
 
-/* In dark mode the accent is used for text and thin strokes, where the
-   light-theme 42% lightness is too dim against a dark surface. */
+/* Increase lightness in dark mode to preserve button contrast. */
 [data-theme="dark"][data-theme-mode="custom"] {
   --user-accent: hsl(var(--user-hue, 280) 68% 66%);
-  --on-primary-container: color-mix(in oklab, var(--user-accent) 88%, #fff);
+}
+
+/* Custom typography preferences are safe, validated values from theme.js. */
+html {
+  font-size: var(--user-font-size, 16px);
+}
+
+html,
+body {
+  font-family: var(--user-font-family, inherit);
+}
+
+/* Keep the custom hue on filled primary buttons only. Text-only primary
+   accents continue using the application's normal --primary token. */
+[data-theme-mode="custom"] button.bg-primary,
+[data-theme-mode="custom"] a.bg-primary,
+[data-theme-mode="custom"] input.bg-primary,
+[data-theme-mode="custom"] .theme-button {
+  background-color: var(--custom-button-bg);
+  border-color: var(--custom-button-bg);
+  color: var(--custom-button-fg);
 }
 
 /* ==========================================================================

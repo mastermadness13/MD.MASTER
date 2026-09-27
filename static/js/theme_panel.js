@@ -11,6 +11,9 @@
   var customBlock = panel.querySelector('[data-theme-custom]');
   var hueSlider = panel.querySelector('[data-theme-hue]');
   var hueValue = panel.querySelector('[data-theme-hue-value]');
+  var fontFamilySelect = panel.querySelector('[data-theme-font-family]');
+  var fontSizeSlider = panel.querySelector('[data-theme-font-size]');
+  var fontSizeValue = panel.querySelector('[data-theme-font-size-value]');
   var swatches = panel.querySelectorAll('[data-theme-hue-preset]');
   var resetBtn = panel.querySelector('[data-theme-reset]');
 
@@ -36,6 +39,14 @@
       hueSlider.value = String(prefs.hue);
       if (hueValue) hueValue.value = prefs.hue + '°';
     }
+    if (fontFamilySelect) {
+      fontFamilySelect.value = prefs.fontFamily || 'Cairo';
+    }
+    if (fontSizeSlider) {
+      var fontSize = prefs.fontSize || 16;
+      fontSizeSlider.value = String(fontSize);
+      if (fontSizeValue) fontSizeValue.value = fontSize + ' px';
+    }
 
     /* Density and corner controls live inside the custom block, so they are
        only reachable in custom mode. */
@@ -44,7 +55,10 @@
 
   each('theme-mode').forEach(function (input) {
     input.addEventListener('change', function () {
-      if (input.checked) manager.setMode(input.value);
+      if (input.checked) {
+        manager.setMode(input.value);
+        syncControls();
+      }
     });
   });
 
@@ -68,6 +82,19 @@
     });
   }
 
+  if (fontFamilySelect) {
+    fontFamilySelect.addEventListener('change', function () {
+      manager.setFontFamily(fontFamilySelect.value);
+    });
+  }
+
+  if (fontSizeSlider) {
+    fontSizeSlider.addEventListener('input', function () {
+      manager.setFontSize(fontSizeSlider.value);
+      if (fontSizeValue) fontSizeValue.value = fontSizeSlider.value + ' px';
+    });
+  }
+
   swatches.forEach(function (swatch) {
     swatch.addEventListener('click', function () {
       var hue = swatch.getAttribute('data-theme-hue-preset');
@@ -81,6 +108,8 @@
       manager.setHue(280);
       manager.setDensity('comfortable');
       manager.setCorner('soft');
+      manager.setFontFamily('Cairo');
+      manager.setFontSize(16);
       manager.setMode('light');
       syncControls();
     });

@@ -266,6 +266,9 @@
 
 {% block modals %}
 <!-- Course Modal -->
+{# Write control: courses_list is reachable by any courses.view holder, and
+   courses_create/courses_edit require courses.manage. Hide the modal too. #}
+{% if can_manage %}
 <div id="courseModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 no-print">
   <div class="absolute inset-0 bg-black/40" onclick="closeModal()"></div>
   <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
@@ -376,6 +379,7 @@
     </div>
   </div>
 </div>
+{% endif %}
 
 <!-- Detail Drawer -->
 <div id="drawerOverlay" class="drawer-overlay fixed inset-0 bg-black/40 z-40 hidden print-hidden" onclick="closeDrawer()"></div>
