@@ -357,7 +357,7 @@ def test_active_system_role_is_protected_even_without_assignment_references(
     role = _fetchone(
         db_path,
         "SELECT id, is_active, is_protected_role FROM admin_assignment_types "
-        "WHERE internal_code = 'exam' AND name = 'رئيس قسم الامتحانات'",
+        "WHERE internal_code = 'exam' AND name = 'رئيس قسم الدراسة والامتحانات'",
     )
     assert role is not None
     assert role['is_active'] == 1
@@ -382,6 +382,26 @@ def test_active_system_role_is_protected_even_without_assignment_references(
         db_path,
         'SELECT id FROM admin_assignment_types WHERE id = ?', (role['id'],),
     ) == {'id': role['id']}
+
+
+def test_retired_system_role_labels_are_inactive(lookup_setup):
+    db_path, _manager, _ = lookup_setup
+    retired_labels = (
+        'رئيس قسم',
+        'رئيس قسم البحث والتطوير',
+        'رئيس قسم الامتحانات',
+    )
+    conn = connect(str(db_path))
+    rows = conn.execute(
+        'SELECT name, is_active FROM admin_assignment_types '
+        'WHERE name IN (?, ?, ?)',
+        retired_labels,
+    ).fetchall()
+    conn.close()
+
+    assert {row['name']: row['is_active'] for row in rows} == {
+        label: 0 for label in retired_labels
+    }
 
 
 def test_inactive_unreferenced_orphan_role_record_is_removable(lookup_setup):

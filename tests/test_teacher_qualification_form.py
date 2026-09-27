@@ -85,10 +85,12 @@ def test_admin_assignment_options_use_canonical_titles(office_client):
     assert option_labels.count('رئيس القسم العلمي') == 1
     assert option_labels.count('رئيس قسم') == 0
     assert option_labels.count('قسم الإدارة والامتحانات') == 0
+    assert option_labels.count('رئيس قسم البحث والتطوير') == 0
+    assert option_labels.count('رئيس قسم الامتحانات') == 0
+    assert option_labels.count('رئيس قسم الدراسة والامتحانات') == 1
     assert '<optgroup label="الأدوار التي تمنح صلاحيات">' in position_select.group(1)
     assert '<optgroup label="التكليفات النصية">' in position_select.group(1)
     assert 'name="admin_assignment_type_id"' in body
-    assert option_labels.count('رئيس قسم الامتحانات') == 1
     conn = connect(flask_db.DATABASE)
     assignment_type_id = conn.execute(
         "SELECT id FROM admin_assignment_types WHERE name = 'رئيس القسم العلمي'"

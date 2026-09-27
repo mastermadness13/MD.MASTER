@@ -357,6 +357,19 @@ def _ensure_managed_lookup_metadata(conn: sqlite3.Connection) -> None:
         )
         _mark_migration_done(conn, alias_migration)
 
+    retired_role_labels_migration = 'managed_admin_assignment_retired_role_labels_v3'
+    if not _migration_done(conn, retired_role_labels_migration):
+        conn.execute(
+            '''UPDATE admin_assignment_types SET is_active = 0
+               WHERE is_system_linked = 1 AND name IN (?, ?, ?)''',
+            (
+                'رئيس قسم',
+                'رئيس قسم البحث والتطوير',
+                'رئيس قسم الامتحانات',
+            ),
+        )
+        _mark_migration_done(conn, retired_role_labels_migration)
+
     protection_migration = 'managed_admin_assignment_role_protection_v1'
     if not _migration_done(conn, protection_migration):
         # Retain inactive role rows when they are the last entry for a key;

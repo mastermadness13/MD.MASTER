@@ -225,11 +225,6 @@ def api_exam_department_cell_save():
 
     exam_date = exam_service.resolve_exam_date(db, week, day) or ''
 
-    conflicts = exam_service.check_cell_conflicts(
-        db, dept_id, semester, week, day, room_id, start_time, end_time, exclude_id=schedule_id,
-    )
-    if conflicts:
-        return ok({'has_conflicts': True, 'conflicts': conflicts})
 
     try:
         schedule_id = exam_service.save_cell_exam(

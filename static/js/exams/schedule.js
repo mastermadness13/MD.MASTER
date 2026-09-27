@@ -553,16 +553,7 @@
           exam_type: currentExamType()
         };
         if (isEdit) payload.schedule_id = existing.exam.id;
-        window.Exams.api.post('/api/exams/department-schedule/cell', payload).then(function (res) {
-          if (res && res.has_conflicts) {
-            saveBtn.disabled = false;
-            conflictsEl.classList.remove('hidden');
-            conflictsEl.innerHTML = '<div class="flex items-center gap-1 mb-sm text-red-700 font-bold"><span class="material-symbols-outlined text-[18px]">warning</span>تعارض في الجدول:</div>' +
-              '<ul class="list-disc pr-5 space-y-1 text-body-md text-red-700">' +
-              (res.conflicts || []).map(function (c) { return '<li>' + esc(c.message) + '</li>'; }).join('') +
-              '</ul>';
-            return;
-          }
+       
           window.ExamToast(isEdit ? 'تم تحديث الامتحان' : 'تمت إضافة الامتحان');
           closeModal();
           reloadTable();
