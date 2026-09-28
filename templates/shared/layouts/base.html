@@ -76,36 +76,6 @@
     </div>
 
     <div class="topbar-actions flex items-center gap-sm">
-      {# Notification bell. Gated on the same dashboard.view permission the
-         API enforces, so the button never appears for a role that would get
-         a 403 from /api/notifications. #}
-      {% if user and has_permission('dashboard.view') %}
-      <div class="notif-dropdown">
-        <button type="button" id="notifBellBtn" class="topbar-icon-button notif-bell-btn"
-                aria-expanded="false" aria-controls="notifMenu" aria-haspopup="true"
-                aria-label="الإشعارات" title="الإشعارات">
-          <span class="notif-bell notif-bell-icon-wrap" aria-hidden="true">
-            <span class="material-symbols-outlined notif-bell-icon">notifications</span>
-            <span class="notif-badge" id="notifBadge" style="display:none"></span>
-          </span>
-        </button>
-
-        <div id="notifMenu" class="notif-menu" role="dialog" aria-label="الإشعارات">
-          <div class="notif-menu-header">
-            <span>الإشعارات</span>
-            <button type="button" class="notif-mark-all" id="markAllRead">تعليم الكل كمقروء</button>
-          </div>
-          <div class="notif-menu-body" id="notifList"></div>
-        </div>
-      </div>
-      {% endif %}
-
-      {% if header_messages_url %}
-      <a href="{{ url_for(header_messages_url) }}" class="topbar-icon-button" aria-label="الرسائل" title="الرسائل">
-        <span class="material-symbols-outlined">mail</span>
-      </a>
-      {% endif %}
-
       <a href="{{ url_for('public_site.index_page') }}" class="topbar-icon-button" title="الموقع العام" aria-label="الموقع العام" target="_blank" rel="noopener">
         <span class="material-symbols-outlined">globe</span>
       </a>
@@ -247,8 +217,6 @@
 <script src="/static/js/mobile.js"></script>
 <script src="/static/js/mobile_actions.js"></script>
 <script src="{{ url_for('static', filename='js/action_menu.js') }}"></script>
-{# Shared confirmation dialog (Apple-style destructive confirmation) #}
-<script src="{{ url_for('static', filename='js/confirm_dialog.js') }}"></script>
 <div id="roleSwitchLoading" class="fixed inset-0 z-[100] hidden items-center justify-center bg-surface/95 backdrop-blur-sm" role="status" aria-live="polite" aria-label="جاري تحميل الواجهة الجديدة">
   <div class="flex flex-col items-center gap-3 text-center">
     <span class="material-symbols-outlined animate-spin text-4xl text-primary">progress_activity</span>
@@ -279,8 +247,12 @@
 
 {% include 'shared/components/theme_panel.html' %}
 <script src="{{ url_for('static', filename='js/theme_panel.js') }}"></script>
-<script src="{{ url_for('static', filename='js/notifications.js') }}"></script>
 <script src="{{ url_for('static', filename='js/print_auto.js') }}"></script>
+{# Shared confirmation dialog (Apple-style destructive confirmation).
+   MUST stay after #modal-root: the script grabs #confirmDialog on evaluation
+   and bails out silently when the markup has not been parsed yet, which
+   leaves window.askConfirm undefined and every askConfirm caller dead. #}
+<script src="{{ url_for('static', filename='js/confirm_dialog.js') }}"></script>
 
 {% block scripts %}{% endblock %}
 </body>

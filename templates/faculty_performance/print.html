@@ -12,21 +12,23 @@
 
         @media print {
             .document-page {
-                height: 190mm;
-                min-height: 0;
-                overflow: hidden;
+                height: auto !important;
+                min-height: 0 !important;
+                overflow: visible !important;
                 transform: none !important;
                 margin-bottom: 0 !important;
+                padding: 0 !important;
             }
 
             .performance-print-fit {
-                transform-origin: top right;
+                transform: none !important;
+                transform-origin: initial !important;
+                width: 100% !important;
             }
         }
 {% endblock %}
 
 {% block doc_scripts %}
-    <script src="{{ url_for('static', filename='js/faculty_performance_print_fit.js') }}"></script>
 {% endblock %}
 
 {% block back_link %}

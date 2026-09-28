@@ -29,7 +29,7 @@
           <h1 style="font-size:1.875rem; font-weight:700; color:#320058; margin:0; line-height:1.3;">جدول الامتحانات</h1>
         </div>
         <div style="text-align:left; flex:1; color:#4b4450; font-size:0.9375rem;">
-          <p style="margin:0 0 4px 0;">سنة {{ view.period.yearLabel if view.period and view.period.yearLabel else '—' }}</p>
+          <p style="margin:0 0 4px 0;">العام الدراسي {{ view.period.yearLabel if view.period and view.period.yearLabel else '—' }}</p>
           <p style="margin:0 0 4px 0;">الأسبوع {{ week }}</p>
           {% if view.semesterExamStart %}
           <p style="margin:0; font-size:0.8125rem;">فترة الامتحانات: {{ view.semesterExamStart }} — {{ view.semesterExamEnd }}</p>

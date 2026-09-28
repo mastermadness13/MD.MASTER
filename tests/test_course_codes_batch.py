@@ -28,8 +28,9 @@ def db_fx(tmp_path, monkeypatch):
         "VALUES ('office_manager', 'x', 'faculty_affairs', 'مدير مكتب أعضاء هيئة التدريس')"
     )
     # /courses/codes is gated on courses.manage, which only
-    # research_development holds; exam keeps courses.view only, and the HOD
-    # must be turned away. Each needs a real row or enforce_session_version
+    # research_development holds. exam no longer holds courses.view either, so
+    # it is redirected off every courses route, and the HOD must be turned
+    # away. Each needs a real row or enforce_session_version
     # clears the session and the request 302s to /login.
     conn.execute(
         "INSERT OR IGNORE INTO users (username, password, role, label) "
@@ -218,7 +219,14 @@ def test_codes_embed_post_redirects_back(client):
     assert [c['code'] for c in codes] == ['NET101', 'OLD2', 'OLD3']
 
 
-def test_view_only_role_has_no_codes_tab(app_fx, db_fx):
+def test_exam_department_is_turned_away_from_courses(app_fx, db_fx):
+    """The Studies & Exams role no longer holds courses.view.
+
+    It used to load /courses and merely lose the codes tab, because
+    courses.view was granted for reading course names. With the section
+    hidden the role is redirected off both courses routes instead, so the
+    codes tab question cannot even arise.
+    """
     c = app_fx.test_client()
     with c.session_transaction() as sess:
         sess['user_id'] = _user_id('exam_user')
@@ -226,8 +234,16 @@ def test_view_only_role_has_no_codes_tab(app_fx, db_fx):
         sess['username'] = 'exam_user'
         sess['department_id'] = None
         sess['_csrf_token'] = 't'
-    r = c.get('/courses')
-    assert r.status_code == 200
-    body = r.get_data(as_text=True)
-    assert 'viewCodes' not in body, 'codes editor is hidden for view-only roles'
-    assert 'tabCodesBtn' not in body
+    for route in ('/courses', '/courses/codes'):
+        r = c.get(route)
+        assert r.status_code == 302, f'exam role can still load {route}'
+        assert 'viewCodes' not in r.get_data(as_text=True)
+    # The managing role keeps both.
+    with c.session_transaction() as sess:
+        sess['user_id'] = _user_id('rd_officer')
+        sess['role'] = 'research_development'
+        sess['username'] = 'rd_officer'
+        sess['department_id'] = None
+        sess['_csrf_token'] = 't'
+    assert c.get('/courses').status_code == 200
+    assert c.get('/courses/codes').status_code == 200

@@ -79,6 +79,20 @@ def active_version_condition(alias: str = 't') -> str:
             f"(SELECT id FROM timetable_versions WHERE status = 'active'))")
 
 
+# /     /     >---- شرط SQL يستبعد المحاضرات المؤقتة التي انتهت مدتها
+def not_expired_condition(alias: str = 't') -> str:
+    """SQL fragment keeping only rows that should still be displayed.
+
+    A lecture the department created without a teacher is a placeholder: it
+    gets an ``expires_at`` stamp and disappears from every grid once that
+    passes, so a course nobody picked up does not sit in the timetable
+    forever. Assigning a teacher clears the stamp, so this never touches a
+    real lecture.
+    """
+    return (f"({alias}.teacher_id IS NOT NULL OR {alias}.expires_at IS NULL "
+            f"OR {alias}.expires_at > datetime('now'))")
+
+
 class TimetableService:
     """Class-based timetable service with repository injection.
 
@@ -152,6 +166,8 @@ class TimetableService:
             params.append(selected_section)
 
         conditions.append(active_version_condition('t'))
+        # /     /     >---- نفس الفلترة: القراءة الجماعية لكل الأقسام
+        conditions.append(not_expired_condition('t'))
 
         where_clause = ' AND '.join(conditions)
         entries = self._repo.query_entries(where_clause, params)

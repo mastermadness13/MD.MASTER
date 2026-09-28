@@ -55,6 +55,20 @@
     window.setTimeout(resizeAllTextareas, 0);
   }
 
+  /* The curriculum tables resize their own rows (initSection), but the
+     standalone fields — objectives, textbooks, practical content — sat
+     outside them and kept the height measured on load. Since
+     .cc-sheet textarea is `height: var(--cc-auto-height)` with
+     `overflow: hidden`, anything typed after that was invisible on screen
+     and cut off in print. One delegated listener covers every textarea. */
+  function initSheetTextareaResize() {
+    if (!sheet) return;
+    sheet.addEventListener('input', function (event) {
+      var el = event.target;
+      if (el && el.matches && el.matches('textarea')) autoResize(el);
+    });
+  }
+
   /* Multi-page print: measure only, never force a one-page shrink. */
   function preparePrint() {
     if (!sheet) return;
@@ -443,6 +457,7 @@
     initialized = true;
     initCurriculum();
     initTranslation();
+    initSheetTextareaResize();
     initFormBehavior();
     initEnterNavigation();
     markExistingEnglishManual();
@@ -468,11 +483,39 @@
 
   window.flushCourseContentTranslations = flushTranslations;
 
+  /* The print dialog must always answer the click: cap the wait for the
+     English translations, then print whatever is on the sheet. */
+  var PRINT_WAIT_MS = 3000;
+
+  function withinDeadline(promise, ms) {
+    return new Promise(function (resolve) {
+      var settled = false;
+      function done() {
+        if (settled) return;
+        settled = true;
+        resolve();
+      }
+      var timer = window.setTimeout(done, ms);
+      Promise.resolve(promise).then(function () {
+        window.clearTimeout(timer);
+        done();
+      }, function () {
+        window.clearTimeout(timer);
+        done();
+      });
+    });
+  }
+
   window.downloadCourseSheet = function () {
-    if (!sheet) return;
-    Promise.resolve(flushTranslations()).then(function () {
+    var run = function () {
       preparePrint();
       window.print();
-    });
+    };
+    if (!sheet) {
+      run();
+      return;
+    }
+    var ready = Promise.resolve(flushTranslations());
+    withinDeadline(ready, PRINT_WAIT_MS).then(run);
   };
 })();

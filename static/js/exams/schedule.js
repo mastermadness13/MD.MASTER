@@ -11,8 +11,8 @@
 (function () {
   'use strict';
 
-  var MAX_WEEKS = 5;
-  var WEEK_ORDINALS = ['الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس'];
+  var WEEK_ORDINALS = ['الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس',
+                       'السادس', 'السابع', 'الثامن', 'التاسع', 'العاشر'];
   var DAYS_ORDER = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'];
 
   var AR_MONTHS = {
@@ -104,7 +104,14 @@
     var currentDeptKey = opts.deptKey || null;
     if (!currentDeptKey) {
       for (var i = 0; i < deptOrder.length; i++) {
-        if (!deptOrder[i].isGeneral) { currentDeptKey = deptOrder[i].key; break; }
+        if (!deptOrder[i].isGeneral && deptOrder[i].exams.length) {
+          currentDeptKey = deptOrder[i].key; break;
+        }
+      }
+      if (!currentDeptKey) {
+        for (var j = 0; j < deptOrder.length; j++) {
+          if (!deptOrder[j].isGeneral) { currentDeptKey = deptOrder[j].key; break; }
+        }
       }
       if (!currentDeptKey && deptOrder.length) currentDeptKey = deptOrder[0].key;
     }
@@ -219,11 +226,6 @@
           (active ? 'bg-surface-container-lowest shadow-sm text-primary' : 'text-on-surface-variant hover:text-on-surface') +
           '">' + weekLabel(w) + '</button>';
       });
-      var maxW = Math.max.apply(null, ws);
-      if (maxW < MAX_WEEKS && canEdit) {
-        html += '<button type="button" id="exam-week-add" class="px-3 py-1.5 rounded text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1">' +
-          '<span class="material-symbols-outlined text-[16px]">add</span><span class="text-xs font-bold">أسبوع</span></button>';
-      }
       weekTabsEl.innerHTML = html;
       weekTabsEl.querySelectorAll('[data-week]').forEach(function (b) {
         b.addEventListener('click', function () {
@@ -231,15 +233,11 @@
           renderAll();
         });
       });
-      var addBtn = weekTabsEl.querySelector('#exam-week-add');
-      if (addBtn) addBtn.addEventListener('click', function () {
-        ws.push(maxW + 1);
-        currentWeek = maxW + 1;
-        renderAll();
-      });
 
-      var showPill = ws.length > 1 || maxW < MAX_WEEKS;
-      weekTabsEl.style.display = showPill ? '' : 'none';
+      // Every week of the exam period arrives from the server, so there is
+      // no "add week" control: a client-side week had no dates and was lost
+      // on reload.
+      weekTabsEl.style.display = ws.length > 1 ? '' : 'none';
     }
 
     // ── Department tabs ──
@@ -267,7 +265,8 @@
     function updateTitle() {
       if (!titleEl) return;
       var dept = getDept();
-      titleEl.textContent = 'جدول الامتحانات — ' + dept.name + ' — ' + weekLabel(currentWeek);
+      var yearLabel = (data.period && data.period.yearLabel) || '—';
+      titleEl.textContent = esc(dept.name) + ' — العام الدراسي ' + esc(yearLabel);
     }
 
     function renderAll() {
@@ -553,7 +552,7 @@
           exam_type: currentExamType()
         };
         if (isEdit) payload.schedule_id = existing.exam.id;
-       
+        window.Exams.api.post('/api/exams/department-schedule/cell', payload).then(function () {
           window.ExamToast(isEdit ? 'تم تحديث الامتحان' : 'تمت إضافة الامتحان');
           closeModal();
           reloadTable();
@@ -607,6 +606,11 @@
     window.Exams.api.get('/api/exams/schedule').then(function (data) {
       if (generation !== initGeneration) return;
       render(panel, data || {}, opts);
+      // The period editor needs the resolved exam range, which only exists
+      // after this load resolves.
+      document.dispatchEvent(new CustomEvent('exams:schedule-rendered', {
+        detail: (data && data.period) || null
+      }));
     }).catch(function (err) {
       if (generation !== initGeneration) return;
       panel.innerHTML = '<div class="ws-error">' + (window.ExamEsc ? window.ExamEsc(err.message) : err.message) + '</div>';

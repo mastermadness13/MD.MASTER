@@ -7,9 +7,14 @@
    Optional attributes: data-confirm-title, data-confirm-label, data-confirm-danger.
    Focus moves to Cancel on open and returns to the trigger on close. */
 (function () {
-  var overlay = document.getElementById('confirmDialog');
-  if (!overlay) return;
+  function boot() {
+    var overlay = document.getElementById('confirmDialog');
+    if (!overlay) return false;
+    wire(overlay);
+    return true;
+  }
 
+  function wire(overlay) {
   var titleEl = document.getElementById('confirmDialogTitle');
   var msgEl = document.getElementById('confirmDialogMessage');
   var iconEl = document.getElementById('confirmDialogIcon');
@@ -118,4 +123,23 @@
     pendingCallback = (opts && typeof opts.onConfirm === 'function') ? opts.onConfirm : null;
     open(opts || {});
   };
+
+  // The script tag must sit after #confirmDialog; if some layout ever moves it
+  // earlier, wire up as soon as the markup exists instead of dying quietly.
+  }
+
+  if (boot()) return;
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () {
+      if (!boot()) warnMissingOverlay();
+    });
+  } else {
+    warnMissingOverlay();
+  }
+
+  function warnMissingOverlay() {
+    if (window.console && window.console.warn) {
+      window.console.warn('confirm_dialog: #confirmDialog not found — window.askConfirm is unavailable');
+    }
+  }
 })();

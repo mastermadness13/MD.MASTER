@@ -176,7 +176,7 @@
                     <span>{% if e.start_time and e.end_time %}{{ format_time12(e.start_time) }} ← {{ format_time12(e.end_time) }}{% elif e.start_time %}{{ format_time12(e.start_time) }}{% endif %}</span>
                   </div>
                   <div class="flex items-center gap-1.5 text-on-surface-variant mb-1">
-                    <span class="material-symbols-outlined text-[14px]">person</span> {{ teacher_label(e.teacher_name) if e.teacher_name else 'محاضرة بدون أستاذ' }}
+                    <span class="material-symbols-outlined text-[14px]">person</span> {{ teacher_label(e.teacher_name) if e.teacher_name else '---' }}
                   </div>
                   <div class="flex items-center gap-1.5 text-on-surface-variant mb-1">
                     <span class="material-symbols-outlined text-[14px]">meeting_room</span> {{ e.room_name or '—' }}
@@ -273,7 +273,7 @@
                 {% if duration_label(e.start_time, e.end_time) %}<span>· {{ duration_label(e.start_time, e.end_time) }}</span>{% endif %}
               </div>
               <div class="tt-mrow">
-                <span class="material-symbols-outlined">person</span> {{ teacher_label(e.teacher_name) if e.teacher_name else 'محاضرة بدون أستاذ' }}
+                <span class="material-symbols-outlined">person</span> {{ teacher_label(e.teacher_name) if e.teacher_name else '---' }}
               </div>
               <div class="tt-mrow">
                 <span class="material-symbols-outlined">meeting_room</span> {{ e.room_name or '—' }}

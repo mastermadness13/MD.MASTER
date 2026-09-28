@@ -528,46 +528,6 @@
   </div>
   {% endif %}
 
-  <!-- Update form panel (published) -->
-  {% if rnd == 'show' and submission.status in ('approved', 'published') %}
-  <div class="bg-white rounded-2xl shadow-sm border-2 border-primary/30 p-5 mb-6 no-print">
-    <h2 class="font-bold text-primary flex items-center gap-2 mb-4">
-      <span class="material-symbols-outlined">update</span>
-      تحديث ملف النموذج
-    </h2>
-    <p class="text-sm text-on-surface-variant mb-4">
-      يُستبدل ملف PDF المرفق بهذا النموذج فقط{% if submission.period_label %} ({{ submission.period_label }}){% endif %} —
-      تُحفظ نسخة من الملف السابق تلقائياً عند الاستبدال.
-    </p>
-    <form id="courseContentReplaceForm" method="POST" action="{{ url_for('teacher_pages.super_admin_course_content_update_form') }}" enctype="multipart/form-data"
-          data-confirm-replace="{{ '1' if submission.filename else '0' }}">
-      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-      <input type="hidden" name="submission_id" value="{{ submission.id }}">
-      <div class="flex flex-wrap items-end gap-3">
-        <div>
-          <label class="block text-xs font-bold text-on-surface-variant mb-1.5">الفصل الدراسي</label>
-          <select name="academic_period_id"
-                  class="bg-surface-card border border-outline-variant rounded-lg px-3 py-2.5 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer">
-            {% for p in academic_periods | default([]) %}
-            <option value="{{ p.id }}"{% if (submission.academic_period_id or default_period_id) == p.id %} selected{% endif %}>{{ p.label or (p.term ~ ' ' ~ p.year) }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-on-surface-variant mb-1.5">ملف النموذج (PDF)</label>
-          <input type="file" name="file" accept="application/pdf,.pdf" required
-                 class="block w-full max-w-sm text-sm text-on-surface-variant file:mr-4 file:ml-0 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-primary file:text-on-primary file:font-bold file:cursor-pointer cursor-pointer">
-        </div>
-        <button type="submit"
-                class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-5 py-2.5 rounded-lg text-sm font-bold transition shadow-sm cursor-pointer">
-          <span class="material-symbols-outlined text-lg">upload_file</span>
-          تحديث النموذج
-        </button>
-      </div>
-    </form>
-  </div>
-  {% endif %}
-
   <!-- Edit content panel -->
   {% if rnd == 'show' %}
   <div class="bg-white rounded-2xl shadow-sm border-2 border-primary/30 p-5 mb-6 no-print">

@@ -21,6 +21,9 @@ from database.seed_data import (
     DEFAULT_ROOMS,
     DEFAULT_TEACHERS,
     HIDDEN_DEPARTMENTS,
+    SHARED_COURSE_CODE_PREFIX,
+    SHARED_COURSES_ALL_DEPARTMENTS,
+    SHARED_COURSES_EXCLUDED_DEPARTMENTS,
 )
 
 
@@ -99,6 +102,76 @@ def _rebalance_default_courses(conn: sqlite3.Connection) -> int:
         )
         updated += cursor.rowcount if cursor.rowcount is not None else 0
     return updated
+
+
+def _shared_course_departments(conn: sqlite3.Connection) -> list:
+    """Academic departments the shared subjects belong to (القسم العام excluded)."""
+    rows = conn.execute(
+        '''SELECT id, name FROM departments
+           WHERE hidden = 0 AND type = 'academic' AND deleted_at IS NULL
+           ORDER BY id'''
+    ).fetchall()
+    return [row for row in rows if row['name'] not in SHARED_COURSES_EXCLUDED_DEPARTMENTS]
+
+
+def _next_shared_course_code(conn: sqlite3.Connection, year: int) -> str:
+    """First free ``<prefix><year><NN>`` code, so no code is hardcoded per subject."""
+    taken = {
+        (row['code'] or '').replace('هـ', 'ه').strip()
+        for row in conn.execute('SELECT code FROM courses').fetchall()
+    }
+    stem = f'{SHARED_COURSE_CODE_PREFIX}{year}'
+    sequence = 1
+    while f'{stem}{sequence:02d}' in taken:
+        sequence += 1
+    return f'{stem}{sequence:02d}'
+
+
+def _seed_shared_courses(conn: sqlite3.Connection) -> tuple:
+    """Attach the shared subjects to every academic department, once.
+
+    Idempotent: a subject already present (looked up by name) is reused, and a
+    subject the office deleted is never resurrected.  Returns
+    ``(courses_created, placements_created)``.
+    """
+    departments = _shared_course_departments(conn)
+    if not departments:
+        return 0, 0
+
+    created_courses = 0
+    created_placements = 0
+    for name, semester in SHARED_COURSES_ALL_DEPARTMENTS:
+        if conn.execute(
+            'SELECT 1 FROM courses WHERE name = ? AND deleted_at IS NOT NULL', (name,)
+        ).fetchone():
+            continue
+
+        course = conn.execute(
+            'SELECT id FROM courses WHERE name = ? AND deleted_at IS NULL', (name,)
+        ).fetchone()
+        if course:
+            course_id = course['id']
+        else:
+            year = -(-semester // 2)
+            cursor = conn.execute(
+                '''INSERT INTO courses (name, code, department, department_id, year,
+                                       semester, theoretical_hours, practical_hours,
+                                       total_hours, icon)
+                   VALUES (?, ?, ?, NULL, ?, ?, 0, 0, 0, ?)''',
+                (name, _next_shared_course_code(conn, year), 'مشترك بين الأقسام',
+                 year, semester, COURSE_ICON_MAP.get(name, DEFAULT_COURSE_ICON)),
+            )
+            course_id = cursor.lastrowid
+            created_courses += 1
+
+        for dept in departments:
+            created_placements += conn.execute(
+                'INSERT OR IGNORE INTO course_departments (course_id, department_id, semester) '
+                'VALUES (?, ?, ?)',
+                (course_id, dept['id'], semester),
+            ).rowcount or 0
+
+    return created_courses, created_placements
 
 
 def _seed_default_teachers(conn: sqlite3.Connection, owner_user_id: int) -> int:
@@ -230,6 +303,7 @@ def bootstrap_defaults(path: str) -> None:
     # أي تعديل من المسؤول (تغيير قسم/فصل مقرر) عند كل إقلاع.
     if not courses_existed:
         _rebalance_default_courses(db)
+    _seed_shared_courses(db)
     owner = db.execute("SELECT id FROM users WHERE username = 'office_manager'").fetchone()
     owner_user_id = owner['id'] if owner else 1
     _seed_default_teachers(db, owner_user_id)

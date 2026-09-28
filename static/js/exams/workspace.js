@@ -106,7 +106,7 @@
               '<h1 style="font-size:1.25rem; font-weight:700; color:#320058; margin:0; line-height:1.2;">جدول الامتحانات</h1>' +
             '</div>' +
             '<div style="text-align:left; flex:1; color:#4b4450; font-size:0.75rem;">' +
-              '<p style="margin:0 0 2px 0;">سنة ' + escapeHtml(yearLabel || '—') + '</p>' +
+              '<p style="margin:0 0 2px 0;">العام الدراسي ' + escapeHtml(yearLabel || '—') + '</p>' +
               '<p style="margin:0 0 2px 0;">الأسبوع ' + escapeHtml(week) + '</p>' +
               periodLine +
             '</div>' +
@@ -168,7 +168,46 @@
   var periodEnd = document.getElementById('period-end');
   var periodSave = document.getElementById('period-save');
   var periodHint = document.getElementById('period-hint');
+  var periodPublish = document.getElementById('period-publish');
+  var periodStatus = document.getElementById('period-status');
   var canManagePeriod = role === 'exam';
+
+  // The period is the publish gate for the public site, so its state has to be
+  // visible here. Saving the dates drops the period back to draft.
+  function applyPeriodStatus(status) {
+    if (!periodStatus) return;
+    var published = status === 'published';
+    periodStatus.textContent = published ? 'منشور للعموم' : 'مسودة (غير منشور)';
+    periodStatus.className = 'text-xs font-bold ' + (published ? 'text-green-600' : 'text-amber-600');
+    if (periodPublish) {
+      periodPublish.textContent = '';
+      var icon = document.createElement('span');
+      icon.className = 'material-symbols-outlined text-[18px]';
+      icon.textContent = published ? 'how_to_reg' : 'publish';
+      periodPublish.appendChild(icon);
+      periodPublish.appendChild(document.createTextNode(published ? ' إعادة النشر' : ' نشر الجدول'));
+    }
+  }
+
+  function periodRangeText(p) {
+    if (!p || !p.weekCount) return '';
+    var bits = [];
+    if (p.firstExamDateDisplay) bits.push('من ' + p.firstExamDateDisplay);
+    if (p.lastExamDateDisplay) bits.push('إلى ' + p.lastExamDateDisplay);
+    var wk = p.weekCount === 1 ? 'أسبوع واحد' : (p.weekCount === 2 ? 'أسبوعان' : p.weekCount + ' أسابيع');
+    bits.push(wk);
+    return 'أيام الامتحانات الفعلية: ' + bits.join(' · ');
+  }
+
+  function applyPeriodRange(p) {
+    var text = periodRangeText(p);
+    if (text && periodHint) periodHint.textContent = text;
+  }
+
+  document.addEventListener('exams:schedule-rendered', function (e) {
+    applyPeriodRange(e.detail);
+    if (e.detail) applyPeriodStatus(e.detail.periodStatus);
+  });
 
   function refreshPeriodEditor() {
     if (!canManagePeriod || !periodStart || !periodEnd) return;
@@ -186,9 +225,28 @@
       if (periodSave) periodSave.disabled = false;
       periodStart.value = sem.exam_start_date || '';
       periodEnd.value = sem.exam_end_date || '';
-      if (periodHint) periodHint.textContent = 'الافتراضي تلقائي — آخر أسبوعين من الفصل الدراسي (قابل للتعديل)';
+      applyPeriodStatus(sem.period_status);
+      if (periodHint) periodHint.textContent = 'جارٍ حساب أيام الامتحانات…';
     }).catch(function (err) {
       if (periodHint) periodHint.textContent = err.message;
+    });
+  }
+
+  if (periodPublish) {
+    periodPublish.addEventListener('click', function () {
+      if (!window.confirm('سيظهر جدول الامتحانات للعموم مباشرة على الموقع العام. هل تريد النشر؟')) return;
+      periodPublish.disabled = true;
+      window.Exams.api.post('/api/exams/period/publish', {}).then(function () {
+        window.ExamToast('تم نشر جدول الامتحانات — سيظهر على الموقع العام');
+        periodPublish.disabled = false;
+        applyPeriodStatus('published');
+        if (window.ExamSchedule && typeof window.ExamSchedule.init === 'function' && panel) {
+          window.ExamSchedule.init(panel, { role: role, scoped: scoped });
+        }
+      }).catch(function (err) {
+        periodPublish.disabled = false;
+        window.ExamToast(err.message, true);
+      });
     });
   }
 

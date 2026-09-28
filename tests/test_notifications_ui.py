@@ -153,43 +153,27 @@ def test_notifications_are_scoped_to_the_signed_in_user(client, db_fx):
     assert payload['unread_count'] == 0
 
 
-def test_bell_renders_in_the_topbar_with_a_disclosure(client):
+def test_notifications_and_mail_are_hidden_from_the_topbar(client):
     body = client.get('/timetable/department').get_data(as_text=True)
-    assert 'id="notifBellBtn"' in body, 'the bell is still missing'
-    assert 'id="notifMenu"' in body
-    assert 'id="notifList"' in body, (
-        'notifications.js renders into #notifList; without it the fetch runs '
-        'but nothing is displayed'
-    )
-    assert 'id="notifBadge"' in body
-    assert 'id="markAllRead"' in body
-
-    btn = body[body.index('id="notifBellBtn"') - 200: body.index('id="notifBellBtn"') + 200]
-    assert 'aria-expanded="false"' in btn, 'the disclosure state is not announced'
-    assert 'aria-controls="notifMenu"' in btn
+    assert 'id="notifBellBtn"' not in body
+    assert 'id="notifMenu"' not in body
+    assert 'id="notifList"' not in body
+    assert 'id="notifBadge"' not in body
+    assert '>الإشعارات<' not in body
+    assert '>الرسائل<' not in body
+    assert '>mail<' not in body
 
 
-def test_notifications_script_is_loaded(client):
+def test_notifications_script_is_not_loaded(client):
     body = client.get('/timetable/department').get_data(as_text=True)
-    assert 'js/notifications.js' in body, (
-        'notifications.js exists and has CSS, but was never included'
-    )
+    assert 'js/notifications.js' not in body
 
 
-def test_bell_is_gated_on_the_permission_the_api_enforces():
-    """The API is gated on dashboard.view. Rendering the button for a role
-    without it would only produce a 403 on first poll."""
+def test_notification_markup_is_removed_from_the_layout():
     with open('templates/shared/layouts/base.html', encoding='utf-8') as fh:
         src = fh.read()
-    at = src.index('id="notifBellBtn"')
-    window = src[max(0, at - 600):at]
-    assert "has_permission('dashboard.view')" in window
-
-    with open('api_routes/notifications.py', encoding='utf-8') as fh:
-        api_src = fh.read()
-    assert "api_permission_required('dashboard.view')" in api_src, (
-        'the API permission changed; keep the template gate in sync'
-    )
+    assert 'id="notifBellBtn"' not in src
+    assert 'header_messages_url' not in src
 
 
 def test_menu_can_be_opened_by_click_not_hover_only():

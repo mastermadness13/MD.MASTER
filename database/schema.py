@@ -3130,6 +3130,16 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
         # /     /     >---- شعبة أ/ب/ج للقسم العام (شعب وليست فصولاً)
         _migrate_timetable_section(conn)
 
+    # /     /     >---- انتهاء المحاضرة المؤقتة: صف بلا محاضر يبقى هذا المدّة ثم
+    # /     /     >---- يختفي من العرض. العمود يغذّي الفلترة وقت الطلب فقط، فلا
+    # /     /     >---- حاجة لأي جدولة دورية ولا حذف فعلي.
+    # /     /     >---- الفحص على الأعمدة الحيّة لا على existing_tables: تلك لقطة
+    # /     /     >---- قبل التعديلات، وقد تتنافر مع فرع إنشاء الجدول (انظر
+    # /     /     >---- exam_settings) فتضيع الأعمدة على قواعد جديدة.
+    tt_live_cols = _get_column_names(conn, 'timetable')
+    if tt_live_cols and 'expires_at' not in tt_live_cols:
+        _safe_add_column(conn, 'timetable', 'expires_at', 'TIMESTAMP')
+
     # /     /     >---- أعمدة التوقيع لجدول الامتحانات
     if 'exam_schedule' in existing_tables:
         es_columns = _get_column_names(conn, 'exam_schedule')
@@ -3331,8 +3341,13 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
         """)
         conn.execute("INSERT INTO exam_settings (id) VALUES (1)")
 
-    if 'exam_settings' in existing_tables:
-        exam_set_cols = _get_column_names(conn, 'exam_settings')
+    # /     /     >---- الأعمدة الناقصة: يعمل على القواعد الجديدة والقديمة معاً.
+    # /     /     >---- كان الشرط 'exam_settings in existing_tables' حصراً مع فرع
+    # /     /     >---- الإنشاء أعلاه (existing_tables لقطة قبل التعديلات)، فكان
+    # /     /     >---- يُنفَّذ لأحدهما فقط: قاعدة جديدة تُنشأ بلا هذه الأعمدة أبداً،
+    # /     /     >---- ومع ذلك ينشر و period_status يكتبان فيها فيتعطلان.
+    exam_set_cols = _get_column_names(conn, 'exam_settings')
+    if exam_set_cols:
         if 'exam_start_time' not in exam_set_cols:
             _safe_add_column(conn, 'exam_settings', 'exam_start_time', "TEXT DEFAULT '09:00'")
         if 'exam_end_time' not in exam_set_cols:

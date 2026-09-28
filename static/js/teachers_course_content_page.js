@@ -37,6 +37,20 @@
       }
     }
 
+    function confirmSend() {
+      if (typeof window.askConfirm === 'function') {
+        window.askConfirm({
+          message: 'سيتم حفظ مفردات المقرر ونشرها في الجدول الدراسي مباشرة. متابعة؟',
+          onConfirm: submitCourseContentForm
+        });
+        return;
+      }
+      /* Never swallow the click: fall back to the native prompt. */
+      if (window.confirm('سيتم حفظ مفردات المقرر ونشرها في الجدول الدراسي مباشرة. متابعة؟')) {
+        submitCourseContentForm();
+      }
+    }
+
     form.addEventListener('submit', function (e) {
       var btn = e.submitter;
       if (btn && btn.dataset.action) {
@@ -44,32 +58,11 @@
         e.preventDefault();
         form.elements['action'].value = btn.dataset.action;
         if (btn.dataset.action === 'send') {
-          window.askConfirm({
-            message: 'سيتم حفظ مفردات المقرر ونشرها في الجدول الدراسي مباشرة. متابعة؟',
-            onConfirm: submitCourseContentForm
-          });
+          confirmSend();
         } else {
           submitCourseContentForm();
         }
       }
-    });
-  }
-
-  var replaceForm = document.getElementById('courseContentReplaceForm');
-  if (replaceForm) {
-    replaceForm.addEventListener('submit', function (e) {
-      var fileInput = replaceForm.elements['file'];
-      if (!fileInput || !fileInput.files || !fileInput.files.length) {
-        e.preventDefault();
-        window.alert('يرجى اختيار ملف PDF أولاً');
-        return;
-      }
-      if (replaceForm.getAttribute('data-confirm-replace') !== '1') return;
-      e.preventDefault();
-      window.askConfirm({
-        message: 'يوجد ملف حالي لهذا النموذج وسيُستبدل بالنسخة الجديدة. متابعة الاستبدال؟',
-        onConfirm: function () { replaceForm.submit(); }
-      });
     });
   }
 

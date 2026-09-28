@@ -38,6 +38,7 @@ _seed_spec = _iu.spec_from_file_location(
 _seed_mod = _iu.module_from_spec(_seed_spec)
 _seed_spec.loader.exec_module(_seed_mod)
 _bootstrap_defaults = _seed_mod.bootstrap_defaults
+_seed_shared_courses = _seed_mod._seed_shared_courses
 
 DATABASE = Config.DATABASE
 
@@ -148,6 +149,9 @@ def ensure_database_schema() -> None:
     conn = connect(DATABASE)
     try:
         ensure_schema(conn)
+        # /     /     >---- (``flask run`` لا يمر على bootstrap_defaults) فنزرع
+        # المقررات المشتركة هنا حتى تصل لكل الأقسام على أي طريقة تشغيل.
+        _seed_shared_courses(conn)
         conn.commit()
     finally:
         conn.close()

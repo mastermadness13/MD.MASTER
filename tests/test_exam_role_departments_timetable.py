@@ -138,3 +138,77 @@ def test_exam_cannot_create_timetable_entry(client, db_fx):
         (ids['dept_id'], 2, ids['teacher_id']),
     )
     assert len(rows) == 0
+
+
+# ── the exam period is the publish gate for the public site ──────────────────
+# The public site (/index.html#exams) calls /public/api/exam-schedule, which
+# builds the payload with published_only=True. Publishing the period must be
+# what makes the whole schedule public in one go; a draft period must expose
+# nothing, so a half-built schedule never leaks.
+
+def _seed_exam(ids, period_status='draft'):
+    conn = sqlite3.connect(flask_db.DATABASE)
+    conn.execute('DELETE FROM exam_settings')
+    conn.execute(
+        "INSERT INTO exam_settings "
+        "(exam_start_date, exam_end_date, period_status) VALUES (?, ?, ?)",
+        ('2026-09-01', '2026-10-30', period_status),
+    )
+    conn.execute(
+        'INSERT INTO exam_schedule '
+        '(department_id, course_id, room_id, week, day_ar, semester, '
+        "start_time, end_time, exam_type, status) "
+        "VALUES (?, ?, ?, 1, 'الأحد', 2, '09:00', '10:00', 'written', 'scheduled')",
+        (ids['dept_id'], ids['course_id'], ids['room_id']),
+    )
+    conn.commit()
+    conn.close()
+
+
+def _public_exam_count(app_fx):
+    payload = app_fx.test_client().get('/public/api/exam-schedule').get_json()
+    return sum(len(d.get('exams') or []) for d in payload['departments'])
+
+
+def test_draft_period_publishes_nothing(app_fx, db_fx):
+    """While the period is a draft the public site sees no exam at all."""
+    _seed_exam(_ids(db_fx), period_status='draft')
+    assert _public_exam_count(app_fx) == 0
+
+
+def test_publishing_the_period_reveals_the_whole_schedule(app_fx, db_fx):
+    """One publish action exposes every scheduled row, whatever its status.
+
+    Rows stay 'scheduled' here: the period is the gate, so no per-row publish
+    step is required.
+    """
+    ids = _ids(db_fx)
+    _seed_exam(ids, period_status='draft')
+    assert _public_exam_count(app_fx) == 0
+
+    _q("UPDATE exam_settings SET period_status='published'")
+    assert _public_exam_count(app_fx) == 1
+
+
+def test_saving_the_period_dates_returns_it_to_draft(app_fx, db_fx, client):
+    """Editing the dates must not leave a stale published period public."""
+    ids = _ids(db_fx)
+    _seed_exam(ids, period_status='published')
+    assert _public_exam_count(app_fx) == 1
+
+    r = client.put('/api/exams/semester-period', json={
+        'exam_start_date': '2026-09-06', 'exam_end_date': '2026-10-24',
+        '_csrf_token': 't',
+    })
+    assert r.status_code == 200
+    assert _q("SELECT period_status FROM exam_settings")[0]['period_status'] == 'draft'
+    assert _public_exam_count(app_fx) == 0
+
+
+def test_period_publish_endpoint_flips_the_gate(app_fx, db_fx, client):
+    """The publish route the UI button calls must open the gate."""
+    _seed_exam(_ids(db_fx), period_status='draft')
+    r = client.post('/api/exams/period/publish', json={'_csrf_token': 't'})
+    assert r.status_code == 200
+    assert _q("SELECT period_status FROM exam_settings")[0]['period_status'] == 'published'
+    assert _public_exam_count(app_fx) == 1

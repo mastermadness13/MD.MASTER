@@ -25,6 +25,9 @@
   var SURLS = BOOT.syllabusUrls || {};
 
   var UNASSIGNED_LABEL = 'محاضرة بدون أستاذ';
+  // /     /     >---- نص الخلية نفسها، موحّد مع بقية الشاشات. التسمية أعلاه
+  // /     /     >---- تبقى وصفاً واضحاً داخل قائمة المدرسين فقط.
+  var NO_TEACHER_CELL = '---';
 
   var selDept = P.dept ? P.dept.id : null;
   var selSem = P.selected_semester;
@@ -53,7 +56,7 @@
   }
   function teacherCell(e) {
     if (e && e.teacher_id) return esc(cleanTeacher(e.teacher_name));
-    return '<span class="tt-no-teacher">' + esc(UNASSIGNED_LABEL) + '</span>';
+    return '<span class="tt-no-teacher">' + esc(NO_TEACHER_CELL) + '</span>';
   }
   function getRoom(id) {
     for (var i = 0; i < rooms.length; i++) if (rooms[i].id === id) return rooms[i];
@@ -670,7 +673,7 @@ function refreshTeachersAvailability() {
 }
 function buildTeacherPool() {
   teacherPool = [];
-  teacherPool.push({ id: '', name: UNASSIGNED_LABEL, search: UNASSIGNED_LABEL, home: false, clear: true });
+  teacherPool.push({ id: '', name: UNASSIGNED_LABEL, search: UNASSIGNED_LABEL, home: false, clear: true, top: true });
   teachers.forEach(function (t) {
     if (!teacherAvailable(t.id)) return;
     teacherPool.push({
@@ -681,6 +684,9 @@ function buildTeacherPool() {
     });
   });
   teacherPool.sort(function (a, b) {
+    // /     /     >---- خيار «بدون أستاذ» مثبّت في الأعلى دائماً: هو مدخل
+    // /     /     >---- مختلف عن تسمية مدرس، فدفنه وسط الأسماء يربك القسم.
+    if (!!a.top !== !!b.top) return a.top ? -1 : 1;
     if (a.home !== b.home) return a.home ? -1 : 1;
     return a.name < b.name ? -1 : (a.name > b.name ? 1 : 0);
   });
@@ -766,7 +772,10 @@ function buildTeacherPool() {
       shown++;
       var btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'w-full text-right px-3 py-2 text-sm text-on-surface hover:bg-primary-container transition flex items-center justify-between gap-2';
+      // /     /     >---- عنصر «محاضرة بدون أستاذ» يُلوَّن أخضر: هو مدخل مختلف
+      // /     /     >---- عن تسمية مدرس، ولون يخبر القسم أنه قرار لا إهمال.
+      btn.className = 'w-full text-right px-3 py-2 text-sm text-on-surface hover:bg-primary-container transition flex items-center justify-between gap-2' +
+        (item.clear ? ' tt-option-unassigned' : '');
       var html = '<span>' + esc(item.detail || item.name) + '</span>';
       var badge = badgeFn ? badgeFn(item) : '';
       if (badge) html += '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary-container text-primary shrink-0">' + esc(badge) + '</span>';

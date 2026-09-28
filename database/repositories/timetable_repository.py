@@ -7,6 +7,28 @@ from database.repositories.base_repository import BaseRepository
 
 logger = logging.getLogger(__name__)
 
+
+# /     /     >---- تاريخ انتهاء محاضرة مؤقتة، محسوب في بايثون وليس كتعبير SQL.
+# /     /     >---- تمرير "datetime('now','+7 days')" كمعامل كان يخزّنه نصاً
+# /     /     >---- حرفياً، فيقارنه نصياً مع datetime('now') ولا ينتهي أبداً.
+# /     /     >---- UTC لأن المقارنة في SQL تستخدم datetime('now') وهي UTC أيضاً.
+def _placeholder_expiry() -> str:
+    from datetime import datetime, timedelta, timezone
+
+    from core.constants.system import PLACEHOLDER_TEACHER_EXPIRY_DAYS
+
+    expiry = datetime.now(timezone.utc) + timedelta(days=PLACEHOLDER_TEACHER_EXPIRY_DAYS)
+    return expiry.strftime('%Y-%m-%d %H:%M:%S')
+
+
+def _not_expired(alias: str = 't') -> str:
+    """Local alias for the service's fragment (the service imports us, so the
+    import has to be lazy)."""
+    from services.timetable_service import not_expired_condition
+
+    return not_expired_condition(alias)
+
+
 # /     /     >---- مستودع الجدول الدراسي — كل العمليات على جدول timetable
 class TimetableRepository(BaseRepository):
     table = 'timetable'
@@ -61,16 +83,26 @@ class TimetableRepository(BaseRepository):
 
     # /     /     >---- نصنع حصة جديدة ونرجع معرّفها
     def create(self, data: Dict[str, Any]) -> int:
-        """Insert a new timetable entry. Returns the new row id."""
+        """Insert a new timetable entry. Returns the new row id.
+
+        An entry with no teacher is a placeholder the department created
+        because it has nobody to teach that course. It is given an expiry so
+        it stops being shown once the department has had a chance to assign a
+        teacher. Entries with a teacher never expire.
+        """
+        expires_at = data.get('expires_at')
+        if not expires_at and not data.get('teacher_id'):
+            expires_at = _placeholder_expiry()
         cursor = self.db.execute(
             'INSERT INTO timetable (day, semester, period, course_id, teacher_id, '
-            'room_id, department_id, start_time, end_time, lecture_type, hours, version_id) '
-            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            'room_id, department_id, start_time, end_time, lecture_type, hours, '
+            'version_id, expires_at) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             (data['day'], data['semester'], data['period'],
              data['course_id'], data['teacher_id'], data['room_id'],
              data.get('department_id'), data.get('start_time', ''), data.get('end_time', ''),
              data.get('lecture_type', 'theory'), data.get('hours', 0),
-             data.get('version_id')),
+             data.get('version_id'), expires_at),
         )
         self.db.commit()
         row_id = cursor.lastrowid
@@ -86,15 +118,26 @@ class TimetableRepository(BaseRepository):
 
     # /     /     >---- نحدّث حصة (يرجع True إذا تغيّرت)
     def update(self, entry_id: int, data: Dict[str, Any]) -> bool:
-        """Update an existing timetable entry. Returns True if row was updated."""
+        """Update an existing timetable entry. Returns True if row was updated.
+
+        Assigning a teacher cancels the placeholder's expiry: the department
+        has resolved the gap, so the entry must stop disappearing. Un-assigning
+        a teacher re-arms it, otherwise clearing the field would let a lecture
+        sit in the grid forever with nobody teaching it.
+        """
+        if data.get('teacher_id'):
+            expires_at = None
+        else:
+            expires_at = data.get('expires_at') or _placeholder_expiry()
         cursor = self.db.execute(
             'UPDATE timetable SET day=?, semester=?, period=?, course_id=?, '
             'teacher_id=?, room_id=?, start_time=?, end_time=?, lecture_type=?, '
-            'hours=? WHERE id=?',
+            'hours=?, expires_at=? WHERE id=?',
             (data['day'], data['semester'], data['period'],
              data['course_id'], data['teacher_id'], data['room_id'],
              data.get('start_time', ''), data.get('end_time', ''),
-             data.get('lecture_type', 'theory'), data.get('hours', 0), entry_id),
+             data.get('lecture_type', 'theory'), data.get('hours', 0),
+             expires_at, entry_id),
         )
         self.db.commit()
         return cursor.rowcount > 0
@@ -113,22 +156,22 @@ class TimetableRepository(BaseRepository):
 
         This is the ONLY conflict check. No time-overlap logic.
         A room is unavailable if ANY current entry exists for the same day + period.
+
+        Expired teacher-less placeholders are ignored: the row is still in the
+        database, but the department cannot see it any more, so letting it hold
+        a room would produce a conflict warning pointing at nothing.
         """
+        sql = (
+            'SELECT 1 FROM timetable t WHERE t.room_id = ? AND t.day = ? AND t.period = ? '
+            'AND (t.version_id IS NULL OR t.version_id IN '
+            "(SELECT id FROM timetable_versions WHERE status = 'active')) "
+            'AND ' + _not_expired('t')
+        )
+        params = [room_id, day, period_code]
         if exclude_id:
-            row = self.db.execute(
-                'SELECT 1 FROM timetable WHERE room_id = ? AND day = ? AND period = ? AND id != ? '
-                'AND (version_id IS NULL OR version_id IN '
-                '(SELECT id FROM timetable_versions WHERE status = \'active\')) LIMIT 1',
-                (room_id, day, period_code, exclude_id)
-            ).fetchone()
-        else:
-            row = self.db.execute(
-                'SELECT 1 FROM timetable WHERE room_id = ? AND day = ? AND period = ? '
-                'AND (version_id IS NULL OR version_id IN '
-                '(SELECT id FROM timetable_versions WHERE status = \'active\')) LIMIT 1',
-                (room_id, day, period_code)
-            ).fetchone()
-        return row is not None
+            sql += ' AND t.id != ?'
+            params.append(exclude_id)
+        return self.db.execute(sql + ' LIMIT 1', params).fetchone() is not None
 
     # /     /     >---- القاعة متاحة إذا ما فيش تعارض
     def is_room_available(self, room_id: int, day: str, period_code: str,
@@ -207,12 +250,15 @@ class TimetableRepository(BaseRepository):
             fk_col = 'teacher_id'
         resources = [dict(r) for r in self.db.execute(base_sql).fetchall()]
 
-        # /     /     >---- نجيب كل الحجوزات في نفس اليوم (النسخة الفعّالة)
+        # /     /     >---- نجيب كل الحجوزات في نفس اليوم (النسخة الفعّالة).
+        # /     /     >---- المحاضرات المنتهية لا تحجز مورداً: هي غير مرئية
+        # /     /     >---- للقسم، فلو حُسبت لجعلت قاعتها/مدرسها مشغولين.
         bookings = self.db.execute(
-            f'SELECT id, {fk_col} as fk, period, hours, start_time, end_time FROM timetable '
-            'WHERE day = ? '
-            'AND (version_id IS NULL OR version_id IN '
-            '(SELECT id FROM timetable_versions WHERE status = \'active\'))',
+            'SELECT id, ' + fk_col + ' as fk, period, hours, start_time, end_time '
+            'FROM timetable t WHERE t.day = ? '
+            'AND (t.version_id IS NULL OR t.version_id IN '
+            "(SELECT id FROM timetable_versions WHERE status = 'active')) "
+            'AND ' + _not_expired('t'),
             (day,),
         ).fetchall()
 
@@ -334,6 +380,9 @@ class TimetableRepository(BaseRepository):
             else:
                 conditions.append('t.version_id = ?')
             params.append(version_id)
+        # /     /     >---- المحاضرات المؤقتة المنتهية ما تنعرض (مجرى الشبكة
+        # /     /     >---- والـAPI والطباعة كلهم يمرون من هنا)
+        conditions.append(_not_expired('t'))
         return self.query_entries_simple(' AND '.join(conditions), params)
 
     # /     /     >---- إعدادات الفترات كلها

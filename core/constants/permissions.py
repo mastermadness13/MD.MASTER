@@ -72,7 +72,9 @@ ROLE_PERMISSIONS = {
     'exam': {
         'dashboard.view', 'dashboard.nav',
         'departments.view', 'departments.manage',
-        'courses.view',
+        # /     /     >---- لا courses.view: إخفاء «المقررات الدراسية» عن القسم.
+        # /     /     >---- /exams لا يعتمد عليها إطلاقاً (exams.* فقط)، فلا
+        # /     /     >---- يتأثر الجدول. تحتاجها research_development وحدها.
         'course_content.view',
         'rooms.view',  # /     /     >---- عرض القاعات لاختيارها عند جدولة الامتحانات فقط
         'exams.view', 'exams.manage', 'exams.period', 'exams.planning', 'exams.department_schedule', 'exams.assign_room',

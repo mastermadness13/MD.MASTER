@@ -25,6 +25,8 @@ ARABIC_MONTHS = {
 }
 ARABIC_WEEKDAYS = {5: 'السبت', 6: 'الأحد', 0: 'الإثنين', 1: 'الثلاثاء', 2: 'الأربعاء', 3: 'الخميس'}
 EXAM_DAYS_ORDER = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس']
+# Fallback used only when no exam period is configured; the real cap comes
+# from the period's own week count so it never truncates the schedule.
 MAX_EXAM_WEEKS = 5
 
 
@@ -84,6 +86,37 @@ def semester_label(sem):
     return f'الفصل {sem}'
 
 
+# /     /     >---- ربط (رقم الأسبوع، اليوم) بتاريخ فعلي عبر فترة الامتحانات
+def exam_period_date_map(start_str, end_str):
+    """Map ``(week, day_ar)`` pairs to concrete dates across the exam period.
+
+    Iteration starts at the Saturday of the week containing *start_str* so
+    every exam day (Sat-Thu) always resolves, and a new week begins after
+    each Thursday.  Returns ``{}`` when a bound is missing or unparsable.
+    """
+    date_map = {}
+    if not (start_str and end_str):
+        return date_map
+    try:
+        start_dt = datetime.strptime(start_str, '%Y-%m-%d')
+        end_dt = datetime.strptime(end_str, '%Y-%m-%d')
+    except (ValueError, TypeError):
+        return date_map
+    days_to_saturday = (start_dt.weekday() + 2) % 7
+    cur = start_dt - timedelta(days=days_to_saturday)
+    week = 1
+    while cur <= end_dt:
+        wd = cur.weekday()
+        if wd in ARABIC_WEEKDAYS:
+            day_ar = ARABIC_WEEKDAYS[wd].replace('الإثنين', 'الاثنين')
+            date_map[(week, day_ar)] = cur.strftime('%Y-%m-%d')
+            # /     /     >---- الخميس = آخر يوم في الأسبوع فنتنقل للأسبوع اللي بعده
+            if day_ar == 'الخميس':
+                week += 1
+        cur += timedelta(days=1)
+    return date_map
+
+
 # /     /     >---- تجهيز بيانات امتحانات الأقسام للواجهة (JSON جاهز للعرض)
 def build_exam_schedule_view(db, departments, dept_stats):
     """Shape department exam data into a JSON-friendly payload for the workspace UI."""
@@ -91,14 +124,17 @@ def build_exam_schedule_view(db, departments, dept_stats):
     start = period.get('exam_start_date', '')
     end = period.get('exam_end_date', '')
 
-    year_label = ''
-    if start:
-        try:
-            sy = int(start[:4])
-            ey = int(end[:4]) if end and len(end) >= 4 else sy
-            year_label = f'{sy}' if sy == ey else f'{sy}–{ey}'
-        except (ValueError, TypeError):
-            year_label = ''
+    year_label = academic_year_label(start, datetime.now().year)
+
+    # /     /     >---- عدد أسابيع الفترة: يحدّ زر «أسبوع جديد» بما يكفي كامل الفترة
+    period_weeks = exam_period_date_map(start, end)
+    week_count = max((w for w, _day in period_weeks), default=0) or MAX_EXAM_WEEKS
+    # The grid snaps the first day back to Saturday, so the first and last exam
+    # dates are not the same as the stored boundaries. Expose both so the UI can
+    # show what the schedule will really cover.
+    _period_dates = sorted(period_weeks.values())
+    first_exam_date = _period_dates[0] if _period_dates else ''
+    last_exam_date = _period_dates[-1] if _period_dates else ''
 
     # /     /     >---- أسماء القاعات وخياراتها مع السعة
     room_names = sorted({r['name'] for r in get_exam_halls(db)})
@@ -199,6 +235,12 @@ def build_exam_schedule_view(db, departments, dept_stats):
             'startDisplay': _date_display(start),
             'endDisplay': _date_display(end),
             'yearLabel': year_label,
+            'weekCount': week_count,
+            'periodStatus': (period.get('period_status') or 'draft'),
+            'firstExamDate': first_exam_date,
+            'lastExamDate': last_exam_date,
+            'firstExamDateDisplay': _date_short_display(first_exam_date),
+            'lastExamDateDisplay': _date_short_display(last_exam_date),
             'startTime': period_start_time,
             'endTime': period_end_time,
         },
@@ -238,10 +280,26 @@ def build_exam_print_view(db, dept_id=None):
                         rooms.add(cell['room_name'])
         dept_stats[did] = {'exam_count': total, 'room_count': len(rooms)}
     view = build_exam_schedule_view(db, departments, dept_stats)
-    period = resolve_academic_period(db)
-    if period.get('yearLabel'):
-        view.setdefault('period', {})['yearLabel'] = period['yearLabel']
     return view
+
+
+# /     /     >---- السنة الدراسية بصيغة المدى، مثل: 2026-2027
+def academic_year_label(start_date, fallback_year):
+    """Return the academic year that owns *start_date*.
+
+    Libyan academic years run September..June, so a September 2026 start
+    belongs to 2026-2027.  Falls back to *fallback_year* when no usable
+    date is available.
+    """
+    year = None
+    if start_date:
+        try:
+            year = int(str(start_date)[:4])
+        except (ValueError, TypeError):
+            year = None
+    if year is None:
+        year = int(fallback_year)
+    return f'{year}-{year + 1}'
 
 
 # /     /     >---- تحديد الفترة الأكاديمية الموضحة في ترويسة الفضاء/الطباعة
@@ -268,7 +326,7 @@ def resolve_academic_period(db) -> Dict[str, str]:
     }.get(str(season).strip().lower(), season) or ''
     if not season_word and start:
         season_word = (core_season_label(start) or '').split(' ')[0]
-    year_label = str(year)
+    year_label = academic_year_label(start, year)
 
     return {
         'start': start,
@@ -304,39 +362,21 @@ class ExamService:
             start_str = settings.get('exam_start_date') or ''
             end_str = settings.get('exam_end_date') or ''
 
-        # Resolve (week, day) → concrete date when an exam period is set.
-        # Start from the Saturday of the week containing start_dt so every
-        # exam day (Sat-Thu) in every week always gets a mapped date.
         # /     /     >---- ربط (الأسبوع، اليوم) بتواريخ فعلية بدءاً من السبت
-        date_map = {}
-        if start_str and end_str:
-            try:
-                start_dt = datetime.strptime(start_str, '%Y-%m-%d')
-                end_dt = datetime.strptime(end_str, '%Y-%m-%d')
-            except (ValueError, TypeError):
-                start_dt = end_dt = None
-            if start_dt and end_dt:
-                days_to_saturday = (start_dt.weekday() + 2) % 7
-                cur = start_dt - timedelta(days=days_to_saturday)
-                week = 1
-                last_thursday = end_dt
-                while cur <= last_thursday:
-                    wd = cur.weekday()
-                    if wd in ARABIC_WEEKDAYS:
-                        day_ar = ARABIC_WEEKDAYS[wd].replace('الإثنين', 'الاثنين')
-                        date_map[(week, day_ar)] = cur.strftime('%Y-%m-%d')
-                        # /     /     >---- الخميس = آخر يوم في الأسبوع فنتنقل للأسبوع اللي بعده
-                        if day_ar == 'الخميس':
-                            week += 1
-                            if cur > end_dt:
-                                last_thursday = cur
-                    cur += timedelta(days=1)
+        date_map = exam_period_date_map(start_str, end_str)
 
         # /     /     >---- سجلات الامتحانات لكل الأقسام في استعلام واحد بدل استعلام لكل قسم
         dept_ids = [d['id'] for d in departments]
         status_filter = ''
         if published_only:
-            status_filter = " AND es.status IN ('published', 'completed')"
+            # The exam period is the publish gate: once the Studies & Exams
+            # department publishes the period, the whole schedule becomes
+            # public at once and no row needs a status of its own. Until then
+            # only rows published individually are exposed, so drafts stay
+            # internal (see tests/test_phase5_public_leaks.py).
+            period_status = (self.get_exam_period().get('period_status') or '')
+            if period_status != 'published':
+                status_filter = " AND es.status IN ('published', 'completed')"
         rows_by_dept = {}
         if dept_ids:
             _ph = ','.join('?' * len(dept_ids))
@@ -365,26 +405,27 @@ class ExamService:
             rows = rows_by_dept.get(dept['id'], [])
 
             # /     /     >---- فهرسة السجلات حسب الخلية (أسبوع، يوم، فصل)
-            stored_weeks = set()
             exam_by_cell = {}
             for r in rows:
                 d = dict(r)
                 week = int(d.get('week') or 1)
                 if week < 1:
                     week = 1
-                stored_weeks.add(week)
                 day_ar = (d.get('day_ar') or '').replace('الإثنين', 'الاثنين')
                 if not day_ar:
                     day_ar = _day_ar_from_date(d.get('exam_date'))
                 sem = d.get('semester', 1)
                 exam_by_cell.setdefault((week, day_ar), {})[sem] = d
 
-            max_week = max(stored_weeks) if stored_weeks else 1
-            max_week = min(max_week, MAX_EXAM_WEEKS)
+            # Every week of the configured exam period gets a slot grid, so a
+            # week resolves to real dates before anything is saved into it.
+            # Weeks are no longer gated on stored rows: that used to hide both
+            # the week tab and its dates until the first exam was entered.
+            week_cap = max((w for w, _day in date_map), default=0) or MAX_EXAM_WEEKS
 
             # /     /     >---- بناء شبكة الفترات الفارغة لملء الخلايا في الواجهة
             time_slots = []
-            for week in range(1, max_week + 1):
+            for week in range(1, week_cap + 1):
                 for day_ar in EXAM_DAYS_ORDER:
                     exam_date = date_map.get((week, day_ar), '')
                     display = _date_display(exam_date)

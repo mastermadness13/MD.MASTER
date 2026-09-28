@@ -120,7 +120,7 @@
           var bg = 'bg-primary/10 border-primary/30';
           html += '<td class="p-2 border border-outline-variant ' + bg + ' text-center cursor-pointer hover:opacity-80 transition" data-entry-id="' + (entry.id || '') + '">' +
             '<div class="font-bold text-on-surface text-xs">' + E(entry.course_name || entry.course || '') + '</div>' +
-            '<div class="text-xs text-on-surface-variant mt-1">' + E(entry.teacher_name || '') + '</div>' +
+            '<div class="text-xs text-on-surface-variant mt-1">' + E(entry.teacher_name || '---') + '</div>' +
             '<div class="text-xs text-on-surface-variant">' + E(entry.room_name || entry.room || '') + '</div>' +
             '</td>';
         } else {
@@ -156,7 +156,7 @@
       body.className = 'space-y-3';
       body.innerHTML = '<dl class="grid grid-cols-2 gap-3 text-sm">' +
         f('المقرر', entry.course_name || entry.course) +
-        f('عضو هيئة التدريس', entry.teacher_name) +
+        f('عضو هيئة التدريس', entry.teacher_name || '---') +
         f('القاعة', entry.room_name || entry.room) +
         f('اليوم', DAYS[entry.day] || '—') +
         f('الوقت', (fmtTime12(entry.start_time) || '') + ' - ' + (fmtTime12(entry.end_time) || '')) +

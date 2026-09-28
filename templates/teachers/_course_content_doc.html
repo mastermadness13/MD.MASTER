@@ -449,6 +449,25 @@
     body .cc-sheet .no-print,
     body .cc-sheet .cc-print-actions { display: none !important; }
 
+    /* The create/edit page hides the official letterhead on screen
+       (course_content_sheet.html: .cc-create-page .cc-sheet--form), and no
+       screen-only guard existed — so the printed sheet lost the college logo,
+       the ministry line and the college name. Paper always carries it. */
+    body .cc-sheet .cc-sheet-header { display: block !important; }
+
+    /* print/common.css forces `font-size: 10.5pt !important` and
+       `width: 100% !important` on every input/select/textarea. The sheet's own
+       rules above only cancelled the border, so the cell controls printed at a
+       different size from the table text around them. Inherit the sheet
+       typography so the print matches the screen. */
+    body .cc-sheet input,
+    body .cc-sheet select,
+    body .cc-sheet textarea {
+      font-family: inherit !important;
+      font-size: inherit !important;
+      line-height: inherit !important;
+    }
+
     /* Table headers repeat on every page; footers never do */
     body .cc-sheet thead { display: table-header-group !important; }
     body .cc-sheet tfoot { display: table-row-group !important; }
@@ -477,11 +496,46 @@
       resize: none !important;
     }
     body .cc-sheet select { background: none !important; }
+
+    /* print/common.css repaints every table as a generic Word document:
+       10.5pt text, #e8e8e8 headers, 0.5pt #ccc cell borders, 5pt 8pt padding,
+       an 8pt table margin and zebra striping on even rows. The sheet's print
+       block only cancelled the border colour, so the printed tables came out
+       at a different size, with stripes the screen never shows and with gaps
+       opening up between the section title and its curriculum table. Mirror
+       the screen values declared above so paper matches the form. */
+    body .cc-sheet table { margin: 0 !important; }
+    body .cc-sheet .document-table { font-size: 0.7813rem !important; }
     body .cc-sheet .document-table th,
     body .cc-sheet .document-table td {
-      border-color: #000 !important;
-      padding: 4px 6px !important;
+      border: 1.5px solid #1f2937 !important;
+      padding: 8px !important;
+      vertical-align: middle !important;
       white-space: normal !important;
+      font-size: inherit !important;
+      color: #000 !important;
+      background: transparent !important;
+    }
+    body .cc-sheet .document-table th {
+      background: #f9fafb !important;
+      font-weight: 700 !important;
+      text-align: center !important;
+    }
+    /* Scoped to td on purpose: on screen `.document-table th` (0,2,1) outranks
+       `.cc-label-cell` (0,2,0), so every th label cell already prints #f9fafb.
+       Repainting those grey here would be a difference the screen does not have. */
+    body .cc-sheet .document-table td.cc-label-cell,
+    body .cc-sheet .document-table td.cc-en-label-cell {
+      background: #f3f4f6 !important;
+    }
+    body .cc-sheet .cc-section-title-table th {
+      font-size: 0.8125rem !important;
+      background: #f3f4f6 !important;
+    }
+    body .cc-sheet .cc-curriculum-table thead th { font-size: 0.75rem !important; }
+    body .cc-sheet .cc-curriculum-table tfoot td {
+      background: #fff !important;
+      padding: 6px 8px !important;
     }
     body .cc-sheet .cc-sheet-header { break-after: avoid; }
     body .cc-sheet .cc-signatures { break-inside: avoid; }

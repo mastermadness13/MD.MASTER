@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Dict, List
 
-from services.timetable_service import active_version_condition
+from services.timetable_service import active_version_condition, not_expired_condition
 
 
 # /     /     >---- قائمة الأقسام الظاهرة
@@ -48,7 +48,8 @@ def get_periods(db) -> List[Dict]:
 # /     /     >---- مداخل الجدول الفعّالة (مع ربط المقرر/الأستاذ/القاعة)
 def get_active_entries(db, department_id: int | None = None,
                        semester: int | None = None) -> List[Dict]:
-    conditions = ['t.deleted_at IS NULL', active_version_condition('t')]
+    conditions = ['t.deleted_at IS NULL', active_version_condition('t'),
+                  not_expired_condition('t')]
     params: list = []
     if department_id:
         conditions.append('(t.department_id = ? OR t.department_id IS NULL)')
@@ -75,7 +76,8 @@ def get_active_timetable_course_ids(db) -> set:
     """Set of course ids that appear in the active timetable."""
     rows = db.execute(
         'SELECT DISTINCT course_id FROM timetable t '
-        f'WHERE t.deleted_at IS NULL AND t.course_id IS NOT NULL AND {active_version_condition("t")}'
+        f'WHERE t.deleted_at IS NULL AND t.course_id IS NOT NULL '
+        f'AND {active_version_condition("t")} AND {not_expired_condition("t")}'
     ).fetchall()
     return {r['course_id'] for r in rows}
 

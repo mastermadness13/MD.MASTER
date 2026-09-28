@@ -646,7 +646,7 @@
       var html = '<div class="tt-stack">';
       list.forEach(function (e) {
         html += '<div class="tt-item" style="--accent:' + accent + ';--card-bg:' + hexToRgba(accent, 0.09) + '">' +
-          '<div class="tt-teacher">' + esc(e.teacherName || '—') + '</div>' +
+          '<div class="tt-teacher">' + esc(e.teacherName || '---') + '</div>' +
           '<div class="tt-course">' + esc(e.courseName || '—') +
             (e.courseCode ? '<span class="tt-code"> (' + esc(e.courseCode) + ')</span>' : '') + '</div>' +
           (e.roomName ? '<div class="tt-meta"><span class="material-symbols-outlined">meeting_room</span>' + esc(e.roomName) + '</div>' : '') +

@@ -111,5 +111,33 @@ def test_every_declared_authenticated_endpoint_exists(app_fx):
     endpoints = {rule.endpoint for rule in app_fx.url_map.iter_rules()}
     missing = sorted(app_module.AUTHENTICATED_ENDPOINTS - endpoints)
     assert missing == [], (
-        f'AUTHENTICATED_ENDPOINTS names unknown endpoints: {missing}'
+        f'PUBLIC_ENDPOINTS names unknown endpoints: {missing}'
     )
+
+
+def test_exam_department_cannot_reach_the_courses_pages():
+    """«المقررات الدراسية» must stay hidden from the Studies & Exams role.
+
+    The nav item, the list page and its APIs are all gated on courses.view,
+    so dropping it hides the section. research_development keeps it, so the
+    permission stays granted to someone.
+    """
+    exam = ROLE_PERMISSIONS['exam']
+    assert 'courses.view' not in exam, (
+        'exam role holds courses.view, which re-exposes the courses section'
+    )
+    assert 'courses.manage' not in exam
+    assert 'courses.view' in ROLE_PERMISSIONS['research_development'], (
+        'no role would be able to manage courses anymore'
+    )
+
+
+def test_hiding_courses_leaves_the_exam_schedule_intact():
+    """/exams must not depend on courses.view, or hiding the section breaks it."""
+    exam = ROLE_PERMISSIONS['exam']
+    for needed in ('exams.view', 'exams.manage', 'exams.period',
+                   'exams.department_schedule'):
+        assert needed in exam, f'exam role lost {needed}'
+    # The exam matrix reads course names from the exams payload, not from a
+    # courses.* endpoint, so no course permission is required to schedule.
+    assert 'courses.view' not in exam

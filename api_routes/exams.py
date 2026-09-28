@@ -27,9 +27,9 @@ bp = Blueprint('api_exams', __name__, url_prefix='/api/exams')
 
 def _dept_exam_data_for_user(db):
     role = session.get('role', '')
-    user_data = current_user()
-    if role == 'exam':
+    if role != 'head_of_department':
         return exam_service.build_dept_exam_data(db)
+    user_data = current_user()
     user_dept_id = user_data.get('department_id') if user_data else None
     if not user_dept_id:
         return []
@@ -565,6 +565,7 @@ def api_exam_semester_period():
         'name_ar': semester_display_name(code),
         'exam_start_date': settings.get('exam_start_date') or '',
         'exam_end_date': settings.get('exam_end_date') or '',
+        'period_status': settings.get('period_status') or 'draft',
     }
     return ok({'semester': sem})
 
@@ -581,19 +582,25 @@ def api_exam_semester_period_save():
     if exam_start and exam_end and exam_start > exam_end:
         return err('تاريخ النهاية يجب أن يكون بعد تاريخ البداية', 422)
 
+    # Period status and the audit columns are part of the save. Writing them
+    # here keeps the row traceable: without them last_modified_by stayed empty
+    # on every period change.
     existing = db.execute('SELECT id FROM exam_settings LIMIT 1').fetchone()
     if existing:
         db.execute(
             'UPDATE exam_settings SET exam_start_date = ?, exam_end_date = ?, '
-            'updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-            (exam_start, exam_end, existing['id']),
+            'period_status = ?, updated_at = CURRENT_TIMESTAMP, '
+            'last_modified_by = ?, last_modified_at = CURRENT_TIMESTAMP WHERE id = ?',
+            (exam_start, exam_end, 'draft',
+             session.get('username', ''), existing['id']),
         )
     else:
         db.execute(
             "INSERT INTO exam_settings "
-            "(exam_start_date, exam_end_date, exam_start_time, exam_end_time) "
-            "VALUES (?, ?, '09:00', '17:00')",
-            (exam_start, exam_end),
+            "(exam_start_date, exam_end_date, exam_start_time, exam_end_time, "
+            "period_status, last_modified_by, last_modified_at) "
+            "VALUES (?, ?, '09:00', '17:00', 'draft', ?, CURRENT_TIMESTAMP)",
+            (exam_start, exam_end, session.get('username', '')),
         )
     db.commit()
     return ok({'saved': True})
