@@ -16,6 +16,7 @@ from flask_db import get_db, close_db, init_app as db_init_app
 
 from security import generate_csrf_token
 from security import inject_navigation
+from security.authorization import json_denial
 from security.csrf import is_request_protected, csrf_failure_response
 from security.security_headers import (
     apply_cookie_config,
@@ -278,6 +279,11 @@ def create_app(*, allow_debug: bool = False):
         ).fetchone()
         if not row:
             session.clear()
+            # /     /     >---- عميل JSON: 302 هنا يعني صفحة الدخول HTML
+            # /     /     >---- تُقرأ بـ JSON.parse فتسقط بـ "Unexpected token '<'"
+            denial = json_denial('انتهت الجلسة. سجّل الدخول مجدداً.', 401)
+            if denial is not None:
+                return denial
             return redirect(url_for('auth.login'))
 
         current_version = row['session_version'] or 1
@@ -286,6 +292,9 @@ def create_app(*, allow_debug: bool = False):
             session['session_version'] = current_version
         elif session_version != current_version:
             session.clear()
+            denial = json_denial('انتهت صلاحية الجلسة. سجّل الدخول مجدداً.', 401)
+            if denial is not None:
+                return denial
             flash('انتهت صلاحية الجلسة، يرجى تسجيل الدخول مجدداً', 'error')
             return redirect(url_for('auth.login'))
         return None
@@ -308,6 +317,9 @@ def create_app(*, allow_debug: bool = False):
         if session.get('force_password_change') and endpoint not in {
             'auth.change_password', 'auth.logout'
         }:
+            denial = json_denial('يجب تغيير كلمة المرور أولاً.', 403)
+            if denial is not None:
+                return denial
             return redirect(url_for('auth.change_password'))
 
         # Skip explicitly public endpoints
@@ -338,12 +350,18 @@ def create_app(*, allow_debug: bool = False):
             else:
                 allowed = bool(set(get_granted_roles()).intersection(required_any_roles))
             if not allowed:
+                denial = json_denial('ليس لديك صلاحية للوصول إلى هذه الصفحة', 403)
+                if denial is not None:
+                    return denial
                 flash('ليس لديك صلاحية للوصول إلى هذه الصفحة', 'error')
                 return redirect(url_for('dashboard.dashboard'))
             return None
 
         if required_perm is None:
             # No permission declared — deny by default for safety
+            denial = json_denial('هذا المسار غير مصرح به', 403)
+            if denial is not None:
+                return denial
             flash('هذا المسار غير مصرح به', 'error')
             return redirect(url_for('dashboard.dashboard'))
 
@@ -351,6 +369,9 @@ def create_app(*, allow_debug: bool = False):
         roles = get_active_roles()
         dept_id = session.get('department_id')
         if not has_permission(roles, required_perm, dept_id):
+            denial = json_denial('ليس لديك صلاحية للوصول إلى هذه الصفحة', 403)
+            if denial is not None:
+                return denial
             flash('ليس لديك صلاحية للوصول إلى هذه الصفحة', 'error')
             return redirect(url_for('dashboard.dashboard'))
 

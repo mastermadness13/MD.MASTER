@@ -23,10 +23,12 @@ from security.authorization import (
     has_permission,
     highest_priority_role,
     inject_navigation,
+    json_denial,
     login_required,
     permission_required,
     role_required,
     any_role_required,
+    wants_json_response,
 )
 
 # ── استيراد دوال CSRF ──────────────────────────────────────────
@@ -77,6 +79,8 @@ __all__ = [
     'permission_required',
     'role_required',
     'any_role_required',
+    'wants_json_response',
+    'json_denial',
     'get_granted_roles',
     'highest_priority_role',
     'get_header_messages_url',

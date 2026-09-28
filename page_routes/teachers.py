@@ -12,6 +12,7 @@ from core.exceptions import ProtectedAccountError
 from database.history import add_history
 from security import csrf_required, login_required, permission_required
 from security import current_user
+from security.authorization import wants_json_response
 from utils.format import paginate
 from services import teacher_service
 from services import course_service
@@ -616,19 +617,24 @@ def _delete_lookup_value(db, category, row, replacement_id=None, clear=False):
 def lookup_lists():
     db = get_db()
     category = request.values.get('category', 'admin_assignment_type')
+    # /     /     >---- عميل JSON لا يحتمل صفحة HTML: لو رجعنا إليه بـ abort
+    # /     /     >---- كان يقرأها بـ JSON.parse فيسقط بـ "Unexpected token '<'"
+    # /     /     >---- ويختفي سبب الرفض الحقيقي خلف خطأ في متصفح المستخدم.
+    wants_json = wants_json_response()
     if category not in _LOOKUP_CATEGORIES:
+        if wants_json:
+            return jsonify(ok=False, message='قائمة غير معروفة'), 404
         abort(404)
 
     if request.method == 'POST':
         action = request.form.get('action', '')
         row_id = _safe_fk(request.form.get('id'))
         config = _LOOKUP_CATEGORIES[category]
-        ajax_action = (
-            request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-            and action in ('add', 'rename', 'toggle')
-        )
         ajax_error = None
+        ajax_ok_message = 'تم الحفظ بنجاح'
         try:
+            if action not in ('add', 'rename', 'toggle', 'delete'):
+                raise ValueError('إجراء غير معروف — أعد تحميل الصفحة')
             if action == 'add':
                 name = request.form.get('name', '').strip()
                 if not name:
@@ -659,18 +665,16 @@ def lookup_lists():
                     )
                 else:
                     name_col = config['name_col']
-                    columns = f'{name_col}, name_en, is_active, sort_order'
-                    if category == 'academic_rank':
-                        columns = f'{name_col}, name_en, is_active, sort_order'
                     db.execute(
-                        f'''INSERT INTO {config['table']} ({columns})
+                        f'''INSERT INTO {config['table']}
+                            ({name_col}, name_en, is_active, sort_order)
                             VALUES (?, ?, 1,
                                     (SELECT COALESCE(MAX(sort_order), 0) + 1
                                      FROM {config['table']}))''',
                         (name, name),
                     )
                 db.commit()
-                if not ajax_action:
+                if not wants_json:
                     flash('تمت إضافة القيمة بنجاح', 'success')
 
             elif action in ('rename', 'toggle', 'delete'):
@@ -710,18 +714,22 @@ def lookup_lists():
                                 (name, row_id),
                             )
                     db.commit()
-                    if not ajax_action:
+                    if not wants_json:
                         flash('تم تحديث نص القيمة', 'success')
 
                 elif action == 'toggle':
                     if category != 'admin_assignment_type' or not row['is_protected_role']:
-                        abort(400)
+                        # /     /     >---- abort(400) كان يرجع صفحة HTML لعميل
+                        # /     /     >---- JSON فيسقط عنده JSON.parse
+                        raise ValueError(
+                            'التفعيل والتعطيل متاحان لتكليفات النظام الإدارية فقط'
+                        )
                     db.execute(
                         'UPDATE admin_assignment_types SET is_active = ? WHERE id = ?',
                         (0 if row['is_active'] else 1, row_id),
                     )
                     db.commit()
-                    if not ajax_action:
+                    if not wants_json:
                         flash('تم تحديث حالة التكليف النظامي', 'success')
 
                 else:
@@ -744,6 +752,22 @@ def lookup_lists():
                     if member_count + assignment_count + linked_count and not (
                         replacement_id or clear
                     ):
+                        if wants_json:
+                            # /     /     >---- صفحة التأكيد HTML، ولا صفحة
+                            # /     /     >---- HTML لعميل JSON
+                            return jsonify(
+                                ok=False,
+                                message=(
+                                    'القيمة مستخدمة من '
+                                    f'{member_count} عضو'
+                                    + (f' و{assignment_count} تكليف محفوظ'
+                                       if assignment_count else '')
+                                    + (f' و{linked_count} قاعدة أو إعداد'
+                                       if linked_count else '')
+                                    + ' — اختر نقل الاستخدام إلى قيمة بديلة'
+                                      ' أو تفريغ الحقول قبل الحذف.'
+                                ),
+                            ), 409
                         return _render_lookup_lists(
                             db, category,
                             delete_pending={
@@ -760,26 +784,28 @@ def lookup_lists():
                         ),
                     )
                     db.commit()
-                    flash(
+                    ajax_ok_message = (
                         'تم حذف القيمة ونقل البيانات للقيمة البديلة'
-                        if replacement_id else 'تم حذف القيمة وتفريغ حقول استخدامها',
-                        'success',
+                        if replacement_id
+                        else 'تم حذف القيمة وتفريغ حقول استخدامها'
                     )
+                    if not wants_json:
+                        flash(ajax_ok_message, 'success')
         except ValueError as exc:
             db.rollback()
             ajax_error = str(exc)
-            if not ajax_action:
+            if not wants_json:
                 flash(str(exc), 'error')
         except sqlite3.IntegrityError:
             db.rollback()
             ajax_error = 'تعذر الحفظ: توجد قيمة مطابقة أو علاقة تمنع هذا التغيير'
-            if not ajax_action:
+            if not wants_json:
                 flash(ajax_error, 'error')
 
-        if ajax_action:
+        if wants_json:
             if ajax_error:
                 return jsonify(ok=False, message=ajax_error), 400
-            return jsonify(ok=True, message='تم الحفظ بنجاح')
+            return jsonify(ok=True, message=ajax_ok_message)
         return redirect(url_for('teachers.lookup_lists', category=category))
 
     return _render_lookup_lists(db, category)

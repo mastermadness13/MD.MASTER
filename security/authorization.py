@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from functools import wraps
 
-from flask import flash, redirect, request, session, url_for
+from flask import flash, jsonify, redirect, request, session, url_for
 
 from core.constants import ROLE_LABELS, ROLE_PERMISSIONS
 from utils.redirects import redirect_back
@@ -129,12 +129,43 @@ def has_permission(role, permission: str | None, department_id=None) -> bool:
 
 # ─────────────────────────────────────────────
 
+# /     /     >---- هل هذا العميل يقرأ JSON بدل HTML؟
+# /     /     >---- لا نعدّ `*/*` هنا عن قصد: متصفح Chrome يرسل
+# /     /     >---- `text/html,...,*/*;q=0.8` في نموذج HTML عادي، فلو عدّناه
+# /     /     >---- JSON لكان نموذج الحذف العادي يرجع JSON بدل الصفحة.
+def wants_json_response() -> bool:
+    """True when the caller parses the body as JSON instead of rendering HTML.
+
+    Deliberately narrow: only an explicit ``X-Requested-With`` (fetch/XHR) or an
+    ``application/json`` Accept entry counts.  ``*/*`` is excluded because every
+    browser form post carries it, and answering those with JSON would replace
+    ordinary HTML pages with a raw JSON blob.
+    """
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return True
+    return 'application/json' in request.headers.get('Accept', '')
+
+
+# /     /     >---- رفض JSON بدل التوجيه: بوابة صفحة ترجع 302 يتبعها fetch
+# /     /     >---- فيُعاد HTML (صفحة الدخول) ويقرأه العميل بـ JSON.parse
+def json_denial(message: str, status: int):
+    """Return a JSON denial for AJAX callers, or ``None`` for browser callers."""
+    if not wants_json_response():
+        return None
+    return jsonify(ok=False, message=message), status
+
+
+# ─────────────────────────────────────────────
+
 # /     /     >---- ديكوريتور: يشترط تسجيل الدخول للصفحة
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         # /     /     >---- إذا ما فيه مستخدم في الجلسة نوجهه لصفحة الدخول
         if 'user_id' not in session:
+            denial = json_denial('انتهت الجلسة. سجّل الدخول مجدداً.', 401)
+            if denial is not None:
+                return denial
             flash('يرجى تسجيل الدخول أولاً', 'error')
             return redirect(url_for('auth.login'))
         return f(*args, **kwargs)
@@ -157,17 +188,26 @@ def permission_required(permission):
         def decorated_function(*args, **kwargs):
             # /     /     >---- أول شي يتأكد من تسجيل الدخول
             if 'user_id' not in session:
+                denial = json_denial('انتهت الجلسة. سجّل الدخول مجدداً.', 401)
+                if denial is not None:
+                    return denial
                 return redirect(url_for('auth.login'))
             # A one-time initial credential may authenticate the user, but it
             # must not grant access to the application until it is replaced.
             # Keep logout available so a user can abandon the session.
             if (session.get('force_password_change')
                     and request.endpoint not in ('auth.change_password', 'auth.logout')):
+                denial = json_denial('يجب تغيير كلمة المرور أولاً.', 403)
+                if denial is not None:
+                    return denial
                 return redirect(url_for('auth.change_password'))
             # /     /     >---- نجمع كل أدوار المستخدم ونتأكد من الصلاحية
             roles = get_active_roles()
             dept_id = session.get('department_id')
             if not has_permission(roles, permission, dept_id):
+                denial = json_denial('ليس لديك صلاحية لتنفيذ هذا الإجراء.', 403)
+                if denial is not None:
+                    return denial
                 flash('ليس لديك صلاحية للوصول إلى هذه الصفحة', 'error')
                 return redirect_back()
             return f(*args, **kwargs)
@@ -193,9 +233,15 @@ def role_required(*roles):
         def decorated_function(*args, **kwargs):
             # /     /     >---- يتأكد من تسجيل الدخول
             if 'user_id' not in session:
+                denial = json_denial('انتهت الجلسة. سجّل الدخول مجدداً.', 401)
+                if denial is not None:
+                    return denial
                 return redirect(url_for('auth.login'))
             # /     /     >---- يتأكد الدور النشط موجود في الأدوار المسموحة
             if session.get('role', '') not in roles:
+                denial = json_denial('ليس لديك صلاحية لتنفيذ هذا الإجراء.', 403)
+                if denial is not None:
+                    return denial
                 flash('ليس لديك صلاحية للوصول إلى هذه الصفحة', 'error')
                 return redirect(url_for('dashboard.dashboard'))
             return f(*args, **kwargs)
@@ -223,10 +269,16 @@ def any_role_required(*roles):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             if 'user_id' not in session:
+                denial = json_denial('انتهت الجلسة. سجّل الدخول مجدداً.', 401)
+                if denial is not None:
+                    return denial
                 return redirect(url_for('auth.login'))
             # /     /     >---- نشوف إذا أي دور من أدوار المستخدم في القائمة
             granted = set(get_granted_roles())
             if not granted.intersection(roles):
+                denial = json_denial('ليس لديك صلاحية لتنفيذ هذا الإجراء.', 403)
+                if denial is not None:
+                    return denial
                 flash('ليس لديك صلاحية للوصول إلى هذه الصفحة', 'error')
                 return redirect(url_for('dashboard.dashboard'))
             return f(*args, **kwargs)

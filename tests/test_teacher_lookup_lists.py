@@ -101,6 +101,118 @@ def test_lookup_lists_are_restricted_to_faculty_affairs(lookup_setup):
     assert hod.get('/teachers/lookup-lists').status_code == 302
 
 
+def _assert_json_envelope(response, expected_status=None):
+    """Assert *response* is JSON — never the HTML that breaks JSON.parse."""
+    if expected_status is not None:
+        assert response.status_code == expected_status
+    content_type = (response.headers.get('Content-Type') or '').lower()
+    body = response.get_data(as_text=True)
+    assert 'application/json' in content_type, (
+        f'expected JSON, got {content_type}: {body[:120]!r}'
+    )
+    assert not body.lstrip().lower().startswith(('<!doctype', '<html')), (
+        f'HTML body served to a JSON caller: {body[:120]!r}'
+    )
+    return response.get_json()
+
+
+def test_no_ajax_path_answers_with_html(lookup_setup):
+    """Every AJAX answer must be JSON.
+
+    ``abort(400)`` on toggle, ``abort(404)`` on an unknown category and the
+    delete-confirmation re-render each used to emit HTML, which the browser
+    read as JSON and reported as ``Unexpected token '<'``.
+    """
+    db_path, manager, _ = lookup_setup
+    conn = connect(str(db_path))
+    rank_id = str(conn.execute(
+        'SELECT id FROM academic_ranks ORDER BY id LIMIT 1'
+    ).fetchone()['id'])
+    linked_rank_id = str(conn.execute(
+        'SELECT rank_id FROM rank_rules WHERE rank_id IS NOT NULL LIMIT 1'
+    ).fetchone()['rank_id'])
+    conn.close()
+
+    _assert_json_envelope(
+        _ajax_post(manager, 'academic_rank', 'toggle', id=rank_id), 400
+    )
+    _assert_json_envelope(
+        _ajax_post(manager, 'no_such_category', 'add', name='س'), 404
+    )
+    _assert_json_envelope(
+        _ajax_post(manager, 'academic_rank', 'explode', id=rank_id), 400
+    )
+    # A value still linked to rank rules needs the confirmation step.
+    _assert_json_envelope(
+        _ajax_post(manager, 'academic_rank', 'delete', id=linked_rank_id), 409
+    )
+
+
+def test_json_caller_is_told_when_the_session_is_gone(lookup_setup, app_fx):
+    """An expired session must not feed the login page to JSON.parse."""
+    db_path, _manager, _ = lookup_setup
+    client = app_fx.test_client()
+    response = client.post(
+        '/teachers/lookup-lists',
+        data={
+            '_csrf_token': 'stale-token',
+            'category': 'admin_assignment_type',
+            'action': 'add',
+            'name': 'بعد انتهاء الجلسة',
+        },
+        headers={'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json'},
+    )
+    assert _assert_json_envelope(response, 403)['ok'] is False
+    assert _fetchone(
+        db_path,
+        "SELECT id FROM admin_assignment_types WHERE name = 'بعد انتهاء الجلسة'",
+    ) is None
+
+
+def test_json_caller_without_the_permission_gets_json_not_html(lookup_setup):
+    """A role without the manage permission is refused in JSON, not by redirect."""
+    _db_path, _manager, hod = lookup_setup
+    with hod.session_transaction() as session:
+        session['_csrf_token'] = 'test-token'
+    response = hod.post(
+        '/teachers/lookup-lists',
+        data={
+            '_csrf_token': 'test-token',
+            'category': 'admin_assignment_type',
+            'action': 'add',
+            'name': 'محاولة مرفوضة',
+        },
+        headers={'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json'},
+    )
+    assert _assert_json_envelope(response, 403)['ok'] is False
+
+
+def test_browser_form_post_still_gets_html_redirects(lookup_setup):
+    """The JSON refusals must not leak into ordinary browser form posts.
+
+    Chrome sends ``*/*;q=0.8`` with every form post, so ``*/*`` must never be
+    read as "this caller wants JSON" — otherwise the delete button would answer
+    with a raw JSON blob instead of the page.
+    """
+    db_path, manager, _ = lookup_setup
+    response = manager.post(
+        '/teachers/lookup-lists',
+        data={
+            '_csrf_token': 'test-token',
+            'category': 'admin_assignment_type',
+            'action': 'add',
+            'name': 'من نموذج عادي',
+        },
+        headers={'Accept': 'text/html,application/xhtml+xml,*/*;q=0.8'},
+    )
+    assert response.status_code == 302
+    assert 'json' not in (response.headers.get('Content-Type') or '')
+    assert _fetchone(
+        db_path,
+        "SELECT id FROM admin_assignment_types WHERE name = 'من نموذج عادي'",
+    )
+
+
 def test_lookup_list_add_rename_and_toggle_are_ajax_actions(lookup_setup):
     db_path, manager, _ = lookup_setup
     response = _ajax_post(
@@ -160,6 +272,61 @@ def test_lookup_page_has_fast_search_and_ajax_management_controls(lookup_setup):
     assert "target.closest('[data-lookup-edit]')" in script
     assert "window.location.assign(url.toString())" in script
     assert 'data-lookup-save aria-label="حفظ الاسم"' in body
+    assert "'X-CSRFToken'" in script
+
+
+def test_json_reader_is_not_nested_inside_the_refresh_helper(lookup_setup):
+    """``readJsonResponse`` must live in the IIFE scope, not inside a sibling.
+
+    Declared inside ``refreshValues`` it was hoisted only there, so every edit
+    died with a ``ReferenceError`` *before* the response was ever read: the row
+    was written but the page showed an error and never refreshed.  The old test
+    only asserted the name existed somewhere in the file, which a nested
+    definition satisfies — this one pins the scope.
+    """
+    _, manager, _ = lookup_setup
+    with open('static/js/pages/teachers_lookup_lists.js', encoding='utf-8') as js_file:
+        script = js_file.read()
+
+    reader_at = script.index('async function readJsonResponse(')
+    refresh_at = script.index('async function refreshValues(')
+    submit_at = script.index("document.addEventListener('submit'")
+    assert reader_at < refresh_at, 'readJsonResponse must be declared before its users'
+    assert submit_at > reader_at
+
+    # Not nested: the reader sits at the IIFE's own indent level (two spaces).
+    # Compare the exact prefix — `indent.strip() == ''` is true for *any* indent
+    # and would pass a nested definition, i.e. a guard that never fires.
+    line_start = script.rfind('\n', 0, reader_at) + 1
+    assert script[line_start:reader_at] == '  ', (
+        'readJsonResponse is indented inside another function'
+    )
+
+    # And no response may reach JSON.parse without a content-type guard.
+    assert "contentType.includes('application/json')" in script
+    assert 'csrfTokenOf(form)' in script
+    assert 'csrfTokenOf' in script
+    assert "form.querySelector('[name=\"_csrf_token\"]').value" not in script
+
+
+def test_json_accept_header_is_treated_as_ajax(lookup_setup):
+    db_path, manager, _ = lookup_setup
+    response = manager.post(
+        '/teachers/lookup-lists',
+        data={
+            '_csrf_token': 'test-token',
+            'category': 'admin_assignment_type',
+            'action': 'add',
+            'name': 'خيار JSON',
+        },
+        headers={'Accept': 'application/json'},
+    )
+    assert response.status_code == 200
+    assert response.get_json() == {'ok': True, 'message': 'تم الحفظ بنجاح'}
+    assert _fetchone(
+        db_path,
+        "SELECT id FROM admin_assignment_types WHERE name = 'خيار JSON'",
+    )
 
 
 def test_ajax_lookup_validation_returns_inline_error_without_redirect(lookup_setup):
