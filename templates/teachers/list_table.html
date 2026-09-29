@@ -60,7 +60,7 @@
             <div class="flex items-center gap-1.5">
               <p class="text-xs text-on-surface-variant" dir="ltr">{{ t.username or '—' }}</p>
               {% if t.hod_dept_name %}
-              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">رئيس قسم · {{ t.hod_dept_name }}</span>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">رئيس {{ t.hod_dept_name }}</span>
               {% elif t.position %}
               <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">{{ t.position }}</span>
               {% endif %}

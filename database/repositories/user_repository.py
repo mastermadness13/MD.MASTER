@@ -70,9 +70,35 @@ class UserRepository(BaseRepository):
 
     # /     /     >---- نشوف إذا اسم المستخدم موجود مسبقاً
     def username_exists(self, username: str) -> bool:
+        """True when *username* is taken, ignoring letter case.
+
+        Case-insensitive on purpose: ``users.username`` is UNIQUE with the
+        default BINARY collation, so ``abdo`` and ``Abdo`` both fit in the
+        column and produce two accounts for one person, while login — which is
+        also case-sensitive — then needs exact spelling to reach either one.
+        Checking with ``COLLATE NOCASE`` closes that hole without touching the
+        existing rows or the stored passwords.
+        """
         return self.db.execute(
-            'SELECT 1 FROM users WHERE username = ?', (username,)
+            'SELECT 1 FROM users WHERE username = ? COLLATE NOCASE', (username,)
         ).fetchone() is not None
+
+    # /     /     >---- مَن صاحب اسم الدخول؟ نرجع صفّه لرسالة خطأ مفيدة
+    def find_username_owner(self, username: str) -> Optional[Dict[str, Any]]:
+        """Return the account holding *username* (case-insensitive), if any.
+
+        Includes whether the account is linked to a teacher record: a name
+        owned by an unlinked account blocks registration while being invisible
+        in the UI, which is exactly the case the old "already taken" message
+        failed to explain.
+        """
+        row = self.db.execute(
+            'SELECT u.id, u.username, u.label, u.role, u.is_active, '
+            '       (SELECT t.name FROM teachers t WHERE t.user_id = u.id) AS teacher_name '
+            'FROM users u WHERE u.username = ? COLLATE NOCASE LIMIT 1',
+            (username,),
+        ).fetchone()
+        return dict(row) if row else None
 
     # /     /     >---- نجيب المستخدمين مع بحث اختياري والترقيم
     def list_users(self, search: str = '', page: int = 1,

@@ -115,7 +115,7 @@ class TeacherService:
         if username_error:
             raise ValueError(username_error)
         if self._user_repo.username_exists(nickname):
-            raise ValueError('اسم الدخول مستخدم مسبقاً')
+            raise ValueError(self._username_taken_message(nickname))
         if not initial_password or len(initial_password) < 6:
             raise ValueError('كلمة المرور يجب أن تكون 6 أحرف على الأقل')
 
@@ -191,6 +191,31 @@ class TeacherService:
             return roles
         return [teacher.get('role') or 'teacher']
 
+    # /     /     >---- رسالة خطأ اسم الدخول: تقول مَن يحتجز الاسم وليش
+    def _username_taken_message(self, username: str) -> str:
+        """Explain who already holds *username* instead of a bare 'taken'.
+
+        Accounts left behind by the seed scripts carry real names (``hanan``,
+        ``abdo`` …) but are linked to no teacher record, and the UI has no page
+        that lists accounts, so the office sees "already taken" for a name that
+        appears nowhere on screen. Naming the holder — and saying plainly that
+        the holder is an orphan account — is what makes the message actionable.
+        """
+        owner = self._user_repo.find_username_owner(username)
+        if not owner:
+            return 'اسم الدخول مستخدم مسبقاً'
+        held = owner.get('username') or username
+        if owner.get('teacher_name'):
+            return (
+                f'اسم الدخول «{held}» محجوز لحساب الأستاذ '
+                f'«{owner["teacher_name"]}»'
+            )
+        return (
+            f'اسم الدخول «{held}» محجوز بحساب قديم غير مرتبط بأي أستاذ '
+            f'(الاسم المعروض: «{owner.get("label") or held}»). '
+            'احذف هذا الحساب أو اختر اسماً آخر.'
+        )
+
     # /     /     >---- تحديث الأدوار الإضافية لحساب الأستاذ (أساسي teacher + إضافات)
     def set_teacher_extra_roles(self, teacher_id: int, additional_roles) -> None:
         """Refresh the linked user's granted roles (landing 'teacher' + extras)."""
@@ -224,7 +249,7 @@ class TeacherService:
         if username_error:
             raise ValueError(username_error)
         if self._user_repo.username_exists(username):
-            raise ValueError('اسم الدخول مستخدم مسبقاً')
+            raise ValueError(self._username_taken_message(username))
 
         # Legacy/imported teachers may not have a users row yet. Create the
         # linked account with a one-time initial code instead of rejecting the
@@ -265,6 +290,15 @@ class TeacherService:
         hashed+expiring and emailed to the teacher's personal email.
         """
         username = primary_username or _generate_username(teacher['id'])
+        # /     /     >---- الأدوار الابتدائية للحساب الجديد: 'teacher' زائد
+        # /     /     >---- 'head_of_department' لو السجل يحمل قسماً يرأسه.
+        # /     /     >---- بدون هذا، حساب أُنشئ *بعد* تعيينه رئيساً يطلع
+        # /     /     >---- بدور مدرس فقط ويفتح لوحة الأستاذ عند الدخول
+        # /     /     >---- (مزامنة الأدوار في صفحة التعديل تُتخطى لعدم وجود
+        # /     /     >---- حساب مرتبط وقتها — teachers.py:1348).
+        seed_roles = ['teacher']
+        if teacher.get('hod_department_id'):
+            seed_roles.append('head_of_department')
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         if direct_password:
             password_error = validate_password(direct_password)
@@ -294,7 +328,7 @@ class TeacherService:
             (
                 username,
                 hashed,
-                'teacher',
+                'head_of_department' if len(seed_roles) > 1 else 'teacher',
                 teacher['name'],
                 teacher.get('department_id'),
                 teacher.get('email'),
@@ -308,7 +342,7 @@ class TeacherService:
         user_id = self.db.execute('SELECT last_insert_rowid()').fetchone()[0]
         self._repo.link_user(teacher['id'], user_id)
         try:
-            self._user_repo.set_user_roles(user_id, ['teacher'])
+            self._user_repo.set_user_roles(user_id, seed_roles)
         except AttributeError:
             pass
         self.db.commit()

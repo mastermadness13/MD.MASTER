@@ -4,6 +4,7 @@ import json
 from typing import Any, Dict, List, Optional
 
 from database.repositories.base_repository import BaseRepository
+from utils.text import normalize_academic_number
 
 
 # /     /     >---- نحسب تاريخي بداية ونهاية الفصل الدراسي المختار
@@ -162,6 +163,11 @@ class FacultyPerformanceRepository(BaseRepository):
         values = {key: value for key, value in values.items() if key in allowed}
         if not values:
             return
+        # /     /     >---- الرقم الأكاديمي يُطبَّع قبل الكتابة: '' أو السنتينيل
+        # /     /     >---- تصير NULL وإلا خرقت قيد UNIQUE الجزئي في
+        # /     /     >---- schema.py وأعادت 500 بدل رسالة تحقق.
+        if 'academic_number' in values:
+            values['academic_number'] = normalize_academic_number(values['academic_number'])
         assignments = ', '.join(f'{key} = ?' for key in values)
         self.db.execute(
             f'UPDATE teachers SET {assignments} WHERE id = ?',

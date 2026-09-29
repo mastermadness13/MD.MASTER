@@ -102,8 +102,46 @@
     .cc-create-toolbar-button { flex: 1; justify-content: center; }
   }
   @media print {
+    html,
+    body {
+      margin: 0 !important;
+      padding: 0 !important;
+      background: #fff !important;
+      overflow: visible !important;
+    }
+    .app-header,
+    .sidebar,
+    .sidebar-overlay,
+    .bottom-nav,
+    .no-print,
+    #backToTop,
+    #modal-root {
+      display: none !important;
+    }
+    .sidebar-content {
+      margin: 0 !important;
+      width: 100% !important;
+      max-width: none !important;
+    }
+    .main-content,
+    .main-content-inner {
+      margin: 0 !important;
+      padding: 0 !important;
+      max-width: none !important;
+      overflow: visible !important;
+    }
     .cc-create-page { max-width: none !important; margin: 0 !important; }
     .cc-create-toolbar { display: none !important; }
+    .cc-sheet--form {
+      box-shadow: none !important;
+      border: 0 !important;
+      margin: 0 !important;
+    }
+    .cc-create-page form button,
+    .cc-create-page form input[type="file"],
+    .cc-create-page form input[type="submit"] {
+      display: none !important;
+    }
   }
 </style>
 {% endblock %}

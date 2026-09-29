@@ -222,18 +222,54 @@ def _clear_previous_head(db, department_id, exclude_teacher_id=None):
     Deliberately leaves the change uncommitted: it is committed together with
     the teacher create/update so a later validation failure never leaves the
     department without a head.
+
+    Also revokes ``head_of_department`` from the demoted teacher's account.
+    Clearing ``teachers.hod_department_id`` alone is not enough: the role lives
+    in ``user_roles``, so the previous head would keep the HOD dashboard and a
+    role switcher offering a headship he no longer holds.
     """
     if exclude_teacher_id is not None:
+        demoted = db.execute(
+            'SELECT id, user_id FROM teachers '
+            'WHERE hod_department_id = ? AND deleted_at IS NULL AND id != ?',
+            (department_id, exclude_teacher_id),
+        ).fetchall()
         db.execute(
             'UPDATE teachers SET hod_department_id = NULL '
             'WHERE hod_department_id = ? AND deleted_at IS NULL AND id != ?',
             (department_id, exclude_teacher_id),
         )
     else:
+        demoted = db.execute(
+            'SELECT id, user_id FROM teachers '
+            'WHERE hod_department_id = ? AND deleted_at IS NULL',
+            (department_id,),
+        ).fetchall()
         db.execute(
             'UPDATE teachers SET hod_department_id = NULL '
             'WHERE hod_department_id = ? AND deleted_at IS NULL',
             (department_id,),
+        )
+    for row in demoted:
+        if not row['user_id']:
+            continue
+        db.execute(
+            'DELETE FROM user_roles WHERE user_id = ? AND role = ?',
+            (row['user_id'], 'head_of_department'),
+        )
+        # /     /     >----Ensure the demoted account still has a landing role.
+        remaining = db.execute(
+            'SELECT 1 FROM user_roles WHERE user_id = ? LIMIT 1',
+            (row['user_id'],),
+        ).fetchone()
+        if not remaining:
+            db.execute(
+                'INSERT OR IGNORE INTO user_roles (user_id, role) VALUES (?, ?)',
+                (row['user_id'], 'teacher'),
+            )
+        db.execute(
+            "UPDATE users SET role = 'teacher' WHERE id = ? AND role = 'head_of_department'",
+            (row['user_id'],),
         )
 
 
@@ -741,10 +777,10 @@ def lookup_lists():
                             raise ValueError(
                                 'لا يمكن حذف دور نظامي؛ استخدم التعطيل بدلاً من ذلك'
                             )
-                        if member_count + assignment_count:
-                            raise ValueError(
-                                'لا يمكن حذف التكليف ما دام مرتبطاً بأعضاء أو تكليفات محفوظة'
-                            )
+                        # /     /     >---- التكليف العام المرتبط لا يُمنع منه
+                        # /     /     >---- الحذف؛ يمر لخطوة التأكيد أدناه: نقل
+                        # /     /     >---- الاستخدام إلى قيمة بديلة أو تفريغ
+                        # /     /     >---- الحقول ثم الحذف.
                     replacement_id = _safe_fk(
                         request.form.get('replacement_id')
                     )

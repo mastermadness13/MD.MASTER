@@ -219,6 +219,15 @@ class TeacherRepository(BaseRepository):
 
     # /     /     >---- نحدّث بيانات أستاذ (حقول أساسية + اختيارية)
     def update(self, teacher_id: int, data: Dict[str, Any]) -> None:
+        from utils.text import normalize_academic_number
+
+        # /     /     >---- نفس تطبيع مسار الإنشاء: القيم الفارغة/السنتينيل
+        # /     /     >---- تصير NULL. بدونها يكتب التحديث '' وقيد UNIQUE
+        # /     /     >---- الجزئي في schema.py:2000 يرمي IntegrityError
+        # /     /     >---- (ما عدا instructor واحد بس له رقم فارغ).
+        data = dict(data)
+        if 'academic_number' in data:
+            data['academic_number'] = normalize_academic_number(data['academic_number'])
         # /     /     >---- الحقول الأساسية الدائمة
         cols = [
             'name', 'email', 'phone', 'department_id', 'academic_number',

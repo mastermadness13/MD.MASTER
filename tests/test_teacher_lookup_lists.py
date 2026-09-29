@@ -148,6 +148,18 @@ def test_no_ajax_path_answers_with_html(lookup_setup):
     )
 
 
+def test_app_level_404_answers_ajax_with_json(lookup_setup):
+    """A genuine route miss must reach the AJAX caller as JSON, never as the
+    HTML 404 page that readJsonResponse reports as "استجابة غير صالحة من
+    الخادم (404)"."""
+    _db_path, manager, _ = lookup_setup
+    response = manager.get(
+        '/no-such-route', headers={'X-Requested-With': 'XMLHttpRequest'}
+    )
+    envelope = _assert_json_envelope(response, 404)
+    assert envelope['ok'] is False
+
+
 def test_json_caller_is_told_when_the_session_is_gone(lookup_setup, app_fx):
     """An expired session must not feed the login page to JSON.parse."""
     db_path, _manager, _ = lookup_setup
@@ -309,6 +321,28 @@ def test_json_reader_is_not_nested_inside_the_refresh_helper(lookup_setup):
     assert "form.querySelector('[name=\"_csrf_token\"]').value" not in script
 
 
+def test_page_script_is_served_with_a_cache_busting_version(lookup_setup):
+    """The page script URL must carry a version query.
+
+    ``/static/`` is served with a one-year ``max-age``, so a script URL
+    without a version keeps the browser on the pre-fix copy for a year: the
+    fix is deployed, the page still throws, and it looks like the fix did
+    nothing.  The version query makes the URL change whenever the file does.
+    """
+    _, manager, _ = lookup_setup
+    body = manager.get(
+        '/teachers/lookup-lists?category=admin_assignment_type'
+    ).get_data(as_text=True)
+
+    match = re.search(
+        r'src="([^"]*js/pages/teachers_lookup_lists\.js[^"]*)"', body
+    )
+    assert match, 'the page must load its own script'
+    assert re.search(r'\?v=\d+$', match.group(1)), (
+        f'script URL has no cache-busting version: {match.group(1)}'
+    )
+
+
 def test_json_accept_header_is_treated_as_ajax(lookup_setup):
     db_path, manager, _ = lookup_setup
     response = manager.post(
@@ -437,7 +471,7 @@ def test_general_assignment_never_maps_to_a_dashboard_role(lookup_setup):
     conn.close()
 
 
-def test_used_general_assignment_cannot_be_deleted_or_cleared(lookup_setup):
+def test_used_general_assignment_delete_requires_confirmation_first(lookup_setup):
     db_path, manager, _ = lookup_setup
     conn = connect(str(db_path))
     conn.execute(
@@ -463,23 +497,14 @@ def test_used_general_assignment_cannot_be_deleted_or_cleared(lookup_setup):
     conn.commit()
     conn.close()
 
+    # /     /     >---- بدون نقل أو تفريغ: شاشة تأكيد ولا يُحذف شيء
     response = _post(
         manager, 'admin_assignment_type', 'delete', id=str(task_id)
     )
     assert response.status_code == 200
-    assert any(
-        'لا يمكن حذف التكليف ما دام مرتبطاً' in message
-        for message in _flash_messages(response)
-    )
-    response = _post(
-        manager, 'admin_assignment_type', 'delete',
-        id=str(task_id), clear_references='1',
-    )
-    assert response.status_code == 200
-    assert any(
-        'لا يمكن حذف التكليف ما دام مرتبطاً' in message
-        for message in _flash_messages(response)
-    )
+    body = response.get_data(as_text=True)
+    assert 'اختر نقل الاستخدام إلى قيمة بديلة' in body
+    assert 'تأكيد حذف «تكليف تجريبي»' in body
     assert _fetchone(
         db_path, 'SELECT position FROM teachers WHERE name = ?', ('عضو تجريبي',)
     )['position'] == 'تكليف تجريبي'
@@ -491,6 +516,136 @@ def test_used_general_assignment_cannot_be_deleted_or_cleared(lookup_setup):
     assert _fetchone(
         db_path, 'SELECT id FROM admin_assignment_types WHERE id = ?', (task_id,)
     ) == {'id': task_id}
+
+    # /     /     >---- بالتفريغ: يُحذف التكليف وتُفرَّغ الحقول المرتبطة
+    response = _post(
+        manager, 'admin_assignment_type', 'delete',
+        id=str(task_id), clear_references='1',
+    )
+    assert response.status_code == 200
+    assert _fetchone(
+        db_path, 'SELECT id FROM admin_assignment_types WHERE id = ?', (task_id,)
+    ) is None
+    assert _fetchone(
+        db_path, 'SELECT position FROM teachers WHERE name = ?', ('عضو تجريبي',)
+    )['position'] == ''
+    assert _fetchone(
+        db_path,
+        'SELECT COUNT(*) AS count FROM faculty_admin_assignments WHERE task_name = ?',
+        ('تكليف تجريبي',),
+    ) == {'count': 0}
+
+
+def test_ajax_linked_general_assignment_delete_needs_confirmation(lookup_setup):
+    """AJAX delete of a linked general task is refused (409) until the user
+    picks a replacement or confirms clearing — never an HTML page."""
+    db_path, manager, _ = lookup_setup
+    conn = connect(str(db_path))
+    conn.execute(
+        "INSERT INTO admin_assignment_types "
+        "(name, default_hours, is_active, sort_order, is_system_linked) "
+        "VALUES ('تكليف مرتبط', 0, 1, 99, 0)"
+    )
+    task_id = conn.execute(
+        "SELECT id FROM admin_assignment_types WHERE name = 'تكليف مرتبط'"
+    ).fetchone()['id']
+    conn.execute(
+        "INSERT INTO teachers (name, position) VALUES ('عضو مرتبط', 'تكليف مرتبط')"
+    )
+    conn.commit()
+    conn.close()
+
+    response = _ajax_post(
+        manager, 'admin_assignment_type', 'delete', id=str(task_id)
+    )
+    envelope = _assert_json_envelope(response, 409)
+    assert envelope['ok'] is False
+    assert 'اختر نقل الاستخدام إلى قيمة بديلة' in envelope['message']
+    assert _fetchone(
+        db_path, 'SELECT id FROM admin_assignment_types WHERE id = ?', (task_id,)
+    ) == {'id': task_id}
+
+
+def test_ajax_linked_general_assignment_delete_with_clear(lookup_setup):
+    db_path, manager, _ = lookup_setup
+    conn = connect(str(db_path))
+    conn.execute(
+        "INSERT INTO admin_assignment_types "
+        "(name, default_hours, is_active, sort_order, is_system_linked) "
+        "VALUES ('تكليف قابل للتفريغ', 0, 1, 99, 0)"
+    )
+    task_id = conn.execute(
+        "SELECT id FROM admin_assignment_types WHERE name = 'تكليف قابل للتفريغ'"
+    ).fetchone()['id']
+    conn.execute(
+        "INSERT INTO teachers (name, position) "
+        "VALUES ('عضو قابل للتفريغ', 'تكليف قابل للتفريغ')"
+    )
+    conn.commit()
+    conn.close()
+
+    response = _ajax_post(
+        manager, 'admin_assignment_type', 'delete',
+        id=str(task_id), clear_references='1',
+    )
+    _assert_json_envelope(response, 200)
+    assert response.get_json()['ok'] is True
+    assert _fetchone(
+        db_path, 'SELECT id FROM admin_assignment_types WHERE id = ?', (task_id,)
+    ) is None
+    assert _fetchone(
+        db_path, 'SELECT position FROM teachers WHERE name = ?',
+        ('عضو قابل للتفريغ',),
+    )['position'] == ''
+
+
+def test_ajax_linked_general_assignment_delete_moves_to_replacement(lookup_setup):
+    db_path, manager, _ = lookup_setup
+    conn = connect(str(db_path))
+    conn.execute(
+        "INSERT INTO admin_assignment_types "
+        "(name, default_hours, is_active, sort_order, is_system_linked) "
+        "VALUES ('تكليف يحوَّل', 0, 1, 98, 0), ('تكليف بديل', 0, 1, 97, 0)"
+    )
+    task_id = conn.execute(
+        "SELECT id FROM admin_assignment_types WHERE name = 'تكليف يحوَّل'"
+    ).fetchone()['id']
+    replacement_id = conn.execute(
+        "SELECT id FROM admin_assignment_types WHERE name = 'تكليف بديل'"
+    ).fetchone()['id']
+    conn.execute(
+        "INSERT INTO teachers (name, position) VALUES ('عضو يحوَّل', 'تكليف يحوَّل')"
+    )
+    conn.execute(
+        '''INSERT INTO faculty_admin_assignments
+           (teacher_id, task_name, start_date)
+           SELECT id, 'تكليف يحوَّل', '2026-09-01' FROM teachers
+           WHERE name = 'عضو يحوَّل' '''
+    )
+    conn.commit()
+    conn.close()
+
+    response = _ajax_post(
+        manager, 'admin_assignment_type', 'delete',
+        id=str(task_id), replacement_id=str(replacement_id),
+    )
+    _assert_json_envelope(response, 200)
+    assert response.get_json()['ok'] is True
+    teacher = _fetchone(
+        db_path,
+        'SELECT position, admin_assignment_type_id FROM teachers WHERE name = ?',
+        ('عضو يحوَّل',),
+    )
+    assert teacher['position'] == 'تكليف بديل'
+    assert teacher['admin_assignment_type_id'] == replacement_id
+    assert _fetchone(
+        db_path,
+        'SELECT COUNT(*) AS count FROM faculty_admin_assignments WHERE task_name = ?',
+        ('تكليف بديل',),
+    ) == {'count': 1}
+    assert _fetchone(
+        db_path, 'SELECT id FROM admin_assignment_types WHERE id = ?', (task_id,)
+    ) is None
 
 
 def test_unused_general_assignment_can_be_deleted(lookup_setup):

@@ -9,10 +9,8 @@
     <style>
         @page {
             size: A4 portrait;
-            margin: 20mm 15mm;
+            margin: 0;
         }
-
-        {% block doc_styles %}{% endblock %}
 
         * {
             box-sizing: border-box;
@@ -35,18 +33,57 @@
         }
 
         @media print {
+            /* One A4 page holds the document, nothing else. */
+            html,
             body {
-                background-color: #fff;
-                min-height: auto;
-                padding: 0;
-                margin: 0;
+                width: 210mm !important;
+                height: 297mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #fff !important;
+                overflow: hidden !important;
             }
-            .document-page {
-                box-shadow: none;
-                width: 100%;
-                padding: 0;
-                margin: 0;
+
+            /* Screen UI (print button, back link, scripts) never prints. */
+            body > *:not(.document-page) {
+                display: none !important;
             }
+
+        .document-page {
+            display: block !important;
+            width: 210mm !important;
+            height: 297mm !important;
+            min-height: 297mm !important;
+            max-height: 297mm !important;
+            margin: 0 !important;
+            padding: 12mm !important;
+                background: #fff !important;
+                box-shadow: none !important;
+                border: none !important;
+                overflow: hidden !important;
+                page-break-after: avoid !important;
+                page-break-before: avoid !important;
+                break-after: avoid-page !important;
+                break-before: avoid-page !important;
+            }
+
+            /* Never spill onto a second sheet. */
+            .document-page table {
+                width: 100% !important;
+                max-width: 100% !important;
+                border-collapse: collapse !important;
+            }
+            .document-page tr,
+            .document-page td,
+            .document-page th {
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+            }
+            .document-page a {
+                color: inherit !important;
+                text-decoration: none !important;
+            }
+
             .no-print {
                 display: none !important;
             }
@@ -102,11 +139,16 @@
                 margin: 0 0 12px 8px;
             }
         }
+
+        {# Child pages (print.html, print_course.html, leaves_report.html)
+           override @page and the sheet box. Declared last so their
+           declarations win over the defaults above. #}
+        {% block doc_styles %}{% endblock %}
     </style>
 </head>
 <body>
 
-    <button class="print-btn no-print" onclick="window.print()">طباعة النموذج</button>
+    <button type="button" class="print-btn no-print" onclick="window.printDocument()">طباعة النموذج</button>
     {% block back_link %}{% endblock %}
 
     <div class="document-page">
@@ -115,6 +157,7 @@
 
     {% block doc_scripts %}{% endblock %}
     <script src="{{ url_for('static', filename='js/shared/doc_page_fit.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/shared/print_document_fit.js') }}"></script>
 
 </body>
 </html>

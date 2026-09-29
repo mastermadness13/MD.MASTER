@@ -319,7 +319,8 @@ def test_create_duplicate_username_shows_arabic_error(app_fx, db_fx):
         '_csrf_token': 'test-token',
     })
     assert r.status_code == 200
-    assert 'اسم الدخول مستخدم مسبقاً' in r.get_data(as_text=True)
+    assert 'اسم الدخول' in r.get_data(as_text=True)
+    assert 'محجوز' in r.get_data(as_text=True)
 
 # ── Initial code lifecycle (service-level creation) ──────────────────────
 

@@ -203,10 +203,10 @@
           {% else %}
           {% if row.member_count or row.assignment_count %}
           <span class="rounded px-2 py-1 text-on-surface-variant"
-                title="فك الارتباط بالأعضاء والتكليفات المحفوظة قبل الحذف">
-            مرتبط — لا يمكن الحذف
+                title="عند الحذف تظهر شاشة تأكيد لنقل الاستخدام إلى قيمة بديلة أو تفريغ الحقول">
+            مرتبط
           </span>
-          {% else %}
+          {% endif %}
           <form method="post">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="category" value="{{ selected_category }}">
@@ -214,7 +214,6 @@
             <input type="hidden" name="id" value="{{ row.id }}">
             <button type="submit" class="rounded px-2 py-1 font-semibold text-error hover:bg-error/5">حذف</button>
           </form>
-          {% endif %}
           {% endif %}
           {% elif selected_category == 'specialization' %}
           <span class="text-on-surface-variant">{{ row.department_name }} · {{ row.member_count }} عضو</span>
@@ -237,5 +236,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/pages/teachers_lookup_lists.js') }}"></script>
+<script src="{{ static_asset('js/pages/teachers_lookup_lists.js') }}"></script>
 {% endblock %}

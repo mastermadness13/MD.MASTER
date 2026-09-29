@@ -17,6 +17,8 @@ from flask_db import get_db, close_db, init_app as db_init_app
 from security import generate_csrf_token
 from security import inject_navigation
 from security.authorization import json_denial
+from security.authorization import wants_json_response
+from security.authorization import highest_priority_role
 from security.csrf import is_request_protected, csrf_failure_response
 from security.security_headers import (
     apply_cookie_config,
@@ -186,6 +188,26 @@ PUBLIC_PREFIXES = ('/static/', '/uploads/', '/favicon.ico')
 ASSET_PREFIXES = ('/static/', '/favicon.ico')
 
 
+# /     /     >---- رابط أصل ثابت مع بصمة زمنية لكسر الكاش
+# /     /     >---- ملفات /static/ تُخدم بـ max-age سنة كاملة (security_headers)،
+# /     /     >---- فمتصفح المستخدم يحتفظ بالنسخة القديمة من أي جافاسكربت حتى
+# /     /     >---- لو نُشر الإصلاح؛ والمشكلة تظهر كأن الإصلاح لم يعمل أصلاً.
+# /     /     >---- ?v=<mtime> يجعل العنوان يتغير عند كل تعديل للملف فيصل
+# /     /     >---- الجديد للكل فوراً، والكاش يظل صالحاً طالما الملف لم يتغير.
+def _make_static_asset_url(app):
+    static_root = os.path.join(os.path.abspath(app.root_path), 'static')
+
+    def static_asset(filename: str) -> str:
+        url = url_for('static', filename=filename)
+        try:
+            stamp = int(os.path.getmtime(os.path.join(static_root, filename)))
+        except OSError:
+            return url
+        return f'{url}?v={stamp}'
+
+    return static_asset
+
+
 # /     /     >---- الدالة الرئيسية اللي تصنع التطبيق وتهيئ كل شي
 def create_app(*, allow_debug: bool = False):
     # /     /     >---- allow_debug يمرّر من نقطة الدخول التفاعلية فقط
@@ -228,6 +250,7 @@ def create_app(*, allow_debug: bool = False):
     app.jinja_env.globals['teacher_display_name'] = teacher_display_name
     app.jinja_env.globals['submission_status_label'] = submission_status_label
     app.jinja_env.globals['submission_status_color'] = submission_status_color
+    app.jinja_env.globals['static_asset'] = _make_static_asset_url(app)
     app.context_processor(inject_navigation)
 
     # /     /     >---- نضيف بيانات المستخدم المرحّب به في كل صفح
@@ -297,6 +320,27 @@ def create_app(*, allow_debug: bool = False):
                 return denial
             flash('انتهت صلاحية الجلسة، يرجى تسجيل الدخول مجدداً', 'error')
             return redirect(url_for('auth.login'))
+        # /     /     >---- نزامن الأدوار الممنوحة من القاعدة في كل طلب.
+        # /     /     >---- الجلسة كانت تخزّنها وقت الدخول فقط، فأي تغيير
+        # /     /     >---- لاحق (ترقية أستاذ إلى رئيس قسم، أو إزالته) ما كان
+        # /     /     >---- يوصل للصفحة إلا بعد خروج ودخول. النتيجة: زر
+        # /     /     >---- تبديل الأدوار مخفي والواجهة عالقة على لوحة الأستاذ.
+        db = get_db()
+        granted = [
+            r['role'] for r in db.execute(
+                'SELECT DISTINCT role FROM user_roles WHERE user_id = ? '
+                'ORDER BY role', (user_id,)
+            ).fetchall()
+        ]
+        # /     /     >---- حساب بدون صفوف أدوار (بيانات قديمة/مستوردة):
+        # /     /     >---- نرجع لعمود users.role القديم ولا نلمس الجلسة.
+        # /     /     >---- المقارنة كمجموعة لا كقائمة: find_roles_by_user وقت
+        # /     /     >---- الدخول يرجّعها بترتيب الإدراج، فنصطدم لو قارنّاها
+        # /     /     >---- نصاً ونكتب الجلسة في كل طلب بلا داع.
+        if granted and set(granted) != set(session.get('roles') or ()):
+            session['roles'] = granted
+            if session.get('role') not in granted:
+                session['role'] = highest_priority_role(granted)
         return None
 
     @app.before_request
@@ -452,6 +496,15 @@ def create_app(*, allow_debug: bool = False):
 
     @app.errorhandler(404)
     def not_found(e):
+        # /     /     >---- عميل AJAX/JSON يقرأ JSON بدل صفحة HTML (مثل حفظ
+        # /     /     >---- أسماء القوائم المرجعية): لو رجعنا له صفحة 404 HTML
+        # /     /     >---- ظهر له "استجابة غير صالحة من الخادم (404)" ويختفي
+        # /     /     >---- السبب الحقيقي — فنجيبه بجسم JSON قابل للقراءة.
+        # /     /     >---- نستخدم wants_json_response() الضيقة (XHR/JSON فقط)
+        # /     /     >---- لا _wants_json(): المتصفح العادي يرسل `*/*` في
+        # /     /     >---- Accept فيبقى له HTML بجانب صحة الإجابة عند AJAX.
+        if wants_json_response():
+            return jsonify({'ok': False, 'message': 'الرابط المطلوب غير موجود'}), 404
         # /     /     >---- صفحة 404 - الصفحة غير موجودة
         return render_template('errors/404.html'), 404
 
