@@ -10,6 +10,8 @@ templates/shared/components/theme_init.html must both honour:
   * theme-custom.css is imported after dark.css so a custom accent wins.
 """
 
+import json
+import os
 import re
 
 import pytest
@@ -62,17 +64,42 @@ def _css():
         return fh.read()
 
 
+def _js_asset(name):
+    """The URL the shell serves for a JS source file.
+
+    Scripts are content-hashed into static/dist/, so the page references
+    `theme_panel.<hash>.js` rather than `js/theme_panel.js`. Resolve through
+    the build manifest so this tracks the real output.
+    """
+    manifest = os.path.join('static', 'dist', 'manifest.json')
+    if os.path.exists(manifest):
+        with open(manifest, encoding='utf-8') as fh:
+            built = json.load(fh).get('js', {})
+        hit = built.get(name) or built.get(os.path.join('pages', name).replace('\\', '/'))
+        if hit:
+            return hit
+    return f'/static/js/{name}'
+
+
 def test_theme_init_runs_before_first_paint():
-    """The no-flash script must sit in <head> ahead of the Tailwind CDN."""
+    """The no-flash script must sit in <head> ahead of the stylesheet link.
+
+    The old assertion looked for the Tailwind Play CDN, because the CDN
+    generated utilities in the browser and therefore had to see the `dark`
+    class. Tailwind is now compiled ahead of time by `npm run build`, so
+    there is no runtime generator left to race; what still matters is that
+    theme_init is not deferred and stays ahead of the stylesheet, so the
+    `dark` class is on <html> before first paint.
+    """
     with open('templates/shared/components/head_preamble.html', encoding='utf-8') as fh:
         head = fh.read()
     init_at = head.find('theme_init.html')
-    tailwind_at = head.find('cdn.tailwindcss.com')
     assert init_at != -1, 'theme_init.html is not included in head_preamble'
-    assert tailwind_at != -1, 'Tailwind CDN include disappeared'
-    assert init_at < tailwind_at, (
-        'theme_init must be included before the Tailwind CDN script so the '
-        'dark class is present when Tailwind generates its utilities'
+    assert 'cdn.tailwindcss.com' not in head, (
+        'the Play CDN is back; utilities must come from the compiled bundle'
+    )
+    assert 'defer' not in head[init_at:init_at + 200].lower(), (
+        'theme_init must not be deferred, or the page flashes light before dark'
     )
 
 
@@ -339,7 +366,7 @@ def test_appearance_panel_is_reachable_and_wired(client):
     body = client.get('/timetable/department').get_data(as_text=True)
     assert 'popovertarget="themePanel"' in body, 'no trigger for the panel'
     assert 'id="themePanel"' in body, 'panel markup is missing'
-    assert 'js/theme_panel.js' in body
+    assert _js_asset('theme_panel.js') in body
     # Native radios keep arrow-key group navigation for free.
     for name in ('theme-mode', 'theme-density', 'theme-corner'):
         assert 'name="%s"' % name in body

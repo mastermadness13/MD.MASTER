@@ -11,6 +11,14 @@ env/
 .venv/
 .venv-1/
 node_modules/
+
+# static/dist/ is the compiled Tailwind/JS bundle and MUST be committed.
+# The `dist/` rule above is a Python build-artifact rule; it used to catch
+# static/dist/ too, which meant a fresh clone or deploy shipped no Tailwind
+# at all and the whole UI rendered unstyled (no CDN fallback exists any more).
+# Rebuild with `npm run build` and commit the result alongside the source.
+!static/dist/
+!static/dist/**
 *.db-journal
 *.sqlite
 *.sqlite3

@@ -1,0 +1,1 @@
+var BOOT=window.BASE_GREETING_BOOT||{},NAME=BOOT.name||"";document.addEventListener("DOMContentLoaded",function(){document.getElementById("firstLoginBanner")||window.showNotification("\u0645\u0631\u062D\u0628\u0627\u064B \u0628\u0639\u0648\u062F\u062A\u0643 \u{1F44B} "+NAME,"success",5e3)});

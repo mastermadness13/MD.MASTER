@@ -7,6 +7,7 @@ one ``static/js/timetable_pages.js`` bundle replaces the old
 form/hub chrome match the module's ``page-header`` language.
 """
 
+import json
 import os
 import sqlite3
 
@@ -79,10 +80,29 @@ def _read_js(name):
         return fh.read()
 
 
+def _bundle(name):
+    """The URL the shell is expected to reference for a JS source file.
+
+    Assets are content-hashed into static/dist/, so the page carries
+    `timetable_pages.<hash>.js` rather than `timetable_pages.js`. Resolve
+    through the build manifest when it exists so the assertion tracks the real
+    output instead of hard-coding one or the other.
+    """
+    here = os.path.dirname(os.path.abspath(__file__))
+    manifest = os.path.join(here, '..', 'static', 'dist', 'manifest.json')
+    if os.path.exists(manifest):
+        with open(manifest, encoding='utf-8') as fh:
+            built = json.load(fh).get('js', {})
+        hit = built.get(name) or built.get(f'pages/{name}')
+        if hit:
+            return hit
+    return f'/static/js/{name}'
+
+
 def test_list_page_wires_shared_pages_bundle(client):
     """الجدول العام (print/timetable) يستخدم الحزمة المشتركة بدل timetable_list.js."""
     body = client.get('/print/timetable').get_data(as_text=True)
-    assert 'timetable_pages.js' in body, 'shared pages bundle wired'
+    assert _bundle('timetable_pages.js') in body, 'shared pages bundle wired'
     assert 'TIMETABLE_LIST_BOOT' in body, 'list boot config present'
     assert 'timetable_list.js' not in body, 'legacy list script gone'
     assert 'tt-mobile-grid' in body
@@ -109,7 +129,7 @@ def test_teacher_schedule_wires_shared_pages_bundle(app_fx, db_fx):
 
     body = c.get('/teacher/my-schedule').get_data(as_text=True)
     assert 'TIMETABLE_TEACHER_BOOT' in body, 'teacher boot config present'
-    assert 'timetable_pages.js' in body, 'shared pages bundle wired'
+    assert _bundle('timetable_pages.js') in body, 'shared pages bundle wired'
     assert 'pages/timetable_teacher.js' not in body, 'legacy teacher script gone'
     assert 'tt-mcard' in body, 'seeded entry renders a mobile card'
     assert 'overflow-x-auto hidden lg:block' in body, 'desktop accordion table hidden on phones'
@@ -118,9 +138,9 @@ def test_teacher_schedule_wires_shared_pages_bundle(app_fx, db_fx):
 def test_teachers_schedule_admin_route_uses_shared_bundle(client):
     """قائمة جدول المدرسين (/timetable/teachers-schedule) تعرض نفس الحزمة."""
     body = client.get('/timetable/teachers-schedule').get_data(as_text=True)
-    assert 'timetable_pages.js' in body
+    assert _bundle('timetable_pages.js') in body
     assert 'TIMETABLE_TEACHER_BOOT' in body
-    assert 'timetable_pages.js' in body
+    assert _bundle('timetable_pages.js') in body
 
 
 def test_shared_pages_bundle_uses_toast_and_csrf():

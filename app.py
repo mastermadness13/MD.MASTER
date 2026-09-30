@@ -202,9 +202,11 @@ TOM_SELECT_ENDPOINTS = {'courses.courses_list'}
 def _load_asset_manifest(static_root: str) -> dict:
     """Read static/dist/manifest.json, mapping source paths to built files.
 
-    A missing or unreadable manifest is not an error: every caller falls
-    back to the unhashed source path, so the app still serves correctly from
-    a plain checkout with no build step.
+    A missing or unreadable manifest is not fatal here: callers fall back to
+    the unhashed source path so routing and every non-asset URL keep working.
+    It does mean no Tailwind, though, because the utilities are compiled into
+    static/dist/ and the Play CDN that used to generate them at runtime is
+    gone. `_asset_health` reports that state so it cannot pass unnoticed.
     """
     empty = {'css': {}, 'js': {}, 'builtAt': None}
     try:
@@ -221,6 +223,60 @@ def _load_asset_manifest(static_root: str) -> dict:
         if isinstance(entries, dict):
             manifest[bucket] = {str(k): str(v) for k, v in entries.items()}
     return manifest
+
+
+def _asset_health(static_root: str, manifest: dict) -> dict:
+    """Check that the built bundle exists and is not older than its sources.
+
+    The Tailwind Play CDN was removed, so `static/dist/` is now the ONLY
+    source of Tailwind utilities. If it is missing or stale the UI still
+    renders, but every utility class is unstyled -- which reads as "the
+    layout is broken" rather than "an asset is missing". So this turns that
+    condition into an explicit, loggable state.
+    """
+    dist = os.path.join(static_root, 'dist')
+    health = {'ok': True, 'reason': None, 'built_at': manifest.get('builtAt')}
+
+    if not manifest['css'] and not manifest['js']:
+        health.update(ok=False, reason='manifest-missing')
+        return health
+
+    # Manifest values are root-relative URLs ("/static/dist/app.<hash>.css"),
+    # so strip the leading slash AND the static/ prefix before joining onto
+    # static_root, which already points at static/.
+    for bucket in ('css', 'js'):
+        for rel, built in manifest[bucket].items():
+            built_rel = built.lstrip('/').replace('\\', '/')
+            if built_rel.startswith('static/'):
+                built_rel = built_rel[len('static/'):]
+            if not os.path.exists(os.path.join(static_root, built_rel)):
+                health.update(ok=False, reason=f'built-file-missing:{built}')
+                return health
+
+    # Freshness: if any source is newer than the manifest, the bundle is stale
+    # and the page will not reflect recent edits.
+    try:
+        built_mtime = os.path.getmtime(os.path.join(dist, 'manifest.json'))
+    except OSError:
+        health.update(ok=False, reason='manifest-unreadable')
+        return health
+
+    newest = built_mtime
+    for sub in ('css', 'js', 'public'):
+        for base, _dirs, files in os.walk(os.path.join(static_root, sub)):
+            if os.path.abspath(base).startswith(os.path.join(dist)):
+                continue
+            for name in files:
+                if not name.endswith(('.css', '.js')):
+                    continue
+                try:
+                    newest = max(newest, os.path.getmtime(os.path.join(base, name)))
+                except OSError:
+                    continue
+    if newest > built_mtime + 1:
+        health.update(ok=False, reason='stale')
+
+    return health
 
 
 def _make_static_asset_url(app):
@@ -245,15 +301,40 @@ def _make_static_asset_url(app):
     """
     static_root = os.path.join(os.path.abspath(app.root_path), 'static')
     manifest = _load_asset_manifest(static_root)
+    reload_warned = False
+
+    def current_manifest() -> dict:
+        """Return the asset manifest, re-reading it if startup found no build.
+
+        `create_app()` runs once per process, so a server started *before*
+        `npm run build` would otherwise pin the empty startup manifest and
+        keep serving unstyled source paths until someone restarts it. Only
+        the broken (empty) case touches the disk, so the healthy path is
+        unchanged.
+        """
+        nonlocal manifest, reload_warned
+        if not manifest['css'] and not manifest['js']:
+            reloaded = _load_asset_manifest(static_root)
+            if reloaded['css'] or reloaded['js']:
+                manifest = reloaded
+                if not reload_warned:
+                    app.logger.warning(
+                        "[assets] static/dist/manifest.json appeared after "
+                        "startup and was picked up automatically. Restart the "
+                        "server so the asset health check reports it."
+                    )
+                    reload_warned = True
+        return manifest
 
     def static_asset(filename: str) -> str:
+        entries = current_manifest()
         rel = filename.lstrip('/').replace('\\', '/')
         if rel.startswith('static/'):
             rel = rel[len('static/'):]
 
         for bucket, prefix in (('css', 'css/'), ('js', 'js/')):
             if rel.startswith(prefix):
-                built = manifest[bucket].get(rel[len(prefix):])
+                built = entries[bucket].get(rel[len(prefix):])
                 if built:
                     return built
                 break
@@ -265,12 +346,25 @@ def _make_static_asset_url(app):
             return url
         return f'{url}?v={stamp}'
 
+    health = _asset_health(static_root, current_manifest())
     if manifest['css'] or manifest['js']:
         app.extensions['ropey_assets'] = {
             'built_at': manifest['builtAt'],
             'css': len(manifest['css']),
             'js': len(manifest['js']),
         }
+    else:
+        app.extensions['ropey_assets'] = {'built_at': None, 'css': 0, 'js': 0}
+
+    app.extensions['ropey_assets'].update(ok=health['ok'], reason=health['reason'])
+
+    if not health['ok']:
+        app.logger.error(
+            "[assets] static/dist is %s. Tailwind is compiled only into "
+            "static/dist/ and the Play CDN fallback was removed, so the UI will "
+            "render unstyled. Run: npm install && npm run build",
+            health['reason'],
+        )
     return static_asset
 
 
@@ -317,6 +411,18 @@ def create_app(*, allow_debug: bool = False):
     app.jinja_env.globals['submission_status_label'] = submission_status_label
     app.jinja_env.globals['submission_status_color'] = submission_status_color
     app.jinja_env.globals['static_asset'] = _make_static_asset_url(app)
+
+    # A stale bundle still renders correctly, it just may not reflect the most
+    # recent edit, so it only warns. A missing or incomplete one renders with
+    # no Tailwind at all, which is worth failing fast on while developing.
+    assets = app.extensions.get('ropey_assets') or {}
+    if allow_debug and not assets.get('ok', True) and assets.get('reason') != 'stale':
+        raise RuntimeError(
+            f"[assets] static/dist is {assets.get('reason')}. Tailwind is compiled "
+            f"only into static/dist/ and the Play CDN fallback was removed, so the "
+            f"UI will render unstyled. Run: npm install && npm run build"
+        )
+
     app.context_processor(inject_navigation)
 
     # /     /     >---- نضيف بيانات المستخدم المرحّب به في كل صفح
