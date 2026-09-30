@@ -276,5 +276,5 @@ window.TIMETABLE_LIST_BOOT = {
   urls: { deleteEntry: {{ url_for('timetable.timetable_delete_entry') | tojson }} }
 };
 </script>
-<script src="{{ url_for('static', filename='js/timetable_pages.js') }}"></script>
+<script defer src="{{ static_asset('js/timetable_pages.js') }}"></script>
 {% endblock %}

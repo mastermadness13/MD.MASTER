@@ -127,11 +127,24 @@ def apply_security_headers(app) -> None:
         response.headers['Content-Security-Policy'] = csp
 
         # /     /     >---- إعداد الكاش حسب نوع المسار
+        # /     /     >---- static/dist/ filenames are content-hashed by
+        # /     /     >---- `npm run build`, so the URL changes exactly when
+        # /     /     >---- the bytes do. Safe to cache forever + immutable.
+        # /     /     >---- Everything else under /static/ is an unhashed
+        # /     /     >---- source file, so a year-long cache would hide
+        # /     /     >---- deployed fixes from anyone who has visited once.
+        # /     /     >---- Short max-age + must-revalidate instead: still
+        # /     /     >---- saves the transfer on repeat views, but the next
+        # /     /     >---- navigation picks up the change.
         path = request.path
-        if path.startswith('/static/'):
-            # /     /     >---- الملفات الثابتة تكاش لمدة سنة
+        if path.startswith('/static/dist/'):
             response.cache_control.public = True
+            response.cache_control.immutable = True
             response.cache_control.max_age = 31536000
+        elif path.startswith('/static/'):
+            response.cache_control.public = True
+            response.cache_control.must_revalidate = True
+            response.cache_control.max_age = 300
         elif path.startswith('/uploads/'):
             # /     /     >---- الملفات المرفوعة تكاش لمدة ساعة
             response.cache_control.private = True

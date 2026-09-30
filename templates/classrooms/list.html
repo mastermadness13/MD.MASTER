@@ -325,7 +325,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/search.js"></script>
+<script defer src="{{ static_asset('js/search.js') }}"></script>
 <script>
 window.CLASSROOMS_LIST_BOOT = {
   csrfToken: {{ csrf_token() | tojson }},
@@ -333,6 +333,6 @@ window.CLASSROOMS_LIST_BOOT = {
   autoOpen: {{ 'true' if create_error else 'false' }}
 };
 </script>
-<script src="{{ url_for('static', filename='js/classrooms_list.js') }}"></script>
+<script defer src="{{ static_asset('js/classrooms_list.js') }}"></script>
 
 {% endblock %}

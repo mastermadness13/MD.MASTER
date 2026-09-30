@@ -18,12 +18,13 @@ Backward compatibility: every name is re-exported here so the former
 # /     /     >---- هذا هو الحزمة الرئيسية للثوابت في التطبيق كله
 # /     /     >---- قبل كان ملف واحد، قابلوه لعدة موديولات صغيرة
 
-from core.constants import navigation, permissions, roles, system, ui, uploads
+from core.constants import navigation, permissions, roles, system, task_pages, ui, uploads
 
 # ── إعادة تصدير الصلاحيات والتنقل والأدوار ────────────────────────
 from core.constants.permissions import ROLE_PERMISSIONS
 from core.constants.navigation import NAV_ITEMS
 from core.constants.roles import ROLE_LABELS, ROLE_NAMES
+from core.constants.task_pages import ACCESS_MODES, DEFAULT_ACCESS_MODE, TASK_PAGES
 
 # ── إعادة تصدير ثوابت النظام (الأمان، الترقيم، الدرجات) ────────────
 from core.constants.system import (
@@ -62,6 +63,9 @@ __all__ = [
     'ROLE_LABELS',
     'ROLE_PERMISSIONS',
     'NAV_ITEMS',
+    'TASK_PAGES',
+    'ACCESS_MODES',
+    'DEFAULT_ACCESS_MODE',
     'MAX_CONTENT_LENGTH',
     'ALLOWED_UPLOAD_EXTENSIONS',
     'SEMESTER_LABELS',

@@ -49,7 +49,8 @@
       <td class="px-4 py-3">
         <div class="flex items-center gap-2.5">
                   {% if t.photo_filename %}
-                  <img src="{{ url_for('uploads.uploaded_file', filename=t.photo_filename) }}" alt="t.name"
+                  <img src="{{ url_for('uploads.uploaded_file', filename=t.photo_filename) }}" alt="{{ t.name }}"
+                       width="36" height="36" loading="lazy" decoding="async"
                        class="w-9 h-9 rounded-full object-cover border-2 border-surface shadow-sm shrink-0">
                   {% else %}
           <span class="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0">{{ t.name[:1] }}</span>

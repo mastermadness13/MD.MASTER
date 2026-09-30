@@ -10,6 +10,23 @@ bp = Blueprint('dashboard', __name__)
 
 
 # /     /     >---- تبديل واجهة الدور (مع دعم AJAX وفحص الأدوار الممنوحة)
+def _task_landing():
+    """The endpoint of the page attached to the active assignment, if any."""
+    from services.task_page_service import active_page
+    from core.constants.task_pages import TASK_PAGES
+
+    page_key, _mode, _label = active_page()
+    if page_key is None:
+        return None
+    endpoint = TASK_PAGES[page_key]['endpoint']
+    # /     /     >---- Blueprint غير مسجّل (اختبار معزول مثلاً): لا نكسر
+    # /     /     >---- الصفحة الرئيسية بسبب تكليف.
+    from flask import current_app
+    if endpoint not in current_app.view_functions:
+        return None
+    return endpoint
+
+
 @bp.route('/switch-role', methods=['POST'])
 @csrf_required
 def switch_role():
@@ -23,20 +40,16 @@ def switch_role():
     )
     if requested in granted:
         session['role'] = requested
-        session['landing_endpoint'] = {
+        landing = _task_landing() or {
             'faculty_affairs': 'teachers.teachers_list',
             'exam': 'exams.exams',
         }.get(requested, 'dashboard.dashboard')
+        session['landing_endpoint'] = landing
         if is_ajax:
-            landing_endpoints = {
-                'faculty_affairs': 'teachers.teachers_list',
-                'exam': 'exams.exams',
-            }
-            redirect_endpoint = landing_endpoints.get(requested, 'dashboard.dashboard')
             return jsonify({
                 'ok': True,
                 'message': 'تم تغيير الواجهة',
-                'redirect_url': url_for(redirect_endpoint),
+                'redirect_url': url_for(landing),
             })
         flash('تم تغيير الواجهة', 'success')
     else:
@@ -53,6 +66,12 @@ def dashboard():
         return redirect(url_for('public_site.index_page'))
 
     role = session.get('role', '')
+
+    # /     /     >---- تكليف له صفحة مرتبطة: ندخل صاحب التكليف في صفحته
+    # /     /     >---- مباشرة بدل لوحة الدور. هذه هي «القطعة» التي بُنيت
+    # /     /     >---- منها اللوحة.
+    if _task_landing():
+        return redirect(url_for(_task_landing()))
 
     # /     /     >---- أدوار خاصة تُحوَّل مباشرة لصفحاتها المقررة
     if role == 'exam':

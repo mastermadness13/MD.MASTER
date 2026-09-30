@@ -6,7 +6,8 @@
 
 <div class="auth-header">
   <div class="auth-logo"><div class="site-logo">
-    <img src="/static/image/logo.png" alt="كلية التقنية الهندسية زوارة">
+    <img src="{{ static_asset('image/logo-64.png') }}" alt="كلية التقنية الهندسية زوارة"
+         width="64" height="64" decoding="async">
   </div></div>
   <p class="auth-subtitle">كلية التقنية الهندسية زوارة — منصة رقمية لإدارة الجداول المقرارت الدراسية</p>
 </div>
@@ -61,7 +62,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/login.js"></script>
+<script defer src="{{ static_asset('js/login.js') }}"></script>
 {% if auth_warning %}
 <div class="sr-only" role="status" id="authWarning">
   {{ auth_warning }}

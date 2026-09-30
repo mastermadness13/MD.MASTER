@@ -9,7 +9,20 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="منصة الجداول">
 <meta name="csrf-token" content="{{ csrf_token() }}">
+{# Runs before the stylesheet so a dark-mode user never sees a white flash. #}
 {% include 'shared/components/theme_init.html' %}
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+
+{# Fonts are the last third-party hop before first paint, and the Arabic body
+   face IS the LCP element here. Open both connections up front so the two
+   round-trips happen in parallel with the stylesheet instead of after it. #}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+
+{# Tailwind is compiled to static CSS by `npm run build` and linked from
+   head_assets.html. The Play CDN used to sit here: ~110 KB of JIT engine
+   that walked the DOM, generated the stylesheet in-browser, and re-ran on
+   every injected node. Its config now lives in tailwind.config.js. #}
+
 <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300;400;500;600;700;800&family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>

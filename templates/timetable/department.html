@@ -317,6 +317,6 @@ window.TIMETABLE_DEPARTMENT_BOOT = {
   isRd: {{ 'true' if user and user.role == 'research_development' else 'false' }}
 };
 </script>
-<script src="{{ url_for('static', filename='js/shared/timetable_helpers.js') }}"></script>
-<script src="{{ url_for('static', filename='js/timetable_department.js') }}"></script>
+<script defer src="{{ static_asset('js/shared/timetable_helpers.js') }}"></script>
+<script defer src="{{ static_asset('js/timetable_department.js') }}"></script>
 {% endblock %}

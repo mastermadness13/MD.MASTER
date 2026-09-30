@@ -17,6 +17,7 @@
         {% if teacher.photo_filename %}
         <img src="{{ url_for('uploads.uploaded_file', filename=teacher.photo_filename) }}"
              alt="{{ teacher.name }}"
+             width="56" height="56" loading="lazy" decoding="async"
              class="w-14 h-14 rounded-full object-cover border-2 border-outline-variant shrink-0">
         {% else %}
         <span class="w-14 h-14 rounded-full bg-surface-container flex items-center justify-center text-xl font-black text-on-surface shrink-0">{{ teacher.name[:1] }}</span>
@@ -115,4 +116,4 @@ window.TEACHING_RECORD_PRINT_BOOT = {
     printFlag: {{ 'true' if print_flag else 'false' }}
 };
 </script>
-<script src="{{ url_for('static', filename='js/teaching_record_print.js') }}"></script>
+<script defer src="{{ static_asset('js/teaching_record_print.js') }}"></script>

@@ -69,7 +69,12 @@ CREATE TABLE IF NOT EXISTS admin_assignment_types (
     sort_order       INTEGER NOT NULL DEFAULT 0,
     internal_code    TEXT,
     is_system_linked INTEGER NOT NULL DEFAULT 0,
-    is_protected_role INTEGER NOT NULL DEFAULT 0
+    is_protected_role INTEGER NOT NULL DEFAULT 0,
+    -- Which screen this assignment opens (see core/constants/task_pages.py);
+    -- NULL means "no attached page" and the role dashboard is used instead.
+    page_key         TEXT,
+    -- 'edit' = full control of the attached page, 'view' = read-only.
+    page_access_mode TEXT NOT NULL DEFAULT 'edit'
 );
 
 -- Same default rows as _seed_admin_assignment_types (name, hours, sort_order).

@@ -158,6 +158,6 @@ window.FACULTY_EDIT_ASSIGNMENTS_BOOT = {
   taskTypes: {{ admin_task_types | tojson }}
 };
 </script>
-<script src="{{ url_for('static', filename='js/faculty_performance_edit_assignments.js') }}"></script>
+<script defer src="{{ static_asset('js/faculty_performance_edit_assignments.js') }}"></script>
 
 {% endblock %}

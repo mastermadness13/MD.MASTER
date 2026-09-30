@@ -1,0 +1,11 @@
+/* Tailwind entry point.
+ *
+ * Compiled by `npm run build` into static/dist/app.<hash>.css.
+ * Do not link this file directly — static/css/app.css (the hand-written
+ * design system) is concatenated AFTER this output so that custom rules
+ * win specificity ties against utilities, which is the same cascade order
+ * the runtime Play CDN produced before the build step existed.
+ */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

@@ -104,8 +104,8 @@ def semester_code_next(code: str) -> str:
         season, year = code.split('_', 1)
         from core.constants.ui import SEMESTER_SEASON_NEXT
         next_season = SEMESTER_SEASON_NEXT.get(season, 'fall')
-        next_year = int(year) + (1 if next_season == 'fall' and season == 'spring' else 0)
-        # /     /     >---- spring→fall: نفس السنة؛ fall→spring: السنة اللي بعده
+        next_year = int(year)
+        # /     /     >---- fall→spring: السنة اللي بعده؛ spring→fall: نفس السنة
         if season == 'fall' and next_season == 'spring':
             next_year = int(year) + 1
         return '{}_{}'.format(next_season, next_year)

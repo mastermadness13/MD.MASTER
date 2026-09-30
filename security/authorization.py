@@ -20,14 +20,16 @@ from functools import wraps
 from flask import flash, jsonify, redirect, request, session, url_for
 
 from core.constants import ROLE_LABELS, ROLE_PERMISSIONS
-from utils.redirects import redirect_back
 
-# /     /     >---- ترتيب الأدوار (الأعلى أولاً). بعد تسجيل الدخول الطالب
-# /     /     >---- ينزل على أعلى دور عنده، ويقدر يبدل بين الأدوار داخل التطبيق
+# ترتيب الأدوار (الأعلى أولاً). بعد تسجيل الدخول الطالب
+# ينزل على أعلى دور عنده، ويقدر يبدل بين الأدوار داخل التطبيق.
+# العميد فوق الجميع لأنه المالك المؤسسي للقوائم والصلاحيات،
+# ومن بعده بقية الأدوار الإدارية بترتيبها السابق بلا تغيير،
+# ثم رئيس القسم فوق الأستاذ.
 ROLE_PRIORITY = [
+    'dean',
     'research_development',
     'faculty_affairs',
-    'dean',
     'exam',
     'head_of_department',
     'teacher',
@@ -125,7 +127,87 @@ def has_permission(role, permission: str | None, department_id=None) -> bool:
     # /     /     >---- إذا مافي صلاحية مطلوبة نسمح
     if permission is None:
         return True
-    return permission in get_user_permissions(role, department_id)
+    if permission not in get_user_permissions(role, department_id):
+        return False
+    # /     /     >---- تكليف «عرض فقط» يخفض صلاحية واحدة بعينها: نخفي
+    # /     /     >---- أزرار الكتابة على صفحته ونرفض إرسالها معاً، لأن
+    # /     /     >---- القالب والبوابة يقرآن نفس الدالة. بقية حسابه
+    # /     /     >---- (جدوله، ملفه، صفحاته الأخرى) لا يتأثر.
+    return not _is_demoted_write(permission)
+
+
+def _write_blueprints(permission: str) -> frozenset:
+    """Blueprints whose endpoints are gated by *permission* itself.
+
+    Derived from the live URL map rather than a hand-written list, because one
+    page family is served by more than one blueprint: ``classrooms`` renders
+    the rooms page while ``api_rooms`` is the JSON surface the SPA writes
+    through, and both declare ``rooms.manage``.  Testing the blueprint against
+    the page's HTML name alone let every ``/api/*`` write sail past a
+    read-only assignment.
+
+    Both ``permission_required`` and ``api_permission_required`` stamp
+    ``_required_permission`` on the view function, so this single lookup covers
+    every door and keeps covering routes added later.
+
+    Cached on the app: the URL map is fixed once blueprints are registered.
+    """
+    from flask import current_app
+
+    cache = current_app.extensions.setdefault('write_permission_blueprints', {})
+    try:
+        return cache[permission]
+    except KeyError:
+        pass
+
+    found = set()
+    for endpoint in current_app.url_map.iter_rules():
+        view_func = current_app.view_functions.get(endpoint.endpoint)
+        if view_func is None:
+            continue
+        if getattr(view_func, '_required_permission', None) != permission:
+            continue
+        blueprint_name = endpoint.endpoint.rsplit('.', 1)[0]
+        if blueprint_name != endpoint.endpoint:
+            found.add(blueprint_name)
+
+    cache[permission] = frozenset(found)
+    return cache[permission]
+
+
+def _is_demoted_write(permission: str) -> bool:
+    """True when *permission* is a write on the active read-only page.
+
+    Stateless on purpose: it asks the current request's blueprint which page
+    family is being rendered, so it cannot drift from a stale session key and
+    cannot fail open after a restart.
+
+    "Same page" means: the permission is one of the page's declared writes
+    *and* the request sits on a blueprint that gates that same permission.  The
+    second half is what brings the ``/api/*`` twin in with the HTML page,
+    instead of trusting a single blueprint name to name the whole family.
+    """
+    from flask import has_request_context
+
+    # Outside a request there is no page being rendered, so no demotion can
+    # apply.  Keeps the pure helpers (``has_permission``, ``compute_scope``)
+    # callable from tests and batch tools without a request context.
+    if not has_request_context():
+        return False
+
+    from flask import request
+    from services.task_page_service import active_page
+
+    page_key, mode, _label = active_page()
+    if page_key is None or mode != 'view':
+        return False
+    from core.constants.task_pages import TASK_PAGES
+    page = TASK_PAGES.get(page_key)
+    if page is None:
+        return False
+    if permission not in page['write_permissions']:
+        return False
+    return request.blueprint in _write_blueprints(permission)
 
 # ─────────────────────────────────────────────
 
@@ -208,8 +290,13 @@ def permission_required(permission):
                 denial = json_denial('ليس لديك صلاحية لتنفيذ هذا الإجراء.', 403)
                 if denial is not None:
                     return denial
-                flash('ليس لديك صلاحية للوصول إلى هذه الصفحة', 'error')
-                return redirect_back()
+                # /     /     >---- سحب صلاحية يجب أن يخفي الصفحة لا أن
+                # /     /     >---- يصرخ في وجه المستخدم. التوجيه إلى لوحته
+                # /     /     >---- بلا رسالة: العنصر اختفى من القائمة أيضاً
+                # /     /     >---- لأن التنقل يفلتر بالصلاحيات نفسها.
+                # /     /     >---- وredirect_back كان يترك حلقة إعادة توجيه
+                # /     /     >---- إذا كان المرجع نفس الصفحة الممنوعة.
+                return redirect(url_for('dashboard.dashboard'))
             return f(*args, **kwargs)
 
         # Store required permission for deny-by-default before_request hook
@@ -242,7 +329,6 @@ def role_required(*roles):
                 denial = json_denial('ليس لديك صلاحية لتنفيذ هذا الإجراء.', 403)
                 if denial is not None:
                     return denial
-                flash('ليس لديك صلاحية للوصول إلى هذه الصفحة', 'error')
                 return redirect(url_for('dashboard.dashboard'))
             return f(*args, **kwargs)
 
@@ -279,7 +365,6 @@ def any_role_required(*roles):
                 denial = json_denial('ليس لديك صلاحية لتنفيذ هذا الإجراء.', 403)
                 if denial is not None:
                     return denial
-                flash('ليس لديك صلاحية للوصول إلى هذه الصفحة', 'error')
                 return redirect(url_for('dashboard.dashboard'))
             return f(*args, **kwargs)
 

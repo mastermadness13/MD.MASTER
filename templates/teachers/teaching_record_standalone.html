@@ -106,7 +106,7 @@
         .scroll-thin::-webkit-scrollbar-thumb { background: rgba(0,0,0,.15); border-radius: 9999px; }
         .scroll-thin::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,.25); }
       </style>
-      <script src="{{ url_for('static', filename='js/teachers_teaching_record_standalone.js') }}"></script>
+      <script defer src="{{ static_asset('js/teachers_teaching_record_standalone.js') }}"></script>
 
       {% endif %}
     </div>
@@ -132,6 +132,6 @@ window.TEACHERS_TEACHING_RECORD_STANDALONE_BOOT = {
   urls: { byDept: {{ url_for('teachers.api_teachers_by_dept') | tojson }} }
 };
 </script>
-<script src="{{ url_for('static', filename='js/teachers_teaching_record_standalone_dept.js') }}"></script>
+<script defer src="{{ static_asset('js/teachers_teaching_record_standalone_dept.js') }}"></script>
 
 {% endblock %}

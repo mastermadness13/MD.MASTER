@@ -309,3 +309,37 @@ def test_every_authority_mutation_rotates_the_session_counter():
         'authority-mutating repository methods that do not rotate '
         f'session_version (live sessions would keep the old role): {missing}'
     )
+
+
+def test_dean_outranks_every_other_role_on_landing():
+    """العميد أعلى دور عند الهبوط، وبقية الإداريين بترتيبهم، ثم رئيس القسم.
+
+    ثبّتنا هنا لأن إعادة ترتيب ROLE_PRIORITY صامتة: لا تكسر أي سطر قائم،
+    بل تنقل كل مستخدم متعدد الأدوار إلى صفحة هبوط أخرى دون أي خطأ.
+    """
+    from security.authorization import ROLE_PRIORITY, highest_priority_role
+
+    assert ROLE_PRIORITY[0] == 'dean'
+    # بقية الأدوار الإدارية بترتيبها السابق بلا تبديل
+    assert ROLE_PRIORITY[1:4] == [
+        'research_development', 'faculty_affairs', 'exam',
+    ]
+    # رئيس القسم يبقى فوق الأستاذ
+    assert ROLE_PRIORITY.index('head_of_department') < ROLE_PRIORITY.index('teacher')
+
+    for roles in (
+        ['dean', 'faculty_affairs'],
+        ['faculty_affairs', 'dean'],
+        ['teacher', 'dean', 'exam'],
+        ['research_development', 'dean', 'faculty_affairs'],
+    ):
+        assert highest_priority_role(roles) == 'dean', roles
+
+    assert highest_priority_role(
+        ['head_of_department', 'teacher']
+    ) == 'head_of_department'
+    assert highest_priority_role(
+        ['faculty_affairs', 'research_development']
+    ) == 'research_development'
+    assert highest_priority_role(['exam', 'faculty_affairs']) == 'faculty_affairs'
+    assert highest_priority_role(['teacher']) == 'teacher'

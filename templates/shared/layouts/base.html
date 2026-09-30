@@ -1,5 +1,8 @@
 {% include 'shared/components/head_preamble.html' %}
-<link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet"/>
+{# Tom Select is a third-party render-blocking stylesheet. Only
+   pages/courses/list.html enhances a <select> (courses_list.js → #mPrereq);
+   everything else served it for nothing. Flag comes from inject_tom_select(). #}
+{% if needs_tom_select %}<link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet"/>{% endif %}
 {% include 'shared/components/head_assets.html' %}
 <title>{% block title %}{{ page_title|default('لوحة التحكم') }} — منصة رقمية لإدارة الجداول والمقرارت الدراسية{% endblock %}</title>
 {% block head_extra %}{% endblock %}
@@ -22,7 +25,7 @@
       <span class="material-symbols-outlined">menu</span>
     </button>
     <a href="{{ url_for(session.get('landing_endpoint', 'dashboard.dashboard')) }}" class="sidebar-brand">
-      <img src="/static/image/logo.png" alt="شعار الكلية" style="height:28px;width:28px;border-radius:8px;object-fit:cover;flex-shrink:0"/>
+      <img src="{{ static_asset('image/logo-64.png') }}" alt="شعار الكلية" width="28" height="28" decoding="async" style="height:28px;width:28px;border-radius:8px;object-fit:cover;flex-shrink:0"/>
       <span>كلية التقنية الهندسية زوارة</span>
     </a>
   </div>
@@ -67,7 +70,7 @@
       {% endif %}
       <a href="{{ url_for(session.get('landing_endpoint', 'dashboard.dashboard')) }}" class="topbar-brand flex items-center gap-sm no-underline">
         <span class="brand-mark inline-flex items-center justify-center w-10 h-10 rounded-xl bg-primary text-on-primary shadow-sm">
-          <img src="/static/image/logo.png" alt="شعار الكلية" class="h-6 w-6 object-cover rounded-lg" />
+          <img src="{{ static_asset('image/logo-64.png') }}" alt="شعار الكلية" width="24" height="24" decoding="async" class="h-6 w-6 object-cover rounded-lg" />
         </span>
         <span class="brand-copy hidden sm:block">
           <small class="text-xs text-on-surface-variant">كلية التقنية الهندسية زوارة</small>
@@ -176,7 +179,7 @@
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
           <script>window.BASE_FLASH_BOOT = { messages: {{ messages|tojson }} };</script>
-<script src="{{ url_for('static', filename='js/base_flash.js') }}"></script>
+<script defer src="{{ static_asset('js/base_flash.js') }}"></script>
           {% endif %}
         {% endwith %}
         {% if first_login_temp_code %}
@@ -202,21 +205,29 @@
 
 <button id="backToTop" type="button" class="material-symbols-outlined no-print" aria-label="العودة إلى أعلى الصفحة" title="العودة إلى أعلى الصفحة" style="display:none;position:fixed;bottom:24px;left:24px;z-index:50;width:44px;height:44px;border:none;border-radius:50%;background:var(--primary);color:var(--text-on-primary);cursor:pointer;box-shadow:0 4px 14px var(--shadow-lg);align-items:center;justify-content:center;font-size:1.5rem;line-height:1">arrow_upward</button>
 
-<script src="/static/js/main.js"></script>
-<script src="/static/js/toast.js"></script>
+{# All shell scripts are `defer`red: they download in parallel and execute in
+   document order after parsing but before DOMContentLoaded. That removes them
+   from the parser's critical path and also means every script here can rely on
+   the full DOM existing — see the confirm_dialog.js note below.
+
+   static_asset() resolves through static/dist/manifest.json when `npm run
+   build` has run, giving content-hashed /static/dist/ URLs that
+   security_headers.py serves immutable for a year. #}
+<script defer src="{{ static_asset('js/main.js') }}"></script>
+<script defer src="{{ static_asset('js/toast.js') }}"></script>
 {% if welcome_user %}
 <script>window.BASE_GREETING_BOOT = { name: {{ welcome_user | tojson }} };</script>
-<script src="{{ url_for('static', filename='js/base_greeting.js') }}"></script>
+<script defer src="{{ static_asset('js/base_greeting.js') }}"></script>
 {% endif %}
-<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
-<script src="{{ url_for('static', filename='js/base_role_menu.js') }}"></script>
-<script src="/static/js/preview.js"></script>
-<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
-<script src="{{ url_for('static', filename='js/base_sidebar.js') }}"></script>
-<script src="{{ url_for('static', filename='js/base_double_submit.js') }}"></script>
-<script src="/static/js/mobile.js"></script>
-<script src="/static/js/mobile_actions.js"></script>
-<script src="{{ url_for('static', filename='js/action_menu.js') }}"></script>
+{% if needs_tom_select %}<script defer src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>{% endif %}
+<script defer src="{{ static_asset('js/base_role_menu.js') }}"></script>
+<script defer src="{{ static_asset('js/preview.js') }}"></script>
+<script defer src="{{ static_asset('js/theme.js') }}"></script>
+<script defer src="{{ static_asset('js/base_sidebar.js') }}"></script>
+<script defer src="{{ static_asset('js/base_double_submit.js') }}"></script>
+<script defer src="{{ static_asset('js/mobile.js') }}"></script>
+<script defer src="{{ static_asset('js/mobile_actions.js') }}"></script>
+<script defer src="{{ static_asset('js/action_menu.js') }}"></script>
 <div id="roleSwitchLoading" class="fixed inset-0 z-[100] hidden items-center justify-center bg-surface/95 backdrop-blur-sm" role="status" aria-live="polite" aria-label="جاري تحميل الواجهة الجديدة">
   <div class="flex flex-col items-center gap-3 text-center">
     <span class="material-symbols-outlined animate-spin text-4xl text-primary">progress_activity</span>
@@ -243,16 +254,16 @@
 
 {# Mobile app-style bottom navigation (phones only, hidden on desktop) #}
 {% include 'shared/components/bottom_nav.html' %}
-<script src="/static/js/bottom_nav.js"></script>
+<script defer src="{{ static_asset('js/bottom_nav.js') }}"></script>
 
 {% include 'shared/components/theme_panel.html' %}
-<script src="{{ url_for('static', filename='js/theme_panel.js') }}"></script>
-<script src="{{ url_for('static', filename='js/print_auto.js') }}"></script>
+<script defer src="{{ static_asset('js/theme_panel.js') }}"></script>
+<script defer src="{{ static_asset('js/print_auto.js') }}"></script>
 {# Shared confirmation dialog (Apple-style destructive confirmation).
-   MUST stay after #modal-root: the script grabs #confirmDialog on evaluation
-   and bails out silently when the markup has not been parsed yet, which
-   leaves window.askConfirm undefined and every askConfirm caller dead. #}
-<script src="{{ url_for('static', filename='js/confirm_dialog.js') }}"></script>
+   Needs #confirmDialog to be parsed when it evaluates. `defer` guarantees
+   that — previously this only worked because the tag happened to come after
+   #modal-root, and reordering it silently killed every askConfirm caller. #}
+<script defer src="{{ static_asset('js/confirm_dialog.js') }}"></script>
 
 {% block scripts %}{% endblock %}
 </body>

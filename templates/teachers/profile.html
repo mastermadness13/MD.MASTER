@@ -65,6 +65,7 @@
     <div class="flex flex-wrap items-center gap-4">
       {% if teacher.photo_filename %}
         <img src="{{ url_for('uploads.uploaded_file', filename=teacher.photo_filename) }}" alt="{{ teacher_display }}"
+             width="64" height="64" loading="lazy" decoding="async"
              class="w-16 h-16 rounded-full object-cover border-4 border-surface shadow-sm shrink-0">
         {% else %}
 <span class="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center text-2xl font-black shrink-0">

@@ -612,8 +612,8 @@ window.TEACHERS_SUPER_ADMIN_COURSE_CONTENT_BOOT = {
     perPage: {{ per_page | default(20) }}
 };
 </script>
-<script src="{{ url_for('static', filename='js/shared/course_helpers.js') }}"></script>
-<script src="{{ url_for('static', filename='js/teachers_super_admin_course_content.js') }}"></script>
+<script defer src="{{ static_asset('js/shared/course_helpers.js') }}"></script>
+<script defer src="{{ static_asset('js/teachers_super_admin_course_content.js') }}"></script>
 {% elif is_teacher_list %}
 <script>
 window.TEACHERS_COURSE_CONTENT_BOOT = {
@@ -623,7 +623,7 @@ window.TEACHERS_COURSE_CONTENT_BOOT = {
     }
 };
 </script>
-<script src="{{ url_for('static', filename='js/teachers_course_content.js') }}"></script>
+<script defer src="{{ static_asset('js/teachers_course_content.js') }}"></script>
 {% else %}
 <script>
 window.TEACHERS_COURSE_CONTENT_PAGE_BOOT = {
@@ -631,7 +631,7 @@ window.TEACHERS_COURSE_CONTENT_PAGE_BOOT = {
     auto_print: {{ auto_print | default(false) | tojson }}
 };
 </script>
-<script src="{{ url_for('static', filename='js/teachers_course_content_page.js') }}"></script>
-<script src="{{ url_for('static', filename='js/pages/teachers__course_content_doc.js') }}"></script>
+<script defer src="{{ static_asset('js/teachers_course_content_page.js') }}"></script>
+<script defer src="{{ static_asset('js/pages/teachers__course_content_doc.js') }}"></script>
 {% endif %}
 {% endblock %}

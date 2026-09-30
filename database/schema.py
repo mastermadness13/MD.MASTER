@@ -419,6 +419,22 @@ def _ensure_managed_lookup_metadata(conn: sqlite3.Connection) -> None:
         )
         _mark_migration_done(conn, protection_migration)
 
+    # ── صفحة التكليف ونمط الوصول ──────────────────────────────────
+    # /     /     >---- العميد يربط التكليف بصفحة ويقرر: تعديل أم عرض.
+    # /     /     >---- NULL page_key يعني «لا صفحة مرتبطة» فيبقى السلوك
+    # /     /     >---- القديم: لوحة الدور كما هي.
+    _safe_add_column(conn, 'admin_assignment_types', 'page_key', 'TEXT')
+    _safe_add_column(
+        conn, 'admin_assignment_types', 'page_access_mode',
+        "TEXT NOT NULL DEFAULT 'edit'",
+    )
+    conn.execute(
+        '''UPDATE admin_assignment_types
+           SET page_access_mode = 'edit'
+           WHERE page_access_mode IS NULL
+              OR page_access_mode NOT IN ('edit', 'view')'''
+    )
+
     conn.execute(
         '''UPDATE teachers
            SET admin_assignment_type_id = (

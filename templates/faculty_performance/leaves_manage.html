@@ -164,6 +164,6 @@ window.FACULTY_LEAVES_MANAGE_BOOT = {
   leaveTypes: {{ leave_types | tojson }}
 };
 </script>
-<script src="{{ url_for('static', filename='js/faculty_performance_leaves_manage.js') }}"></script>
+<script defer src="{{ static_asset('js/faculty_performance_leaves_manage.js') }}"></script>
 
 {% endblock %}

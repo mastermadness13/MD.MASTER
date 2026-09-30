@@ -176,6 +176,6 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/search.js"></script>
-<script src="{{ url_for('static', filename='js/pages/departments_list.js') }}"></script>
+<script defer src="{{ static_asset('js/search.js') }}"></script>
+<script defer src="{{ static_asset('js/pages/departments_list.js') }}"></script>
 {% endblock %}

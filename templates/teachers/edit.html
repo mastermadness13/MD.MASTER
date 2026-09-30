@@ -290,6 +290,7 @@
                         filename=teacher.get('photo_filename')
                       ) }}"
                        alt="{{ teacher.get('name', '') }}"
+                       width="64" height="64" loading="lazy" decoding="async"
                        class="w-16 h-16 rounded-xl object-cover
                               border-2 border-surface-container-lowest
                               ring-1 ring-outline-variant shadow-sm">
@@ -1087,9 +1088,6 @@
 
 {% block scripts %}
 
-<script src="{{ url_for(
-  'static',
-  filename='js/pages/teachers_faculty_form.js'
-) }}"></script>
+<script defer src="{{ static_asset('js/pages/teachers_faculty_form.js') }}"></script>
 
 {% endblock %}

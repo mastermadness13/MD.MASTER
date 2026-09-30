@@ -217,14 +217,14 @@
 
 {% block scripts %}
 {% if show_full_table %}
-<script src="/static/js/search.js"></script>
+<script defer src="{{ static_asset('js/search.js') }}"></script>
 <script>
 window.TEACHERS_LIST_BOOT = {
   total: {{ total | default(0) | tojson }},
   urls: { bulkIds: {{ url_for('teachers.teachers_bulk_ids') | tojson }} }
 };
 </script>
-<script src="{{ url_for('static', filename='js/teachers_list.js') }}"></script>
+<script defer src="{{ static_asset('js/teachers_list.js') }}"></script>
 {% endif %}
 
 {% if has_permission('teachers.assign') %}
@@ -238,6 +238,6 @@ window.TEACHERS_ASSIGN_BOOT = {
   defaultDept: {{ (assign_default_dept) | default(None) | tojson }}
 };
 </script>
-<script src="{{ url_for('static', filename='js/teachers_assign.js') }}"></script>
+<script defer src="{{ static_asset('js/teachers_assign.js') }}"></script>
 {% endif %}
 {% endblock %}

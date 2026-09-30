@@ -111,7 +111,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/exams/api.js') }}"></script>
-<script src="{{ url_for('static', filename='js/exams/schedule.js') }}"></script>
-<script src="{{ url_for('static', filename='js/exams/workspace.js') }}"></script>
+<script defer src="{{ static_asset('js/exams/api.js') }}"></script>
+<script defer src="{{ static_asset('js/exams/schedule.js') }}"></script>
+<script defer src="{{ static_asset('js/exams/workspace.js') }}"></script>
 {% endblock %}

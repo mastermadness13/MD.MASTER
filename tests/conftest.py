@@ -7,8 +7,11 @@ registers global blueprints and a second call raises
 
 import pytest
 
-from app import create_app
 from core import auth_limits
+
+# The harness owns the fixtures; re-exporting them here makes them discoverable
+# by pytest without every test module having to import them.
+from tests.harness import db_path, get_app, matrix_db, raw_db, seeded  # noqa: F401
 
 _FAIL_LIMITERS = (
     auth_limits.login_limiter,
@@ -22,9 +25,8 @@ _FAIL_LIMITERS = (
 
 @pytest.fixture(scope='session')
 def app_fx():
-    app = create_app()
-    app.config['TESTING'] = True
-    yield app
+    """The one application instance for the whole session (see ``get_app``)."""
+    return get_app()
 
 
 @pytest.fixture(autouse=True)

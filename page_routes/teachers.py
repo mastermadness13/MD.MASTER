@@ -8,6 +8,12 @@ import uuid
 
 from flask_db import get_db
 from core.constants import INITIAL_CODE_EXPIRY_DAYS
+from core.constants.task_pages import (
+    ACCESS_MODES,
+    TASK_PAGES,
+    is_valid_page_key,
+    normalise_access_mode,
+)
 from core.exceptions import ProtectedAccountError
 from database.history import add_history
 from security import csrf_required, login_required, permission_required
@@ -559,6 +565,8 @@ def _render_lookup_lists(db, category, *, delete_pending=None):
         categories=_LOOKUP_CATEGORIES,
         selected_category=category,
         rows=_lookup_rows(db, category),
+        task_pages=TASK_PAGES,
+        access_modes=ACCESS_MODES,
         departments=db.execute(
             '''SELECT id, name FROM departments
                WHERE hidden = 0 AND deleted_at IS NULL ORDER BY name'''
@@ -570,6 +578,44 @@ def _render_lookup_lists(db, category, *, delete_pending=None):
         ),
         user=current_user(),
     )
+
+
+def _deactivate_lookup_value(db, row, replacement_id=None):
+    """Retire a system-linked assignment type without destroying its role.
+
+    ``internal_code`` is the bridge between the label and the permission map, so
+    a hard delete would strip the role from every person holding it.  Instead we
+    clear the references and mark the row inactive: it leaves every dropdown
+    (they all filter on ``is_active``) while the link back to the role survives.
+    """
+    old_name = row['name']
+    new_name = ''
+    replacement_id = _safe_fk(replacement_id)
+    if replacement_id:
+        replacement = db.execute(
+            'SELECT id, name FROM admin_assignment_types '
+            'WHERE id = ? AND is_active = 1 AND id != ?',
+            (replacement_id, row['id']),
+        ).fetchone()
+        if not replacement:
+            raise ValueError('القيمة البديلة غير صالحة أو غير نشطة')
+        new_name = replacement['name']
+    db.execute(
+        '''UPDATE teachers
+           SET position = ?, admin_assignment_type_id = ?
+           WHERE admin_assignment_type_id = ?
+              OR (admin_assignment_type_id IS NULL AND position = ?)''',
+        (new_name, replacement_id, row['id'], old_name),
+    )
+    db.execute(
+        'UPDATE faculty_admin_assignments SET task_name = ? WHERE task_name = ?',
+        (new_name, old_name),
+    )
+    db.execute(
+        'UPDATE admin_assignment_types SET is_active = 0, '
+        'is_protected_role = 0 WHERE id = ?', (row['id'],),
+    )
+    return True
 
 
 def _delete_lookup_value(db, category, row, replacement_id=None, clear=False):
@@ -652,15 +698,23 @@ def _delete_lookup_value(db, category, row, replacement_id=None, clear=False):
 @csrf_required
 def lookup_lists():
     db = get_db()
-    category = request.values.get('category', 'admin_assignment_type')
+    default_category = 'admin_assignment_type'
+    category = request.values.get('category', default_category)
     # /     /     >---- عميل JSON لا يحتمل صفحة HTML: لو رجعنا إليه بـ abort
     # /     /     >---- كان يقرأها بـ JSON.parse فيسقط بـ "Unexpected token '<'"
     # /     /     >---- ويختفي سبب الرفض الحقيقي خلف خطأ في متصفح المستخدم.
     wants_json = wants_json_response()
     if category not in _LOOKUP_CATEGORIES:
+        # الصفحة موجودة والقيمة وحدها قديمة (رابط محفوظ يحمل category
+        # لم يعد له معنى). 404 هنا يكذب على المستخدم فيظن أن الصفحة حُذفت،
+        # ورسالته تختلف بين HTML و JSON فيرى "الرابط المطلوب غير موجود"
+        # من fetch و"قائمة غير معروفة" من المتصفح لنفس السبب.
         if wants_json:
-            return jsonify(ok=False, message='قائمة غير معروفة'), 404
-        abort(404)
+            return jsonify(
+                ok=False,
+                message='قائمة غير معروفة — تم فتح القائمة الافتراضية',
+            ), 400
+        category = default_category
 
     if request.method == 'POST':
         action = request.form.get('action', '')
@@ -669,7 +723,7 @@ def lookup_lists():
         ajax_error = None
         ajax_ok_message = 'تم الحفظ بنجاح'
         try:
-            if action not in ('add', 'rename', 'toggle', 'delete'):
+            if action not in ('add', 'rename', 'toggle', 'delete', 'page'):
                 raise ValueError('إجراء غير معروف — أعد تحميل الصفحة')
             if action == 'add':
                 name = request.form.get('name', '').strip()
@@ -713,7 +767,7 @@ def lookup_lists():
                 if not wants_json:
                     flash('تمت إضافة القيمة بنجاح', 'success')
 
-            elif action in ('rename', 'toggle', 'delete'):
+            elif action in ('rename', 'toggle', 'delete', 'page'):
                 if not row_id:
                     raise ValueError('القيمة المطلوبة غير موجودة')
                 row = db.execute(
@@ -753,6 +807,34 @@ def lookup_lists():
                     if not wants_json:
                         flash('تم تحديث نص القيمة', 'success')
 
+                elif action == 'page':
+                    # /     /     >---- ربط التكليف بصفحة: هذا ما يبني اللوحة.
+                    # /     /     >---- يتحقق فقط في التكليفات الإدارية، فباقي
+                    # /     /     >---- القوائم (رتبة، مؤهل…) نصوص محايدة.
+                    if category != 'admin_assignment_type':
+                        raise ValueError(
+                            'ربط الصفحات متاح للتكليفات الإدارية فقط'
+                        )
+                    page_key = (request.form.get('page_key') or '').strip()
+                    access_mode = normalise_access_mode(
+                        request.form.get('page_access_mode')
+                    )
+                    if page_key and not is_valid_page_key(page_key):
+                        raise ValueError('الصفحة المطلوبة غير معروفة')
+                    db.execute(
+                        'UPDATE admin_assignment_types '
+                        'SET page_key = ?, page_access_mode = ? WHERE id = ?',
+                        (page_key or None, access_mode, row_id),
+                    )
+                    db.commit()
+                    ajax_ok_message = (
+                        f'تم ربط التكليف بصفحة «{TASK_PAGES[page_key]["label"]}» '
+                        f'— {"عرض فقط" if access_mode == "view" else "تعديل كامل"}'
+                        if page_key else 'تم إزالة الصفحة المرتبطة من التكليف'
+                    )
+                    if not wants_json:
+                        flash(ajax_ok_message, 'success')
+
                 elif action == 'toggle':
                     if category != 'admin_assignment_type' or not row['is_protected_role']:
                         # /     /     >---- abort(400) كان يرجع صفحة HTML لعميل
@@ -772,15 +854,6 @@ def lookup_lists():
                     member_count, assignment_count, linked_count = _lookup_usage(
                         db, category, row
                     )
-                    if category == 'admin_assignment_type':
-                        if row['is_protected_role']:
-                            raise ValueError(
-                                'لا يمكن حذف دور نظامي؛ استخدم التعطيل بدلاً من ذلك'
-                            )
-                        # /     /     >---- التكليف العام المرتبط لا يُمنع منه
-                        # /     /     >---- الحذف؛ يمر لخطوة التأكيد أدناه: نقل
-                        # /     /     >---- الاستخدام إلى قيمة بديلة أو تفريغ
-                        # /     /     >---- الحقول ثم الحذف.
                     replacement_id = _safe_fk(
                         request.form.get('replacement_id')
                     )
@@ -813,6 +886,27 @@ def lookup_lists():
                                 'linked_count': linked_count,
                             },
                         )
+                    # /     /     >---- الدور النظامي يُزال بلا رفض: نُخفيه
+                    # /     /     >---- بالتعطيل ونفكّ ارتباطاته بدل الحذف
+                    # /     /     >---- الصلب. الحذف يمحو internal_code فيفقد
+                    # /     /     >---- النظام ربط الصلاحية، ورسالة «لا يمكن
+                    # /     /     >---- حذف دور نظامي» كانت تقطع العميد عن
+                    # /     /     >---- قراره بلا سبب مفهوم.
+                    if category == 'admin_assignment_type' and row['is_protected_role']:
+                        _deactivate_lookup_value(db, row, replacement_id)
+                        db.commit()
+                        ajax_ok_message = (
+                            'تم تعطيل الدور النظامي وإخفاءه من الاختيارات'
+                        )
+                        if not wants_json:
+                            flash(ajax_ok_message, 'success')
+                            return redirect(
+                                url_for('teachers.lookup_lists', category=category)
+                            )
+                        return jsonify(ok=True, message=ajax_ok_message)
+                    # /     /     >---- التكليف العام المرتبط لا يُمنع منه
+                    # /     /     >---- الحذف؛ ل�� مرّ خطوة التأكيد أعلاه
+                    # /     /     >---- وانتقل الاستخدام أو فُرّغ ثم حُذف.
                     _delete_lookup_value(
                         db, category, row, replacement_id,
                         clear=clear or not (

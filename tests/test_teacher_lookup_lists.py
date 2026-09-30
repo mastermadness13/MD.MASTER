@@ -19,17 +19,17 @@ def lookup_setup(tmp_path, monkeypatch, app_fx):
     ensure_schema(conn)
     conn.execute(
         "INSERT INTO users (username, password, role, label) "
-        "VALUES ('lookup_manager', 'x', 'faculty_affairs', 'مدير المكتب')"
+        "VALUES ('lookup_manager', 'x', 'dean', 'عميد الكلية')"
     )
     manager_id = conn.execute(
         "SELECT id FROM users WHERE username = 'lookup_manager'"
     ).fetchone()['id']
     conn.execute(
         "INSERT INTO users (username, password, role, label) "
-        "VALUES ('lookup_hod', 'x', 'head_of_department', 'رئيس قسم')"
+        "VALUES ('lookup_office', 'x', 'faculty_affairs', 'مدير المكتب')"
     )
-    hod_id = conn.execute(
-        "SELECT id FROM users WHERE username = 'lookup_hod'"
+    office_id = conn.execute(
+        "SELECT id FROM users WHERE username = 'lookup_office'"
     ).fetchone()['id']
     conn.commit()
     conn.close()
@@ -43,8 +43,8 @@ def lookup_setup(tmp_path, monkeypatch, app_fx):
             session['_csrf_token'] = 'test-token'
         return client
 
-    return db_path, client_for(manager_id, 'faculty_affairs', 'lookup_manager'), (
-        client_for(hod_id, 'head_of_department', 'lookup_hod')
+    return db_path, client_for(manager_id, 'dean', 'lookup_manager'), (
+        client_for(office_id, 'faculty_affairs', 'lookup_office')
     )
 
 
@@ -94,11 +94,12 @@ def _flash_messages(response):
     ]
 
 
-def test_lookup_lists_are_restricted_to_faculty_affairs(lookup_setup):
-    _, manager, hod = lookup_setup
+def test_lookup_lists_belong_to_the_dean_alone(lookup_setup):
+    """القوائم المرجعية للعميد وحده: المكتب يعدّل الأساتذة لا بنية التكليفات."""
+    _, dean, office = lookup_setup
 
-    assert manager.get('/teachers/lookup-lists').status_code == 200
-    assert hod.get('/teachers/lookup-lists').status_code == 302
+    assert dean.get('/teachers/lookup-lists').status_code == 200
+    assert office.get('/teachers/lookup-lists').status_code == 302
 
 
 def _assert_json_envelope(response, expected_status=None):
@@ -119,7 +120,7 @@ def _assert_json_envelope(response, expected_status=None):
 def test_no_ajax_path_answers_with_html(lookup_setup):
     """Every AJAX answer must be JSON.
 
-    ``abort(400)`` on toggle, ``abort(404)`` on an unknown category and the
+    ``abort(400)`` on toggle, a 400 on an unknown category and the
     delete-confirmation re-render each used to emit HTML, which the browser
     read as JSON and reported as ``Unexpected token '<'``.
     """
@@ -136,9 +137,12 @@ def test_no_ajax_path_answers_with_html(lookup_setup):
     _assert_json_envelope(
         _ajax_post(manager, 'academic_rank', 'toggle', id=rank_id), 400
     )
-    _assert_json_envelope(
-        _ajax_post(manager, 'no_such_category', 'add', name='س'), 404
+    # 400 لا 404: الصفحة موجودة، والقيمة وحدها غير معروفة — و404 يجعل
+    # المستخدم يظن أن الصفحة حُذفت، لا أن رابطه المحفوظ قديم.
+    bad_category = _assert_json_envelope(
+        _ajax_post(manager, 'no_such_category', 'add', name='?'), 400
     )
+    assert 'افتراضية' in bad_category['message']
     _assert_json_envelope(
         _ajax_post(manager, 'academic_rank', 'explode', id=rank_id), 400
     )
@@ -182,11 +186,11 @@ def test_json_caller_is_told_when_the_session_is_gone(lookup_setup, app_fx):
 
 
 def test_json_caller_without_the_permission_gets_json_not_html(lookup_setup):
-    """A role without the manage permission is refused in JSON, not by redirect."""
-    _db_path, _manager, hod = lookup_setup
-    with hod.session_transaction() as session:
+    """دور بلا صلاحية القوائم يُرفض في JSON لا بإعادة توجيه HTML."""
+    _db_path, _manager, office = lookup_setup
+    with office.session_transaction() as session:
         session['_csrf_token'] = 'test-token'
-    response = hod.post(
+    response = office.post(
         '/teachers/lookup-lists',
         data={
             '_csrf_token': 'test-token',
@@ -197,6 +201,49 @@ def test_json_caller_without_the_permission_gets_json_not_html(lookup_setup):
         headers={'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json'},
     )
     assert _assert_json_envelope(response, 403)['ok'] is False
+
+
+def test_stale_saved_link_opens_the_page_instead_of_a_404(lookup_setup):
+    """رابط محفوظ يحمل category قديم يجب أن يفتح الصفحة، لا أن يرد 404.
+
+    الصفحة موجودة والقيمة وحدها تفقد معناها مع الوقت (تصنيف أُلغي أو
+    رابط من قبل إعادة التسمية). الردّ 404 كان يعرض على المستخدم صفحة
+    "الصفحة التي تبحث عنها غير موجودة" فيظن أن الصفحة حُذفت.
+    """
+    _db_path, manager, _ = lookup_setup
+
+    response = manager.get(
+        '/teachers/lookup-lists?category=category_that_no_longer_exists',
+        headers={'Accept': 'text/html,application/xhtml+xml,*/*;q=0.8'},
+    )
+    assert response.status_code == 200
+    assert 'الصفحة التي تبحث عنها غير موجودة' not in response.get_data(
+        as_text=True
+    )
+
+
+def test_trailing_slash_does_not_break_the_page_scripts(lookup_setup):
+    """«/teachers/lookup-lists/» بالشرطة يجب أن تُخدم مثل بلا شرطة.
+
+    سكربت الصفحة يرسل إلى ``window.location.href`` و ``form.action``، فإذا
+    كانت الصفحة على عنوان بشرطة فكل طلباتها ترجع 404 ويرى المستخدم
+    «الرابط المطلوب غير موجود» بدل الصفحة. الشرطة تدخل من إكمال المتصفح
+    أو من رابط مكتوب يدوياً، فيدخلها المستخدم بضغطة واحدة.
+    """
+    _db_path, manager, _ = lookup_setup
+
+    slashed = manager.get('/teachers/lookup-lists/')
+    plain = manager.get('/teachers/lookup-lists')
+    assert plain.status_code == 200
+    assert slashed.status_code == 200
+
+    # المسار الذي فشل فعلاً: fetch() يرسل Accept: */* افتراضياً.
+    def fetch(url):
+        return manager.get(url, headers={'Accept': '*/*'})
+
+    assert fetch('/teachers/lookup-lists').status_code == 200
+    assert fetch('/teachers/lookup-lists/').status_code == 200
+    assert fetch('/teachers/lookup-lists/?category=academic_rank').status_code == 200
 
 
 def test_browser_form_post_still_gets_html_redirects(lookup_setup):
@@ -422,7 +469,11 @@ def test_system_assignment_rename_keeps_its_internal_role(lookup_setup):
         'position': 'رئيس القسم الأكاديمي',
         'admin_assignment_type_id': row['id'],
     }
-    page = manager.get(f'/teachers/edit/{teacher_id}')
+    # /     /     >---- الاسم الجديد يصل نموذج تعديل الأستاذ — وهو نموذج
+    # /     /     >---- للمكتب (العميد لا يملك teachers.manage)، فنتأكد أن
+    # /     /     >---- إعادة التسمية انتقلت لواجهة من يعدّل الأساتذة.
+    _db_path, _dean, office = lookup_setup
+    page = office.get(f'/teachers/edit/{teacher_id}')
     assert page.status_code == 200
     assert f'data-assignment-type-id="{row["id"]}"' in page.get_data(as_text=True)
 
@@ -672,23 +723,23 @@ def test_unused_general_assignment_can_be_deleted(lookup_setup):
     ) is None
 
 
-def test_active_system_role_is_protected_even_without_assignment_references(
-    lookup_setup,
-):
+def test_active_system_role_is_retired_by_disabling_not_by_refusal(lookup_setup):
+    """الدور النظامي يُزال بلا رفض: تعطيل + تفريغ، مع بقاء صفه في القاعدة.
+
+    الحذف الصلب كان يمحو ``internal_code`` فيفقد النظام ربط الصلاحية، والرسالة
+    «لا يمكن حذف دور نظامي» كانت تمنع العميد من قراره.  الآن الإزالة تُخفي
+    الدور من الاختيارات (كل القوائم تفلتر على is_active) وتُفرّغ ارتباطاته.
+    """
     db_path, manager, _ = lookup_setup
     role = _fetchone(
         db_path,
-        "SELECT id, is_active, is_protected_role FROM admin_assignment_types "
+        "SELECT id, name, internal_code, is_active, is_protected_role "
+        "FROM admin_assignment_types "
         "WHERE internal_code = 'exam' AND name = 'رئيس قسم الدراسة والامتحانات'",
     )
     assert role is not None
     assert role['is_active'] == 1
     assert role['is_protected_role'] == 1
-    assert _fetchone(
-        db_path,
-        'SELECT COUNT(*) AS count FROM teachers WHERE admin_assignment_type_id = ?',
-        (role['id'],),
-    ) == {'count': 0}
 
     response = _post(
         manager, 'admin_assignment_type', 'delete',
@@ -696,14 +747,52 @@ def test_active_system_role_is_protected_even_without_assignment_references(
     )
 
     assert response.status_code == 200
-    assert any(
-        'لا يمكن حذف دور نظامي' in message
-        for message in _flash_messages(response)
-    )
-    assert _fetchone(
+    assert any('تم تعطيل الدور النظامي' in message for message in _flash_messages(response))
+    after = _fetchone(
         db_path,
-        'SELECT id FROM admin_assignment_types WHERE id = ?', (role['id'],),
-    ) == {'id': role['id']}
+        "SELECT id, name, internal_code, is_active, is_protected_role "
+        "FROM admin_assignment_types WHERE id = ?", (role['id'],)
+    )
+    # /     /     >---- الصف باقٍ (ربط الصلاحية سليم) لكنه خرج من الاختيارات
+    assert after['id'] == role['id']
+    assert after['name'] == role['name']
+    assert after['internal_code'] == 'exam'
+    assert after['is_active'] == 0
+    assert after['is_protected_role'] == 0
+    # /     /     >---- ولا يظهر بعد الآن في قائمة تكليف الأستاذ (الصفحة
+    # /     /     >---- ما زالت تعرضه مع علامة «معطّل» ليمكن إعادة تفعيله)
+    edit_page = manager.get('/teachers/edit/1')
+    assert role['name'] not in edit_page.get_data(as_text=True)
+
+
+def test_dean_may_retire_a_disabled_system_role_with_no_users(lookup_setup):
+    db_path, manager, _ = lookup_setup
+    conn = connect(str(db_path))
+    conn.execute(
+        '''UPDATE admin_assignment_types SET is_active = 0
+           WHERE internal_code = 'dean' AND is_system_linked = 1'''
+    )
+    conn.commit()
+    conn.close()
+
+    role = _fetchone(
+        db_path,
+        "SELECT id FROM admin_assignment_types "
+        "WHERE internal_code = 'dean' AND name = 'عميد الكلية'",
+    )
+    response = _post(
+        manager, 'admin_assignment_type', 'delete',
+        id=str(role['id']), clear_references='1',
+    )
+
+    assert any(
+        'تم الحفظ بنجاح' in message for message in _flash_messages(response)
+    )
+    still_there = _fetchone(
+        db_path,
+        'SELECT id FROM admin_assignment_types WHERE id = ?', (role['id'],)
+    )
+    assert still_there == {'id': role['id']}
 
 
 def test_retired_system_role_labels_are_inactive(lookup_setup):
@@ -768,9 +857,8 @@ def test_inactive_unreferenced_orphan_role_record_is_removable(lookup_setup):
     ) is None
 
 
-def test_disabled_last_role_entry_stays_protected_with_no_users_or_references(
-    lookup_setup,
-):
+def test_dean_may_retire_a_disabled_system_role_with_no_users(lookup_setup):
+    """حتى الدور المعطّل والمستخدم صفراً يُزال بلا رفض."""
     db_path, manager, _ = lookup_setup
     conn = connect(str(db_path))
     conn.execute(
@@ -786,13 +874,13 @@ def test_disabled_last_role_entry_stays_protected_with_no_users_or_references(
 
     role = _fetchone(
         db_path,
-        "SELECT id, is_protected_role FROM admin_assignment_types "
+        "SELECT id FROM admin_assignment_types "
         "WHERE internal_code = 'dean' AND name = 'عميد الكلية'",
     )
-    assert role == {'id': role['id'], 'is_protected_role': 1}
     assert _fetchone(
         db_path,
-        "SELECT COUNT(*) AS count FROM users WHERE role = 'dean'",
+        'SELECT COUNT(*) AS count FROM teachers '
+        'WHERE admin_assignment_type_id = ?', (role['id'],)
     ) == {'count': 0}
 
     response = _post(
@@ -801,13 +889,14 @@ def test_disabled_last_role_entry_stays_protected_with_no_users_or_references(
     )
 
     assert any(
-        'لا يمكن حذف دور نظامي' in message
+        'تم تعطيل الدور النظامي' in message
         for message in _flash_messages(response)
     )
-    assert _fetchone(
+    still_there = _fetchone(
         db_path,
-        'SELECT id FROM admin_assignment_types WHERE id = ?', (role['id'],),
-    ) == {'id': role['id']}
+        'SELECT id FROM admin_assignment_types WHERE id = ?', (role['id'],)
+    )
+    assert still_there == {'id': role['id']}
 
 
 def test_rank_replacement_migrates_teacher_and_workload_rules(lookup_setup):

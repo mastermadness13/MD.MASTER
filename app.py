@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import secrets
@@ -187,17 +188,76 @@ PUBLIC_PREFIXES = ('/static/', '/uploads/', '/favicon.ico')
 # /     /     >---- محمي، فتحميلها ب جلسة منتهية يجب أن يُرفض.
 ASSET_PREFIXES = ('/static/', '/favicon.ico')
 
+# /     /     >---- الصفحات التي تحمّل Tom Select من jsDelivr.
+# /     /     >---- courses.list هو الوحيد الذي يهيّئ قائمة منسدلة فعلاً
+# /     /     >---- (courses_list.js:‏#mPrereq). أضف نقطة نهاية هنا إن
+# /     /     >---- أضفت select[multiple] في صفحة جديدة.
+TOM_SELECT_ENDPOINTS = {'courses.courses_list'}
 
-# /     /     >---- رابط أصل ثابت مع بصمة زمنية لكسر الكاش
-# /     /     >---- ملفات /static/ تُخدم بـ max-age سنة كاملة (security_headers)،
-# /     /     >---- فمتصفح المستخدم يحتفظ بالنسخة القديمة من أي جافاسكربت حتى
-# /     /     >---- لو نُشر الإصلاح؛ والمشكلة تظهر كأن الإصلاح لم يعمل أصلاً.
-# /     /     >---- ?v=<mtime> يجعل العنوان يتغير عند كل تعديل للملف فيصل
-# /     /     >---- الجديد للكل فوراً، والكاش يظل صالحاً طالما الملف لم يتغير.
+
+# /     /     >---- قراءة بيان الأصول المبني (static/dist/manifest.json)
+# /     /     >---- ناتج `npm run build`. إذا ما موجود أو تالف، نكمل على
+# /     /     >---- المسار الأصلي بدون بصمة — التطبيق يخدم صح من أي نسخة
+# /     /     >---- بدون خطوة بناء.
+def _load_asset_manifest(static_root: str) -> dict:
+    """Read static/dist/manifest.json, mapping source paths to built files.
+
+    A missing or unreadable manifest is not an error: every caller falls
+    back to the unhashed source path, so the app still serves correctly from
+    a plain checkout with no build step.
+    """
+    empty = {'css': {}, 'js': {}, 'builtAt': None}
+    try:
+        with open(os.path.join(static_root, 'dist', 'manifest.json'), encoding='utf-8') as handle:
+            data = json.load(handle)
+    except (OSError, ValueError):
+        return empty
+    if not isinstance(data, dict):
+        return empty
+
+    manifest = {'css': {}, 'js': {}, 'builtAt': data.get('builtAt')}
+    for bucket in ('css', 'js'):
+        entries = data.get(bucket) or {}
+        if isinstance(entries, dict):
+            manifest[bucket] = {str(k): str(v) for k, v in entries.items()}
+    return manifest
+
+
 def _make_static_asset_url(app):
+    """Build the `static_asset()` template helper.
+
+    Two resolution modes, in order:
+
+    1. If `static/dist/manifest.json` lists the file, return the built
+       content-hashed URL (e.g. /static/dist/app.<hash>.css). The name
+       changes whenever the bytes change, so /static/dist/ can be served
+       `Cache-Control: public, max-age=31536000, immutable` — see
+       security_headers.py — and a returning user picks up a new build on
+       the next navigation with no cache-busting query string and no
+       revalidation round-trip.
+
+    2. Otherwise fall back to the source path with an mtime query string.
+       Same staleness guarantee as before, just coarser: the URL changes on
+       touch rather than on content change.
+
+    Only files under static/css/ and static/js/ are looked up in the
+    manifest. Images, fonts and uploads fall through to mode 2.
+    """
     static_root = os.path.join(os.path.abspath(app.root_path), 'static')
+    manifest = _load_asset_manifest(static_root)
 
     def static_asset(filename: str) -> str:
+        rel = filename.lstrip('/').replace('\\', '/')
+        if rel.startswith('static/'):
+            rel = rel[len('static/'):]
+
+        for bucket, prefix in (('css', 'css/'), ('js', 'js/')):
+            if rel.startswith(prefix):
+                built = manifest[bucket].get(rel[len(prefix):])
+                if built:
+                    return built
+                break
+
         url = url_for('static', filename=filename)
         try:
             stamp = int(os.path.getmtime(os.path.join(static_root, filename)))
@@ -205,6 +265,12 @@ def _make_static_asset_url(app):
             return url
         return f'{url}?v={stamp}'
 
+    if manifest['css'] or manifest['js']:
+        app.extensions['ropey_assets'] = {
+            'built_at': manifest['builtAt'],
+            'css': len(manifest['css']),
+            'js': len(manifest['js']),
+        }
     return static_asset
 
 
@@ -268,6 +334,20 @@ def create_app(*, allow_debug: bool = False):
     def inject_upload_limit():
         mb = (app.config.get('MAX_CONTENT_LENGTH') or 0) // (1024 * 1024)
         return {'max_upload_mb': mb}
+
+    # /     /     >---- Tom Select (قائمة القوائم المنسدلة) كان يُحمَّل من
+    # /     /     >---- jsDelivr على كل صفحة: CSS يحجب العرض في <head>،
+    # /     /     >---- و JS في أسفل <body> — على صفحات بلا أي قائمة
+    # /     /     >---- منسدلة إطلاقاً.
+    # /     /     >---- pages/courses/list.html هو الاستهلاك الحيّ الوحيد
+    # /     /     >---- (courses_list.js يهيّئ #mPrereq). أما المسار الثاني
+    # /     /     >---- في mobile_actions.js (select[multiple]) فهو ميت:
+    # /     /     >---- لا يوجد أي select[multiple] في القوالب أو الجافاسكربتات.
+    # /     /     >---- نُبقي القائمة هنا مفتوحة لو أُضيف select[multiple]
+    # /     /     >---- لاحقاً: يكفي إضافة point النهاية هنا.
+    @app.context_processor
+    def inject_tom_select():
+        return {'needs_tom_select': request.endpoint in TOM_SELECT_ENDPOINTS}
 
     # /     /     >---- نضيف أسماء المؤسسة والمكتب للوثائق الرسمية
     @app.context_processor
@@ -455,6 +535,20 @@ def create_app(*, allow_debug: bool = False):
     app.register_blueprint(public_site_bp)
     app.register_blueprint(faculty_performance_bp)
     register_api(app)
+
+    # ── الشرطة اللاحقة لا تُغيّر المورد ───────────────────────────
+    # /     /     >---- Flask يعتبر «/teachers/lookup-lists/» عنواناً
+    # /     /     >---- مختلفاً عن «/teachers/lookup-lists» فيردّ 404، والشرطة
+    # /     /     >---- تدخل من إكمال المتصفح أو من رابط مكتوب يدوياً أو من
+    # /     /     >---- أي رابط مبني بالدمج النصي. وأخطرها أن سكربت الصفحة
+    # /     /     >---- يرسل إلى window.location.href و form.action — أي أن
+    # /     /     >---- الشرطة تجرّ كل طلبات الصفحة لتُرفض، فيرى المستخدم
+    # /     /     >---- «الرابط المطلوب غير موجود» بدل الصفحة التي طلبها.
+    # /     /     >---- نسمح بالطريقتين بتقليص واحد، فلا نحتاج مطابقة
+    # /     /     >---- يدوية في before_request تتيّنت أخطاء صامتة.
+    for _rule in app.url_map.iter_rules():
+        if not _rule.rule.endswith('/'):
+            _rule.strict_slashes = False
 
     # ── فحص صحة التطبيق ─────────────────────────────────────────
     @app.route('/health')

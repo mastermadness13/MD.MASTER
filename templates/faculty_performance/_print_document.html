@@ -156,8 +156,8 @@
     </div>
 
     {% block doc_scripts %}{% endblock %}
-    <script src="{{ url_for('static', filename='js/shared/doc_page_fit.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/shared/print_document_fit.js') }}"></script>
+    <script defer src="{{ static_asset('js/shared/doc_page_fit.js') }}"></script>
+    <script defer src="{{ static_asset('js/shared/print_document_fit.js') }}"></script>
 
 </body>
 </html>

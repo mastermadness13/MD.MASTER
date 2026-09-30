@@ -1,0 +1,18 @@
+{
+  "name": "newropey-assets",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Asset build for newRopey: compiles Tailwind to static CSS, bundles the @import graph, minifies and content-hashes everything into static/dist/.",
+  "scripts": {
+    "build": "node scripts/build_assets.mjs",
+    "watch": "node scripts/build_assets.mjs --watch",
+    "clean": "node scripts/build_assets.mjs --clean-only"
+  },
+  "devDependencies": {
+    "@tailwindcss/container-queries": "^0.1.1",
+    "@tailwindcss/forms": "^0.5.9",
+    "esbuild": "^0.24.0",
+    "tailwindcss": "^3.4.17"
+  }
+}

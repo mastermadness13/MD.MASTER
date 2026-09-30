@@ -407,7 +407,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/icon_picker.js') }}"></script>
+<script defer src="{{ static_asset('js/icon_picker.js') }}"></script>
 <script>
 window.COURSES_LIST_BOOT = {
   plans: {{ dept_plans | tojson }},
@@ -428,6 +428,6 @@ window.COURSES_LIST_BOOT = {
   }
 };
 </script>
-<script src="{{ url_for('static', filename='js/shared/course_helpers.js') }}"></script>
-<script src="{{ url_for('static', filename='js/courses_list.js') }}"></script>
+<script defer src="{{ static_asset('js/shared/course_helpers.js') }}"></script>
+<script defer src="{{ static_asset('js/courses_list.js') }}"></script>
 {% endblock %}

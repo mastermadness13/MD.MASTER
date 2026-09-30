@@ -11,6 +11,8 @@ import flask_db
 from database.connection import connect
 from database.schema import ensure_schema
 
+from tests.harness import session_for
+
 
 @pytest.fixture
 def db_fx(tmp_path, monkeypatch):
@@ -62,12 +64,7 @@ def db_fx(tmp_path, monkeypatch):
 @pytest.fixture
 def client(app_fx, db_fx):
     c = app_fx.test_client()
-    with c.session_transaction() as sess:
-        sess['user_id'] = 1
-        sess['role'] = 'research_development'
-        sess['username'] = 'rnd'
-        sess['department_id'] = None
-        sess['_csrf_token'] = 't'
+    session_for(c, db_fx, 'rnd', department_id=None, csrf_token='t')
     return c
 
 

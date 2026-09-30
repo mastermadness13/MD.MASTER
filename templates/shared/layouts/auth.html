@@ -25,7 +25,8 @@
       <div class="brand-top">
         <h1 class="brand-title"> كلية التقنية الهندسية زوارة</h1>
         <div class="brand-logo-large"><div class="site-logo">
-          <img src="/static/image/logo.png" alt="كلية التقنية الهندسية زوارة">
+          <img src="{{ static_asset('image/logo-64.png') }}" alt="كلية التقنية الهندسية زوارة"
+               width="64" height="64" decoding="async">
         </div></div>
         <h2 class="brand-heading">مشروع تخرج بعنوان: منصة رقمية لإدارة الجداول والمقرارت الدراسية</h2>
         <p class="brand-subtitle">منصة رقمية متكاملة لإدارة الجداول الدراسية وجداول الامتحانات النهائية والمقرارت الدراسية، وإدارة بيانات أعضاء هيئة التدريس والقاعات والمعامل الدراسية.</p>
@@ -158,9 +159,9 @@
   </div>
 </section>
 
-<script src="/static/js/theme.js"></script>
-<script src="/static/js/main.js"></script>
-<script src="/static/js/toast.js"></script>
+<script defer src="{{ static_asset('js/theme.js') }}"></script>
+<script defer src="{{ static_asset('js/main.js') }}"></script>
+<script defer src="{{ static_asset('js/toast.js') }}"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

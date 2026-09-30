@@ -34,7 +34,9 @@ ROLE_PERMISSIONS = {
     'faculty_affairs': {
         'dashboard.view', 'dashboard.nav',
         'teachers.manage', 'teachers.view',
-        'teachers.lookup_lists.manage',
+        # /     /     >---- القوائم المرجعية انتقلت إلى العميد وحده: هو من
+        # /     /     >---- ينشئ تكليفاً جديداً ويقرر صفحته ونمط الوصول،
+        # /     /     >---- والمكتب يعدّل الأساتذة ولا يغيّر بنية التكليفات.
         'teachers.assign',
         'timetable.view',
         'history.view',
@@ -83,11 +85,15 @@ ROLE_PERMISSIONS = {
         'profile.view', 'profile.edit',
     },
     # ── العميد ───────────────────────────────────────────────────
-    # /     /     >---- إشراف قراءة فقط على كل نطاقات النظام
+    # /     /     >---- إشراف قراءة فقط على كل نطاقات النظام، مع استثناء
+    # /     /     >---- القوائم المرجعية: العميد يديرها (حذف/تسمية/إضافة)
+    # /     /     >---- دون أن يملك تعديل الجدول ولا المستخدمين — الوصول
+    # /     /     >---- لصفحة إدارية لا يعني امتلاك أدواتها.
     'dean': {
         'dashboard.view', 'dashboard.nav',
         'departments.view',
         'teachers.view',
+        'teachers.lookup_lists.manage',
         'courses.view',
         'rooms.view',
         'timetable.view',

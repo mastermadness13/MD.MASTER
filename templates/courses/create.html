@@ -160,6 +160,6 @@ window.COURSES_CREATE_BOOT = {
   deptMap: {{ course_dept_map | tojson }}
 };
 </script>
-<script src="{{ url_for('static', filename='js/courses_create.js') }}"></script>
+<script defer src="{{ static_asset('js/courses_create.js') }}"></script>
 
 {% endblock %}

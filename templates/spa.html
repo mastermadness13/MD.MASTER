@@ -6,11 +6,16 @@
   <meta name="csrf-token" content="{{ csrf_token() }}">
   {% include 'shared/components/theme_init.html' %}
   <title>نظام الكلية — كلية التقنية الهندسية زوارة</title>
-  <link rel="icon" type="image/png" href="/static/image/logo.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ static_asset('image/logo-32.png') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300;400;500;600;700;800&family=Tajawal:wght@300;400;500;700;800&display=swap">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="{{ url_for('static', filename='js/pages/spa.js') }}"></script>
+  {# Scoped Tailwind build (spa.css, ~18 KB) replacing the Play CDN. The CDN
+     was loaded here without any config, so this shell's `bg-surface` utility
+     silently resolved to nothing; the real build fixes that. #}
+  <link rel="stylesheet" href="{{ static_asset('css/spa.css') }}">
+  <script defer src="{{ static_asset('js/pages/spa.js') }}"></script>
   <style>
     body { font-family: 'Hanken Grotesk', 'Tajawal', sans-serif; }
 
@@ -64,16 +69,16 @@
 </head>
 <body class="bg-surface min-h-screen">
   <div id="app"></div>
-  <script src="{{ url_for('static', filename='js/spa/api.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/spa/modal.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/spa/departments.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/spa/teachers.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/spa/courses.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/spa/rooms.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/spa/timetable.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/spa/exams.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/spa/history.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/spa/profile.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/spa/app.js') }}"></script>
+  <script defer src="{{ static_asset('js/spa/api.js') }}"></script>
+  <script defer src="{{ static_asset('js/spa/modal.js') }}"></script>
+  <script defer src="{{ static_asset('js/spa/departments.js') }}"></script>
+  <script defer src="{{ static_asset('js/spa/teachers.js') }}"></script>
+  <script defer src="{{ static_asset('js/spa/courses.js') }}"></script>
+  <script defer src="{{ static_asset('js/spa/rooms.js') }}"></script>
+  <script defer src="{{ static_asset('js/spa/timetable.js') }}"></script>
+  <script defer src="{{ static_asset('js/spa/exams.js') }}"></script>
+  <script defer src="{{ static_asset('js/spa/history.js') }}"></script>
+  <script defer src="{{ static_asset('js/spa/profile.js') }}"></script>
+  <script defer src="{{ static_asset('js/spa/app.js') }}"></script>
 </body>
 </html>

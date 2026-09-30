@@ -200,6 +200,15 @@
               {{ 'تفعيل' if not row.is_active else 'تعطيل' }}
             </button>
           </form>
+          <form method="post" data-lookup-ajax>
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="category" value="{{ selected_category }}">
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="id" value="{{ row.id }}">
+            <input type="hidden" name="clear_references" value="1">
+            <button type="submit" class="rounded px-2 py-1 font-semibold text-error hover:bg-error/5"
+                    title="إزالة الدور من الاختيارات دون فقدان ربطه بصلاحيته">إزالة</button>
+          </form>
           {% else %}
           {% if row.member_count or row.assignment_count %}
           <span class="rounded px-2 py-1 text-on-surface-variant"
@@ -213,6 +222,32 @@
             <input type="hidden" name="action" value="delete">
             <input type="hidden" name="id" value="{{ row.id }}">
             <button type="submit" class="rounded px-2 py-1 font-semibold text-error hover:bg-error/5">حذف</button>
+          </form>
+          {% endif %}
+          {% if selected_category == 'admin_assignment_type' %}
+          <form method="post" data-lookup-ajax class="ml-auto flex items-center gap-2 rounded-lg border border-outline-variant bg-surface/60 px-2 py-1"
+                title="اربط هذا التكليف بصفحة في النظام">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="category" value="{{ selected_category }}">
+            <input type="hidden" name="action" value="page">
+            <input type="hidden" name="id" value="{{ row.id }}">
+            <select name="page_key"
+                    class="h-7 rounded-md border border-outline-variant bg-surface px-2 text-xs text-on-surface">
+              <option value="">— لا صفحة مرتبطة —</option>
+              {% for pk, p in task_pages.items() %}
+              <option value="{{ pk }}" {{ 'selected' if row.page_key == pk else '' }}>{{ p.label }}</option>
+              {% endfor %}
+            </select>
+            <select name="page_access_mode"
+                    class="h-7 rounded-md border border-outline-variant bg-surface px-2 text-xs text-on-surface">
+              {% for mk, ml in access_modes.items() %}
+              <option value="{{ mk }}" {{ 'selected' if row.page_access_mode == mk else '' }}>{{ ml }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit"
+                    class="rounded px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10">
+              حفظ
+            </button>
           </form>
           {% endif %}
           {% elif selected_category == 'specialization' %}
@@ -236,5 +271,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ static_asset('js/pages/teachers_lookup_lists.js') }}"></script>
+<script defer src="{{ static_asset('js/pages/teachers_lookup_lists.js') }}"></script>
 {% endblock %}

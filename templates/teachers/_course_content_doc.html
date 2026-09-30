@@ -587,7 +587,7 @@
         دولة ليبيا<br>وزارة التعليم التقني والفني
       </div>
       <div class="cc-header-logo">
-        <img src="{{ url_for('static', filename='image/logo.png') }}" alt="شعار الكلية">
+        <img src="{{ static_asset('image/logo-180.png') }}" alt="شعار الكلية" width="62" height="62" decoding="async">
       </div>
       <div class="cc-header-side cc-header-side--en latin-text" dir="ltr">
         State of Libya<br>Ministry of Technical and Vocational Education
@@ -946,5 +946,5 @@
 </article>
 
 {% if public_view %}
-<script src="{{ url_for('static', filename='js/pages/teachers__course_content_doc.js') }}"></script>
+<script defer src="{{ static_asset('js/pages/teachers__course_content_doc.js') }}"></script>
 {% endif %}
