@@ -1,0 +1,18 @@
+{# جداول كل الأقسام — نسخة PDF. كل قسم ورقة مستقلة، فالتدفق الطبيعي هنا
+   مقصود: عدة أقسام تعني عدة أوراق، لا صفحة أولى ناقصة. #}
+{% extends 'print/pdf/_base.html' %}
+{% set sections = sections | default([]) %}
+{% set days = days | default([]) %}
+{% set pdf_size = 'A4 landscape' %}
+
+{% block pdf_page_css %}
+body { padding: 8mm 10mm 10mm 10mm; }
+.timetable-all-sheet { break-after: page; page-break-after: always; }
+.timetable-all-sheet-last { break-after: auto; page-break-after: auto; }
+{% endblock %}
+
+{% block pdf_after_content %}{% endblock %}
+
+{% block pdf_content %}
+{% include 'print/timetables/_all_content.html' %}
+{% endblock %}

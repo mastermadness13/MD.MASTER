@@ -1,0 +1,109 @@
+﻿{# غلاف صفحات PDF: صفحة واحدة، بلا أزرار ولا ترويسة باسم المستخدم.
+   يُرسم على الخادم ثم يحوّله services/pdf_service.py إلى ملف PDF.
+   السلوك الافتراضي صفحة واحدة مقصوصة؛ القوالب التي تمثّل عدة وثائق
+   (مثل جدول امتحانات كل الأقسام) تتجاوز الكتلتين التاليتين لتترك
+   التدفق الطبيعي. #}
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>{% block pdf_title %}وثيقة{% endblock %}</title>
+  <style>
+    @page { size: {{ pdf_size | default('A4 landscape') }}; margin: 0; }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #fff;
+      color: #000;
+      font-family: {{ pdf_font_family | default("'Times New Roman', 'Traditional Arabic', 'Simplified Arabic', Tahoma, Arial, sans-serif") }};
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    {% block pdf_page_css %}
+    /* علبة الصفحة: مقاس ثابت + قص، فيبقى الناتج صفحة واحدة دائماً
+       حتى لو طال المحتوى. التصغير في pdf_after_content يمنع القص.
+       position:absolute ضرورية لا للتجميل: علبة الصفحة داخل التدفق العادي
+       يبدأها محرك الطباعة بإزاحة رأسية صغيرة عن حافة الورقة، فتنزل
+       الصفحة كلها بمقدارها عن حدّ الورقة ويصير.tailها صفحة ثانية فارغة.
+       الخروج من التدفق يثبّت الحافة عند الصفر فيبقى الناتج صفحة واحدة. */
+    .pdf-page {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: {{ pdf_page_w | default('297mm') }};
+      height: {{ pdf_page_h | default('210mm') }};
+      padding: {{ pdf_padding | default('8mm 10mm') }};
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .pdf-sheet {
+      zoom: 1;
+      transform-origin: top right;
+    }
+    {% endblock %}
+  </style>
+  {% block pdf_head_extra %}{% endblock %}
+</head>
+<body>
+<div class="pdf-page">
+{% block pdf_content %}{% endblock %}
+{% block pdf_after_content %}<script>
+  /* يصغّر المحتوى ليملأ صفحة واحدة بدل أن يُقصّ.
+   القياس من صندوق المحتوى (بعد طرح الحشو) لا من clientWidth/clientHeight،
+   وإلا سُمِح للمحتوى بعرض وارتفاع أكبر من اللازم فقُصَّ ذيل النموذج. */
+(function () {
+  'use strict';
+  var MIN_SCALE = {{ pdf_min_scale | default('0.2') }};
+
+  function measure(page, sheet) {
+    var cs = window.getComputedStyle(page);
+    return {
+      pw: page.clientWidth - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0),
+      ph: page.clientHeight - parseFloat(cs.paddingTop || 0) - parseFloat(cs.paddingBottom || 0),
+      sw: sheet.scrollWidth,
+      sh: sheet.scrollHeight
+    };
+  }
+
+  function fit() {
+    var page = document.querySelector('.pdf-page');
+    var sheet = document.querySelector('.pdf-sheet');
+    if (!page || !sheet) return;
+    sheet.style.zoom = '';
+    sheet.style.transform = '';
+    var m = measure(page, sheet);
+    if (!m.pw || !m.ph || !m.sw || !m.sh) return;
+    var scale = Math.min(1, m.pw / m.sw, m.ph / m.sh);
+    /* الحدّ الأدنى لتصغير أكثر، لا لقصّ الصفوف. رفعه يحذف آخر
+       صفوف النموذج بصمت لأن علبة الصفحة تقصّ ما يتجاوزها. */
+    if (scale < MIN_SCALE) scale = MIN_SCALE;
+    if (scale >= 1) return;
+    /* zoom لا transform: المقاس يجب أن يدخل في التخطيط نفسه. تحجيم
+       transform paint-time فقط، فتتفاوت لقطة الطباعة أحياناً بين نسخة
+       مُقصوصة ونسخة سليمة حسب توقيت التصيير، فيضيع ذيل النموذج بصمت.
+       zoom يعيد حساب التخطيط فيتّفق التقسيم والإخراج دائماً. */
+    sheet.style.zoom = scale;
+    if (sheet.style.zoom === '') {
+      sheet.style.transform = 'scale(' + scale + ')';
+    }
+  }
+
+  /* 1) فوراً بعد تحليل الصفحة: القياس المتزامن هنا هو ما يضمن فعلاً صفحة
+        واحدة حتى لو صوّر المتصفح قبل أي حدث. */
+  fit();
+
+  /* 2) تحسين بعد استقرار الخطوط والقياسات (بلا أثر في الوضع بلا واجهة،
+        لكنه يبقي التصفح العادي بعد إعادة التنسيق سليماً). */
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(fit);
+  }
+  window.addEventListener('load', fit);
+})();
+</script>{% endblock %}</div>
+</body>
+</html>

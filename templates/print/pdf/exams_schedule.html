@@ -1,0 +1,17 @@
+{# جدول الامتحانات — نسخة PDF عمودية. كل (قسم + أسبوع) ورقة مستقلة، فالتدفق
+   الطبيعي مقصود هنا أيضاً: صفحة ناقصة لكل قسم أسوأ من ورقة كاملة. #}
+{% extends 'print/pdf/_base.html' %}
+{% set pdf_size = 'A4 portrait' %}
+{% set pdf_page_w = '210mm' %}
+{% set pdf_page_h = '297mm' %}
+
+{% block pdf_page_css %}
+body { padding: 14mm 13mm 16mm 13mm; }
+.a4-document { break-inside: avoid; page-break-inside: avoid; }
+{% endblock %}
+
+{% block pdf_after_content %}{% endblock %}
+
+{% block pdf_content %}
+{% include 'print/exams/_schedule_content.html' %}
+{% endblock %}

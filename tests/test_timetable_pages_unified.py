@@ -181,13 +181,14 @@ def test_edit_form_page_unified(client, db_fx):
 
 
 def test_lecture_hub_links_unified_views(client):
-    """مركز الجداول يربط بطرق العرض الموحّدة الثلاث + طباعة."""
+    """مركز الجداول يربط بطرق العرض الموحّدة الثلاث + تحميل PDF."""
     body = client.get('/lecture-schedule').get_data(as_text=True)
     assert 'page-header' in body
     assert 'href="/timetable/"' in body or 'href="/timetable"' in body, 'unified combined view link'
     assert 'href="/timetable/department"' in body, 'unified department editor link'
     assert 'href="/timetable/teachers-schedule"' in body, 'teacher schedules link'
-    assert 'href="/print/timetables/all"' in body, 'print link wired'
+    # The hub hands over a file instead of opening the browser print dialog.
+    assert 'href="/print/timetables/all.pdf"' in body, 'PDF download link wired'
     assert 'تعديل' not in body, 'hub stays read-only'
 
 

@@ -7,6 +7,7 @@ from security import login_required, permission_required, role_required, csrf_re
 from security import current_user
 from security.authorization import get_granted_roles, get_active_roles, has_permission
 from services import faculty_performance_service as fps
+from services import pdf_service
 
 bp = Blueprint('faculty_performance', __name__, url_prefix='/faculty-performance')
 
@@ -403,13 +404,18 @@ def edit_leaves(teacher_id):
     return redirect(url_for('faculty_performance.leaves_manage', teacher_id=teacher_id))
 
 
-# ── Print Page ───────────────────────────────────────────────────
+# ── PDF Download ────────────────────────────────────────────────
 
 @bp.route('/print/<int:teacher_id>')
 @login_required
 @permission_required('faculty_performance.print')
 def print_form(teacher_id):
-    """Print-ready A4 page styled like MS Word."""
+    """نموذج معدل الأداء الموحد كملف PDF جاهز (صفحة واحدة أفقية).
+
+   بدل صفحة طباعة منفصلة: القالب يُرسم على الخادم بعلبة صفحة ثابتة، فلا
+    تظهر أزرار ولا ترويسة باسم المستخدم ولا صفحة ثانية فارغة مهما اختلفت
+    إعدادات الطباعة على جهاز المستخدم.
+    """
     db = get_db()
     _check_teacher_access(db, teacher_id)
     academic_year = request.args.get('year', '')
@@ -431,9 +437,11 @@ def print_form(teacher_id):
         flash('العضو غير موجود', 'error')
         return redirect(url_for('faculty_performance.reports_select'))
 
-    return render_template(
-        'faculty_performance/print.html',
-        form_data=data,
+    return pdf_service.template_pdf_response(
+        'print/pdf/performance.html',
+        download_name='نموذج معدل الأداء - %s' % (
+            data.get('header', {}).get('teacher_name') or ('عضو-%s' % teacher_id)),
+        fd=data,
     )
 
 

@@ -254,7 +254,7 @@ window.TIMETABLE_UNIFIED_BOOT = {
   payload: {{ payload | tojson }},
   base: {{ url_for('timetable.timetable_department_view') | tojson }},
   api: {{ url_for('timetable.timetable') | tojson }},
-  printUrl: {{ url_for('print_routes.print_timetable_department') | tojson }},
+  printUrl: {{ url_for('print_routes.pdf_timetable_department') | tojson }},
   isRd: {{ 'true' if is_rd else 'false' }},
   currentTeacherId: {{ current_teacher_id | tojson }},
   syllabusUrls: {{ syllabus_urls | tojson }},

@@ -1,0 +1,21 @@
+{# نموذج معدل الأداء الموحد — نسخة PDF صفحة واحدة أفقية.
+   يستبدل صفحة الطباعة القديمة: لا أزرار ولا رجوع ولا ترويسة، والنتيجة
+   ملف واحد يُنزَّل مباشرة. #}
+{% extends 'print/pdf/_base.html' %}
+{% set fd = fd | default(form_data) %}
+{% set pdf_size = 'A4 landscape' %}
+{% set pdf_page_w = '297mm' %}
+{% set pdf_page_h = '210mm' %}
+{% set pdf_padding = '7mm 9mm' %}
+
+{% block pdf_title %}نموذج معدل الأداء الموحد — {{ fd.header.teacher_name }}{% endblock %}
+
+{% block pdf_head_extra %}
+{% include 'faculty_performance/_official_document_styles.html' %}
+{% endblock %}
+
+{% block pdf_content %}
+<div class="pdf-sheet">
+  {% include 'faculty_performance/_teacher_document.html' %}
+</div>
+{% endblock %}

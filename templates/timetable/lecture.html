@@ -25,11 +25,11 @@
         <p class="page-subtitle">عرض الجداول الدراسية للكليات والأقسام</p>
       </div>
     </div>
-    <a href="{{ url_for('print_routes.print_timetable_all') }}"
-            target="_blank" rel="noopener"
+    <a href="{{ url_for('print_routes.pdf_timetable_all') }}"
+            download
             class="no-print flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm no-underline">
-      <span class="material-symbols-outlined text-lg">print</span>
-      طباعة
+      <span class="material-symbols-outlined text-lg">picture_as_pdf</span>
+      تحميل PDF
     </a>
   </div>
 

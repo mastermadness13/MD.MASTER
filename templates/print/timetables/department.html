@@ -1,5 +1,6 @@
 {% extends 'print/layouts/print.html' %}
-{% set print_title = 'طباعة الجدول الأسبوعي — ' ~ (payload.dept.name if payload.dept else '') %}
+{% set print_title = 'الجدول الأسبوعي — ' ~ (payload.dept.name if payload.dept else '') %}
+{% set print_pdf_endpoint = 'print_routes.pdf_timetable_department' %}
 
 {% block print_back_button %}
   <a href="{{ url_for('timetable.timetable_department_view', department_id=payload.dept.id if payload.dept else None, semester=payload.selected_semester) }}"

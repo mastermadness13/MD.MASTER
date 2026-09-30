@@ -479,14 +479,14 @@
         ('history.history_list',          'history.view',                      'history',        'سجل التغييرات'),
         ('misc.lecture_schedule',         'timetable.view',                    'schedule',       'جدول المحاضرات'),
         ('print_routes.print_timetable',  'timetable.view',                    'print',          'طباعة الجدول العام'),
-        ('print_routes.print_timetable_department', 'timetable.view',          'print',          'طباعة جدول قسم'),
-        ('print_routes.print_timetable_teacher', 'timetable.view',             'print',          'طباعة جدول أستاذ'),
-        ('print_routes.print_timetable_all', 'timetable.view',                 'print',          'طباعة كل الجداول'),
+        ('print_routes.pdf_timetable_department', 'timetable.view',          'picture_as_pdf', 'تحميل جدول قسم PDF'),
+        ('print_routes.pdf_timetable_teacher', 'timetable.view',             'picture_as_pdf', 'تحميل جدول أستاذ PDF'),
+        ('print_routes.pdf_timetable_all', 'timetable.view',                 'picture_as_pdf', 'تحميل كل الجداول PDF'),
         ('print_routes.print_list_teachers', 'teachers.view',                  'print',          'طباعة قائمة الأساتذة'),
         ('print_routes.print_list_departments', 'departments.view',            'print',          'طباعة قائمة الأقسام'),
         ('print_routes.print_list_rooms', 'rooms.view',                        'print',          'طباعة قائمة القاعات'),
         ('print_routes.print_courses',    'reports.view',                      'print',          'طباعة قائمة المقررات'),
-        ('print_routes.print_exams_schedule', 'exams.view',                   'print',          'طباعة جدول الامتحانات'),
+        ('print_routes.pdf_exams_schedule', 'exams.view',                   'picture_as_pdf', 'تحميل جدول الامتحانات PDF'),
         ('profile.profile',               'profile.view',                      'manage_accounts', 'إعدادات الحساب')
       ] %}
       {% for ep, perm, icon, label in directory %}

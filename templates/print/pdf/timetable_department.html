@@ -1,0 +1,18 @@
+{# الجدول الأسبوعي لقسم — نسخة PDF أفقية بصفحة واحدة. #}
+{% extends 'print/pdf/_base.html' %}
+{% set payload = payload | default(none) %}
+{% set pdf_size = 'A4 landscape' %}
+{% set pdf_page_w = '297mm' %}
+{% set pdf_page_h = '210mm' %}
+{% set pdf_padding = '8mm 10mm 10mm 10mm' %}
+
+{% block pdf_title %}الجدول الأسبوعي — {{ payload.dept.name if payload.dept else '' }}{% endblock %}
+
+{% block pdf_content %}
+<div class="pdf-sheet">
+  {% include 'print/timetables/_department_content.html' %}
+  {# بعد_partial: يُلغي مقاس الصفحة الذي يعلنه القسم الداخلي، فبلا هوامش
+     خارجية تبقى علبة الصفحة المطابقة تماماً لصندوق ورقة A4 أفقي. #}
+  <style>@page { size: A4 landscape; margin: 0; }</style>
+</div>
+{% endblock %}

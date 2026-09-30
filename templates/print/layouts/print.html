@@ -42,17 +42,26 @@
 {% endblock %}
 
 {% block content %}
+{% set pdf_args = request.args.to_dict(flat=True) %}
 <div class="no-print bg-white border border-outline-variant rounded-xl px-4 py-3 mb-4 flex flex-wrap items-center justify-between gap-3 shadow-sm">
   <div class="flex items-center gap-2 text-sm font-bold text-on-surface">
     <span class="material-symbols-outlined text-primary">picture_as_pdf</span>
     {{ print_title | default('معاينة الطباعة') }}
   </div>
   <div class="flex items-center gap-2">
+    {% if print_pdf_endpoint %}
+    <a href="{{ url_for(print_pdf_endpoint, **pdf_args) }}" download
+       class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-4 py-2 rounded-lg text-sm font-bold transition no-underline shadow-sm">
+      <span class="material-symbols-outlined text-lg">picture_as_pdf</span>
+      تحميل PDF
+    </a>
+    {% else %}
     <button type="button" onclick="window.print()"
             class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm">
       <span class="material-symbols-outlined text-lg">print</span>
       طباعة
     </button>
+    {% endif %}
     {% block print_back_button %}
       <button type="button" onclick="history.back()"
               class="flex items-center gap-2 bg-surface-container text-on-surface-variant hover:bg-surface-container-high border border-outline-variant px-4 py-2 rounded-lg text-sm font-bold transition">

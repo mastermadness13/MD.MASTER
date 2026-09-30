@@ -1,0 +1,16 @@
+{# الجدول الأسبوعي لعضو هيئة التدريس — نسخة PDF أفقية بصفحة واحدة. #}
+{% extends 'print/pdf/_base.html' %}
+{% set weekly_schedule = weekly_schedule | default({}) %}
+{% set days_order = days_order | default([]) %}
+{% set pdf_size = 'A4 landscape' %}
+{% set pdf_page_w = '297mm' %}
+{% set pdf_page_h = '210mm' %}
+{% set pdf_padding = '9mm 10mm' %}
+
+{% block pdf_title %}الجدول الأسبوعي — {{ teacher.name if teacher else '' }}{% endblock %}
+
+{% block pdf_content %}
+<div class="pdf-sheet">
+  {% include 'print/timetables/_teacher_content.html' %}
+</div>
+{% endblock %}

@@ -1122,7 +1122,7 @@ function buildTeacherPool() {
   var printBtn = document.getElementById('printBtn');
   if (printBtn) printBtn.addEventListener('click', function () {
     if (!P.dept) { toast('اختر قسماً أولاً.', 'error'); return; }
-    var u = new URL(BOOT.printUrl || '/print/timetables/department', window.location.origin);
+    var u = new URL(BOOT.printUrl || '/print/timetables/department.pdf', window.location.origin);
     u.searchParams.set('department_id', P.dept.id);
     u.searchParams.set('semester', P.selected_semester);
     if (P.current_version_id) u.searchParams.set('version_id', P.current_version_id);

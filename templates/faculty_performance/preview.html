@@ -36,9 +36,10 @@
       {% endif %}
       {% if has_permission('faculty_performance.print') %}
       <a href="{{ url_for('faculty_performance.print_form', teacher_id=fd.teacher.id, year=fd.header.academic_year, semester=fd.header.semester_number, dept=request.args.get('dept')) }}"
-         target="_blank" class="flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-on-primary px-3 py-2 rounded-lg text-xs font-bold transition">
-        <span class="material-symbols-outlined text-sm">print</span>
-        طباعة
+         download class="flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-on-primary px-3 py-2 rounded-lg text-xs font-bold transition no-underline"
+         title="تحميل النموذج كملف PDF بصفحة واحدة">
+        <span class="material-symbols-outlined text-sm">picture_as_pdf</span>
+        تحميل PDF
       </a>
       {% endif %}
     </div>

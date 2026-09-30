@@ -1,5 +1,5 @@
 {
-  "builtAt": "2026-09-30T11:11:26.720Z",
+  "builtAt": "2026-09-30T15:36:43.093Z",
   "css": {
     "app.css": "/static/dist/app.256fdf5c.css",
     "spa.css": "/static/dist/spa.2bd18996.css",
@@ -26,7 +26,6 @@
     "faculty_performance_edit_leaves.js": "/static/dist/faculty_performance_edit_leaves.248a5655.js",
     "faculty_performance_leaves_manage.js": "/static/dist/faculty_performance_leaves_manage.79767436.js",
     "faculty_performance_leaves_modal.js": "/static/dist/faculty_performance_leaves_modal.4c19a533.js",
-    "faculty_performance_print_fit.js": "/static/dist/faculty_performance_print_fit.e58c7345.js",
     "faculty_performance_research_modal.js": "/static/dist/faculty_performance_research_modal.979012c8.js",
     "faculty_performance_select_report.js": "/static/dist/faculty_performance_select_report.0adb4a18.js",
     "icon_picker.js": "/static/dist/icon_picker.b72120a0.js",
@@ -74,7 +73,7 @@
     "teaching_record_print.js": "/static/dist/teaching_record_print.477ee688.js",
     "theme.js": "/static/dist/theme.74c2e040.js",
     "theme_panel.js": "/static/dist/theme_panel.5c81a886.js",
-    "timetable_live.js": "/static/dist/timetable_live.b95003dc.js",
+    "timetable_live.js": "/static/dist/timetable_live.ff423807.js",
     "timetable_pages.js": "/static/dist/timetable_pages.6a3f095e.js",
     "toast.js": "/static/dist/toast.649ac693.js"
   }

@@ -1,0 +1,27 @@
+{# أنماط شبكة الجدول الأسبوعي — مشتركة بين صفحة الطباعة في المتصفح
+   ونسخة PDF، حتى يخرج الجدول بنفس الشكل في الحالتين. لا تحتوي @page
+   لأن مقاس الصفحة يحدده القالب الأعلى (أفقي للجدول). #}
+<style>
+  .timetable-print { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  .timetable-print table { width: 100% !important; table-layout: fixed; border-collapse: collapse; }
+  .timetable-print th, .timetable-print td {
+    border: 1px solid #000 !important;
+    text-align: center !important;
+    vertical-align: middle !important;
+    white-space: normal !important;
+    line-height: 1.25;
+  }
+  .timetable-print thead th {
+    background: #ececec !important;
+    font-weight: 700;
+    padding: 7px 8px !important;
+    font-size: 0.8125rem !important;
+  }
+  .timetable-print tbody td { padding: 7px 8px !important; font-size: 0.8125rem !important; height: 60px !important; overflow: hidden; }
+  .timetable-print tbody td.day-cell { font-weight: 700; background: #f5f5f5 !important; }
+
+  @media print {
+    .timetable-print .grid-wrap { overflow: visible !important; }
+    .timetable-print tbody tr { break-inside: avoid; page-break-inside: avoid; }
+  }
+</style>

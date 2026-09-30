@@ -16,57 +16,41 @@
   <!-- How it works -->
   <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
     <div class="bg-white rounded-2xl border border-primary/10 p-5 shadow-sm">
-      <span class="material-symbols-outlined text-primary text-3xl block mb-3">open_in_new</span>
-      <h3 class="font-bold text-on-surface mb-1">1. افتح الصفحة</h3>
-      <p class="text-sm text-on-surface-variant">انتقل إلى الصفحة التي تريد حفظها من قائمة النظام</p>
+      <span class="material-symbols-outlined text-primary text-3xl block mb-3">folder_open</span>
+      <h3 class="font-bold text-on-surface mb-1">1. اختر التقرير</h3>
+      <p class="text-sm text-on-surface-variant">اختر التقرير من القائمة أدناه</p>
+    </div>
+    <div class="bg-white rounded-2xl border border-primary/10 p-5 shadow-sm">
+      <span class="material-symbols-outlined text-primary text-3xl block mb-3">picture_as_pdf</span>
+      <h3 class="font-bold text-on-surface mb-1">2. اضغط «تحميل PDF»</h3>
+      <p class="text-sm text-on-surface-variant">الملف يُبنى على الخادم ويُنزَّل مباشرة إلى جهازك</p>
     </div>
     <div class="bg-white rounded-2xl border border-primary/10 p-5 shadow-sm">
       <span class="material-symbols-outlined text-primary text-3xl block mb-3">print</span>
-      <h3 class="font-bold text-on-surface mb-1">2. اضغط طباعة</h3>
-      <p class="text-sm text-on-surface-variant">استخدم زر الطباعة في الصفحة أو الاختصار Ctrl+P</p>
-    </div>
-    <div class="bg-white rounded-2xl border border-primary/10 p-5 shadow-sm">
-      <span class="material-symbols-outlined text-primary text-3xl block mb-3">save_alt</span>
-      <h3 class="font-bold text-on-surface mb-1">3. احفظ PDF</h3>
-      <p class="text-sm text-on-surface-variant">اختر «حفظ كـ PDF» من وجهة الطباعة في المتصفح</p>
+      <h3 class="font-bold text-on-surface mb-1">3. اطبع الملف</h3>
+      <p class="text-sm text-on-surface-variant">افتح ملف PDF ثم اطبعه، دون نافذة طباعة المتصفح</p>
     </div>
   </div>
 
-  <!-- Quick convert -->
-  <div class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden mb-6">
-    <div class="px-5 py-4 border-b border-primary/10 bg-surface-dim flex items-center gap-2">
-      <span class="material-symbols-outlined text-primary">bolt</span>
-      <h3 class="font-bold text-primary">تحويل الصفحة الحالية مباشرة</h3>
-    </div>
-    <div class="p-6 text-center">
-      <button type="button" onclick="window.print()"
-              class="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-6 py-3 rounded-xl text-sm font-bold transition shadow-sm">
-        <span class="material-symbols-outlined text-lg">picture_as_pdf</span>
-        تحويل الصفحة الحالية إلى PDF
-      </button>
-      <p class="text-xs text-on-surface-variant mt-3">سيتم فتح نافذة الطباعة — اختر «حفظ كـ PDF» كوجهة</p>
-    </div>
-  </div>
-
-  <!-- Printable reports -->
+  <!-- Downloadable reports -->
   <div class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden">
     <div class="px-5 py-4 border-b border-primary/10 bg-surface-dim flex items-center gap-2">
-      <span class="material-symbols-outlined text-primary">summarize</span>
-      <h3 class="font-bold text-primary">تقارير جاهزة للطباعة</h3>
+      <span class="material-symbols-outlined text-primary">save_alt</span>
+      <h3 class="font-bold text-primary">تقارير جاهزة للتحميل PDF</h3>
     </div>
     <div class="p-6 space-y-3">
-      <a href="{{ url_for('print_routes.print_timetable_all') }}"
+      <a href="{{ url_for('print_routes.pdf_timetable_all') }}" download
          class="flex items-center justify-between gap-3 rounded-xl border border-outline-variant p-4 hover:border-primary/40 hover:shadow-sm transition group no-underline">
         <div class="flex items-center gap-3">
           <span class="material-symbols-outlined text-primary">calendar_view_week</span>
           <div>
             <div class="font-bold text-on-surface text-sm">تقرير الجداول — جميع الأقسام</div>
-            <div class="text-xs text-on-surface-variant">الجداول الأسبوعية لكل الأقسام في صفحة واحدة</div>
+            <div class="text-xs text-on-surface-variant">الجداول الأسبوعية لكل الأقسام</div>
           </div>
         </div>
-        <span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary">chevron_left</span>
+        <span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary">picture_as_pdf</span>
       </a>
-      <a href="{{ url_for('print_routes.print_timetable_department') }}"
+      <a href="{{ url_for('print_routes.pdf_timetable_department') }}" download
          class="flex items-center justify-between gap-3 rounded-xl border border-outline-variant p-4 hover:border-primary/40 hover:shadow-sm transition group no-underline">
         <div class="flex items-center gap-3">
           <span class="material-symbols-outlined text-primary">view_week</span>
@@ -75,9 +59,9 @@
             <div class="text-xs text-on-surface-variant">جدول القسم حسب النسخة النشطة</div>
           </div>
         </div>
-        <span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary">chevron_left</span>
+        <span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary">picture_as_pdf</span>
       </a>
-      <a href="{{ url_for('print_routes.print_timetable_teacher') }}"
+      <a href="{{ url_for('print_routes.pdf_timetable_teacher') }}" download
          class="flex items-center justify-between gap-3 rounded-xl border border-outline-variant p-4 hover:border-primary/40 hover:shadow-sm transition group no-underline">
         <div class="flex items-center gap-3">
           <span class="material-symbols-outlined text-primary">person</span>
@@ -86,9 +70,9 @@
             <div class="text-xs text-on-surface-variant">جدول محاضرات المستخدم الحالي</div>
           </div>
         </div>
-        <span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary">chevron_left</span>
+        <span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary">picture_as_pdf</span>
       </a>
-      <a href="{{ url_for('print_routes.print_exams_schedule') }}"
+      <a href="{{ url_for('print_routes.pdf_exams_schedule') }}" download
          class="flex items-center justify-between gap-3 rounded-xl border border-outline-variant p-4 hover:border-primary/40 hover:shadow-sm transition group no-underline">
         <div class="flex items-center gap-3">
           <span class="material-symbols-outlined text-primary">event</span>
@@ -97,8 +81,18 @@
             <div class="text-xs text-on-surface-variant">امتحانات كل الأقسام حسب الفترة الحالية</div>
           </div>
         </div>
-        <span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary">chevron_left</span>
+        <span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary">picture_as_pdf</span>
       </a>
+    </div>
+  </div>
+
+  <!-- Printable reports -->
+  <div class="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden mt-6">
+    <div class="px-5 py-4 border-b border-primary/10 bg-surface-dim flex items-center gap-2">
+      <span class="material-symbols-outlined text-primary">summarize</span>
+      <h3 class="font-bold text-primary">تقارير تُطبع من المتصفح</h3>
+    </div>
+    <div class="p-6 space-y-3">
       <a href="{{ url_for('print_routes.print_courses') }}"
          class="flex items-center justify-between gap-3 rounded-xl border border-outline-variant p-4 hover:border-primary/40 hover:shadow-sm transition group no-underline">
         <div class="flex items-center gap-3">

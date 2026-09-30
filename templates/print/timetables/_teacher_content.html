@@ -1,5 +1,6 @@
 {% set weekly_schedule = weekly_schedule | default({}) %}
 {% set days_order = days_order | default([]) %}
+{% include 'print/timetables/_grid_styles.html' %}
 <div class="timetable-print">
   <div class="text-center" style="margin-bottom: 10px;">
     <div style="font-size: 1.25rem; font-weight: 800; color: #000;">كلية التقنية الهندسية زوارة</div>

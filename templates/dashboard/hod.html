@@ -178,9 +178,9 @@
         <span class="material-symbols-outlined text-primary text-lg">calendar_view_week</span>
         <h3 class="font-bold text-primary m-0 text-sm">الجدول الأسبوعي</h3>
         {% if h.get('total_courses') %}
-        <a href="{{ url_for('print_routes.print_timetable_department') }}"
+        <a href="{{ url_for('print_routes.pdf_timetable_department') }}"
            class="mr-auto text-xs font-bold text-primary hover:underline no-underline">
-          طباعة الجدول
+          تحميل الجدول PDF
         </a>
         {% endif %}
       </div>
