@@ -1,9 +1,3 @@
-{# One bundled, minified, content-hashed stylesheet.
-
-   static_asset() resolves css/app.css through static/dist/manifest.json when
-   `npm run build` has run, giving /static/dist/app.<hash>.css — which
-   security_headers.py serves immutable for a year. Without a build it falls
-   back to the source path, which still expands via its own 36 @imports. #}
-<link rel="stylesheet" href="{{ static_asset('css/app.css') }}"/>
-<link rel="icon" type="image/png" sizes="32x32" href="{{ static_asset('image/logo-32.png') }}"/>
-<link rel="apple-touch-icon" href="{{ static_asset('image/logo-180.png') }}"/>
+<link rel="stylesheet" href="/static/css/app.css?v={{ app_version() }}"/>
+<link rel="icon" type="image/png" href="/static/image/logo.png"/>
+{% include 'shared/components/tailwind_config.html' %}
