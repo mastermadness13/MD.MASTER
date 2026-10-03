@@ -24,6 +24,36 @@ from services import exam_service, notification_service
 
 bp = Blueprint('api_exams', __name__, url_prefix='/api/exams')
 
+_EXAM_AUDIT_FIELDS = (
+    'department_id', 'course_id', 'semester', 'week', 'day_ar',
+    'exam_date', 'room_id', 'start_time', 'end_time', 'exam_type', 'status',
+)
+
+
+def _exam_audit_snapshot(db, schedule_id):
+    row = db.execute(
+        'SELECT * FROM exam_schedule WHERE id = ?', (schedule_id,)
+    ).fetchone()
+    if not row:
+        return None
+    return {key: row[key] for key in _EXAM_AUDIT_FIELDS if key in row.keys()}
+
+
+def _record_exam_audit(db, action, schedule_id, before, after, message):
+    from database.history import add_history
+
+    add_history(
+        db,
+        action,
+        'exam_schedule',
+        schedule_id,
+        session.get('user_id'),
+        session.get('username', ''),
+        message,
+        old_value=before,
+        new_value=after,
+    )
+
 
 def _dept_exam_data_for_user(db):
     role = session.get('role', '')
@@ -227,12 +257,23 @@ def api_exam_department_cell_save():
 
 
     try:
+        is_update = bool(schedule_id)
+        before = _exam_audit_snapshot(db, schedule_id) if is_update else None
         schedule_id = exam_service.save_cell_exam(
             db, dept_id, semester, week, day, exam_date, course_id, room_id,
             start_time, end_time, exam_type, session.get('user_id'), schedule_id,
         )
     except Exception as exc:  # noqa: BLE001
         return err(str(exc), 400)
+    after = _exam_audit_snapshot(db, schedule_id)
+    _record_exam_audit(
+        db,
+        'update' if is_update else 'create',
+        schedule_id,
+        before,
+        after,
+        'تعديل بيانات امتحان' if is_update else 'إضافة امتحان',
+    )
     return ok({'saved': True, 'exam_date': exam_date, 'id': schedule_id})
 
 
@@ -257,7 +298,7 @@ def api_exam_department_cell_room(schedule_id):
         if not room:
             return err('القاعة غير موجودة', 404)
 
-    row = db.execute('SELECT id, department_id FROM exam_schedule WHERE id = ?', (schedule_id,)).fetchone()
+    row = db.execute('SELECT * FROM exam_schedule WHERE id = ?', (schedule_id,)).fetchone()
     if not row:
         return err('الامتحان غير موجود', 404)
 
@@ -265,6 +306,15 @@ def api_exam_department_cell_room(schedule_id):
         result = exam_service.update_exam_room(db, schedule_id, room_id)
     except Exception as exc:  # noqa: BLE001
         return err(str(exc), 400)
+    before = {key: row[key] for key in _EXAM_AUDIT_FIELDS if key in row.keys()}
+    _record_exam_audit(
+        db,
+        'update',
+        schedule_id,
+        before,
+        _exam_audit_snapshot(db, schedule_id),
+        'تعديل قاعة الامتحان',
+    )
     return ok({'updated': True, 'room_id': result['room_id'], 'room_name': result['room_name']})
 
 
@@ -277,7 +327,7 @@ def api_exam_department_cell_delete(schedule_id):
     user_data = current_user()
     user_dept_id = user_data.get('department_id') if user_data else None
     row = db.execute(
-        'SELECT department_id FROM exam_schedule WHERE id = ?', (schedule_id,)
+        'SELECT * FROM exam_schedule WHERE id = ?', (schedule_id,)
     ).fetchone()
     if not row:
         return err('الامتحان غير موجود', 404)
@@ -287,6 +337,10 @@ def api_exam_department_cell_delete(schedule_id):
         exam_service.delete_cell_exam(db, schedule_id, row['department_id'])
     except Exception as exc:  # noqa: BLE001
         return err(str(exc), 400)
+    before = {key: row[key] for key in _EXAM_AUDIT_FIELDS if key in row.keys()}
+    _record_exam_audit(
+        db, 'delete', schedule_id, before, None, 'حذف امتحان'
+    )
     return ok({'deleted': True})
 
 
@@ -398,7 +452,14 @@ def api_exam_planning_apply():
         schedule_id = s.get('schedule_id')
         room_id = s.get('room_id')
         if schedule_id and room_id:
+            before = _exam_audit_snapshot(db, schedule_id)
             exam_service.assign_exam_resources(db, schedule_id, room_id, '', '')
+            after = _exam_audit_snapshot(db, schedule_id)
+            if before != after:
+                _record_exam_audit(
+                    db, 'update', schedule_id, before, after,
+                    'تعيين قاعة للامتحان من التوزيع المقترح',
+                )
             applied += 1
     return ok({'applied': applied})
 
@@ -630,10 +691,42 @@ def api_exam_assign():
     role = session.get('role', '')
     if role == 'head_of_department' and dept_id != user_data.get('department_id'):
         return err('لا يمكنك تعديل جدول قسم آخر', 403)
+    before_row = db.execute(
+        '''SELECT * FROM exam_schedule
+           WHERE course_id = ? AND department_id = ? AND semester = ?
+             AND status IN ('planned', 'scheduled', 'published', 'completed')''',
+        (course_id, dept_id, semester),
+    ).fetchone()
+    before = (
+        {key: before_row[key] for key in _EXAM_AUDIT_FIELDS if key in before_row.keys()}
+        if before_row else None
+    )
     try:
         exam_service.save_exam_assignment(db, course_id, dept_id, semester, exam_date, session.get('user_id'))
     except Exception as exc:  # noqa: BLE001
         return err(str(exc), 400)
+    after_row = db.execute(
+        '''SELECT * FROM exam_schedule
+           WHERE course_id = ? AND department_id = ? AND semester = ?
+             AND status IN ('planned', 'scheduled', 'published', 'completed')''',
+        (course_id, dept_id, semester),
+    ).fetchone()
+    after = (
+        {key: after_row[key] for key in _EXAM_AUDIT_FIELDS if key in after_row.keys()}
+        if after_row else None
+    )
+    if before != after:
+        action = 'delete' if after is None else (
+            'create' if before is None else 'update'
+        )
+        _record_exam_audit(
+            db,
+            action,
+            (after_row or before_row)['id'],
+            before,
+            after,
+            'تعديل موعد امتحان' if exam_date else 'إلغاء تكليف امتحان',
+        )
     return ok({'exam_date': exam_date})
 
 
@@ -657,7 +750,14 @@ def api_exam_planning_assign():
     if not schedule_id or not room_id or not start_time or not end_time:
         return err('يرجى اختيار القاعة والفترة الزمنية', 422)
     db = get_db()
+    before = _exam_audit_snapshot(db, schedule_id)
     exam_service.assign_exam_resources(db, schedule_id, room_id, start_time, end_time)
+    after = _exam_audit_snapshot(db, schedule_id)
+    if before != after:
+        _record_exam_audit(
+            db, 'update', schedule_id, before, after,
+            'تعديل قاعة ووقت الامتحان',
+        )
     return ok(True)
 
 
@@ -683,7 +783,13 @@ def api_exam_update_room(schedule_id):
     except (TypeError, ValueError):
         return err('معرف القاعة غير صالح', 422)
     db = get_db()
+    before = _exam_audit_snapshot(db, schedule_id)
     result = exam_service.update_exam_room(db, schedule_id, room_id)
+    after = _exam_audit_snapshot(db, schedule_id)
+    if before != after:
+        _record_exam_audit(
+            db, 'update', schedule_id, before, after, 'تعديل قاعة الامتحان'
+        )
     return ok(result)
 
 

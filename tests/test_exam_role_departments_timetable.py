@@ -7,6 +7,7 @@ the exams department, the role must NOT see the timetable nav item and must
 not be able to open or edit timetable pages.
 """
 
+import json
 import sqlite3
 
 import pytest
@@ -53,8 +54,11 @@ def db_fx(tmp_path, monkeypatch):
 @pytest.fixture
 def client(app_fx, db_fx):
     c = app_fx.test_client()
+    exam_user_id = _q(
+        "SELECT id FROM users WHERE username='examoffice'"
+    )[0]['id']
     with c.session_transaction() as sess:
-        sess['user_id'] = 1
+        sess['user_id'] = exam_user_id
         sess['role'] = 'exam'
         sess['username'] = 'examoffice'
         sess['department_id'] = None
@@ -138,6 +142,80 @@ def test_exam_cannot_create_timetable_entry(client, db_fx):
         (ids['dept_id'], 2, ids['teacher_id']),
     )
     assert len(rows) == 0
+
+
+def test_delete_confirmation_uses_native_top_layer_dialog():
+    with open('templates/shared/layouts/base.html', encoding='utf-8') as f:
+        base_layout = f.read()
+    with open('static/js/confirm_dialog.js', encoding='utf-8') as f:
+        dialog_script = f.read()
+    with open('static/css/components/modals.css', encoding='utf-8') as f:
+        modal_styles = f.read()
+
+    assert '<dialog class="modal-overlay confirm-overlay" id="confirmDialog"' in base_layout
+    assert "overlay.showModal()" in dialog_script
+    assert "overlay.addEventListener('cancel'" in dialog_script
+    assert "e.key === 'Escape' && overlay.open" in dialog_script
+    assert "dataset.confirmDialogWired" in dialog_script
+    assert '.confirm-overlay::backdrop' in modal_styles
+    assert '.confirm-overlay[open]' in modal_styles
+
+
+def test_exam_schedule_changes_record_actor_and_before_after_values(client, db_fx):
+    ids = _ids(db_fx)
+    headers = {'X-CSRFToken': 't'}
+    payload = {
+        'dept_id': ids['dept_id'],
+        'semester': 1,
+        'week': 1,
+        'day': 'الأحد',
+        'course_id': ids['course_id'],
+        'room_id': ids['room_id'],
+        'start_time': '09:00',
+        'end_time': '10:00',
+        'exam_type': 'written',
+    }
+
+    created = client.post(
+        '/api/exams/department-schedule/cell', json=payload, headers=headers
+    )
+    assert created.status_code == 200
+    schedule_id = created.get_json()['data']['id']
+
+    updated = client.post(
+        '/api/exams/department-schedule/cell',
+        json={**payload, 'schedule_id': schedule_id, 'start_time': '10:00',
+              'end_time': '11:00'},
+        headers=headers,
+    )
+    assert updated.status_code == 200
+
+    deleted = client.delete(
+        f'/api/exams/department-schedule/cell/{schedule_id}', headers=headers
+    )
+    assert deleted.status_code == 200
+
+    events = _q(
+        "SELECT action, actor_user_id, actor_username, old_value, new_value "
+        "FROM history WHERE entity_type='exam_schedule' AND entity_id=? "
+        "ORDER BY id",
+        (schedule_id,),
+    )
+    assert [event['action'] for event in events] == [
+        'create', 'update', 'delete',
+    ]
+    assert all(event['actor_username'] == 'examoffice' for event in events)
+    assert all(
+        event['actor_user_id'] == _q(
+            "SELECT id FROM users WHERE username='examoffice'"
+        )[0]['id']
+        for event in events
+    )
+    assert json.loads(events[0]['new_value'])['start_time'] == '09:00'
+    assert json.loads(events[1]['old_value'])['start_time'] == '09:00'
+    assert json.loads(events[1]['new_value'])['start_time'] == '10:00'
+    assert json.loads(events[2]['old_value'])['start_time'] == '10:00'
+    assert events[2]['new_value'] is None
 
 
 # ── the exam period is the publish gate for the public site ──────────────────

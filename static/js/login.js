@@ -38,7 +38,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
         userForm.addEventListener("submit", function(e) {
             var username = document.getElementById("username").value.trim();
-            var password = document.getElementById("password").value.trim();
+            var passwordInput = document.getElementById("password");
+            var password = passwordInput.value.trim();
+            passwordInput.value = password;
 
             if (!username) {
                 e.preventDefault();

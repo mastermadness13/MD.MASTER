@@ -890,7 +890,8 @@ def _build_teacher_upload_row(course, submission, syllabus_file, form_file=None)
     syllabus_download_url = None
     if syllabus_file:
         syllabus_download_url = url_for(
-            'public_library.teacher_file', tf_id=syllabus_file['id'], download=1)
+            'teacher_pages.teacher_syllabus_download', tf_id=syllabus_file['id'],
+            download=1)
 
     form_download_url = None
     if form_file:
@@ -2617,9 +2618,9 @@ def teacher_syllabus_upload():
         return redirect_back()
 
     existing = db.execute(
-        "SELECT * FROM course_files WHERE course_id = ? "
+        "SELECT * FROM course_files WHERE course_id = ? AND teacher_id = ? "
         "AND file_type = 'syllabus' ORDER BY id DESC LIMIT 1",
-        (course_id,)
+        (course_id, teacher['id'])
     ).fetchone()
     if existing:
         old_filename = existing['filename']
@@ -2642,6 +2643,26 @@ def teacher_syllabus_upload():
     db.commit()
     flash(f'تم رفع/استبدال ملف المنهج لمقرر "{course_id}" وسيظهر في الجدول مباشرة', 'success')
     return redirect_back()
+
+
+@bp.route('/course-content/syllabus/<int:tf_id>/download')
+@login_required
+@permission_required('course_content.edit')
+def teacher_syllabus_download(tf_id):
+    """Serve one of the signed-in teacher's own course_files rows."""
+    db = get_db()
+    teacher = db.execute(
+        'SELECT id FROM teachers WHERE user_id = ?', (session['user_id'],)
+    ).fetchone()
+    if not teacher:
+        abort(404)
+    row = db.execute(
+        'SELECT * FROM course_files WHERE id = ? AND teacher_id = ?',
+        (tf_id, teacher['id'])
+    ).fetchone()
+    if not row:
+        abort(404)
+    return download_service.serve_course_file_row(dict(row))
 
 
 @bp.route('/course-content/syllabus/<int:tf_id>/delete', methods=['POST'])

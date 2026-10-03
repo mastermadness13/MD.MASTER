@@ -135,7 +135,7 @@ def get_course_files(db, course_id=None, file_type=None, status=('published',)) 
 
 # /     /     >---- صف ملف واحد من course_files (لمسار التحميل)
 def get_course_file(db, file_id: int, status=('approved', 'published')) -> Dict | None:
-    """Single ``course_files`` row (for the download route)."""
+    """Single publicly downloadable row; teacher-owned syllabi are excluded."""
     params: list = [file_id]
     status_clause = ''
     if status is not None:
@@ -154,7 +154,7 @@ def get_course_file(db, file_id: int, status=('approved', 'published')) -> Dict 
         'FROM course_files cf '
         'LEFT JOIN courses c ON cf.course_id = c.id '
         'LEFT JOIN teachers t ON cf.teacher_id = t.id '
-        f'WHERE cf.id = ?{status_clause}',
+        f'WHERE cf.id = ? AND cf.file_type != \'syllabus\'{status_clause}',
         params,
     ).fetchone()
     return dict(row) if row else None

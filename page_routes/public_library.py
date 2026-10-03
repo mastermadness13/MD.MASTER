@@ -90,4 +90,11 @@ def course_content(submission_id):
 
 @bp.route('/teacher-file/<int:tf_id>')
 def teacher_file(tf_id):
-    return download_service.serve_course_file(get_db(), tf_id, status=('approved',))
+    """Deprecated personal-syllabus URL.
+
+    Personal syllabus files are teacher-scoped and served by
+    ``teacher_pages.teacher_syllabus_download``; this URL used to expose any
+    approved file to anonymous visitors, so it now serves published public
+    content only.
+    """
+    return download_service.serve_course_file(get_db(), tf_id, status=('published',))

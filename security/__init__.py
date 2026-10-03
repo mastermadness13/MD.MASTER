@@ -52,8 +52,17 @@ from security.sanitize import (
 def validate_password(password: str) -> str | None:
     """Return an Arabic error message if *password* is too weak, else ``None``.
 
-    Rules: ≥ 8 chars, at least one uppercase, one lowercase, one digit.
+    Rules: ≥ 8 chars, at least one uppercase, one lowercase, one digit, and
+    no surrounding whitespace.
+
+    The surrounding-whitespace rule keeps password storage consistent with the
+    login surfaces, which trim the submitted value before hashing it. Without
+    it, a password accepted here is stored verbatim but can never be typed back
+    in successfully, locking the account out of its own credentials.
     """
+    # /     /     >---- لا مسافات محيطة، وإلا تعذّر الدخول لاحقاً
+    if password != password.strip():
+        return 'كلمة المرور لا يجب أن تبدأ أو تنتهي بمسافات'
     # /     /     >---- 8 أحرف أو أكثر
     if len(password) < 8:
         return 'كلمة المرور يجب أن تكون 8 أحرف على الأقل'

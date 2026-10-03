@@ -692,7 +692,7 @@ def test_public_library_serves_published_forms(client, app_fx, tmp_path, monkeyp
        (cid, sid))
     fid = _q("SELECT id FROM course_files WHERE submission_id=?", (sid,))[0]['id']
 
-    r = client.get(f'/course-file/{fid}')
+    r = app_fx.test_client().get(f'/course-file/{fid}')
     assert r.status_code == 200
     assert b'%PDF' in r.data
 

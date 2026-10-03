@@ -149,7 +149,7 @@
                       </label>
                     </form>
                     {% if material %}
-                    <a href="{{ url_for('public_library.course_file', file_id=material.id, download=1) }}"
+                    <a href="{{ url_for('teacher_pages.teacher_syllabus_download', tf_id=material.id, download=1) }}"
                        class="inline-flex items-center gap-1 rounded-lg border border-primary/30 text-primary px-2 py-1 text-xs font-bold no-underline">
                       <span class="material-symbols-outlined text-sm">download</span>
                       تحميل
@@ -262,7 +262,7 @@
                 </label>
               </form>
               {% if material %}
-              <a href="{{ url_for('public_library.course_file', file_id=material.id, download=1) }}"
+              <a href="{{ url_for('teacher_pages.teacher_syllabus_download', tf_id=material.id, download=1) }}"
                  class="inline-flex items-center gap-1 rounded-lg border border-primary/30 text-primary px-2 py-1.5 text-xs font-bold no-underline"
                  title="تحميل ملف المنهج">
                 <span class="material-symbols-outlined text-sm">download</span>

@@ -1,13 +1,20 @@
+import re
+
 from flask import Blueprint, session, request, render_template, redirect, url_for, flash, abort
 from werkzeug.security import check_password_hash
 
 from flask_db import get_db
+from core.rate_limiter import RateLimiter
 from database.history import add_history
-from security import csrf_required, login_required, permission_required
+from security import csrf_required, login_required, permission_required, role_required
 from security import current_user, validate_password
 from services import user_service
+from services.email_service import send_test_email
 from services.temp_access_code import validate_username
 bp = Blueprint('profile', __name__, url_prefix='/profile')
+
+_email_test_ip_limiter = RateLimiter(max_requests=2, window_seconds=600)
+_email_test_user_limiter = RateLimiter(max_requests=2, window_seconds=600)
 
 # /     /     >---- مسؤوليات كل دور تُعرض في صفحة الملف الشخصي
 _ROLE_RESPONSIBILITIES = {
@@ -101,6 +108,41 @@ def profile():
         return redirect(url_for('profile.profile'))
 
     return _render_profile(db, is_rnd, can_edit_account=role == 'faculty_affairs')
+
+
+@bp.route('/test-email', methods=['POST'])
+@login_required
+@role_required('faculty_affairs')
+@csrf_required
+def test_email():
+    """Send a fixed delivery-test message only to the active user's own email."""
+    db = get_db()
+    user = user_service.get_user_by_id(db, session['user_id'])
+    email = (user.get('email') or '').strip() if user else ''
+    if not re.fullmatch(r'[^@\s]+@[^@\s]+\.[^@\s]+', email):
+        flash('أضف بريداً إلكترونياً صالحاً إلى حسابك أولاً', 'error')
+        return redirect(url_for('profile.profile'))
+
+    client_ip = request.remote_addr or 'unknown'
+    user_key = f'user:{session["user_id"]}'
+    if (_email_test_ip_limiter.is_limited(client_ip)
+            or _email_test_user_limiter.is_limited(user_key)):
+        flash('تم تجاوز عدد رسائل الاختبار المسموح؛ حاول بعد 10 دقائق', 'error')
+        return redirect(url_for('profile.profile'))
+
+    _email_test_ip_limiter.record(client_ip)
+    _email_test_user_limiter.record(user_key)
+    if send_test_email(email, user.get('label') or user.get('username') or ''):
+        flash(
+            'قبل خادم البريد رسالة الاختبار. تحقق من صندوق الوارد والبريد غير الهام.',
+            'success',
+        )
+    else:
+        flash(
+            'تعذر إرسال رسالة الاختبار. تحقق من إعدادات SMTP وسجل خادم التطبيق.',
+            'error',
+        )
+    return redirect(url_for('profile.profile'))
 
 
 # /     /     >---- تحديث بيانات الحساب (البريد/الاسم الظاهر/الهاتف)
@@ -212,8 +254,8 @@ def _handle_department_update(db):
 # /     /     >---- تغيير كلمة مرور الحساب من صفحة الملف الشخصي
 def _handle_password_update(db):
     current = (request.form.get('current_password') or '').strip()
-    new_pass = request.form.get('new_password') or ''
-    confirm = request.form.get('confirm_password') or ''
+    new_pass = (request.form.get('new_password') or '').strip()
+    confirm = (request.form.get('confirm_password') or '').strip()
 
     user = user_service.get_user_by_id(db, session['user_id'])
     error = None

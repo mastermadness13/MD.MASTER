@@ -565,7 +565,7 @@
       var delBtn = modal.querySelector('.ws-f-delete');
       if (delBtn) delBtn.addEventListener('click', function () {
         window.askConfirm({
-          message: 'هل تريد حذف هذا الامتحان؟',
+          message: 'هل أنت متأكد من حذف هذا الامتحان؟',
           onConfirm: function () {
             delBtn.disabled = true;
             window.Exams.api.del('/api/exams/department-schedule/cell/' + existing.exam.id).then(function () {

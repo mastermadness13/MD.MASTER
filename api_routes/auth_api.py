@@ -56,8 +56,12 @@ def _session_payload():
 @csrf_required
 def api_login():
     data = body()
-    username = data.get('username', '').strip()
+    username = data.get('username', '')
     password = data.get('password', '')
+    if not isinstance(username, str) or not isinstance(password, str):
+        return err('اسم المستخدم وكلمة المرور يجب أن يكونا نصاً', 422)
+    username = username.strip()
+    password = password.strip()
     remember = bool(data.get('remember'))
     if not username or not password:
         return err('اسم المستخدم وكلمة المرور مطلوبان', 422)

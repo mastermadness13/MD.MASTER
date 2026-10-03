@@ -42,6 +42,15 @@ def _check_teacher_access(db, teacher_id):
     if any(r in ('faculty_affairs', 'research_development')
            for r in roles):
         return
+    active_roles = get_active_roles()
+    if (
+        'dean' in active_roles
+        and (
+            has_permission(active_roles, 'faculty_performance.view')
+            or has_permission(active_roles, 'faculty_performance.print')
+        )
+    ):
+        return
 
     teacher = db.execute(
         'SELECT department_id FROM teachers WHERE id = ? AND deleted_at IS NULL',

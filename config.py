@@ -61,9 +61,8 @@ class Config:
     PERMANENT_SESSION_LIFETIME = timedelta(days=7)
 
     # ── أساس رابط إعادة تعيين كلمة المرور ──────────────────────────
-    # The reset link is a bearer credential, so its origin must come from a
-    # configured base rather than the request's Host header. Empty means
-    # "derive from the request" and logs a warning; set it in production.
+    # Reset links are bearer credentials; configure this trusted origin in
+    # every non-test deployment rather than deriving it from the request Host.
     RESET_BASE_URL = (os.environ.get('RESET_BASE_URL') or '').strip().rstrip('/')
 
     # ── إعدادات البريد الإلكتروني ──────────────────────────────────

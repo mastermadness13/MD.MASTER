@@ -382,12 +382,17 @@ def test_page_script_is_served_with_a_cache_busting_version(lookup_setup):
     ).get_data(as_text=True)
 
     match = re.search(
-        r'src="([^"]*js/pages/teachers_lookup_lists\.js[^"]*)"', body
+        r'src="([^"]*(?:js/pages/teachers_lookup_lists'
+        r'(?:\.[a-f0-9]{8})?\.js|pages-teachers_lookup_lists'
+        r'\.[a-f0-9]{8}\.js)(?:\?v=\d+)?)"',
+        body,
     )
     assert match, 'the page must load its own script'
-    assert re.search(r'\?v=\d+$', match.group(1)), (
-        f'script URL has no cache-busting version: {match.group(1)}'
-    )
+    script_url = match.group(1)
+    assert (
+        re.search(r'\.[a-f0-9]{8}\.js$', script_url)
+        or re.search(r'\?v=\d+$', script_url)
+    ), f'script URL has no content hash or cache-busting version: {script_url}'
 
 
 def test_json_accept_header_is_treated_as_ajax(lookup_setup):

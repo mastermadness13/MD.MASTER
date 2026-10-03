@@ -141,6 +141,61 @@ def test_forgot_password_hides_reset_link_by_default(setup, monkeypatch):
     assert 'إذا كان الحساب موجوداً' in body
 
 
+def test_forgot_password_never_shows_fallback_link_outside_dev_or_test(
+    setup, app_fx, monkeypatch
+):
+    monkeypatch.setenv('RESET_LINK_FALLBACK', '1')
+    monkeypatch.setitem(app_fx.config, 'TESTING', False)
+    monkeypatch.setitem(app_fx.config, 'DEBUG', False)
+    monkeypatch.setitem(app_fx.config, 'RESET_BASE_URL', 'https://portal.example')
+    monkeypatch.setattr('services.email_service.send_reset_email', _noop_email)
+    client, _ = setup
+
+    response = _post(
+        client, '/forgot-password', {'username': USERNAME},
+        follow_redirects=True,
+    )
+
+    body = response.get_data(as_text=True)
+    assert response.status_code == 200
+    assert '/reset-password/' not in body
+    assert 'إذا كان الحساب موجوداً' in body
+
+
+def test_reset_email_uses_configured_origin_not_request_host(
+    setup, app_fx, monkeypatch
+):
+    sent_urls = []
+
+    def _capture_email(_email, reset_url):
+        sent_urls.append(reset_url)
+        return True
+
+    monkeypatch.setitem(app_fx.config, 'RESET_BASE_URL', 'https://trusted.example')
+    monkeypatch.setattr('services.email_service.send_reset_email', _capture_email)
+    client, _ = setup
+    response = _post(
+        client,
+        '/forgot-password',
+        {'username': USERNAME},
+        environ_base={'HTTP_HOST': 'attacker.example'},
+    )
+    assert response.status_code == 302
+    assert len(sent_urls) == 1
+    assert sent_urls[0].startswith('https://trusted.example/reset-password/')
+    assert 'attacker.example' not in sent_urls[0]
+
+
+def test_reset_url_requires_trusted_origin_outside_tests(app_fx, monkeypatch):
+    from page_routes.auth_pages import _build_reset_url
+
+    monkeypatch.setitem(app_fx.config, 'TESTING', False)
+    monkeypatch.setitem(app_fx.config, 'RESET_BASE_URL', '')
+    with app_fx.test_request_context('/forgot-password'):
+        with pytest.raises(RuntimeError, match='RESET_BASE_URL must be configured'):
+            _build_reset_url('test-token')
+
+
 def test_forgot_password_identical_response_for_known_and_unknown(setup, monkeypatch):
     """CWE-204: found and missing accounts produce the same redirect."""
     monkeypatch.setattr('services.email_service.send_reset_email', _noop_email)
@@ -182,6 +237,11 @@ def test_reset_password_get_renders_valid_token(setup):
     assert r.status_code == 200
     assert 'id="password"' in body
     assert 'id="confirm-password"' in body
+    assert 'id="password-requirements"' in body
+    assert body.count('radio_button_unchecked') >= 4
+    match = re.search(r'<script defer src="([^"]*auth_passwords\.[^"]+)"', body)
+    assert match, 'the built auth password helper should be loaded'
+    assert c.get(match.group(1)).status_code == 200
 
 
 def test_reset_password_invalid_token_redirects(setup):

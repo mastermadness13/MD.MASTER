@@ -172,6 +172,21 @@
             </button>
           </div>
         </form>
+        {% if srole == 'faculty_affairs' %}
+        <form method="POST" action="{{ url_for('profile.test_email') }}"
+              class="px-5 pb-5 border-t border-primary/10 pt-4">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+          <p class="text-xs text-on-surface-variant mb-3">
+            أرسل رسالة اختبار ثابتة إلى البريد المسجل في حسابك للتحقق من إعداد البريد.
+          </p>
+          <button type="submit"
+                  class="flex items-center gap-2 border border-primary text-primary hover:bg-primary/10 px-4 py-2 rounded-lg text-sm font-bold transition"
+                  {% if not usr.get('email') %}disabled title="أضف بريدك الإلكتروني واحفظه أولاً"{% endif %}>
+            <span class="material-symbols-outlined text-lg">outgoing_mail</span>
+            إرسال رسالة اختبار إلى بريدي
+          </button>
+        </form>
+        {% endif %}
         {% if srole != 'faculty_affairs' or usr.get('username') != 'office_manager' %}
         <form method="POST" action="{{ url_for('profile.profile') }}" class="px-5 pb-5 space-y-3 border-t border-primary/10 pt-4">
           <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">

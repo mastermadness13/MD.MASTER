@@ -44,6 +44,17 @@ def serve_course_file(db, file_id, status=('approved', 'published')):
     return _send_course_file(public_service.get_course_file(db, file_id, status=status))
 
 
+# /     /     >---- تحميل صف تم التحقق من صلاحيته مسبقًا في المسار
+def serve_course_file_row(file_row):
+    """Serve an already-authorized course_files row.
+
+    Ownership and status filtering are the caller's job (routes that scope a
+    row to the signed-in teacher or to an assigned course); this only turns the
+    authorized row into a response.
+    """
+    return _send_course_file(file_row)
+
+
 # /     /     >---- الرابط القديم: يوجّه للملف الأساسي أو يبعث المرفوع مباشرة
 def serve_submission_file(db, submission_id):
     """Legacy ``/library/file/<id>`` — redirect to the canonical row when

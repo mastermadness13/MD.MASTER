@@ -361,6 +361,10 @@ def test_initial_code_login_forces_change_then_accepts_new_password(app_fx, db_f
     })
     assert r2.status_code == 302  # forced change lands on the dashboard
 
+    dashboard = client.get(r2.headers['Location'], follow_redirects=True)
+    assert dashboard.status_code == 200
+    assert dashboard.request.path == '/'
+
     # the old code is dead; the new password works without forcing again
     login2 = app_fx.test_client()
     with login2.session_transaction() as sess:

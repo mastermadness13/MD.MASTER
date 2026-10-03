@@ -116,8 +116,9 @@ class TeacherService:
             raise ValueError(username_error)
         if self._user_repo.username_exists(nickname):
             raise ValueError(self._username_taken_message(nickname))
-        if not initial_password or len(initial_password) < 6:
-            raise ValueError('كلمة المرور يجب أن تكون 6 أحرف على الأقل')
+        initial_password_error = validate_password(initial_password or '')
+        if initial_password_error:
+            raise ValueError(initial_password_error)
 
         teacher_id = self._repo.create(data)
         if department_ids:

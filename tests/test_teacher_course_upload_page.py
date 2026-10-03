@@ -228,6 +228,127 @@ def test_syllabus_upload_rejects_unassigned_course(client, app_fx, tmp_path, mon
     assert _q("SELECT COUNT(*) AS n FROM course_files WHERE course_id=?", (cid,))[0]['n'] == 0
 
 
+def test_syllabus_upload_does_not_clobber_another_teacher(client, other_teacher_client,
+                                                           app_fx, db_fx, tmp_path,
+                                                           monkeypatch):
+    """Two teachers assigned to the same course keep independent syllabus rows.
+
+    The replacement lookup used to ignore ``teacher_id``, so t2's upload
+    overwrote t1's row *and* deleted t1's bytes from disk.
+    """
+    monkeypatch.setitem(app_fx.config, 'UPLOAD_FOLDER', str(tmp_path))
+    cid = _course_id('CS101')
+    t1 = _q("SELECT id FROM teachers WHERE name='أ. أحمد'")[0]['id']
+
+    r = client.post('/teacher/course-content/syllabus/upload', data={
+        '_csrf_token': 't', 'course_id': str(cid), 'file': (_pdf(b'first'), 'a.pdf'),
+    }, content_type='multipart/form-data')
+    assert r.status_code == 302
+    first = _q("SELECT * FROM course_files WHERE course_id=? AND file_type='syllabus'", (cid,))
+    assert len(first) == 1
+    first_path = tmp_path / first[0]['filename']
+    assert first_path.exists()
+
+    # t2 is not assigned to CS101 yet → assign, then upload.
+    dept_id = _q("SELECT id FROM departments WHERE name='قسم الحاسوب'")[0]['id']
+    t2 = _q("SELECT id FROM teachers WHERE name='أ. سارة'")[0]['id']
+    _q('UPDATE timetable SET teacher_id = ? WHERE course_id = ?', (t2, cid))
+    r = other_teacher_client.post('/teacher/course-content/syllabus/upload', data={
+        '_csrf_token': 't', 'course_id': str(cid), 'file': (_pdf(b'second'), 'b.pdf'),
+    }, content_type='multipart/form-data')
+    assert r.status_code == 302
+
+    rows = _q("SELECT * FROM course_files WHERE course_id=? AND file_type='syllabus'", (cid,))
+    assert len(rows) == 2, 'each teacher keeps their own row'
+    assert sorted(row['teacher_id'] for row in rows) == sorted([t1, t2])
+    assert all((tmp_path / row['filename']).exists() for row in rows), \
+        "t1's bytes must not be deleted by t2's upload"
+
+
+# ── تحميل ملف المنهج ───────────────────────────────────────────────────────
+
+
+def _write_syllabus(row_id, teacher_name, course_code, tmp_path, data=b'%PDF-1.4 unit'):
+    """Insert a syllabus row whose bytes really exist under tmp_path."""
+    cid = _course_id(course_code)
+    tid = _q("SELECT id FROM teachers WHERE name=?", (teacher_name,))[0]['id']
+    rel = f'course_files/course_{cid}/{cid}_syllabus_{row_id}.pdf'
+    (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / rel).write_bytes(data)
+    conn = sqlite3.connect(flask_db.DATABASE)
+    cur = conn.execute(
+        'INSERT INTO course_files '
+        "(course_id, file_type, filename, original_filename, file_size, "
+        "teacher_id, status) VALUES (?, 'syllabus', ?, 'منهج.pdf', ?, ?, 'approved')",
+        (cid, rel, len(data), tid))
+    new_id = cur.lastrowid
+    conn.commit()
+    conn.close()
+    return new_id
+
+
+def test_teacher_downloads_own_syllabus(client, app_fx, db_fx, tmp_path, monkeypatch):
+    monkeypatch.setitem(app_fx.config, 'UPLOAD_FOLDER', str(tmp_path))
+    rid = _write_syllabus(1, 'أ. أحمد', 'CS101', tmp_path)
+    r = client.get(f'/teacher/course-content/syllabus/{rid}/download?download=1')
+    assert r.status_code == 200
+    assert r.get_data() == b'%PDF-1.4 unit'
+    assert 'attachment' in r.headers.get('Content-Disposition', '')
+
+
+def test_teacher_download_is_scoped_to_the_owner(other_teacher_client, app_fx, db_fx,
+                                                 tmp_path, monkeypatch):
+    monkeypatch.setitem(app_fx.config, 'UPLOAD_FOLDER', str(tmp_path))
+    rid = _write_syllabus(1, 'أ. أحمد', 'CS101', tmp_path)
+    r = other_teacher_client.get(f'/teacher/course-content/syllabus/{rid}/download')
+    assert r.status_code == 404, "another teacher's syllabus must not be downloadable"
+
+
+def test_teacher_download_requires_login(app_fx, db_fx, tmp_path, monkeypatch):
+    monkeypatch.setitem(app_fx.config, 'UPLOAD_FOLDER', str(tmp_path))
+    rid = _write_syllabus(1, 'أ. أحمد', 'CS101', tmp_path)
+    anon = app_fx.test_client()
+    assert anon.get(f'/teacher/course-content/syllabus/{rid}/download').status_code in (302, 401, 403)
+
+
+def test_anonymous_cannot_download_syllabus_via_public_course_file(
+        app_fx, db_fx, tmp_path, monkeypatch):
+    monkeypatch.setitem(app_fx.config, 'UPLOAD_FOLDER', str(tmp_path))
+    rid = _write_syllabus(1, 'أ. أحمد', 'CS101', tmp_path)
+    row = _q('SELECT * FROM course_files WHERE id=?', (rid,))[0]
+    assert (tmp_path / row['filename']).exists()
+    response = app_fx.test_client().get(f'/course-file/{rid}')
+    assert response.status_code == 404
+
+
+def test_teacher_download_404_when_bytes_missing(client, app_fx, db_fx, tmp_path, monkeypatch):
+    """A row whose file was never deployed must 404 instead of crashing."""
+    monkeypatch.setitem(app_fx.config, 'UPLOAD_FOLDER', str(tmp_path))
+    rid = _write_syllabus(1, 'أ. أحمد', 'CS101', tmp_path)
+    (tmp_path / f'course_files/course_{_course_id("CS101")}/{rid}_syllabus_{rid}.pdf').unlink()
+    r = client.get(f'/teacher/course-content/syllabus/{rid}/download')
+    assert r.status_code == 404
+
+
+def test_teacher_dashboard_links_own_file_to_scoped_route(client, app_fx, db_fx,
+                                                          tmp_path, monkeypatch):
+    monkeypatch.setitem(app_fx.config, 'UPLOAD_FOLDER', str(tmp_path))
+    rid = _write_syllabus(1, 'أ. أحمد', 'CS101', tmp_path)
+    body = client.get('/dashboard').get_data(as_text=True)
+    assert f'/teacher/course-content/syllabus/{rid}/download' in body
+    assert f'/course-file/{rid}' not in body, \
+        'personal files must not be linked through the public route'
+
+
+def test_public_teacher_file_route_no_longer_exposes_approved_rows(app_fx, db_fx,
+                                                                    tmp_path, monkeypatch):
+    """Regression: /teacher-file/<id> used to serve any approved row to anyone."""
+    monkeypatch.setitem(app_fx.config, 'UPLOAD_FOLDER', str(tmp_path))
+    rid = _write_syllabus(1, 'أ. أحمد', 'CS101', tmp_path)
+    r = app_fx.test_client().get(f'/teacher-file/{rid}')
+    assert r.status_code == 404
+
+
 # ── إرفاق ملف PDF بالنموذج وإرساله للمراجعة ───────────────────────────────
 
 

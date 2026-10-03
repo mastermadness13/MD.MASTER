@@ -9,7 +9,7 @@
   <meta charset="UTF-8">
   <title>{% block pdf_title %}وثيقة{% endblock %}</title>
   <style>
-    @page { size: {{ pdf_size | default('A4 landscape') }}; margin: 0; }
+    @page { size: {{ pdf_size | default('A4 portrait') }}; margin: 0; }
 
     * { box-sizing: border-box; }
 
@@ -34,9 +34,9 @@
       position: absolute;
       top: 0;
       left: 0;
-      width: {{ pdf_page_w | default('297mm') }};
-      height: {{ pdf_page_h | default('210mm') }};
-      padding: {{ pdf_padding | default('8mm 10mm') }};
+      width: {{ pdf_page_w | default('210mm') }};
+      height: {{ pdf_page_h | default('297mm') }};
+      padding: {{ pdf_padding | default('10mm') }};
       overflow: hidden;
       background: #fff;
     }
@@ -44,6 +44,20 @@
     .pdf-sheet {
       zoom: 1;
       transform-origin: top right;
+    }
+
+    .pdf-sheet img,
+    .pdf-sheet table {
+      max-width: 100%;
+    }
+
+    .pdf-sheet table {
+      border-collapse: collapse;
+    }
+
+    .pdf-sheet tr {
+      break-inside: avoid;
+      page-break-inside: avoid;
     }
     {% endblock %}
   </style>

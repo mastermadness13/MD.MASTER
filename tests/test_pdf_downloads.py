@@ -242,6 +242,59 @@ def test_performance_form_downloads_one_pdf_page(app_fx, db_fx):
     assert _pdf_pages(resp.data) == 1, 'the form spilled onto a second page'
 
 
+def test_dean_can_preview_and_print_performance_form_without_edit_access(
+        app_fx, db_fx, monkeypatch):
+    from page_routes import faculty_performance as performance_routes
+    from services import faculty_performance_service as fps
+    from tests.harness import _seed_all, login_as
+
+    conn = connect(str(db_fx))
+    ids = _seed_all(conn, str(db_fx))
+    conn.close()
+
+    monkeypatch.setattr(
+        fps,
+        'get_performance_form_data',
+        lambda *_args, **_kwargs: {'header': {'teacher_name': 'أستاذ الاختبار'},
+                                   'leaves': []},
+    )
+    monkeypatch.setattr(
+        fps,
+        'get_select_data',
+        lambda _db: {
+            'research_types': [], 'admin_task_types': [],
+            'admin_task_hours': [], 'leave_types': [],
+        },
+    )
+    monkeypatch.setattr(
+        performance_routes, '_leaves_out_of_semester_warning',
+        lambda *_args: None,
+    )
+    monkeypatch.setattr(
+        performance_routes, 'render_template',
+        lambda *_args, **_kwargs: 'preview rendered',
+    )
+    monkeypatch.setattr(
+        pdf_service, 'template_pdf_response',
+        lambda *_args, **_kwargs: ('pdf rendered', 200),
+    )
+
+    dean = login_as(app_fx, str(db_fx), 'dean')
+    preview = dean.get(
+        f"/faculty-performance/preview/{ids['teacher_id']}?year=fall_2026&semester=1"
+    )
+    printed = dean.get(
+        f"/faculty-performance/print/{ids['teacher_id']}?year=fall_2026&semester=1"
+    )
+    edit = dean.get(
+        f"/faculty-performance/edit-research/{ids['teacher_id']}?year=fall_2026&semester=1"
+    )
+
+    assert preview.status_code == 200
+    assert printed.status_code == 200
+    assert edit.status_code in (302, 403)
+
+
 def test_performance_form_pdf_is_landscape_a4(app_fx, db_fx):
     from tests.harness import _seed_all
 

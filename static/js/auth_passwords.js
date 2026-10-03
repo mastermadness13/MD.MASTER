@@ -11,23 +11,32 @@ function togglePassword(inputId) {
   if (btn) btn.setAttribute('aria-label', showing ? 'إظهار كلمة المرور' : 'إخفاء كلمة المرور');
 }
 
-function passwordScore(pw) {
-  var s = 0;
-  if (pw.length >= 8) s++;
-  if (/[A-Z]/.test(pw)) s++;
-  if (/[a-z]/.test(pw)) s++;
-  if (/\d/.test(pw)) s++;
-  return s;
+function passwordRequirements(pw) {
+  return {
+    length: Array.from(pw).length >= 8,
+    upper: /\p{Lu}/u.test(pw),
+    lower: /\p{Ll}/u.test(pw),
+    digit: /\p{N}/u.test(pw)
+  };
+}
+
+function passwordScore(requirements) {
+  return Object.keys(requirements).filter(function (key) {
+    return requirements[key];
+  }).length;
 }
 
 function setReqOk(id, ok) {
   var el = document.getElementById(id);
   if (!el) return;
   el.classList.toggle('strength-req-ok', ok);
+  var icon = el.querySelector('.material-symbols-outlined');
+  if (icon) icon.textContent = ok ? 'check_circle' : 'radio_button_unchecked';
 }
 
 function updateStrength(input) {
-  var s = passwordScore(input.value || '');
+  var requirements = passwordRequirements(input.value || '');
+  var s = passwordScore(requirements);
 
   var label = document.getElementById('strength-label');
   var names = ['ضعيفة', 'متوسطة', 'متوسطة', 'جيدة', 'قوية'];
@@ -41,10 +50,10 @@ function updateStrength(input) {
     seg.classList.toggle('strong', i <= s && s === 4);
   }
 
-  setReqOk('req-length', s >= 1);
-  setReqOk('req-upper', s >= 2);
-  setReqOk('req-lower', s >= 3);
-  setReqOk('req-digit', s >= 4);
+  setReqOk('req-length', requirements.length);
+  setReqOk('req-upper', requirements.upper);
+  setReqOk('req-lower', requirements.lower);
+  setReqOk('req-digit', requirements.digit);
 }
 
 function showFieldError(field, msg) {

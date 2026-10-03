@@ -5,7 +5,11 @@
             "approve": true,
             "matchCommandLine": true
         },
-        "&": true
+        "&": true,
+        "/^@'\nconst fs = require\\('node:fs'\\);\nconst vm = require\\('node:vm'\\);\nconst ids = \\['req-length', 'req-upper', 'req-lower', 'req-digit', 'strength-label', 'seg-1', 'seg-2', 'seg-3', 'seg-4'\\];\nconst elements = \\{\\};\nfor \\(const id of ids\\) \\{\n const icon = \\{ textContent: 'radio_button_unchecked' \\};\n elements\\[id\\] = \\{ textContent: '', classList: \\{ toggle\\(\\) \\{\\} \\}, querySelector\\(\\) \\{ return icon; \\}, _icon: icon \\};\n\\}\nconst document = \\{ addEventListener\\(\\) \\{\\}, getElementById\\(id\\) \\{ return elements\\[id\\] \\|\\| null; \\} \\};\nconst context = vm\\.createContext\\(\\{ document, Array \\}\\);\nvm\\.runInContext\\(fs\\.readFileSync\\('static/js/auth_passwords\\.js', 'utf8'\\), context\\);\nfor \\(const value of \\['abcdefgh1', 'Abcdefg١', '😀😀😀😀'\\]\\) \\{\n  console\\.log\\(value, context\\.passwordRequirements\\(value\\), context\\.passwordScore\\(context\\.passwordRequirements\\(value\\)\\)\\);\n  context\\.updateStrength\\(\\{ value \\}\\);\n  console\\.log\\(ids\\.slice\\(0, 4\\)\\.map\\(id => \\[id, elements\\[id\\]\\._icon\\.textContent\\]\\)\\);\n\\}\n'@ \\| node$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
     },
     "python.testing.pytestArgs": [
         "tests"

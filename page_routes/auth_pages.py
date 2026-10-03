@@ -45,16 +45,20 @@ def _build_reset_url(token: str) -> str:
 
     ``url_for(..., _external=True)`` copies the request's ``Host`` header into
     the link, so a forged Host would point a genuine credential-bearing email
-    at an attacker-controlled origin. When ``RESET_BASE_URL`` is configured the
-    origin is fixed; otherwise the request-derived URL is kept so local
-    development keeps working, and the downgrade is logged.
+    at an attacker-controlled origin. ``RESET_BASE_URL`` is mandatory outside
+    tests; only tests may use the request-derived URL as a fallback.
     """
     path = url_for('auth.reset_password', token=token)
     base = (current_app.config.get('RESET_BASE_URL') or '').strip()
     if not base:
+        if not current_app.testing:
+            raise RuntimeError(
+                'RESET_BASE_URL must be configured before generating '
+                'password-reset links.'
+            )
         logger.warning(
-            'RESET_BASE_URL is not configured; the reset link origin is taken '
-            'from the request Host header. Set RESET_BASE_URL in production.'
+            'RESET_BASE_URL is not configured; using the request origin for '
+            'password-reset links in the test environment only.'
         )
         return url_for('auth.reset_password', token=token, _external=True)
     return base.rstrip('/') + path
@@ -66,7 +70,10 @@ def _reset_link_fallback_enabled() -> bool:
     In production the URL is never disclosed in the response body; the account
     holder must receive it by email.
     """
-    return os.environ.get('RESET_LINK_FALLBACK', '').strip().lower() in ('1', 'true', 'yes', 'on')
+    enabled = os.environ.get('RESET_LINK_FALLBACK', '').strip().lower()
+    return (current_app.testing or current_app.debug) and enabled in (
+        '1', 'true', 'yes', 'on'
+    )
 
 
 # /     /     >---- تسجيل الدخول: حد المحاولات + توثيق + توجيه حسب الدور الهابط
@@ -84,7 +91,7 @@ def login():
                 auth_warning='تم تجاوز الحد المسموح لمحاولات الدخول، '
                              'يرجى المحاولة لاحقاً',
             )
-        password = request.form.get('password', '')
+        password = request.form.get('password', '').strip()
         remember = request.form.get('remember')
         db = get_db()
         success, user = user_service.authenticate(db, username, password, remember, session)
@@ -187,8 +194,8 @@ def reset_password(token):
         flash('رابط إعادة التعيين غير صالح أو منتهي الصلاحية', 'error')
         return redirect(url_for('auth.login'))
     if request.method == 'POST':
-        password = request.form.get('password', '')
-        confirm = request.form.get('confirm-password', '')
+        password = request.form.get('password', '').strip()
+        confirm = request.form.get('confirm-password', '').strip()
         error = None
         if password != confirm:
             error = 'كلمة المرور غير متطابقة'
@@ -218,11 +225,9 @@ def change_password():
     if request.method == 'POST':
         payload = request.get_json(silent=True) or request.form
         is_json = request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-        # Passwords are opaque secrets: do not trim them because leading or
-        # trailing whitespace may be part of a user's chosen password.
-        current = payload.get('current_password') or ''
-        new_pass = payload.get('new_password') or ''
-        confirm = payload.get('confirm_password') or ''
+        current = (payload.get('current_password') or '').strip()
+        new_pass = (payload.get('new_password') or '').strip()
+        confirm = (payload.get('confirm_password') or '').strip()
 
         db = get_db()
         user = user_service.get_user_by_id(db, session['user_id'])
@@ -250,6 +255,12 @@ def change_password():
 
         forced_change = bool(session.get('force_password_change'))
         user_service.change_user_password(db, session['user_id'], new_pass)
+        updated_user = user_service.get_user_by_id(db, session['user_id'])
+        if not updated_user:
+            session.clear()
+            flash('تعذر تأكيد تحديث الحساب. سجّل الدخول مجدداً.', 'error')
+            return redirect(url_for('auth.login'))
+        session['session_version'] = updated_user.get('session_version', 1)
         session.pop('force_password_change', None)
         session.pop('first_login_temp_code', None)
         session.pop('recovery_authenticated', None)

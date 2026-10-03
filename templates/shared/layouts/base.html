@@ -239,7 +239,7 @@
    backdrop-filter makes it the containing block for position:fixed). #}
 <div id="modal-root">
   {% block modals %}{% endblock %}
-  <div class="modal-overlay confirm-overlay" id="confirmDialog" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="confirmDialogTitle" aria-describedby="confirmDialogMessage">
+  <dialog class="modal-overlay confirm-overlay" id="confirmDialog" aria-hidden="true" aria-labelledby="confirmDialogTitle" aria-describedby="confirmDialogMessage">
     <div class="confirm-dialog" role="document">
       <div class="confirm-icon" id="confirmDialogIcon" aria-hidden="true">warning</div>
       <h3 class="confirm-title" id="confirmDialogTitle">تأكيد</h3>
@@ -249,7 +249,7 @@
         <button type="button" class="btn btn-error" id="confirmDialogOk">تأكيد</button>
       </div>
     </div>
-  </div>
+  </dialog>
 </div>
 
 {# Mobile app-style bottom navigation (phones only, hidden on desktop) #}

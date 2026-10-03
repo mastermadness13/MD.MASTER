@@ -15,6 +15,9 @@
   }
 
   function wire(overlay) {
+  if (overlay.dataset.confirmDialogWired === 'true') return;
+  overlay.dataset.confirmDialogWired = 'true';
+
   var titleEl = document.getElementById('confirmDialogTitle');
   var msgEl = document.getElementById('confirmDialogMessage');
   var iconEl = document.getElementById('confirmDialogIcon');
@@ -39,14 +42,16 @@
       iconEl.textContent = danger ? 'warning' : 'help';
     }
     dialog.classList.toggle('is-confirm', !danger);
-    overlay.classList.add('show');
+    if (!overlay.open) {
+      lastFocus = document.activeElement;
+      overlay.showModal();
+    }
     overlay.setAttribute('aria-hidden', 'false');
-    lastFocus = document.activeElement;
     if (cancelBtn) cancelBtn.focus();
   }
 
   function close(restoreFocus) {
-    overlay.classList.remove('show');
+    if (overlay.open) overlay.close();
     overlay.setAttribute('aria-hidden', 'true');
     pendingForm = null;
     pendingCallback = null;
@@ -84,9 +89,15 @@
   }
 
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && overlay.classList.contains('show')) {
+    if (e.key === 'Escape' && overlay.open) {
+      e.preventDefault();
       close();
     }
+  });
+
+  overlay.addEventListener('cancel', function (e) {
+    e.preventDefault();
+    close();
   });
 
   // Intercept any form that opts in via data-confirm-message.

@@ -2,6 +2,7 @@
 
 import json
 import pathlib
+import re
 import sqlite3
 
 import pytest
@@ -72,7 +73,11 @@ def test_get_renders_page(setup):
     assert 'id="current_password"' in body
     assert 'id="new_password"' in body
     assert 'id="confirm_password"' in body
-    assert 'auth_passwords.js' in body
+    match = re.search(r'<script defer src="([^"]*auth_passwords\.[^"]+)"', body)
+    assert match, 'the built auth password helper should be loaded'
+    asset = c.get(match.group(1))
+    assert asset.status_code == 200
+    assert 'function togglePassword' in asset.get_data(as_text=True)
 
 
 def test_form_success_changes_password(setup):
@@ -87,6 +92,7 @@ def test_form_success_changes_password(setup):
     assert 'تم التغيير بنجاح' in body
     assert check_password_hash(_password(db_path), NEW_PW)
     assert not check_password_hash(_password(db_path), OLD_PW)
+    assert c.get('/change-password').status_code == 200
 
 
 def test_form_wrong_current(setup):
