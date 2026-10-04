@@ -152,11 +152,21 @@ def _save_inline_profile(db, teacher_id, academic_year, semester):
         'specialization': request.form.get('specialization', '').strip(),
         'academic_number': request.form.get('academic_number', '').strip(),
         'national_id': request.form.get('national_id', '').strip(),
+        'academic_year_label': request.form.get('academic_year_label', '').strip(),
         'first_lecture_date': request.form.get('first_lecture_date', '').strip(),
         'work_start_date': request.form.get('work_start_date', '').strip(),
     })
 
     rows = _collect_teaching_rows()
+    for row in rows:
+        course_id = row.get('course_id')
+        if course_id is None:
+            continue
+        field = f'teaching_student_count_{course_id}'
+        if field in request.form:
+            raw_count = request.form.get(field, '').strip()
+            row['student_count'] = int(raw_count) if raw_count.isdigit() else ''
+
     repo.save_report_teaching_draft(teacher_id, academic_year, semester, rows)
 
     counts = {}
@@ -419,11 +429,11 @@ def edit_leaves(teacher_id):
 @login_required
 @permission_required('faculty_performance.print')
 def print_form(teacher_id):
-    """نموذج معدل الأداء الموحد كملف PDF جاهز (صفحة واحدة أفقية).
+    """نموذج معدل الأداء الموحد كملف PDF جاهز (صفحة واحدة عمودية).
 
-   بدل صفحة طباعة منفصلة: القالب يُرسم على الخادم بعلبة صفحة ثابتة، فلا
-    تظهر أزرار ولا ترويسة باسم المستخدم ولا صفحة ثانية فارغة مهما اختلفت
-    إعدادات الطباعة على جهاز المستخدم.
+   بدل صفحة طباعة منفصلة: القالب يُرسم على الخادم بعلبة صفحة ثابتة حتى
+    يطبع النموذج الرسمي على A4 portrait بنفس المقاس لكل مستخدم، بعيداً
+    عن اختلاف إعدادات الطباعة المحلية ومشكلة القصّ أو التمدد.
     """
     db = get_db()
     _check_teacher_access(db, teacher_id)

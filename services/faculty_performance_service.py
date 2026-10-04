@@ -85,6 +85,27 @@ def _repo(db):
     return FacultyPerformanceRepository(db)
 
 
+def _semester_code_for(academic_year: str, semester: int) -> str:
+    """Return the stored semester code for a term request.
+
+    The UI historically sends either ``fall_2026`` / ``spring_2027`` or the
+    legacy ``2026/2027`` format. The teaching-assignment ledger stores only the
+    former, so normalize before querying it.
+    """
+    code = (academic_year or '').strip()
+    if not code:
+        return ''
+    if code.startswith('fall_') or code.startswith('spring_'):
+        return code
+    if '/' in code:
+        start, end = (part.strip() for part in code.split('/', 1))
+        if start.isdigit() and end.isdigit():
+            if semester == 2:
+                return f'spring_{end}'
+            return f'fall_{start}'
+    return code
+
+
 # /     /     >---- نص آمن للعرض: ما نعرضش None أو السلسلة 'None'
 def _clean_field(value: Any) -> str:
     """Display-safe string: never print ``None`` / the literal string ``'None'``."""
@@ -157,9 +178,11 @@ def get_performance_form_data(
         if cat not in rules:
             rules[cat] = {'min': 0, 'max': 999}
 
+    term_code = _semester_code_for(academic_year, semester)
+
     # /     /     >---- مداخل الجدول من سجل التكليفات التدريسية
     timetable_entries = repo.get_timetable_entries(
-        teacher_id, dept_ids, academic_year
+        teacher_id, dept_ids, term_code
     )
     # /     /     >---- عند عدم وجود مداخل: توسّع لشمل كل الأقسام اللي درّس فيها
     if not timetable_entries and department_id is None:
@@ -167,12 +190,12 @@ def get_performance_form_data(
             'SELECT DISTINCT department_id FROM teacher_taught_courses '
             'WHERE teacher_id = ? AND department_id IS NOT NULL '
             'AND semester_code = ?',
-            (teacher_id, academic_year),
+            (teacher_id, term_code),
         ).fetchall()
         fallback_ids = [r['department_id'] for r in tt_dept_rows if r['department_id']]
         if fallback_ids:
             timetable_entries = repo.get_timetable_entries(
-                teacher_id, fallback_ids, academic_year
+                teacher_id, fallback_ids, term_code
             )
 
     # /     /     >---- تدريس عبر الأقسام مقارنةً بالقسم الأساسي
@@ -374,7 +397,11 @@ def get_performance_form_data(
             'academic_year': academic_year,
             'semester_label': SEMESTER_LABELS.get(semester, semester_label),
             'semester_number': semester,
-            'academic_year_label': academic_year_label(academic_year),
+            'academic_year_label': (
+                draft['academic_year_label']
+                if draft and draft.get('academic_year_label') is not None
+                else academic_year_label(academic_year)
+            ),
             'contract_date': _clean_field(teacher.get('contract_date')),
             'first_lecture_date': _clean_field(teacher.get('first_lecture_date')),
             'work_start_date': _clean_field(teacher.get('work_start_date') or teacher.get('contract_date')),
@@ -688,8 +715,9 @@ def get_course_report_data(
         if row:
             dept_name = row['name']
 
+    term_code = _semester_code_for(academic_year, semester)
     raw_entries = repo.get_course_teaching_entries(
-        course_id, academic_year, department_id)
+        course_id, term_code, department_id)
 
     entries = []
     total_hours = 0.0

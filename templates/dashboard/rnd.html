@@ -1,6 +1,7 @@
 {% extends 'shared/layouts/base.html' %}
 {% set sidebar_active = 'dashboard.dashboard' %}
-{% set page_title = 'لوحة تحكم البحث والتطوير' %}
+{% set rnd_label = role_labels.get('research_development', 'قسم البحث والتطوير والمناهج') %}
+{% set page_title = 'لوحة تحكم ' ~ rnd_label %}
 
 {% set d = dept_data | default({}) %}
 {% set courses_list = d.get('courses_list', []) | default([]) %}
@@ -18,7 +19,7 @@
     <div class="flex items-center gap-3">
       <span class="material-symbols-outlined text-primary text-3xl">science</span>
       <div>
-        <h1 class="text-2xl font-bold text-on-surface">لوحة البحث والتطوير</h1>
+        <h1 class="text-2xl font-bold text-on-surface">لوحة {{ rnd_label }}</h1>
         <p class="page-subtitle">مرحباً {{ user.label or user.username }}، نظرة عامة على المقررات.</p>
       </div>
     </div>

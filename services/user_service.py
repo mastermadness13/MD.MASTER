@@ -15,14 +15,12 @@ from typing import Any, Dict, Optional, Tuple
 
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from core.constants import (
-    PASSWORD_RESET_EXPIRY_HOURS,
-    ROLE_NAMES,
-)
+from core.constants import PASSWORD_RESET_EXPIRY_HOURS
 from core.exceptions import ConflictError, ProtectedAccountError, ValidationError
 from security.authorization import highest_priority_role
 from security import validate_password
 from services.hod_resolution import get_current_hod
+from services.role_label_service import get_role_labels
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +77,12 @@ class UserService:
     def _guard_against_destructive(self, user_id: int) -> None:
         if self.is_protected_user(user_id):
             raise ProtectedAccountError()
+        user = self._repo.find_by_id(user_id)
+        roles = self._repo.find_roles_by_user(user_id) or []
+        if (user and user.get('role') == 'dean') or 'dean' in roles:
+            raise ProtectedAccountError(
+                'انقل صلاحية العميد إلى حساب آخر قبل حذف الحساب أو تعطيله'
+            )
 
     # /     /     >---- المصادقة (تسجيل الدخول)
 
@@ -255,7 +259,7 @@ class UserService:
         return {
             'user': user,
             'teacher': teacher,
-            'role_name': ROLE_NAMES.get(user['role'], user['role']),
+            'role_name': get_role_labels(self.db).get(user['role'], user['role']),
         }
 
     def list_users(self, search: str = '', page: int = 1):

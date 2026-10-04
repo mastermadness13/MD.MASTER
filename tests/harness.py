@@ -45,7 +45,7 @@ ALL_ROLES = (
 #: ``role -> (username, label)``.  Usernames are unique per role so a session
 #: can always be resolved back to the account that actually holds the role.
 ROLE_ACCOUNTS = {
-    'dean': ('dean_user', 'العميد'),
+    'dean': ('wesam', 'العميد'),
     'research_development': ('rnd_user', 'قسم البحث والتطوير والمناهج'),
     'faculty_affairs': ('office_user', 'مكتب إدارة أعضاء هيئة التدريس'),
     'exam': ('exam_user', 'قسم الدراسة والامتحانات'),

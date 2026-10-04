@@ -114,6 +114,100 @@ def test_adding_and_removing_a_single_role_bump_session_version(repo_db):
     assert _version(conn, uid) == 3
 
 
+def test_dean_role_can_be_transferred_between_accounts(repo_db):
+    conn, repo = repo_db
+    first_dean_id = repo.create_user({
+        'username': 'first_dean',
+        'password': 'x',
+        'role': 'teacher',
+        'label': 'العميد السابق',
+    })
+    next_dean_id = repo.create_user({
+        'username': 'next_dean',
+        'password': 'x',
+        'role': 'teacher',
+        'label': 'العميد الجديد',
+    })
+    repo.add_user_role(first_dean_id, 'dean')
+    repo.add_user_role(next_dean_id, 'dean')
+
+    dean_holders = conn.execute(
+        """SELECT u.id FROM users u
+           JOIN user_roles ur ON ur.user_id = u.id
+           WHERE ur.role = 'dean'"""
+    ).fetchall()
+    assert [row['id'] for row in dean_holders] == [next_dean_id]
+    assert 'dean' not in repo.find_roles_by_user(first_dean_id)
+    assert conn.execute(
+        'SELECT role FROM users WHERE id = ?', (first_dean_id,)
+    ).fetchone()['role'] == 'teacher'
+    assert conn.execute(
+        'SELECT role FROM users WHERE id = ?', (next_dean_id,)
+    ).fetchone()['role'] == 'dean'
+
+    with pytest.raises(ValueError, match='انقل صلاحية العميد'):
+        repo.remove_user_role(next_dean_id, 'dean')
+    with pytest.raises(ValueError, match='انقل صلاحية العميد'):
+        repo.set_user_roles(next_dean_id, ['teacher'])
+
+    office_id = conn.execute(
+        "SELECT id FROM users WHERE username = 'area2_user'"
+    ).fetchone()['id']
+    repo.add_user_role(office_id, 'dean')
+    assert 'dean' in repo.find_roles_by_user(office_id)
+    assert 'dean' not in repo.find_roles_by_user(next_dean_id)
+
+
+def test_startup_keeps_one_existing_dean_without_username_lock(repo_db):
+    from database.schema import ensure_schema
+
+    conn, _repo = repo_db
+    conn.execute('DROP INDEX IF EXISTS idx_user_roles_single_dean')
+    conn.execute('DROP INDEX IF EXISTS idx_users_single_dean')
+    conn.execute('DROP TRIGGER IF EXISTS trg_users_single_dean_insert')
+    conn.execute('DROP TRIGGER IF EXISTS trg_users_single_dean_update')
+    old_dean_id = conn.execute(
+        """INSERT INTO users (username, password, role, label)
+           VALUES ('old_dean', 'x', 'dean', 'عميد سابق')"""
+    ).lastrowid
+    another_old_dean_id = conn.execute(
+        """INSERT INTO users (username, password, role, label)
+           VALUES ('another_dean', 'x', 'dean', 'عميد آخر')"""
+    ).lastrowid
+    conn.executemany(
+        'INSERT INTO user_roles (user_id, role) VALUES (?, ?)',
+        [(old_dean_id, 'dean'), (old_dean_id, 'exam'),
+         (another_old_dean_id, 'dean'), (another_old_dean_id, 'teacher')],
+    )
+    conn.commit()
+
+    ensure_schema(conn)
+
+    dean_holders = conn.execute(
+        """SELECT u.username FROM users u
+           JOIN user_roles ur ON ur.user_id = u.id
+           WHERE ur.role = 'dean'"""
+    ).fetchall()
+    assert [row['username'] for row in dean_holders] == ['old_dean']
+    assert conn.execute(
+        'SELECT role FROM users WHERE id = ?', (old_dean_id,)
+    ).fetchone()['role'] == 'dean'
+    assert conn.execute(
+        'SELECT role FROM users WHERE id = ?', (another_old_dean_id,)
+    ).fetchone()['role'] == 'teacher'
+    assert set(_repo.find_roles_by_user(old_dean_id)) == {'dean', 'exam'}
+    assert set(_repo.find_roles_by_user(another_old_dean_id)) == {'teacher'}
+    assert _version(conn, old_dean_id) == 1
+    assert _version(conn, another_old_dean_id) == 2
+
+    ensure_schema(conn)
+    assert conn.execute(
+        """SELECT u.username FROM users u
+           JOIN user_roles ur ON ur.user_id = u.id
+           WHERE ur.role = 'dean'"""
+    ).fetchall()[0]['username'] == 'old_dean'
+
+
 def test_disable_and_reenable_both_bump_session_version(repo_db):
     """Re-enabling must not resurrect a cookie captured while disabled."""
     conn, repo = repo_db

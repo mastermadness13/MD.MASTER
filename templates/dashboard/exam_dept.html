@@ -1,6 +1,7 @@
 {% extends 'shared/layouts/base.html' %}
 {% set sidebar_active = 'dashboard.dashboard' %}
-{% set page_title = 'لوحة شؤون الامتحانات' %}
+{% set exam_label = role_labels.get('exam', 'قسم الدراسة والامتحانات') %}
+{% set page_title = 'لوحة ' ~ exam_label %}
 
 {% set d = dept_data | default({}) %}
 {% set next_exams = d.get('next_exams', []) | default([]) %}
@@ -14,7 +15,7 @@
     <div class="page-header-info">
       <span class="material-symbols-outlined page-header-icon">grading</span>
       <div>
-        <h1 class="page-title">لوحة شؤون الامتحانات</h1>
+        <h1 class="page-title">لوحة {{ exam_label }}</h1>
         <p class="page-subtitle">مرحباً {{ user.label or user.username }}، نظرة عامة على الامتحانات.</p>
       </div>
     </div>

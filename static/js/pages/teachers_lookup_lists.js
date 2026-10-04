@@ -215,7 +215,8 @@
     if (token) headers['X-CSRFToken'] = token;
 
     try {
-      var response = await fetch(form.action || window.location.href, {
+      var actionUrl = form.getAttribute('action') || window.location.href;
+      var response = await fetch(actionUrl, {
         method: 'POST',
         headers: headers,
         body: new FormData(form),

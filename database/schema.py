@@ -1167,6 +1167,68 @@ def _migrate_user_roles(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def _migrate_single_dean(conn: sqlite3.Connection) -> None:
+    """Keep one existing dean, without tying the office to a username."""
+    holders = conn.execute(
+        """SELECT DISTINCT u.id, u.role
+           FROM users u
+           LEFT JOIN user_roles ur ON ur.user_id = u.id AND ur.role = 'dean'
+           WHERE u.role = 'dean' OR ur.user_id IS NOT NULL
+           ORDER BY CASE WHEN u.role = 'dean' THEN 0 ELSE 1 END, u.id"""
+    ).fetchall()
+    dean_id = holders[0]['id'] if holders else None
+    fallback_order = (
+        'research_development', 'faculty_affairs', 'exam',
+        'head_of_department', 'teacher', 'visitor',
+    )
+    for holder in holders:
+        user_id = holder['id']
+        if user_id == dean_id:
+            continue
+        conn.execute(
+            "DELETE FROM user_roles WHERE user_id = ? AND role = 'dean'",
+            (user_id,),
+        )
+        roles = {
+            row['role'] for row in conn.execute(
+                'SELECT role FROM user_roles WHERE user_id = ?',
+                (user_id,),
+            ).fetchall()
+        }
+        fallback = next(
+            (role for role in fallback_order if role in roles),
+            'teacher',
+        )
+        conn.execute(
+            """UPDATE users
+               SET role = CASE WHEN role = 'dean' THEN ? ELSE role END,
+                   session_version = session_version + 1
+               WHERE id = ?""",
+            (fallback, user_id),
+        )
+    if dean_id is not None:
+        conn.execute(
+            "INSERT OR IGNORE INTO user_roles (user_id, role) VALUES (?, 'dean')",
+            (dean_id,),
+        )
+        conn.execute(
+            """UPDATE users SET role = 'dean'
+               WHERE id = ? AND role <> 'dean'""",
+            (dean_id,),
+        )
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_user_roles_single_dean "
+        "ON user_roles(role) WHERE role = 'dean'"
+    )
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_single_dean "
+        "ON users(role) WHERE role = 'dean'"
+    )
+    conn.execute('DROP TRIGGER IF EXISTS trg_users_single_dean_insert')
+    conn.execute('DROP TRIGGER IF EXISTS trg_users_single_dean_update')
+    conn.commit()
+
+
 # /     /     >---- نفحص هل عمود موجود في جدول
 def _column_exists(conn: sqlite3.Connection, table: str, column: str) -> bool:
     try:
@@ -2056,12 +2118,17 @@ def _ensure_faculty_performance_tables(conn: sqlite3.Connection, existing_tables
             specialization     TEXT NOT NULL DEFAULT '',
             academic_number    TEXT NOT NULL DEFAULT '',
             national_id        TEXT NOT NULL DEFAULT '',
+            academic_year_label TEXT DEFAULT NULL,
             first_lecture_date TEXT NOT NULL DEFAULT '',
             work_start_date    TEXT NOT NULL DEFAULT '',
             updated_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(teacher_id, academic_year, semester)
         )
     """)
+    _safe_add_column(
+        conn, 'faculty_report_profile_drafts', 'academic_year_label',
+        'TEXT DEFAULT NULL',
+    )
     conn.execute(
         'CREATE INDEX IF NOT EXISTS idx_frpd_teacher_term '
         'ON faculty_report_profile_drafts(teacher_id, academic_year, semester)'
@@ -3017,6 +3084,7 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
         # /     /     >---- نموذج الأدوار الجديد
         _migrate_role_model(conn)
         _migrate_user_roles(conn)
+        _migrate_single_dean(conn)
         # /     /     >---- رمز الدخول المؤقت لأعضاء هيئة التدريس
         _migrate_initial_login_columns(conn)
         _migrate_obscure_legacy_initial_codes(conn)

@@ -15,7 +15,6 @@ from core.auth_limits import (
     record_login_failure,
     reset_login,
 )
-from core.constants import ROLE_NAMES
 from flask_db import get_db
 from security import (
     get_header_messages_url,
@@ -25,6 +24,7 @@ from core.constants.navigation import get_nav_for_permissions
 from security import current_user
 from security.csrf import csrf_required
 from services import user_service
+from services.role_label_service import get_role_labels
 
 bp = Blueprint('api_auth', __name__, url_prefix='/api/auth')
 
@@ -44,7 +44,7 @@ def _session_payload():
     return {
         'user': user,
         'role': session.get('role', ''),
-        'role_label': ROLE_NAMES.get(session.get('role', ''), ''),
+        'role_label': get_role_labels(get_db()).get(session.get('role', ''), ''),
         'permissions': sorted(perms),
         'nav_items': nav_items,
         'header_messages_url': get_header_messages_url(roles),

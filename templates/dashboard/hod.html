@@ -2,7 +2,8 @@
 {% set sidebar_active = 'dashboard.dashboard' %}
 {% set h = hod_data | default({}) %}
 {% set user = user | default({}) %}
-{% set page_title = 'لوحة تحكم ' ~ (h.get('department_name') or user.get('department_name') or 'رئيس القسم') %}
+{% set hod_label = role_labels.get('head_of_department', 'رئيس القسم العلمي') %}
+{% set page_title = 'لوحة تحكم ' ~ (h.get('department_name') or user.get('department_name') or hod_label) %}
 
 {% set today_lectures = h.get('today_lectures', []) %}
 {% set today_count = h.get('today_entries_count', 0) %}
@@ -60,7 +61,7 @@
         <h1 class="text-lg font-bold text-on-surface m-0">
           {# Department names are stored complete ("قسم الحاسوب"), so render
              the value as-is; prefixing it here produced "قسم قسم الحاسوب". #}
-          {{ h.get('department_name') or 'لوحة رئيس القسم' }}
+          {{ h.get('department_name') or ('لوحة ' ~ hod_label) }}
         </h1>
 
         <p class="text-sm text-on-surface-variant m-0">

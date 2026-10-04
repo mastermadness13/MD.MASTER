@@ -1,5 +1,5 @@
 {
-  "builtAt": "2026-10-03T02:41:59.930Z",
+  "builtAt": "2026-10-04T21:50:21.161Z",
   "css": {
     "app.css": "/static/dist/app.36eecb4a.css",
     "spa.css": "/static/dist/spa.2bd18996.css",
@@ -42,7 +42,7 @@
     "pages/spa.js": "/static/dist/pages-spa.24e88663.js",
     "pages/teachers__course_content_doc.js": "/static/dist/pages-teachers__course_content_doc.100a1ae7.js",
     "pages/teachers_faculty_form.js": "/static/dist/pages-teachers_faculty_form.542914ca.js",
-    "pages/teachers_lookup_lists.js": "/static/dist/pages-teachers_lookup_lists.cfda0e95.js",
+    "pages/teachers_lookup_lists.js": "/static/dist/pages-teachers_lookup_lists.c8a2f486.js",
     "preview.js": "/static/dist/preview.c4d3db58.js",
     "print_auto.js": "/static/dist/print_auto.c6fed845.js",
     "search.js": "/static/dist/search.55860e74.js",

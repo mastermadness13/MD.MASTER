@@ -88,7 +88,7 @@ class FacultyPerformanceRepository(BaseRepository):
     _DRAFT_COLUMNS = (
         'name', 'section', 'dept_name', 'qual_name', 'rank_name',
         'specialization', 'academic_number', 'national_id',
-        'first_lecture_date', 'work_start_date',
+        'academic_year_label', 'first_lecture_date', 'work_start_date',
     )
 
     def get_report_profile_draft(self, teacher_id: int, academic_year: str,

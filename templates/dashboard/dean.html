@@ -1,6 +1,7 @@
 {% extends 'shared/layouts/base.html' %}
 {% set sidebar_active = 'dashboard.dashboard' %}
-{% set page_title = 'لوحة تحكم العميد' %}
+{% set dean_label = role_labels.get('dean', 'العميد') %}
+{% set page_title = 'لوحة تحكم ' ~ dean_label %}
 
 {% set stats = stats | default({}) %}
 {% set d = dean_data | default({}) %}
@@ -21,7 +22,7 @@
     <div class="page-header-info">
       <span class="material-symbols-outlined page-header-icon">account_balance</span>
       <div>
-        <h1 class="page-title">لوحة العميد</h1>
+        <h1 class="page-title">لوحة {{ dean_label }}</h1>
         <p class="page-subtitle">نظرة إشرافية شاملة على الكلية — كل النطاقات، قراءة فقط</p>
       </div>
     </div>

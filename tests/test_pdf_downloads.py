@@ -56,7 +56,7 @@ def db_fx(tmp_path, monkeypatch):
         "VALUES ('rnd', 'x', 'research_development', 'بحث وتطوير')")
     conn.execute(
         "INSERT OR IGNORE INTO users (username, password, role, label) "
-        "VALUES ('dean', 'x', 'dean', 'العميد')")
+        "VALUES ('wesam', 'x', 'dean', 'العميد')")
     conn.execute(
         "INSERT OR IGNORE INTO departments (name, semesters, majors, hidden, "
         "has_sections, type) VALUES ('قسم الحاسوب', 8, 8, 0, 1, 'academic')")
@@ -100,7 +100,7 @@ def client(app_fx, db_fx):
 
 @pytest.fixture
 def dean_client(app_fx, db_fx):
-    return _session(app_fx, db_fx, 'dean', department_id=None)
+    return _session(app_fx, db_fx, 'wesam', department_id=None)
 
 
 # ── pdf_service unit tests ─────────────────────────────────────────
@@ -242,6 +242,78 @@ def test_performance_form_downloads_one_pdf_page(app_fx, db_fx):
     assert _pdf_pages(resp.data) == 1, 'the form spilled onto a second page'
 
 
+def test_performance_preview_edit_mode_renders_teaching_editor(app_fx, db_fx):
+    from tests.harness import _seed_all
+
+    conn = connect(str(db_fx))
+    ids = _seed_all(conn, str(db_fx))
+    conn.commit()
+    conn.close()
+
+    resp = _affairs_client(app_fx, db_fx).get(
+        '/faculty-performance/preview/%d?year=fall_2026&semester=1&edit=1'
+        % ids['teacher_id']
+    )
+
+    assert resp.status_code == 200
+    assert b'id="teachingRowsBody"' in resp.data
+
+
+def test_performance_preview_save_persists_edits_and_redirects_to_read_only(
+        app_fx, db_fx):
+    from tests.harness import CSRF_TOKEN, _seed_all
+
+    conn = connect(str(db_fx))
+    ids = _seed_all(conn, str(db_fx))
+    conn.commit()
+    conn.close()
+
+    client = _affairs_client(app_fx, db_fx)
+    response = client.post(
+        '/faculty-performance/preview/%d?year=fall_2026&semester=1&edit=1'
+        % ids['teacher_id'],
+        data={
+            '_csrf_token': CSRF_TOKEN,
+            'dept': '',
+            'name': 'اسم محفوظ للاختبار',
+            'department': 'قسم محفوظ للاختبار',
+            'section': 'شعبة محفوظة',
+            'qualification': 'مؤهل محفوظ',
+            'academic_number': '12345',
+            'national_id': '98765',
+            'academic_year_label': '2026-2027 المعدل',
+            'specialization': 'تخصص محفوظ',
+            'rank': 'درجة محفوظة',
+            'first_lecture_date': '2026-09-01',
+            'work_start_date': '2026-08-20',
+            'rd_id[]': str(ids['course_id']),
+            'rd_course_name[]': 'مقرر محفوظ للاختبار',
+            'rd_course_code[]': 'SAVE-1',
+            'rd_lecture_type[]': 'نظري',
+            'rd_course_phase[]': 'الأولى',
+            'rd_department[]': 'قسم محفوظ للاختبار',
+            'rd_group[]': 'أ',
+            'rd_day[]': 'الأحد',
+            'rd_start_time[]': '09:00',
+            'rd_end_time[]': '11:00',
+            'rd_hours[]': '2',
+            'rd_student_count[]': '27',
+            'teaching_student_count_%d' % ids['course_id']: '31',
+        },
+    )
+
+    assert response.status_code == 302
+    assert 'edit=1' not in response.headers['Location']
+
+    read_only = client.get(response.headers['Location'])
+    assert read_only.status_code == 200
+    assert 'name="name"' not in read_only.get_data(as_text=True)
+    assert 'اسم محفوظ للاختبار' in read_only.get_data(as_text=True)
+    assert '2026-2027 المعدل' in read_only.get_data(as_text=True)
+    assert 'مقرر محفوظ للاختبار' in read_only.get_data(as_text=True)
+    assert re.search(r'>\s*31\s*<', read_only.get_data(as_text=True))
+
+
 def test_dean_can_preview_and_print_performance_form_without_edit_access(
         app_fx, db_fx, monkeypatch):
     from page_routes import faculty_performance as performance_routes
@@ -295,7 +367,7 @@ def test_dean_can_preview_and_print_performance_form_without_edit_access(
     assert edit.status_code in (302, 403)
 
 
-def test_performance_form_pdf_is_landscape_a4(app_fx, db_fx):
+def test_performance_form_pdf_is_portrait_a4(app_fx, db_fx):
     from tests.harness import _seed_all
 
     conn = connect(str(db_fx))
@@ -309,7 +381,15 @@ def test_performance_form_pdf_is_landscape_a4(app_fx, db_fx):
     boxes = {m.decode() for m in re.findall(rb'/MediaBox\s*\[([^\]]*)\]', resp.data)}
     assert boxes, 'no MediaBox: the paper size is undefined'
     width, height = (float(v) for v in boxes.pop().split()[2:])
-    assert width > height, 'the performance form must stay landscape'
+    assert height > width, 'the performance form must stay portrait'
+
+
+def test_legacy_academic_year_is_normalized_to_semester_code():
+    from services import faculty_performance_service as fps
+
+    assert fps._semester_code_for('2026/2027', 1) == 'fall_2026'
+    assert fps._semester_code_for('2026/2027', 2) == 'spring_2027'
+    assert fps._semester_code_for('fall_2026', 1) == 'fall_2026'
 
 
 def test_the_fit_prevents_overflow_instead_of_clipping(app_fx, db_fx):

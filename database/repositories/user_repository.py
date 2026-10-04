@@ -118,27 +118,112 @@ class UserRepository(BaseRepository):
 
     # /     /     >---- نصنع مستخدم جديد ويرجع معرّفه
     def create_user(self, data: Dict[str, Any]) -> int:
-        cols = ', '.join(data.keys())
+        create_as_dean = data.get('role') == 'dean'
+        values = dict(data)
+        if create_as_dean:
+            values['role'] = 'teacher'
+        cols = ', '.join(values.keys())
         ph = ', '.join(['?'] * len(data))
         self.db.execute(
-            f'INSERT INTO users ({cols}) VALUES ({ph})', list(data.values())
+            f'INSERT INTO users ({cols}) VALUES ({ph})', list(values.values())
         )
+        user_id = self.db.execute(
+            'SELECT last_insert_rowid()'
+        ).fetchone()[0]
         self.db.commit()
-        return self.db.execute('SELECT last_insert_rowid()').fetchone()[0]
+        if create_as_dean:
+            self.transfer_dean_role(user_id)
+        return user_id
 
     # /     /     >---- نحدّث بيانات مستخدم
     def update_user(self, user_id: int, data: Dict[str, Any]) -> None:
         """Update a user profile, rotating sessions when authority changes."""
         if not data:
             return
-        set_clause = ', '.join(f'{k} = ?' for k in data.keys())
+        user = self.find_by_id(user_id)
+        current_role = user.get('role') if user else None
+        new_role = data.get('role', current_role)
+        if new_role == 'dean':
+            self.transfer_dean_role(user_id)
+        elif current_role == 'dean':
+            raise ValueError('انقل صلاحية العميد إلى حساب آخر قبل إزالة الدور')
+        values = dict(data)
+        if new_role == 'dean':
+            values.pop('role', None)
+        if not values:
+            return
+        set_clause = ', '.join(f'{k} = ?' for k in values.keys())
         self.db.execute(
             f'UPDATE users SET {set_clause} WHERE id = ?',
-            list(data.values()) + [user_id],
+            list(values.values()) + [user_id],
         )
         if {'role', 'department_id'} & set(data):
             self._bump_session_version(user_id)
         self.db.commit()
+
+    def transfer_dean_role(self, user_id: int) -> None:
+        """Atomically move the unique dean role to an existing account."""
+        target = self.find_by_id(user_id)
+        if not target:
+            raise ValueError('الحساب المحدد غير موجود')
+
+        self.db.execute('SAVEPOINT transfer_dean_role')
+        try:
+            holders = self.db.execute(
+                """SELECT DISTINCT u.id, u.role
+                   FROM users u
+                   LEFT JOIN user_roles ur
+                     ON ur.user_id = u.id AND ur.role = 'dean'
+                   WHERE u.role = 'dean' OR ur.user_id IS NOT NULL"""
+            ).fetchall()
+            fallback_order = (
+                'research_development', 'faculty_affairs', 'exam',
+                'head_of_department', 'teacher', 'visitor',
+            )
+            for holder in holders:
+                previous_id = holder['id']
+                if previous_id == user_id:
+                    continue
+                self.db.execute(
+                    "DELETE FROM user_roles "
+                    "WHERE user_id = ? AND role = 'dean'",
+                    (previous_id,),
+                )
+                remaining = {
+                    row['role'] for row in self.db.execute(
+                        'SELECT role FROM user_roles WHERE user_id = ?',
+                        (previous_id,),
+                    ).fetchall()
+                }
+                fallback = next(
+                    (role for role in fallback_order if role in remaining),
+                    'teacher',
+                )
+                self.db.execute(
+                    """UPDATE users
+                       SET role = CASE WHEN role = 'dean' THEN ? ELSE role END,
+                           session_version = session_version + 1
+                       WHERE id = ?""",
+                    (fallback, previous_id),
+                )
+
+            self.db.execute(
+                "INSERT OR IGNORE INTO user_roles (user_id, role) "
+                "VALUES (?, 'dean')",
+                (user_id,),
+            )
+            self.db.execute(
+                """UPDATE users SET role = 'dean',
+                       session_version = session_version + 1
+                   WHERE id = ?""",
+                (user_id,),
+            )
+            self.db.execute('RELEASE SAVEPOINT transfer_dean_role')
+            self.db.commit()
+        except Exception:
+            self.db.execute('ROLLBACK TO SAVEPOINT transfer_dean_role')
+            self.db.execute('RELEASE SAVEPOINT transfer_dean_role')
+            raise
 
     # /     /     >---- نحدّث كلمة المرور (مع تسجيل وقت التغيير)
     def update_password(self, user_id: int, hashed_password: str) -> None:
@@ -196,6 +281,11 @@ class UserRepository(BaseRepository):
         """Replace the user's granted role set with *roles* (list/tuple/set)."""
         # /     /     >---- نشيل التكرار والفراغ
         roles = list(dict.fromkeys(r for r in (roles or []) if r))
+        current_roles = self.find_roles_by_user(user_id)
+        if 'dean' in roles:
+            self.transfer_dean_role(user_id)
+        elif 'dean' in current_roles:
+            raise ValueError('انقل صلاحية العميد إلى حساب آخر قبل إزالة الدور')
         # /     /     >---- نمسح القديم ونكتب الجديد
         self.db.execute('DELETE FROM user_roles WHERE user_id = ?', (user_id,))
         if roles:
@@ -203,20 +293,33 @@ class UserRepository(BaseRepository):
                 'INSERT OR IGNORE INTO user_roles (user_id, role) VALUES (?, ?)',
                 [(user_id, r) for r in roles],
             )
+        if 'dean' in roles:
+            self.db.execute(
+                "UPDATE users SET role = 'dean' WHERE id = ?", (user_id,)
+            )
         self._bump_session_version(user_id)
         self.db.commit()
 
     # /     /     >---- نضيف دور لمستخدم
     def add_user_role(self, user_id: int, role: str) -> None:
+        if role == 'dean':
+            self.transfer_dean_role(user_id)
+            return
         self.db.execute(
             'INSERT OR IGNORE INTO user_roles (user_id, role) VALUES (?, ?)',
             (user_id, role),
         )
+        if role == 'dean':
+            self.db.execute(
+                "UPDATE users SET role = 'dean' WHERE id = ?", (user_id,)
+            )
         self._bump_session_version(user_id)
         self.db.commit()
 
     # /     /     >---- نشيل دور من مستخدم
     def remove_user_role(self, user_id: int, role: str) -> None:
+        if role == 'dean':
+            raise ValueError('انقل صلاحية العميد إلى حساب آخر قبل إزالة الدور')
         self.db.execute(
             'DELETE FROM user_roles WHERE user_id = ? AND role = ?',
             (user_id, role),

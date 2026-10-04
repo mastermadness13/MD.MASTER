@@ -38,17 +38,40 @@ def db_fx(tmp_path, monkeypatch):
     conn.execute(
         "INSERT INTO teachers (name, department_id) VALUES ('أستاذ', ?)", (dept_id,),
     )
+    conn.executemany(
+        "INSERT INTO users (username, password, role, label) VALUES (?, 'x', ?, ?)",
+        [
+            ('dashboard_dean', 'dean', 'العميد'),
+            ('dashboard_visitor', 'visitor', 'الزائر العام'),
+        ],
+    )
+    conn.executemany(
+        "INSERT INTO user_roles (user_id, role) "
+        "SELECT id, role FROM users WHERE username = ?",
+        [('dashboard_dean',), ('dashboard_visitor',)],
+    )
     conn.commit()
     conn.close()
     return db_path
 
 
-def _client_with_role(app_fx, role):
+def _client_with_role(app_fx, db_path, role):
+    username = {
+        'dean': 'dashboard_dean',
+        'visitor': 'dashboard_visitor',
+    }[role]
+    conn = sqlite3.connect(db_path)
+    user = conn.execute(
+        'SELECT id, session_version FROM users WHERE username = ?', (username,)
+    ).fetchone()
+    conn.close()
     c = app_fx.test_client()
     with c.session_transaction() as sess:
-        sess['user_id'] = 1
+        sess['user_id'] = user[0]
         sess['role'] = role
-        sess['username'] = role
+        sess['roles'] = [role]
+        sess['username'] = username
+        sess['session_version'] = user[1]
         sess['department_id'] = None
         sess['_csrf_token'] = 't'
     return c
@@ -56,15 +79,43 @@ def _client_with_role(app_fx, role):
 
 def test_dean_dashboard_renders(app_fx, db_fx):
     """العميد يهبط على لوحة تحكم خاصة به (قراءة فقط)."""
-    r = _client_with_role(app_fx, 'dean').get('/')
+    r = _client_with_role(app_fx, db_fx, 'dean').get('/')
     body = r.get_data(as_text=True)
     assert r.status_code == 200
-    assert 'لوحة العميد' in body
+    assert 'لوحة عميد الكلية' in body
+
+
+def test_renamed_dean_role_updates_dashboard_and_all_role_labels(app_fx, db_fx):
+    conn = sqlite3.connect(db_fx)
+    conn.row_factory = sqlite3.Row
+    conn.execute(
+        """UPDATE admin_assignment_types
+           SET name = 'عميد الكلية المكلّف'
+           WHERE id = (
+             SELECT id FROM admin_assignment_types
+             WHERE internal_code = 'dean' AND is_system_linked = 1
+             ORDER BY sort_order, id LIMIT 1
+           )"""
+    )
+    conn.commit()
+    conn.close()
+
+    client = _client_with_role(app_fx, db_fx, 'dean')
+    dashboard = client.get('/')
+    assert dashboard.status_code == 200
+    assert '<h1 class="page-title">لوحة عميد الكلية المكلّف</h1>' in (
+        dashboard.get_data(as_text=True)
+    )
+    assert 'لوحة تحكم عميد الكلية المكلّف' in dashboard.get_data(as_text=True)
+
+    session_info = client.get('/api/auth/me')
+    assert session_info.status_code == 200
+    assert session_info.get_json()['data']['role_label'] == 'عميد الكلية المكلّف'
 
 
 def test_visitor_dashboard_renders(app_fx, db_fx):
     """الزائر العام يهبط على بوابة زائر بسعتها العامة."""
-    r = _client_with_role(app_fx, 'visitor').get('/')
+    r = _client_with_role(app_fx, db_fx, 'visitor').get('/')
     body = r.get_data(as_text=True)
     assert r.status_code == 200
     assert 'بوابة الزائر العام' in body
@@ -72,7 +123,7 @@ def test_visitor_dashboard_renders(app_fx, db_fx):
 
 def test_dean_can_view_teacher_list(app_fx, db_fx):
     """العميد يقرأ قائمة الهيئة التدريسية لكن بلا أزرار إدارة."""
-    r = _client_with_role(app_fx, 'dean').get('/teachers')
+    r = _client_with_role(app_fx, db_fx, 'dean').get('/teachers')
     body = r.get_data(as_text=True)
     assert r.status_code == 200
     assert 'أستاذ' in body
@@ -80,7 +131,7 @@ def test_dean_can_view_teacher_list(app_fx, db_fx):
 
 def test_visitor_cannot_open_teacher_management(app_fx, db_fx):
     """الزائر العام لا يملك الوصول لإدارة الهيئة التدريسية."""
-    c = _client_with_role(app_fx, 'visitor')
+    c = _client_with_role(app_fx, db_fx, 'visitor')
     r = c.get('/teachers')
     assert r.status_code == 302
     r2 = c.get('/')

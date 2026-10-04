@@ -116,6 +116,39 @@ def test_cannot_strip_faculty_affairs_role(db_fx, svc):
         or _q(db_fx, 'SELECT role FROM users WHERE id=?', (om_id,))[0]['role'] == 'faculty_affairs'
 
 
+def test_dean_must_be_transferred_before_deactivation(db_fx, svc):
+    user_service, conn = svc
+    repo = user_service._repo
+    conn.execute(
+        "INSERT INTO users (username, password, role, label) "
+        "VALUES ('outgoing_dean', 'x', 'teacher', 'العميد السابق')"
+    )
+    outgoing_id = conn.execute(
+        "SELECT id FROM users WHERE username = 'outgoing_dean'"
+    ).fetchone()['id']
+    repo.add_user_role(outgoing_id, 'dean')
+
+    with pytest.raises(ProtectedAccountError, match='انقل صلاحية العميد'):
+        user_service.set_user_active(outgoing_id, False)
+
+    conn.execute(
+        "INSERT INTO users (username, password, role, label) "
+        "VALUES ('incoming_dean', 'x', 'teacher', 'العميد الجديد')"
+    )
+    incoming_id = conn.execute(
+        "SELECT id FROM users WHERE username = 'incoming_dean'"
+    ).fetchone()['id']
+    conn.commit()
+    repo.add_user_role(incoming_id, 'dean')
+    user_service.set_user_active(outgoing_id, False)
+
+    assert conn.execute(
+        'SELECT is_active FROM users WHERE id = ?', (outgoing_id,)
+    ).fetchone()['is_active'] == 0
+    assert 'dean' not in repo.find_roles_by_user(outgoing_id)
+    assert 'dean' in repo.find_roles_by_user(incoming_id)
+
+
 # ── Multi-role grant via teacher create ────────────────────────────────
 
 

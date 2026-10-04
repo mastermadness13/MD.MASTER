@@ -421,12 +421,18 @@ def inject_navigation() -> dict:
     granted_roles = get_granted_roles()
     dept_id = session.get('department_id')
     perms = get_user_permissions(roles, dept_id)
+    from services.role_label_service import get_role_labels
+    if session.get('user_id'):
+        from flask_db import get_db
+        role_labels = get_role_labels(get_db())
+    else:
+        role_labels = ROLE_LABELS
     return {
         'nav_items': get_nav_for_permissions(perms),
         'user_permissions': perms,
         'has_permission': lambda perm: perm in perms,
         'header_messages_url': get_header_messages_url(roles),
-        'role_labels': ROLE_LABELS,
+        'role_labels': role_labels,
         'hide_sidebar': False,
         'user_roles': granted_roles,
         'user_priority_role': highest_priority_role(granted_roles),

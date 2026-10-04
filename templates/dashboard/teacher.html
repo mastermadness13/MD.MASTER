@@ -1,6 +1,7 @@
 {% extends 'shared/layouts/base.html' %}
 {% set sidebar_active = 'dashboard.dashboard' %}
-{% set page_title = 'مساحة عضو هيئة التدريس' %}
+{% set teacher_role_label = role_labels.get('teacher', 'عضو هيئة تدريس') %}
+{% set page_title = 'مساحة ' ~ teacher_role_label %}
 
 {% set t = teacher_data | default({}) %}
 {% set teacher = t.get('teacher') %}
@@ -29,7 +30,7 @@
         <span class="material-symbols-outlined text-2xl">space_dashboard</span>
       </span>
       <div>
-        <h1 class="text-lg font-bold text-on-surface m-0">مساحة عضو هيئة التدريس</h1>
+        <h1 class="text-lg font-bold text-on-surface m-0">مساحة {{ teacher_role_label }}</h1>
         <p class="text-sm text-on-surface-variant m-0">
           {{ teacher.name if teacher else (user.label or user.username) }}{% if t.get('dept_name') %} · {{ t.get('dept_name') }}{% endif %}
           <span class="mx-1 text-outline-variant">|</span>

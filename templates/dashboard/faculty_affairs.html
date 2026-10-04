@@ -1,6 +1,7 @@
 {% extends 'shared/layouts/base.html' %}
 {% set sidebar_active = 'dashboard.dashboard' %}
-{% set page_title = 'مكتب إدارة أعضاء هيئة التدريس' %}
+{% set faculty_affairs_label = role_labels.get('faculty_affairs', 'مكتب إدارة أعضاء هيئة التدريس') %}
+{% set page_title = faculty_affairs_label %}
 
 {% set f = faculty_data | default({}) %}
 {% set teachers = f.get('teachers', []) %}
@@ -15,7 +16,7 @@
     <div class="page-header-info">
       <span class="material-symbols-outlined page-header-icon">badge</span>
       <div>
-        <h1 class="page-title">مكتب إدارة أعضاء هيئة التدريس</h1>
+        <h1 class="page-title">{{ faculty_affairs_label }}</h1>
         <p class="page-subtitle">مرحباً {{ user.label or user.username }}، إدارة أعضاء هيئة التدريس والعبء التدريسي.</p>
       </div>
     </div>

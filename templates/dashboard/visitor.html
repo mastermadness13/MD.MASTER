@@ -1,6 +1,7 @@
 {% extends 'shared/layouts/base.html' %}
 {% set sidebar_active = 'dashboard.dashboard' %}
-{% set page_title = 'بوابة الزائر' %}
+{% set visitor_label = role_labels.get('visitor', 'الزائر العام') %}
+{% set page_title = 'بوابة ' ~ visitor_label %}
 
 {% set stats = stats | default({}) %}
 {% set recent_activity = stats.get('recent_activity', []) | default([]) %}
@@ -13,7 +14,7 @@
     <div class="flex items-center gap-3">
       <span class="material-symbols-outlined text-primary text-3xl">travel_explore</span>
       <div>
-        <h1 class="text-2xl font-bold text-on-surface">بوابة الزائر العام</h1>
+        <h1 class="text-2xl font-bold text-on-surface">بوابة {{ visitor_label }}</h1>
         <p class="page-subtitle">مرحباً {{ user.label or user.username }}، تصفح النشرات العلنية للكلية.</p>
       </div>
     </div>

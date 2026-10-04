@@ -19,10 +19,10 @@ def lookup_setup(tmp_path, monkeypatch, app_fx):
     ensure_schema(conn)
     conn.execute(
         "INSERT INTO users (username, password, role, label) "
-        "VALUES ('lookup_manager', 'x', 'dean', 'عميد الكلية')"
+        "VALUES ('wesam', 'x', 'dean', 'عميد الكلية')"
     )
     manager_id = conn.execute(
-        "SELECT id FROM users WHERE username = 'lookup_manager'"
+        "SELECT id FROM users WHERE username = 'wesam'"
     ).fetchone()['id']
     conn.execute(
         "INSERT INTO users (username, password, role, label) "
@@ -43,7 +43,7 @@ def lookup_setup(tmp_path, monkeypatch, app_fx):
             session['_csrf_token'] = 'test-token'
         return client
 
-    return db_path, client_for(manager_id, 'dean', 'lookup_manager'), (
+    return db_path, client_for(manager_id, 'dean', 'wesam'), (
         client_for(office_id, 'faculty_affairs', 'lookup_office')
     )
 
@@ -368,6 +368,25 @@ def test_json_reader_is_not_nested_inside_the_refresh_helper(lookup_setup):
     assert "form.querySelector('[name=\"_csrf_token\"]').value" not in script
 
 
+def test_ajax_lookup_uses_form_action_attribute_not_named_control(lookup_setup):
+    """A hidden ``name=action`` control shadows the DOM ``form.action`` property."""
+    _, manager, _ = lookup_setup
+    body = manager.get(
+        '/teachers/lookup-lists?category=admin_assignment_type'
+    ).get_data(as_text=True)
+    script_match = re.search(
+        r'<script defer src="([^"]*pages-teachers_lookup_lists'
+        r'\.[a-f0-9]{8}\.js)"', body
+    )
+    assert script_match, 'the page must load its built lookup-list script'
+    response = manager.get(script_match.group(1))
+    assert response.status_code == 200
+    script = response.get_data(as_text=True)
+
+    assert 'getAttribute("action")' in script or "getAttribute('action')" in script
+    assert 'fetch(form.action' not in script
+
+
 def test_page_script_is_served_with_a_cache_busting_version(lookup_setup):
     """The page script URL must carry a version query.
 
@@ -451,12 +470,13 @@ def test_system_assignment_rename_keeps_its_internal_role(lookup_setup):
     conn.commit()
     conn.close()
 
-    response = _post(
+    response = _ajax_post(
         manager, 'admin_assignment_type', 'rename',
         id=str(row['id']), name='رئيس القسم الأكاديمي',
     )
 
     assert response.status_code == 200
+    assert response.get_json() == {'ok': True, 'message': 'تم الحفظ بنجاح'}
     renamed = _fetchone(
         db_path, 'SELECT name, internal_code, is_system_linked '
         'FROM admin_assignment_types WHERE id = ?', (row['id'],)

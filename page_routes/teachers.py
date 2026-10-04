@@ -31,7 +31,10 @@ _PHOTO_MAX_BYTES = 4 * 1024 * 1024
 
 # Roles an admin may add (via the teacher form, into user_roles) on top of the
 # teacher's landing 'teacher' role.  'teacher' is the implicit landing role.
-_GRANTABLE_ROLES = ('head_of_department', 'exam', 'faculty_affairs', 'research_development', 'dean')
+_GRANTABLE_ROLES = (
+    'head_of_department', 'exam', 'faculty_affairs', 'research_development',
+    'dean',
+)
 
 _LOOKUP_CATEGORIES = {
     'admin_assignment_type': {
@@ -113,6 +116,22 @@ def _roles_from_assignment_type(db, assignment_type_id) -> set:
     return {role} if role in _GRANTABLE_ROLES else set()
 
 
+def _current_dean(db):
+    return db.execute(
+        """SELECT u.id, u.username,
+                  COALESCE(NULLIF(t.name, ''), NULLIF(u.label, ''), u.username) AS name
+           FROM users u
+           LEFT JOIN teachers t ON t.user_id = u.id
+           WHERE u.role = 'dean'
+              OR EXISTS (
+                  SELECT 1 FROM user_roles ur
+                  WHERE ur.user_id = u.id AND ur.role = 'dean'
+              )
+           ORDER BY CASE WHEN u.role = 'dean' THEN 0 ELSE 1 END, u.id
+           LIMIT 1"""
+    ).fetchone()
+
+
 def _admin_task_names(db, selected_id=None, selected='') -> list:
     """Return active choices plus a selected inactive or legacy value."""
     rows = db.execute(
@@ -123,6 +142,11 @@ def _admin_task_names(db, selected_id=None, selected='') -> list:
            ORDER BY sort_order, id'''
     ).fetchall()
     tasks = [dict(row) for row in rows]
+    dean = _current_dean(db)
+    for task in tasks:
+        if task.get('internal_code') == 'dean':
+            task['current_dean_name'] = dean['name'] if dean else ''
+            task['current_dean_username'] = dean['username'] if dean else ''
     selected = (selected or '').strip()
     if selected_id and not any(task['id'] == selected_id for task in tasks):
         row = db.execute(
@@ -132,7 +156,11 @@ def _admin_task_names(db, selected_id=None, selected='') -> list:
             (selected_id,),
         ).fetchone()
         if row:
-            tasks.append(dict(row))
+            task = dict(row)
+            if task.get('internal_code') == 'dean':
+                task['current_dean_name'] = dean['name'] if dean else ''
+                task['current_dean_username'] = dean['username'] if dean else ''
+            tasks.append(task)
     elif selected and not selected_id and not any(task['name'] == selected for task in tasks):
         row = db.execute(
             '''SELECT id, name, default_hours, is_active, sort_order,
@@ -140,11 +168,15 @@ def _admin_task_names(db, selected_id=None, selected='') -> list:
                FROM admin_assignment_types WHERE name = ?''',
             (selected,),
         ).fetchone()
-        tasks.append(dict(row) if row else {
+        task = dict(row) if row else {
             'id': None, 'name': selected, 'default_hours': 0,
             'is_active': 0, 'sort_order': 0, 'internal_code': None,
             'is_system_linked': 0,
-        })
+        }
+        if task.get('internal_code') == 'dean':
+            task['current_dean_name'] = dean['name'] if dean else ''
+            task['current_dean_username'] = dean['username'] if dean else ''
+        tasks.append(task)
     return tasks
 
 
@@ -1051,6 +1083,10 @@ def teachers_create():
     admin_tasks = _admin_task_names(db)
     department_hods = hod_resolution.department_hod_map(db)
     confirmed_replace = request.form.get('confirm_replace_hod') == '1' if request.method == 'POST' else False
+    confirmed_dean_transfer = (
+        request.form.get('confirm_dean_transfer') == '1'
+        if request.method == 'POST' else False
+    )
     if request.method == 'POST':
         name = request.form.get('name', '').strip()
         department_ids = [_safe_fk(v) for v in request.form.getlist('department_ids[]') if _safe_fk(v)]
@@ -1178,6 +1214,25 @@ form=form, form_error=spec_error,
                                    grantable_roles=_GRANTABLE_ROLES,
                                    admin_tasks=admin_tasks,
                                    user=current_user())
+        current_dean = _current_dean(db)
+        if 'dean' in effective_roles and not confirmed_dean_transfer:
+            dean_name = current_dean['name'] if current_dean else 'لا يوجد عميد حالي'
+            return render_template(
+                'teachers/create.html',
+                departments=departments, qualifications=qualifications,
+                ranks=ranks, classifications=classifications,
+                specializations=specializations,
+                department_hods=department_hods,
+                confirm_replace=confirmed_replace,
+                form=form,
+                form_error=(
+                    f'تعيين {name} عميداً سينقل الصلاحية من {dean_name}. '
+                    'راجع رسالة التأكيد الواضحة وفعّل مربع الموافقة للمتابعة.'
+                ),
+                grantable_roles=_GRANTABLE_ROLES,
+                admin_tasks=admin_tasks,
+                user=current_user(),
+            )
         try:
             creds = teacher_service.create_teacher(db, form, department_ids=department_ids,
                                                    additional_roles=sorted(effective_roles),
@@ -1241,6 +1296,10 @@ def teachers_edit(id):
     )
     department_hods = hod_resolution.department_hod_map(db)
     confirmed_replace = request.form.get('confirm_replace_hod') == '1' if request.method == 'POST' else False
+    confirmed_dean_transfer = (
+        request.form.get('confirm_dean_transfer') == '1'
+        if request.method == 'POST' else False
+    )
     teacher_dept_rows = db.execute(
         'SELECT department_id FROM teacher_departments WHERE teacher_id = ?', (id,)
     ).fetchall()
@@ -1429,6 +1488,64 @@ form_error='الرقم الكلية موجود مسبقاً لعضو آخر',
                                            assignment_date=assignment_date,
                                            admin_tasks=admin_tasks,
                                            user=current_user())
+        current_dean = _current_dean(db)
+        current_dean_id = current_dean['id'] if current_dean else None
+        if (
+            'dean' in effective_roles
+            and current_dean_id != t.get('user_id')
+            and not confirmed_dean_transfer
+        ):
+            dean_name = current_dean['name'] if current_dean else 'لا يوجد عميد حالي'
+            return render_template(
+                'teachers/edit.html',
+                teacher=form,
+                teacher_id=id,
+                teacher_dept_ids=[did for did in department_ids if did],
+                departments=departments, qualifications=qualifications,
+                ranks=ranks, classifications=classifications,
+                specializations=specializations,
+                teacher_course_ids=[],
+                department_hods=department_hods,
+                confirm_replace=confirmed_replace,
+                form_error=(
+                    f'تعيين {name} عميداً سينقل الصلاحية من {dean_name}. '
+                    'راجع رسالة التأكيد الواضحة وفعّل مربع الموافقة للمتابعة.'
+                ),
+                grantable_roles=_GRANTABLE_ROLES,
+                extra_roles=form.get('extra_roles', []),
+                research_types=edit_research_types,
+                research=edit_research,
+                assignment_date=assignment_date,
+                admin_tasks=admin_tasks,
+                user=current_user(),
+            )
+        if (
+            current_dean_id == t.get('user_id')
+            and 'dean' not in effective_roles
+        ):
+            return render_template(
+                'teachers/edit.html',
+                teacher=form,
+                teacher_id=id,
+                teacher_dept_ids=[did for did in department_ids if did],
+                departments=departments, qualifications=qualifications,
+                ranks=ranks, classifications=classifications,
+                specializations=specializations,
+                teacher_course_ids=[],
+                department_hods=department_hods,
+                confirm_replace=confirmed_replace,
+                form_error=(
+                    'لا يمكن إزالة صلاحية العميد قبل تعيين عميد بديل. '
+                    'عيّن العميد الجديد أولاً ثم احفظ هذا التعديل.'
+                ),
+                grantable_roles=_GRANTABLE_ROLES,
+                extra_roles=form.get('extra_roles', []),
+                research_types=edit_research_types,
+                research=edit_research,
+                assignment_date=assignment_date,
+                admin_tasks=admin_tasks,
+                user=current_user(),
+            )
         teacher_service.update_teacher(db, id, form)
         # The credentials update may have just created + linked a login account,
         # so re-read the link for the role/supervisor sync below.

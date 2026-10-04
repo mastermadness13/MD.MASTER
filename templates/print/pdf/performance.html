@@ -1,17 +1,18 @@
-{# نموذج معدل الأداء الموحد — نسخة PDF صفحة واحدة أفقية.
-   يستبدل صفحة الطباعة القديمة: لا أزرار ولا رجوع ولا ترويسة، والنتيجة
-   ملف واحد يُنزَّل مباشرة. #}
+{# نموذج معدل الأداء الموحد — نسخة PDF صفحة واحدة عمودية.
+   تُستخدم الصفحة العمودية لتتناسب مع النموذج الرسمي A4، مع الحفاظ على
+   نفس الحدّ الثابت في القالب وأداة التحديد الذاتي لتجنب القصّ. #}
 {% extends 'print/pdf/_base.html' %}
 {% set fd = fd | default(form_data) %}
-{% set pdf_size = 'A4 landscape' %}
-{% set pdf_page_w = '297mm' %}
-{% set pdf_page_h = '210mm' %}
+{% set pdf_size = 'A4 portrait' %}
+{% set pdf_page_w = '210mm' %}
+{% set pdf_page_h = '297mm' %}
 {% set pdf_padding = '7mm 9mm' %}
 
 {% block pdf_title %}نموذج معدل الأداء الموحد — {{ fd.header.teacher_name }}{% endblock %}
 
 {% block pdf_head_extra %}
 {% include 'faculty_performance/_official_document_styles.html' %}
+<link rel="stylesheet" href="{{ url_for('static', filename='print.css') }}" media="print">
 {% endblock %}
 
 {% block pdf_content %}
