@@ -1902,7 +1902,6 @@ def teacher_detail(id):
                           teacher_depts=teacher_depts,
                           perf_year=perf_year, perf_semester=perf_semester,
                           assignment_date=assignment_date,
-            admin_hours=admin_hours_val,
                           user=current_user())
 
 

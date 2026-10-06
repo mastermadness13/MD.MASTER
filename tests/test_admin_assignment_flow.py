@@ -131,6 +131,12 @@ def test_edit_form_renders_one_hours_field_next_to_assignment_date(setup):
     assert html.index('name="assignment_date"') < html.index('id="adminHoursInput"')
 
 
+def test_teacher_detail_page_loads_without_server_error(setup):
+    c, _db_path, tid = setup
+    response = c.get(f'/teachers/{tid}')
+    assert response.status_code == 200
+
+
 def test_research_hours_are_optional_in_teacher_edit_form(setup):
     c, _db_path, tid = setup
     response = c.get(f'/teachers/edit/{tid}')
