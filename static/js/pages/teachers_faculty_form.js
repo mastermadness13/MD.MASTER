@@ -103,6 +103,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var posSel = document.getElementById('positionSelect');
     var hodWrap = document.getElementById('headshipDeptWrap');
     var teachingDeptWrap = document.getElementById('teachingDeptWrap');
+    var customPosition = document.querySelector('[data-editable-input="position"]');
     if (!posSel) return;
     function selectedRole() {
       var option = posSel.options[posSel.selectedIndex];
@@ -111,6 +112,19 @@ document.addEventListener('DOMContentLoaded', function () {
     function toggleHead() {
       if (hodWrap) hodWrap.style.display = selectedRole() === 'head_of_department' ? '' : 'none';
       if (teachingDeptWrap) teachingDeptWrap.style.display = posSel.value === 'عضو تدريس' ? '' : 'none';
+
+      // Use the selected assignment's default hours when no custom value is set.
+      var hoursInput = document.getElementById('adminHoursInput');
+      var selected = (posSel.value || '').trim();
+      var hasAdminTask = (selected && selected !== 'عضو تدريس') ||
+        (customPosition && customPosition.value.trim());
+      if (hasAdminTask && hoursInput &&
+          (hoursInput.value === '' || hoursInput.value === '0')) {
+        var opt = posSel.options[posSel.selectedIndex];
+        if (opt && opt.dataset.defaultHours !== undefined) {
+          hoursInput.value = opt.dataset.defaultHours || 0;
+        }
+      }
     }
     function tintPanel() {
       var option = posSel.options[posSel.selectedIndex];
@@ -121,6 +135,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     posSel.addEventListener('change', toggleHead);
     posSel.addEventListener('change', tintPanel);
+    if (customPosition) customPosition.addEventListener('input', toggleHead);
     toggleHead();
     tintPanel();
   })();

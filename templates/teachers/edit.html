@@ -721,7 +721,8 @@
                selected_position=teacher.get('position'),
                selected_assignment_type_id=teacher.get('admin_assignment_type_id'),
                hod_value=teacher.get('hod_department_id'),
-               assignment_date=assignment_date,
+               assignment_date=teacher.get('assignment_date', assignment_date),
+               admin_hours=teacher.get('admin_hours', admin_hours),
                department_hods=department_hods|default({}),
                confirm_replace=confirm_replace|default(false),
                custom_value=teacher.get('custom_position', ''),
@@ -869,7 +870,7 @@
           </h2>
 
           <span class="text-xs text-on-surface-variant mr-1">
-            (البند ثانياً — المجموع المطلوب 4 إلى 10 ساعات أسبوعياً)
+            (اختياري — يمكن ترك الساعات فارغة أو إدخال صفر)
           </span>
 
         </div>
@@ -940,7 +941,7 @@
               <input type="number"
                      name="research_hours[]"
                      value="{{ _mg.hours }}"
-                     min="1"
+                     min="0"
                      max="20"
                      step="1"
                      inputmode="numeric"

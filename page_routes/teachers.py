@@ -1123,6 +1123,8 @@ def teachers_create():
             'general_notes': request.form.get('general_notes', '').strip(),
             'extra_roles': extra_roles,
             'hod_department_id': hod_department_id,
+            'assignment_date': request.form.get('assignment_date', ''),
+            'admin_hours': request.form.get('admin_hours', '0'),
         }
         for _ck in ('custom_rank_id', 'custom_qualification_id', 'custom_classification_id',
                     'custom_specialization_id', 'custom_position'):
@@ -1263,18 +1265,31 @@ form=form, form_error=spec_error,
                 (request.form.get('supervisor_admin_dept').strip(), creds['id']),
             )
             db.commit()
-        flash(
-            f'تم إضافة عضو هيئة التدريس — اسم الدخول: {creds["username"]} — '
-            f'رمز الدخول المؤقت: {creds["password"]} (أُرسل أيضاً إلى بريده، صالح {INITIAL_CODE_EXPIRY_DAYS} أيام)',
-            'success',
-        )
-        return redirect(url_for('teachers.teachers_list'))
+        # Save the selected administrative assignment for every role, not only supervisors.
+        active_sem_c = fps.get_active_semester(db)
+        admin_hours_val_c = min(_parse_whole_hours(request.form.get('admin_hours')), 24)
+        position_val_c = (form.get('position') or '').strip()
+        if position_val_c:
+            fps._repo(db).upsert_single_admin_assignment(
+                creds['id'],
+                position_val_c,
+                request.form.get('assignment_date', '').strip(),
+                active_sem_c['academic_year'],
+                active_sem_c['semester'],
+                hours=admin_hours_val_c,
+            )
+            flash(
+                f'تم إضافة عضو هيئة التدريس بنجاح: {creds["username"]} و'
+                f' كلمة المرور الأولية: {creds["password"]} (ستنتهي صلاحية كلمة المرور بعد {INITIAL_CODE_EXPIRY_DAYS} أيام من الآن)',
+                'success',
+            )
+            return redirect(url_for('teachers.teachers_list'))
     return render_template('teachers/create.html',
                           departments=departments, qualifications=qualifications,
                           ranks=ranks, classifications=classifications,
                           specializations=specializations,
                           department_hods=department_hods,
-form={}, form_error=None,
+                          form={}, form_error=None,
                            grantable_roles=_GRANTABLE_ROLES,
                            admin_tasks=admin_tasks,
                            user=current_user())
@@ -1313,7 +1328,10 @@ def teachers_edit(id):
     _existing_pos = _admin_repo.get_single_admin_assignment(
         id, t['position'] or '', active_sem['academic_year'], active_sem['semester']) if t['position'] else None
     assignment_date = _existing_pos['assignment_date'] if _existing_pos else ''
+    admin_hours_val = (_existing_pos.get('manual_hours') or 0) if _existing_pos else 0
     if request.method == 'POST':
+        assignment_date = request.form.get('assignment_date', '').strip()
+        admin_hours_val = min(_parse_whole_hours(request.form.get('admin_hours')), 24)
         name = request.form.get('name', '').strip()
         department_ids = [_safe_fk(v) for v in request.form.getlist('department_ids[]') if _safe_fk(v)]
         department_id = department_ids[0] if department_ids else None
@@ -1340,6 +1358,8 @@ def teachers_edit(id):
             'specialization_id': specialization_id,
             'position': position,
             'admin_assignment_type_id': assignment_type_id,
+            'assignment_date': assignment_date,
+            'admin_hours': admin_hours_val,
             'first_lecture_date': request.form.get('first_lecture_date', '').strip(),
             'work_start_date': request.form.get('work_start_date', '').strip(),
             'general_notes': request.form.get('general_notes', '').strip(),
@@ -1392,6 +1412,7 @@ form_error=photo_error,
                                    research_types=edit_research_types,
                                    research=edit_research,
                                    assignment_date=assignment_date,
+            admin_hours=admin_hours_val,
                                    admin_tasks=admin_tasks,
                                    user=current_user())
         if not name:
@@ -1411,6 +1432,7 @@ form_error='الاسم مطلوب',
                                    research_types=edit_research_types,
                                    research=edit_research,
                                    assignment_date=assignment_date,
+            admin_hours=admin_hours_val,
                                    admin_tasks=admin_tasks,
                                    user=current_user())
         if 'head_of_department' in effective_roles:
@@ -1437,6 +1459,7 @@ form_error=headship_error,
                                        research_types=edit_research_types,
                                        research=edit_research,
                                        assignment_date=assignment_date,
+            admin_hours=admin_hours_val,
                                        admin_tasks=admin_tasks,
                                        user=current_user())
             if confirmed_replace:
@@ -1459,6 +1482,7 @@ form_error=spec_error,
                                    research_types=edit_research_types,
                                    research=edit_research,
                                    assignment_date=assignment_date,
+            admin_hours=admin_hours_val,
                                    admin_tasks=admin_tasks,
                                    user=current_user())
         an = form.get('academic_number', '').strip()
@@ -1486,6 +1510,7 @@ form_error='الرقم الكلية موجود مسبقاً لعضو آخر',
                                            research_types=edit_research_types,
                                            research=edit_research,
                                            assignment_date=assignment_date,
+            admin_hours=admin_hours_val,
                                            admin_tasks=admin_tasks,
                                            user=current_user())
         current_dean = _current_dean(db)
@@ -1516,11 +1541,13 @@ form_error='الرقم الكلية موجود مسبقاً لعضو آخر',
                 research_types=edit_research_types,
                 research=edit_research,
                 assignment_date=assignment_date,
+            admin_hours=admin_hours_val,
                 admin_tasks=admin_tasks,
                 user=current_user(),
             )
         if (
-            current_dean_id == t.get('user_id')
+            current_dean_id is not None
+            and current_dean_id == t.get('user_id')
             and 'dean' not in effective_roles
         ):
             return render_template(
@@ -1543,6 +1570,7 @@ form_error='الرقم الكلية موجود مسبقاً لعضو آخر',
                 research_types=edit_research_types,
                 research=edit_research,
                 assignment_date=assignment_date,
+            admin_hours=admin_hours_val,
                 admin_tasks=admin_tasks,
                 user=current_user(),
             )
@@ -1567,6 +1595,7 @@ form_error='الرقم الكلية موجود مسبقاً لعضو آخر',
             _admin_repo.upsert_single_admin_assignment(
                 id, position_val, assignment_date_val,
                 active_sem['academic_year'], active_sem['semester'],
+                hours=admin_hours_val,
             )
         else:
             _admin_repo.delete_single_admin_assignment(
@@ -1638,6 +1667,7 @@ form_error='الرقم الكلية موجود مسبقاً لعضو آخر',
 research_types=edit_research_types,
                            research=edit_research,
                            assignment_date=assignment_date,
+            admin_hours=admin_hours_val,
                            admin_tasks=admin_tasks,
                            user=current_user())
 
@@ -1872,6 +1902,7 @@ def teacher_detail(id):
                           teacher_depts=teacher_depts,
                           perf_year=perf_year, perf_semester=perf_semester,
                           assignment_date=assignment_date,
+            admin_hours=admin_hours_val,
                           user=current_user())
 
 

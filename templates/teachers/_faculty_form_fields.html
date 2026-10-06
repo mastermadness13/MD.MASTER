@@ -5,6 +5,7 @@
         data-assignment-type-id="{{ task.id or '' }}" data-system-linked="1"
         data-current-dean="{{ task.current_dean_name or '' }}"
         data-current-dean-username="{{ task.current_dean_username or '' }}"
+        data-default-hours="{{ task.default_hours or 0 }}"
         class="text-amber-600 font-bold"
         {{ 'selected' if (selected_id and selected_id|string == task.id|string) or (not selected_id and selected == task.name) else '' }}>{{ task.name }}</option>
 {% endfor %}
@@ -13,6 +14,7 @@
 {% for task in extra or [] if not task.is_system_linked %}
 <option value="{{ task.name }}" data-role=""
         data-assignment-type-id="{{ task.id or '' }}" data-system-linked="0"
+        data-default-hours="{{ task.default_hours or 0 }}"
         {{ 'selected' if (selected_id and selected_id|string == task.id|string) or (not selected_id and selected == task.name) else '' }}>{{ task.name }}</option>
 {% endfor %}
 </optgroup>
@@ -121,7 +123,7 @@
 {% endmacro %}
 
 
-{% macro position_hod_fields(inp, sel, departments, selected_position='', selected_assignment_type_id=None, hod_value='', assignment_date='', department_hods=None, confirm_replace=false, custom_value='', admin_tasks=None) %}
+{% macro position_hod_fields(inp, sel, departments, selected_position='', selected_assignment_type_id=None, hod_value='', assignment_date='', admin_hours=0, department_hods=None, confirm_replace=false, custom_value='', admin_tasks=None) %}
 {% set _hods = department_hods | default({}) %}
 {% set _hod_key = hod_value | int if hod_value else none %}
 {% set _selected_occupied = _hods.get(_hod_key) if _hod_key else none %}
@@ -129,7 +131,7 @@
 {% for task in admin_tasks or [] if task.internal_code == 'dean' %}
   {% set _dean.task = task %}
 {% endfor %}
-<div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
   <div class="flex flex-col gap-1.5">
     <label class="text-xs font-semibold text-on-surface-variant">نوع التكليف الإداري</label>
     <div class="relative">
@@ -149,6 +151,15 @@
   <div class="flex flex-col gap-1.5">
     <label class="text-xs font-semibold text-on-surface-variant">تاريخ التكليف</label>
     <input class="{{ inp }}" name="assignment_date" type="date" value="{{ assignment_date or '' }}">
+  </div>
+
+  <!-- عدد الساعات الإدارية -->
+  <div class="flex flex-col gap-1.5" id="adminHoursWrap">
+    <label class="text-xs font-semibold text-on-surface-variant">عدد الساعات الإدارية</label>
+    <input type="number" name="admin_hours" id="adminHoursInput"
+           min="0" max="24" step="1"
+           value="{{ admin_hours or 0 }}"
+           class="{{ inp }}">
   </div>
 </div>
 

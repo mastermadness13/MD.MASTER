@@ -60,19 +60,85 @@ def setup(tmp_path, monkeypatch, app_fx):
 
 def test_save_position_with_date_writes_to_admin_assignments(setup):
     c, db_path, tid = setup
-    # Save a position and an assignment_date
+    # Save a position, assignment date, and assigned hours.
     r = _post(c, f'/teachers/edit/{tid}', {
         'name': 'مدرس', 'position': 'رئيس قسم', 'assignment_date': '2026-09-01',
+        'admin_hours': '5',
         'email': '', 'phone': '', 'academic_number': '', 'qualification_id': '',
         'rank_id': '', 'classification_id': '', 'national_id': '', 'contract_date': '',
         'tasks': '', 'specialization': '', 'first_lecture_date': '', 'work_start_date': '',
         'general_notes': '',
     })
     assert r.status_code == 200
-    rows = _q(db_path, 'SELECT task_name, assignment_date, academic_year, semester FROM faculty_admin_assignments WHERE teacher_id=?', (tid,))
+    rows = _q(db_path, 'SELECT task_name, assignment_date, manual_hours, academic_year, semester FROM faculty_admin_assignments WHERE teacher_id=?', (tid,))
     assert rows, 'expected an admin assignment to be saved'
     assert rows[0]['task_name'] == 'رئيس قسم'
     assert rows[0]['assignment_date'] == '2026-09-01'
+    assert rows[0]['manual_hours'] == 5
+    edit_html = c.get(f'/teachers/edit/{tid}').get_data(as_text=True)
+    hours_field = edit_html[edit_html.index('id="adminHoursInput"'):]
+    assert 'value="5"' in hours_field[:180]
+
+
+def test_create_saves_hours_for_any_administrative_assignment(setup):
+    c, db_path, _tid = setup
+    response = _post(c, '/teachers/create', {
+        'name': 'عضو جديد',
+        'username': 'newteacher',
+        'password': 'Office123',
+        'position': 'مساعد إداري',
+        'assignment_date': '2026-09-01',
+        'admin_hours': '4',
+        'email': '',
+        'phone': '',
+        'academic_number': '',
+        'qualification_id': '',
+        'rank_id': '',
+        'classification_id': '',
+        'national_id': '',
+        'contract_date': '',
+        'tasks': '',
+        'specialization': '',
+        'first_lecture_date': '',
+        'work_start_date': '',
+        'general_notes': '',
+    })
+    assert response.status_code == 200
+    new_teacher_id = _q(
+        db_path,
+        'SELECT id FROM teachers WHERE name = ?',
+        ('عضو جديد',),
+    )[0]['id']
+    rows = _q(
+        db_path,
+        'SELECT task_name, assignment_date, manual_hours '
+        'FROM faculty_admin_assignments WHERE teacher_id = ?',
+        (new_teacher_id,),
+    )
+    assert rows == [{
+        'task_name': 'مساعد إداري',
+        'assignment_date': '2026-09-01',
+        'manual_hours': 4,
+    }]
+
+
+def test_edit_form_renders_one_hours_field_next_to_assignment_date(setup):
+    c, _db_path, tid = setup
+    response = c.get(f'/teachers/edit/{tid}')
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert html.count('id="adminHoursInput"') == 1
+    assert html.index('name="assignment_date"') < html.index('id="adminHoursInput"')
+
+
+def test_research_hours_are_optional_in_teacher_edit_form(setup):
+    c, _db_path, tid = setup
+    response = c.get(f'/teachers/edit/{tid}')
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    research_field = html[html.index('name="research_hours[]"'):]
+    assert 'min="0"' in research_field[:250]
+    assert 'required' not in research_field[:250]
 
 
 def test_clearing_position_deletes_admin_assignment(setup):

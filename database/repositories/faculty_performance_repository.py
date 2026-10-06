@@ -383,7 +383,7 @@ class FacultyPerformanceRepository(BaseRepository):
         self, teacher_id: int, task_name: str, academic_year: str, semester: int,
     ) -> Optional[Dict[str, Any]]:
         row = self.db.execute(
-            '''SELECT id, task_name, assignment_date, start_date, end_date
+            '''SELECT id, task_name, manual_hours, assignment_date, start_date, end_date
                FROM faculty_admin_assignments
                WHERE teacher_id = ? AND task_name = ?
                AND academic_year = ? AND semester = ?
@@ -395,18 +395,27 @@ class FacultyPerformanceRepository(BaseRepository):
 
     # /     /     >---- نضيف/نحدّث مهمة إدارية واحدة (أبسلت)
     def upsert_single_admin_assignment(
-        self, teacher_id: int, task_name: str, assignment_date: str,
-        academic_year: str, semester: int,
+        self,
+        teacher_id: int,
+        task_name: str,
+        assignment_date: str,
+        academic_year: str,
+        semester: int,
+        hours: int = 0,
     ) -> None:
         if not task_name:
             return
         existing = self.get_single_admin_assignment(
-            teacher_id, task_name, academic_year, semester)
-        # /     /     >---- موجودة؟ نحدّث التاريخ، وإلا ننشئها
+            teacher_id, task_name, academic_year, semester
+        )
+        hours_val = int(hours or 0)
+        if hours_val < 0:
+            hours_val = 0
         if existing:
             self.db.execute(
-                'UPDATE faculty_admin_assignments SET assignment_date = ? WHERE id = ?',
-                (assignment_date, existing['id']),
+                'UPDATE faculty_admin_assignments '
+                'SET assignment_date = ?, manual_hours = ? WHERE id = ?',
+                (assignment_date, hours_val, existing['id']),
             )
         else:
             self.db.execute(
@@ -414,8 +423,15 @@ class FacultyPerformanceRepository(BaseRepository):
                    (teacher_id, task_name, auto_hours, manual_hours,
                     assignment_date, start_date, end_date, notes,
                     academic_year, semester)
-                   VALUES (?, ?, 0, 0, ?, '', NULL, '', ?, ?)''',
-                (teacher_id, task_name, assignment_date, academic_year, semester),
+                   VALUES (?, ?, 0, ?, ?, '', NULL, '', ?, ?)''',
+                (
+                    teacher_id,
+                    task_name,
+                    hours_val,
+                    assignment_date,
+                    academic_year,
+                    semester,
+                ),
             )
         self.db.commit()
 

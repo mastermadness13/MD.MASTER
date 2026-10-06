@@ -127,6 +127,7 @@
                                  selected_assignment_type_id=form.get('admin_assignment_type_id'),
                                  hod_value=form.get('hod_department_id'),
                                  assignment_date=form.get('assignment_date'),
+                                 admin_hours=form.get('admin_hours', 0),
                                  department_hods=department_hods|default({}),
                                  confirm_replace=confirm_replace|default(false),
                                  custom_value=form.get('custom_position', ''),
