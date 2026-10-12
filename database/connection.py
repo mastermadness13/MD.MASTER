@@ -10,7 +10,7 @@ from __future__ import annotations
 import sqlite3
 from typing import Optional
 
-from utils.text import normalize_arabic_name
+from utils.text import normalize_arabic_name, normalize_search_text
 
 # ─────────────────────────────────────────────
 
@@ -29,6 +29,8 @@ def configure_connection(conn: sqlite3.Connection) -> sqlite3.Connection:
     conn.execute('PRAGMA busy_timeout = 5000')
     # /     /     >---- دالة SQL مخصصة: normalize_arabic(النص)
     conn.create_function('normalize_arabic', 1, lambda s: normalize_arabic_name(s))
+    # /     /     >---- دالة SQL مخصصة: normalize_search(النص) — للبحث المرن
+    conn.create_function('normalize_search', 1, normalize_search_text)
     return conn
 
 # ─────────────────────────────────────────────

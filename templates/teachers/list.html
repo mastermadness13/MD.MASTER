@@ -45,11 +45,7 @@
       </button>
       {% endif %}
       {% if show_full_table %}
-      <button type="button" onclick="window.print()"
-              class="flex items-center gap-2 bg-surface-card hover:bg-primary/10 text-primary border border-outline-variant px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm">
-        <span class="material-symbols-outlined text-lg">print</span>
-        طباعة
-      </button>
+     
       {% endif %}
     </div>
   </div>
@@ -58,6 +54,7 @@
 
   <!-- ═══════════════ Search & Filter ═══════════════ -->
   <form id="teachersSearchForm" method="GET"
+        action="{{ url_for('teachers.teachers_list') }}"
         class="mb-6 overflow-hidden rounded-2xl border border-outline-variant bg-white shadow-sm">
 
     <!-- رأس البطاقة -->
@@ -69,7 +66,7 @@
 
       <span class="search-results-count inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
         <span class="material-symbols-outlined text-[14px]">group</span>
-        {{ total }} عضو
+        <span data-count-value>{{ total }} عضو</span>
       </span>
     </div>
 
@@ -97,14 +94,14 @@
           <!-- زر المسح -->
           <button type="button"
                   class="search-clear absolute left-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-on-surface-variant transition hover:bg-error/10 hover:text-error"
-                  style="display: {{ 'flex' if search else 'none' }}"
+                  {% if not search %}style="display:none"{% endif %}
                   title="مسح البحث">
             <span class="material-symbols-outlined text-[18px]">close</span>
           </button>
 
-          <!-- مؤشر التحميل -->
+          <!-- مؤشر التحميل: العرض يتحكم فيه CSS عبر search-spinner -->
           <span class="material-symbols-outlined search-spinner absolute left-3 top-1/2 -translate-y-1/2 text-primary animate-spin"
-                style="display:none">progress_activity</span>
+                aria-hidden="true">progress_activity</span>
         </div>
       </div>
 
@@ -118,7 +115,7 @@
         <div class="relative">
           <select id="departmentFilter"
                   name="department_id"
-                  class="w-full appearance-none rounded-xl border border-outline-variant bg-surface-container-lowest py-2.5 pr-3 pl-9 text-sm font-bold text-on-surface transition focus:border-primary focus:bg-surface-card focus:outline-none focus:ring-4 focus:ring-primary/15">
+                  class="w-full appearance-auto cursor-pointer rounded-xl border border-outline-variant bg-surface-container-lowest py-2.5 pr-3 pl-9 text-sm font-bold text-on-surface transition focus:border-primary focus:bg-surface-card focus:outline-none focus:ring-4 focus:ring-primary/15">
             <option value="">جميع الأقسام</option>
             {% for d in departments %}
             <option value="{{ d.id }}" {{ 'selected' if department_id|string == d.id|string }}>{{ d.name }}</option>
@@ -221,6 +218,7 @@
 <script>
 window.TEACHERS_LIST_BOOT = {
   total: {{ total | default(0) | tojson }},
+  listUrl: {{ url_for('teachers.teachers_list') | tojson }},
   urls: { bulkIds: {{ url_for('teachers.teachers_bulk_ids') | tojson }} }
 };
 </script>

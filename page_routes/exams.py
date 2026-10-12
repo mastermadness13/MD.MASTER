@@ -2,7 +2,7 @@ from collections import OrderedDict
 
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 
-from flask_db import get_db
+from database.flask_db import get_db
 from security import current_user, login_required, permission_required
 from services import exam_service
 

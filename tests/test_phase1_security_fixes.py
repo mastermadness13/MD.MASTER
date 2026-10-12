@@ -22,7 +22,7 @@ import sqlite3
 import pytest
 
 import config as config_module
-import flask_db
+import database.flask_db as flask_db
 from database.connection import connect
 from database.schema import _migrate_to_named_semesters
 from core.exceptions import ProtectedAccountError

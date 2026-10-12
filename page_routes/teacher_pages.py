@@ -5,7 +5,7 @@ import uuid
 
 from flask import Blueprint, session, request, render_template, redirect, url_for, flash, current_app, jsonify, abort, send_from_directory
 
-from flask_db import get_db
+from database.flask_db import get_db
 from database.history import add_history
 from core.constants import PER_PAGE
 from core.constants.uploads import ALLOWED_UPLOAD_EXTENSIONS

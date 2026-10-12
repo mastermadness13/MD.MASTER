@@ -12,7 +12,7 @@ from api_routes.helpers import (
     ok,
 )
 from database.repositories.department_repository import DepartmentRepository
-from flask_db import get_db
+from database.flask_db import get_db
 from security import csrf_required
 from services import department_service
 

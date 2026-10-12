@@ -6,7 +6,7 @@ import sqlite3
 
 import pytest
 
-import flask_db
+import database.flask_db as flask_db
 from database.connection import connect
 from database.schema import (
     _deduplicate_teachers_v1,

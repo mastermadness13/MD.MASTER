@@ -1,6 +1,6 @@
 from flask import Blueprint, session, abort, send_from_directory, current_app
 
-from flask_db import get_db
+from database.flask_db import get_db
 from security import login_required, permission_required
 from security.authorization import has_permission
 bp = Blueprint('uploads', __name__, url_prefix='/uploads')

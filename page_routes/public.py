@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, redirect, url_for
 
-from flask_db import get_db
+from database.flask_db import get_db
 from services import public_service, exam_service
 
 bp = Blueprint('public', __name__)

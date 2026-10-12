@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from flask import Blueprint, abort, make_response, redirect, render_template, request
 
-from flask_db import get_db
+from database.flask_db import get_db
 from services import download_service
 
 bp = Blueprint('public_library', __name__)

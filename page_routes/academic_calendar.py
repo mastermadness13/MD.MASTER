@@ -18,7 +18,7 @@ from datetime import date
 
 from flask import Blueprint, flash, redirect, render_template, url_for
 
-from flask_db import get_db
+from database.flask_db import get_db
 from security import current_user, login_required, permission_required
 
 bp = Blueprint('academic_calendar', __name__, url_prefix='/academic-calendar')

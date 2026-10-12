@@ -33,7 +33,7 @@ import os
 from waitress import serve
 
 from core.wsgi_proxy import build_wsgi_chain
-from flask_db import init_db, bootstrap_defaults
+from database.flask_db import init_db, bootstrap_defaults
 from app import create_app
 
 # /     /     >---- نهيئ قاعدة البيانات والبيانات الأساسية

@@ -15,7 +15,7 @@ from core.auth_limits import (
     record_login_failure,
     reset_login,
 )
-from flask_db import get_db
+from database.flask_db import get_db
 from security import (
     get_header_messages_url,
     get_user_permissions,

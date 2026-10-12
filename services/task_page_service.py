@@ -22,7 +22,7 @@ from core.constants.task_pages import (
 
 def _db():
     """Late import: flask_db pulls in the app context."""
-    from flask_db import get_db
+    from database.flask_db import get_db
     return get_db()
 
 
@@ -55,14 +55,29 @@ def active_page():
     """
     from flask import session
 
+    # /     /     >---- القرار يتكرر عشرات المرات في الصفحة الواحدة (كل
+    # /     /     >---- استدعاء has_permission في القالب)، فنثبّته على الطلب:
+    # /     /     >---- تكليف واحد لا يتغيّر في منتصف الطلب.
+    from flask import g, has_app_context
+
+    if has_app_context():
+        cached = getattr(g, 'task_page_active', None)
+        if cached is not None:
+            return cached
+
     row = _assignment_row_for_role(session.get('role', ''))
     if row is None:
-        return None, DEFAULT_ACCESS_MODE, ''
-    page_key = row['page_key']
-    if not is_valid_page_key(page_key):
-        return None, DEFAULT_ACCESS_MODE, ''
-    mode = normalise_access_mode(row['page_access_mode'])
-    return page_key, mode, TASK_PAGES[page_key]['label']
+        result = (None, DEFAULT_ACCESS_MODE, '')
+    else:
+        page_key = row['page_key']
+        if not is_valid_page_key(page_key):
+            result = (None, DEFAULT_ACCESS_MODE, '')
+        else:
+            mode = normalise_access_mode(row['page_access_mode'])
+            result = (page_key, mode, TASK_PAGES[page_key]['label'])
+    if has_app_context():
+        g.task_page_active = result
+    return result
 
 
 def is_view_only() -> bool:

@@ -1,6 +1,6 @@
 from flask import Blueprint, request, session, render_template, url_for, redirect, current_app
 
-from flask_db import get_db
+from database.flask_db import get_db
 from security import login_required, permission_required
 from security import current_user
 from services import timetable_service, course_service, department_service, exam_service, public_service

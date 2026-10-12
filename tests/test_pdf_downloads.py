@@ -13,7 +13,7 @@ import sqlite3
 
 import pytest
 
-import flask_db
+import database.flask_db as flask_db
 from database.connection import connect
 from database.schema import ensure_schema
 from services import pdf_service

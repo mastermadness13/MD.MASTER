@@ -25,7 +25,7 @@ from core.auth_limits import (
     record_reset,
     reset_login,
 )
-from flask_db import get_db
+from database.flask_db import get_db
 from security import (
     csrf_required,
     current_user,

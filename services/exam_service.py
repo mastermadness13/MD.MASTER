@@ -471,31 +471,11 @@ class ExamService:
     def save_exam_settings(self, data):
         self._repo.save_settings(data)
 
-    # /     /     >---- قاعات الامتحانات النشطة
+    # /     /     >---- قاعات الامتحانات النشطة: جدول rooms نفسه، لا نسخة ثانية
     def get_exam_halls(self):
         return self._repo.get_active_rooms()
 
-    def create_exam_hall(self, name, capacity, status):
-        self.db.execute(
-            'INSERT INTO rooms (name, capacity, status) VALUES (?, ?, ?)',
-            (name, capacity, status),
-        )
-        self.db.commit()
-
-    # /     /     >---- فحص وجود اسم قاعة مكرر
-    def hall_name_exists(self, name, exclude_id=None):
-        if exclude_id:
-            return self.db.execute(
-                'SELECT id FROM rooms WHERE name = ? AND id != ?', (name, exclude_id)
-            ).fetchone()
-        return self.db.execute('SELECT id FROM rooms WHERE name = ?', (name,)).fetchone()
-
-    def update_exam_hall(self, id, name, capacity, status):
-        self.db.execute(
-            'UPDATE rooms SET name = ?, capacity = ?, status = ? WHERE id = ?',
-            (name, capacity, status, id),
-        )
-        self.db.commit()
+    # /     /     >---- قراءة القاعات لواجهة الامتحانات (نفس جدول rooms)
 
     # /     /     >---- قراءة فترة الامتحانات مع قيم افتراضية
     def get_exam_period(self):
@@ -803,6 +783,29 @@ class ExamService:
                     })
         return conflicts
 
+    # /     /     >---- تعارضات لامتحان محفوظ: نفس فحص الخلية مع استثناء نفسه،
+    # /     /     >---- لأن الامتحان المعني سيُكتب فوقه (Endpoint /conflicts).
+    def check_exam_conflicts(self, schedule_id, room_id=None, start_time=None, end_time=None):
+        """Conflicts a saved exam would create if it were re-assigned.
+
+        Delegates to ``check_cell_conflicts`` with ``schedule_id`` excluded, so
+        the endpoint cannot report an exam as conflicting with itself.
+        """
+        row = self.db.execute(
+            'SELECT department_id, semester, week, day_ar, room_id, '
+            'start_time, end_time FROM exam_schedule WHERE id = ?',
+            (schedule_id,),
+        ).fetchone()
+        if row is None:
+            return []
+        return self.check_cell_conflicts(
+            row['department_id'], row['semester'], row['week'], row['day_ar'],
+            room_id if room_id is not None else row['room_id'],
+            start_time or row['start_time'] or '',
+            end_time or row['end_time'] or '',
+            exclude_id=schedule_id,
+        )
+
     # /     /     >---- إنشاء/تحديث امتحان داخل خلية واحدة (أسبوع × يوم × فصل)
     def save_cell_exam(self, dept_id, semester, week, day_ar, exam_date, course_id, room_id, start_time, end_time, exam_type, user_id, schedule_id=None):
         """Create or update an exam in a single (week × day × semester) cell."""
@@ -976,22 +979,6 @@ def save_exam_settings(db, data):
 def get_exam_halls(db):
     from database.repositories.exam_repository import ExamRepository
     return ExamRepository(db).get_active_rooms()
-
-
-def create_exam_hall(db, name, capacity, status):
-    db.execute('INSERT INTO rooms (name, capacity, status) VALUES (?, ?, ?)', (name, capacity, status))
-    db.commit()
-
-
-def hall_name_exists(db, name, exclude_id=None):
-    if exclude_id:
-        return db.execute('SELECT id FROM rooms WHERE name = ? AND id != ?', (name, exclude_id)).fetchone()
-    return db.execute('SELECT id FROM rooms WHERE name = ?', (name,)).fetchone()
-
-
-def update_exam_hall(db, id, name, capacity, status):
-    db.execute('UPDATE rooms SET name = ?, capacity = ?, status = ? WHERE id = ?', (name, capacity, status, id))
-    db.commit()
 
 
 def get_exam_period(db):

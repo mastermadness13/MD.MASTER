@@ -13,7 +13,7 @@ from api_routes.helpers import (
     ok,
     pagination,
 )
-from flask_db import get_db
+from database.flask_db import get_db
 from security import current_user
 from security import csrf_required
 from services import teacher_service

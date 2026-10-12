@@ -20,7 +20,9 @@
       '<div id="spa-room-table" class="overflow-x-auto"></div>' +
       '<div id="spa-room-pager" class="p-3 border-t border-outline-variant"></div></div>';
 
-    if (can('rooms.manage')) {
+    // /     /     >---- زر الإضافة يستعمل صلاحية الإنشاء نفسها التي يفحصها
+    // /     /     >---- POST /api/rooms على الخادم.
+    if (can('rooms.create')) {
       document.getElementById('spa-room-actions').innerHTML =
         '<button id="spa-room-add" class="inline-flex items-center gap-2 bg-primary text-on-primary px-4 py-2 rounded-lg font-bold text-sm hover:opacity-90">' +
         '<span class="material-symbols-outlined text-lg">add</span> إضافة قاعة</button>';
@@ -59,8 +61,10 @@
     };
     var rows = items.map(function (r) {
       var actions = '';
-      if (can('rooms.manage')) {
+      if (can('rooms.edit')) {
         actions += '<button type="button" class="spa-icon-btn" data-edit="' + r.id + '" title="تعديل"><span class="material-symbols-outlined text-lg">edit</span></button>';
+      }
+      if (can('rooms.delete')) {
         actions += '<button type="button" class="spa-icon-btn text-error" data-del="' + r.id + '" title="حذف"><span class="material-symbols-outlined text-lg">delete</span></button>';
       }
       return '<tr class="border-b border-outline-variant hover:bg-surface-hover">' +

@@ -309,6 +309,7 @@ def _ensure_managed_lookup_metadata(conn: sqlite3.Connection) -> None:
             ('internal_code', 'TEXT'),
             ('is_system_linked', 'INTEGER NOT NULL DEFAULT 0'),
             ('is_protected_role', 'INTEGER NOT NULL DEFAULT 0'),
+            ('uniqueness', "TEXT NOT NULL DEFAULT ''"),
         )),
         ('teachers', (
             ('admin_assignment_type_id', 'INTEGER REFERENCES admin_assignment_types(id) ON DELETE SET NULL'),
@@ -419,6 +420,29 @@ def _ensure_managed_lookup_metadata(conn: sqlite3.Connection) -> None:
         )
         _mark_migration_done(conn, protection_migration)
 
+    # ── نطاق تفرد «المنصب الفريد» ──────────────────────────────────
+    # /     /     >---- كل دور نظامي يسري عليه حارس التفرد: العميد على مستوى
+    # /     /     >---- النظام، ورئيس القسم ورئاسة الامتحانات لكل قسم. القيمة
+    # /     /     >---- الفارغة تعني «لا قيد» والتكليفات العامة تبقى مفتوحة.
+    # /     /     >---- تُكتب مرة واحدة فقط ولا تُعاد فوق اختيار أداري.
+    uniqueness_migration = 'managed_admin_assignment_uniqueness_v1'
+    if not _migration_done(conn, uniqueness_migration):
+        conn.execute(
+            '''UPDATE admin_assignment_types
+               SET uniqueness = 'department'
+               WHERE is_system_linked = 1
+                 AND internal_code IN ('head_of_department', 'exam')
+                 AND (uniqueness IS NULL OR uniqueness = '')'''
+        )
+        conn.execute(
+            '''UPDATE admin_assignment_types
+               SET uniqueness = 'global'
+               WHERE is_system_linked = 1
+                 AND internal_code NOT IN ('head_of_department', 'exam')
+                 AND (uniqueness IS NULL OR uniqueness = '')'''
+        )
+        _mark_migration_done(conn, uniqueness_migration)
+
     # ── صفحة التكليف ونمط الوصول ──────────────────────────────────
     # /     /     >---- العميد يربط التكليف بصفحة ويقرر: تعديل أم عرض.
     # /     /     >---- NULL page_key يعني «لا صفحة مرتبطة» فيبقى السلوك
@@ -434,6 +458,32 @@ def _ensure_managed_lookup_metadata(conn: sqlite3.Connection) -> None:
            WHERE page_access_mode IS NULL
               OR page_access_mode NOT IN ('edit', 'view')'''
     )
+
+    # ── الصفحات المتعددة للتكليف الواحد ────────────────────────────
+    # /     /     >---- الوضع الجديد قائمة سماح: عمودان قديمان صاروا
+    # /     /     >---- مجرد مرآة لأول صفحة، والجدول الجديد يحمل كل الروابط.
+    conn.execute(
+        '''CREATE TABLE IF NOT EXISTS admin_assignment_pages (
+             id INTEGER PRIMARY KEY AUTOINCREMENT,
+             assignment_id INTEGER NOT NULL REFERENCES admin_assignment_types(id) ON DELETE CASCADE,
+             page_key TEXT NOT NULL,
+             access_mode TEXT NOT NULL DEFAULT 'edit',
+             UNIQUE(assignment_id, page_key)
+           )'''
+    )
+    conn.execute(
+        '''CREATE INDEX IF NOT EXISTS idx_admin_assignment_pages_assignment
+           ON admin_assignment_pages(assignment_id)'''
+    )
+    pages_migration = 'managed_admin_assignment_pages_v1'
+    if not _migration_done(conn, pages_migration):
+        conn.execute(
+            '''INSERT OR IGNORE INTO admin_assignment_pages
+               (assignment_id, page_key, access_mode)
+               SELECT id, page_key, page_access_mode FROM admin_assignment_types
+               WHERE page_key IS NOT NULL AND page_key != '' '''
+        )
+        _mark_migration_done(conn, pages_migration)
 
     conn.execute(
         '''UPDATE teachers
@@ -3042,6 +3092,8 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
             _safe_add_column(conn, 'users', 'department_id', 'INTEGER REFERENCES departments(id) ON DELETE SET NULL')
         if 'email' not in user_columns:
             _safe_add_column(conn, 'users', 'email', 'TEXT')
+        if 'email_verified' not in user_columns:
+            _safe_add_column(conn, 'users', 'email_verified', 'INTEGER NOT NULL DEFAULT 0')
         if 'password_changed_at' not in user_columns:
             _safe_add_column(conn, 'users', 'password_changed_at', 'TIMESTAMP')
         if 'session_version' not in user_columns:
@@ -3102,6 +3154,21 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
             )
         """)
         conn.execute('CREATE INDEX IF NOT EXISTS idx_password_resets_token ON password_resets(token)')
+
+    # /     /     >---- طلبات توثيق البريد الإلكتروني (البريد قبل اعتماده للاستعادة)
+    if 'email_verifications' not in existing_tables:
+        conn.execute("""
+            CREATE TABLE email_verifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                email TEXT NOT NULL,
+                token TEXT NOT NULL,
+                expires_at TIMESTAMP NOT NULL,
+                used INTEGER NOT NULL DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_email_verifications_token ON email_verifications(token)')
 
     # /     /     >---- نضيف أعمدة القاعات الناقصة
     if 'rooms' in existing_tables:

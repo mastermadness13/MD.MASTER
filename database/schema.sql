@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS users (
     label TEXT DEFAULT '',
     department_id INTEGER REFERENCES departments(id) ON DELETE SET NULL,
     email TEXT,
+    email_verified INTEGER NOT NULL DEFAULT 0,
     phone TEXT,
     password_changed_at TIMESTAMP,
     session_version INTEGER NOT NULL DEFAULT 1,
@@ -70,12 +71,29 @@ CREATE TABLE IF NOT EXISTS admin_assignment_types (
     internal_code    TEXT,
     is_system_linked INTEGER NOT NULL DEFAULT 0,
     is_protected_role INTEGER NOT NULL DEFAULT 0,
+    -- deprecated: mirror of admin_assignment_pages
     -- Which screen this assignment opens (see core/constants/task_pages.py);
     -- NULL means "no attached page" and the role dashboard is used instead.
     page_key         TEXT,
+    -- deprecated: mirror of admin_assignment_pages
     -- 'edit' = full control of the attached page, 'view' = read-only.
-    page_access_mode TEXT NOT NULL DEFAULT 'edit'
+    page_access_mode TEXT NOT NULL DEFAULT 'edit',
+    -- 'منصب فريد': '' (لا قيد) / 'global' (شاغل واحد في النظام) / 'department'
+    -- (شاغل واحد لكل قسم). يحفظ الميزة أن التكليف يُسند لعضو واحد فقط.
+    uniqueness       TEXT NOT NULL DEFAULT ''
 );
+
+-- الصفحات المرتبطة بتكليف إداري، كل واحدة بنمط وصول (تعديل/عرض).
+-- التكليف يصبح قائمة سماح: ما يرد هنا متاح، وما عداها من صفحات الدور محجوب.
+CREATE TABLE IF NOT EXISTS admin_assignment_pages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  assignment_id INTEGER NOT NULL REFERENCES admin_assignment_types(id) ON DELETE CASCADE,
+  page_key TEXT NOT NULL,
+  access_mode TEXT NOT NULL DEFAULT 'edit',
+  UNIQUE(assignment_id, page_key)
+);
+CREATE INDEX IF NOT EXISTS idx_admin_assignment_pages_assignment
+  ON admin_assignment_pages(assignment_id);
 
 -- Same default rows as _seed_admin_assignment_types (name, hours, sort_order).
 INSERT OR IGNORE INTO admin_assignment_types (name, default_hours, is_active, sort_order) VALUES
@@ -305,6 +323,16 @@ CREATE TABLE IF NOT EXISTS password_resets (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS email_verifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    email TEXT NOT NULL,
+    token TEXT NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    used INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS attendance (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     student_id INTEGER NOT NULL,
@@ -437,6 +465,7 @@ CREATE INDEX IF NOT EXISTS idx_attendance_student_date ON attendance(student_id,
 CREATE INDEX IF NOT EXISTS idx_course_prerequisites_course ON course_prerequisites(course_id);
 CREATE INDEX IF NOT EXISTS idx_course_prerequisites_prereq ON course_prerequisites(prerequisite_id);
 CREATE INDEX IF NOT EXISTS idx_password_resets_token ON password_resets(token);
+CREATE INDEX IF NOT EXISTS idx_email_verifications_token ON email_verifications(token);
 CREATE INDEX IF NOT EXISTS idx_history_created_at ON history(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_faculty_attendance_teacher ON faculty_attendance(teacher_id);
 CREATE INDEX IF NOT EXISTS idx_faculty_attendance_date ON faculty_attendance(date);

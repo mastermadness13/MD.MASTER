@@ -555,7 +555,7 @@ class UserService:
 
 
 def authenticate(db, username, password, remember, session_dict):
-    from flask_db import get_db
+    from database.flask_db import get_db
     from database.repositories.user_repository import UserRepository
     repo = UserRepository(db)
     svc = UserService(db, repo)

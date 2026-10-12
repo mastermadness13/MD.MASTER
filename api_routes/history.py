@@ -5,7 +5,7 @@ from __future__ import annotations
 from flask import Blueprint
 
 from api_routes.helpers import api_permission_required, err, ok, pagination
-from flask_db import get_db
+from database.flask_db import get_db
 from services import history_service
 
 bp = Blueprint('api_history', __name__, url_prefix='/api/history')

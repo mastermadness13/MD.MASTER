@@ -2,7 +2,7 @@
 
 from flask import Blueprint, session, request, render_template, redirect, url_for, flash, jsonify, abort
 
-from flask_db import get_db
+from database.flask_db import get_db
 from security import login_required, permission_required, role_required, csrf_required
 from security import current_user
 from security.authorization import get_granted_roles, get_active_roles, has_permission

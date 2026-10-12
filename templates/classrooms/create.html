@@ -1,5 +1,5 @@
 {% extends 'shared/layouts/base.html' %}
-{% set sidebar_active = 'rooms' %}
+{% set sidebar_active = active_nav_key | default('rooms') %}
 {% set page_title = 'قاعة جديدة' %}
 {% set form = form | default({}) %}
 {% set room_types = room_types | default([]) %}

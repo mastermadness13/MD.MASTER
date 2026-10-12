@@ -1,1 +1,0 @@
-document.addEventListener("DOMContentLoaded",function(){var t=document.getElementById("perf-teacher-select");t&&t.addEventListener("change",function(){var e=this.options[this.selectedIndex];e&&e.dataset.url&&(window.location.href=e.dataset.url)})});

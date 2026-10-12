@@ -126,16 +126,10 @@ class ClassroomService:
     def get_room_detail(self, room_id: int) -> Optional[Dict]:
         return self._repo.find_detail(room_id)
 
-    def room_delete(self, room_id: int, history_callback=None) -> None:
-        self._repo.soft_delete(room_id)
-        if history_callback:
-            history_callback(self.db)
-
-    def room_restore(self, room_id: int) -> None:
-        self._repo.restore(room_id)
-
-    def room_hard_delete(self, room_id: int) -> None:
-        self._repo.delete(room_id)
+    # /     /     >---- الحذف والاسترجاع غير موجودين هنا عمداً: المستودع لا
+    # /     /     >---- يملك soft_delete/restore/delete، والدوال الشقيقة على
+    # /     /     >---- مستوى الوحدة (أسفل) تخدم عن base_service مباشرة.
+    # /     /     >---- إبقاؤهما كان 호출اً لـ AttributeError لا مساراً بديلاً.
 
 
 # /     /     >---- دوال مستوى الوحدة المحافظة على التوافق مع المسارات القديمة
@@ -209,3 +203,35 @@ def room_restore(db, id):
 def room_hard_delete(db, id):
     from services.base_service import hard_delete
     hard_delete(db, 'rooms', id)
+
+
+def room_usage(db, id):
+    """How many rows reference one room (see ``RoomRepository.usage_counts``)."""
+    from database.repositories.room_repository import RoomRepository
+    return RoomRepository(db).usage_counts(id)
+
+
+def rooms_usage(db, ids):
+    """The same counts for a whole page of rooms in three grouped queries."""
+    from database.repositories.room_repository import RoomRepository
+    return RoomRepository(db).usage_map(ids)
+
+
+# /     /     >---- أسماء الجداول المرجعية بالعربية: نفس الجملة للواجهة
+# /     /     >---- وللـ JSON حتى يقرأ المدير سبب الرفض من مكان واحد.
+USAGE_LABELS = {
+    'exam_schedule': 'امتحانات',
+    'timetable': 'حصص الجدول الدراسي',
+    'teacher_taught_courses': 'تكليفات التدريس',
+}
+
+
+def usage_summary(counts) -> str:
+    """One Arabic sentence naming every table that still points at the room."""
+    if not counts:
+        return ''
+    parts = [
+        f'{USAGE_LABELS.get(table, table)} ({counts[table]})'
+        for table in USAGE_LABELS if counts.get(table)
+    ]
+    return 'القاعة مرتبطة بسجلات: ' + '، '.join(parts)

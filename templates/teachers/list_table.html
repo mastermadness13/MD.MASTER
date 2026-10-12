@@ -11,6 +11,16 @@
 {% from 'shared/components/pagination.html' import pagination %}
 {% from 'shared/components/empty_state.html' import render as empty_state %}
 
+{# / مصدر عدّ النتائج لشريط البحث عبر AJAX: مخفي دائماً، ويقرأ منه
+   SearchComponent العدد الجديد بعد كل بحث (في الصفحة الكاملة الشارة
+   الحقيقية في list.html تسبق هذه في ترتيب DOM). #}
+<div class="hidden" aria-hidden="true">
+  <span class="search-results-count">
+    <span class="material-symbols-outlined">group</span>
+    <span data-count-value>{{ total }} عضو</span>
+  </span>
+</div>
+
 <table class="search-table w-full text-right border-collapse text-sm">
   <thead>
     <tr class="bg-surface-dim font-label-md text-label-md text-on-surface-variant">
@@ -57,7 +67,7 @@
                   {% endif %}
           <div>
             {% set t_display_name = teacher_display_name(t.name, t.rank_name, t.qual_name) %}
-            <p class="font-bold text-on-surface">{{ highlight(t_display_name, search) | safe if highlight is defined else t_display_name }}</p>
+            <p class="font-bold text-on-surface">{{ highlight(t_display_name, search, highlight_terms | default([search])) | safe if highlight is defined else t_display_name }}</p>
             <div class="flex items-center gap-1.5">
               <p class="text-xs text-on-surface-variant" dir="ltr">{{ t.username or '—' }}</p>
               {% if t.hod_dept_name %}
@@ -73,8 +83,8 @@
           </div>
         </div>
       </td>
-      <td class="px-4 py-3 text-on-surface-variant" dir="ltr">{{ highlight(t.academic_number, search) | safe if highlight is defined else t.academic_number }}</td>
-      <td class="px-4 py-3 text-on-surface-variant" dir="ltr">{{ highlight(t.email, search) | safe if highlight is defined else t.email }}</td>
+      <td class="px-4 py-3 text-on-surface-variant" dir="ltr">{{ (highlight(t.academic_number, search, highlight_terms | default([search])) | safe) if (highlight is defined and t.academic_number) else (t.academic_number or '—') }}</td>
+      <td class="px-4 py-3 text-on-surface-variant" dir="ltr">{{ (highlight(t.email, search, highlight_terms | default([search])) | safe) if (highlight is defined and t.email) else (t.email or '—') }}</td>
       <td class="px-4 py-3 text-on-surface-variant" dir="ltr">{{ t.phone or '—' }}</td>
       <td class="px-4 py-3">
         <div class="relative inline-block">

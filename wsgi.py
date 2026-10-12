@@ -17,7 +17,7 @@ Environment knobs (same names as serve.py, so both entrypoints behave alike):
 import os
 
 # /     /     >---- نستورد الدوال اللي نحتاجها
-from flask_db import init_db, bootstrap_defaults
+from database.flask_db import init_db, bootstrap_defaults
 from core.wsgi_proxy import build_wsgi_chain
 from app import create_app
 

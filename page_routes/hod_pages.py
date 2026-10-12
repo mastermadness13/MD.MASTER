@@ -2,7 +2,7 @@ import os
 
 from flask import Blueprint, session, request, render_template, redirect, url_for, flash, current_app, send_from_directory, abort
 
-from flask_db import get_db
+from database.flask_db import get_db
 from security import csrf_required, login_required, permission_required
 from security import current_user
 from services import message_service, notification_service

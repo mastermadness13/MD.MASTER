@@ -17,7 +17,7 @@ from api_routes.helpers import (
     ok,
 )
 from core.validators import integer_between, valid_date_range, valid_time
-from flask_db import get_db
+from database.flask_db import get_db
 from security import csrf_required
 from security import current_user
 from services import exam_service, notification_service

@@ -16,7 +16,7 @@ import re
 
 import pytest
 
-import flask_db
+import database.flask_db as flask_db
 from database.connection import connect
 from database.schema import ensure_schema
 from tests.test_bottom_nav import _client_for, _user_id

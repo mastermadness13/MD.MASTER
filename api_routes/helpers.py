@@ -17,6 +17,7 @@ from sqlite3 import Row
 from flask import jsonify, request, session
 
 from security import has_permission
+from security.authorization import get_active_roles
 
 
 def _clean(value):
@@ -116,9 +117,12 @@ def api_permission_required(permission):
         def decorated(*args, **kwargs):
             if 'user_id' not in session:
                 return err('يرجى تسجيل الدخول أولاً', 401)
-            role = session.get('role', '')
+            # /     /     >---- نفس حلّ الدور الذي تستعمله بوابة الصفحة
+            # /     /     >---- (get_active_roles): فلو اختلفت البوابتان لأمكن
+            # /     /     >---- أن يرفض HTML ما يقبله JSON لنفس الحساب.
+            roles = get_active_roles()
             dept_id = session.get('department_id')
-            if not has_permission(role, permission, dept_id):
+            if not has_permission(roles, permission, dept_id):
                 return err('ليس لديك صلاحية للوصول', 403)
             return f(*args, **kwargs)
         # Store required permission for deny-by-default before_request hook

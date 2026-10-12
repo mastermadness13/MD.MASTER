@@ -11,7 +11,7 @@ import pytest
 import re
 from datetime import datetime
 
-import flask_db
+import database.flask_db as flask_db
 from database.connection import connect
 from database.schema import ensure_schema
 

@@ -4,7 +4,7 @@ from flask import Blueprint, session, request, render_template, redirect, url_fo
 
 from api_routes.helpers import ok
 
-from flask_db import get_db
+from database.flask_db import get_db
 from security import csrf_required, login_required, permission_required
 from security import current_user, has_permission
 from services import timetable_service, notification_service, public_service

@@ -262,3 +262,15 @@
     max-width: none;
   }
 }
+
+/* List-page spinner. These pages inline `style="display:none"`, which beats any
+   class rule, while SearchComponent toggles the `.active` class — so an
+   inline-hidden spinner could never appear. A page that drops the inline
+   attribute and keeps these two rules gets a working spinner. */
+.search-spinner {
+  display: none;
+}
+
+.search-spinner.active {
+  display: inline-flex;
+}

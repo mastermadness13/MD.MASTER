@@ -4,7 +4,8 @@ import sqlite3
 
 import pytest
 
-import flask_db
+import database.flask_db as flask_db
+from core.constants.task_pages import describe_assignment_page
 from database.connection import connect
 from database.schema import ensure_schema
 
@@ -1020,3 +1021,308 @@ def test_removed_default_assignment_does_not_reappear_on_schema_recheck(
     assert remaining == 0
     assert remaining_qualifications == 0
     assert remaining_specializations == 0
+
+
+# ══════════════════════════════════════════════════════════════════════
+# describe_assignment_page — the page binding and the permissions it
+# exposes, derived purely from one admin_assignment_types row.
+# ══════════════════════════════════════════════════════════════════════
+
+# Exact text rendered by templates/teachers/lookup_lists.html, built by
+# core/constants/task_pages.py::describe_assignment_page when grants_write.
+WRITE_WARNING = (
+    'يمنح هذا التكليف صلاحيات تعديل (كتابة) على الصفحة المرتبطة — '
+    'راجع الصلاحيات قبل التفعيل.'
+)
+
+
+def test_describe_page_without_a_binding_is_empty():
+    info = describe_assignment_page(None)
+    assert info['has_page'] is False
+    assert info['grants_write'] is False
+    assert info['exposed_permissions'] == ()
+    assert info['warning'] == ''
+    assert info['invalid_page_key'] is False
+    assert info['page_key'] is None
+
+
+def test_describe_page_none_page_key_is_empty_without_raising():
+    info = describe_assignment_page({'page_key': None})
+    assert info['has_page'] is False
+    assert info['grants_write'] is False
+    assert info['exposed_permissions'] == ()
+    assert info['warning'] == ''
+
+
+def test_describe_page_edit_of_a_writable_page_grants_write():
+    info = describe_assignment_page(
+        {'page_key': 'rooms', 'page_access_mode': 'edit'}
+    )
+    assert info['has_page'] is True
+    assert info['grants_write'] is True
+    assert 'rooms.view' in info['exposed_permissions']
+    assert 'rooms.manage' in info['exposed_permissions']
+    assert info['warning']
+
+
+def test_describe_page_view_of_a_writable_page_withholds_write():
+    info = describe_assignment_page(
+        {'page_key': 'rooms', 'page_access_mode': 'view'}
+    )
+    assert info['has_page'] is True
+    assert info['grants_write'] is False
+    assert 'rooms.view' in info['exposed_permissions']
+    assert 'rooms.manage' not in info['exposed_permissions']
+    assert info['warning'] == ''
+
+
+def test_describe_page_edit_of_a_page_with_no_writes_grants_nothing():
+    info = describe_assignment_page(
+        {'page_key': 'history', 'page_access_mode': 'edit'}
+    )
+    assert info['has_page'] is True
+    assert info['grants_write'] is False
+    assert info['warning'] == ''
+
+
+def test_describe_page_invalid_key_is_flagged_not_raised():
+    info = describe_assignment_page(
+        {'page_key': 'nope', 'page_access_mode': 'edit'}
+    )
+    assert info['has_page'] is False
+    assert info['invalid_page_key'] is True
+    assert info['grants_write'] is False
+    assert info['warning'] == ''
+
+
+def test_describe_page_empty_mapping_is_safe():
+    info = describe_assignment_page({})
+    assert info['has_page'] is False
+    assert info['page_key'] is None
+    assert info['exposed_permissions'] == ()
+    assert info['write_permissions'] == ()
+    assert info['warning'] == ''
+
+
+# ══════════════════════════════════════════════════════════════════════
+# POST /teachers/lookup-lists with action=page — the route the dean uses
+# to bind/unbind an assignment to a screen.
+# ══════════════════════════════════════════════════════════════════════
+
+def _new_assignment(db_path, name, sort_order=500):
+    """Insert a fresh general assignment row and return its id.
+
+    Uses the same raw-SQL pattern as the other tests here rather than the
+    route, so a route regression cannot make the fixture vanish silently.
+    """
+    conn = connect(str(db_path))
+    cursor = conn.execute(
+        "INSERT INTO admin_assignment_types "
+        "(name, default_hours, is_active, sort_order) VALUES (?, 0, 1, ?)",
+        (name, sort_order),
+    )
+    conn.commit()
+    row_id = cursor.lastrowid
+    conn.close()
+    return row_id
+
+
+def test_route_binds_an_assignment_to_a_page_in_view_mode(lookup_setup):
+    db_path, manager, _ = lookup_setup
+    row_id = _new_assignment(db_path, 'تكليف صفحة عرض')
+
+    response = _post(
+        manager, 'admin_assignment_type', 'page',
+        id=str(row_id), page_key='rooms', page_access_mode='view',
+    )
+
+    assert response.status_code == 200
+    assert _fetchone(
+        db_path,
+        'SELECT page_key, page_access_mode FROM admin_assignment_types '
+        'WHERE id = ?', (row_id,),
+    ) == {'page_key': 'rooms', 'page_access_mode': 'view'}
+
+
+def test_route_unbind_clears_the_page_and_reports_removal(lookup_setup):
+    db_path, manager, _ = lookup_setup
+    row_id = _new_assignment(db_path, 'تكليف إزالة صفحة')
+    _post(
+        manager, 'admin_assignment_type', 'page',
+        id=str(row_id), page_key='rooms', page_access_mode='edit',
+    )
+
+    response = _post(
+        manager, 'admin_assignment_type', 'page',
+        id=str(row_id), page_key='', page_access_mode='edit',
+    )
+
+    assert response.status_code == 200
+    assert _fetchone(
+        db_path,
+        'SELECT page_key FROM admin_assignment_types WHERE id = ?', (row_id,),
+    ) == {'page_key': None}
+    assert any(
+        'تم إزالة الصفحة' in message for message in _flash_messages(response)
+    )
+
+
+def test_route_rejects_an_unknown_page_key_as_json(lookup_setup):
+    db_path, manager, _ = lookup_setup
+    row_id = _new_assignment(db_path, 'تكليف صفحة خاطئة')
+    conn = connect(str(db_path))
+    conn.execute(
+        "UPDATE admin_assignment_types "
+        "SET page_key = 'rooms', page_access_mode = 'edit' WHERE id = ?",
+        (row_id,),
+    )
+    conn.commit()
+    conn.close()
+
+    response = _ajax_post(
+        manager, 'admin_assignment_type', 'page',
+        id=str(row_id), page_key='nope', page_access_mode='edit',
+    )
+
+    envelope = _assert_json_envelope(response, 400)
+    assert envelope['ok'] is False
+    # /     /     >---- الرفض لا يمسّ الربط القائم (rollback قبل الرد)
+    assert _fetchone(
+        db_path,
+        'SELECT page_key, page_access_mode FROM admin_assignment_types '
+        'WHERE id = ?', (row_id,),
+    ) == {'page_key': 'rooms', 'page_access_mode': 'edit'}
+
+
+def test_route_refuses_page_binding_for_a_non_admin_category(lookup_setup):
+    db_path, manager, _ = lookup_setup
+    qualification = _fetchone(
+        db_path, 'SELECT id FROM qualifications WHERE is_active = 1 LIMIT 1'
+    )
+    assert qualification is not None
+
+    response = _ajax_post(
+        manager, 'qualification', 'page',
+        id=str(qualification['id']), page_key='rooms',
+    )
+
+    envelope = _assert_json_envelope(response, 400)
+    assert envelope['ok'] is False
+    assert 'ربط الصفحات متاح للتكليفات الإدارية فقط' in envelope['message']
+
+
+# ══════════════════════════════════════════════════════════════════════
+# The rendered indicator — what the dean actually sees per row.
+# ══════════════════════════════════════════════════════════════════════
+
+def _row_article(body, row_id):
+    """The ``<article … data-id="row_id" …>…</article>`` slice of the page.
+
+    Scoped so a permission string or warning in a *different* row cannot
+    satisfy the assertion for this one.
+    """
+    marker = f'data-id="{row_id}"'
+    at = body.index(marker)
+    start = body.rfind('<article', 0, at)
+    end = body.index('</article>', at)
+    return body[start:end]
+
+
+def _squash(text):
+    """Collapse runs of whitespace so assertions survive re-indentation."""
+    return re.sub(r'\s+', ' ', text)
+
+
+def _admin_page(manager):
+    return manager.get(
+        '/teachers/lookup-lists?category=admin_assignment_type'
+    ).get_data(as_text=True)
+
+
+def test_rendered_edit_binding_warns_about_write_access(lookup_setup):
+    db_path, manager, _ = lookup_setup
+    row_id = _new_assignment(db_path, 'تكليف صفحة تحرير')
+    _post(
+        manager, 'admin_assignment_type', 'page',
+        id=str(row_id), page_key='rooms', page_access_mode='edit',
+    )
+
+    row_html = _row_article(_admin_page(manager), row_id)
+
+    assert 'rooms.manage' in row_html
+    # /     /     >---- «تعديل كامل» وحدها موجودة أيضاً في <option> الخاص بنمط
+    # /     /     >---- الوصول، فلا تصلح كدليل. نربط النص بشارة النمط: الشارة
+    # /     /     >---- تحمل صنف الخطأ وحده في وضع التعديل، و«rooms.manage»
+    # /     /     >---- يوجد في قائمة الصلاحيات لا في شارة النمط.
+    assert re.search(
+        r'font-semibold bg-error-container/30 text-on-error-container">'
+        r'\s*تعديل كامل\s*</span>',
+        row_html,
+    ), 'the edit access-mode badge must carry the edit styling'
+    assert _squash(WRITE_WARNING) in _squash(row_html)
+
+
+def test_rendered_view_binding_hides_the_write_permission(lookup_setup):
+    db_path, manager, _ = lookup_setup
+    row_id = _new_assignment(db_path, 'تكليف صفحة قراءة')
+    _post(
+        manager, 'admin_assignment_type', 'page',
+        id=str(row_id), page_key='rooms', page_access_mode='view',
+    )
+
+    row_html = _row_article(_admin_page(manager), row_id)
+
+    assert 'rooms.view' in row_html
+    assert 'rooms.manage' not in row_html
+    # /     /     >---- العبارة الفريدة لا <option> «عرض فقط» العام في نموذج الربط
+    assert 'عرض فقط — لا يمنح صلاحيات كتابة' in row_html
+    assert _squash(WRITE_WARNING) not in _squash(row_html)
+
+
+def test_rendered_unbound_row_says_no_page(lookup_setup):
+    db_path, manager, _ = lookup_setup
+    row_id = _new_assignment(db_path, 'تكليف بلا صفحة')
+
+    row_html = _row_article(_admin_page(manager), row_id)
+
+    # /     /     >---- الشارة الفريدة لا <option> «— لا صفحة مرتبطة —» في نموذج الربط
+    assert 'لا صفحة مرتبطة — لا صلاحيات إضافية' in row_html
+
+
+def test_rendered_edit_binding_to_a_read_only_page_has_no_warning(lookup_setup):
+    db_path, manager, _ = lookup_setup
+    row_id = _new_assignment(db_path, 'تكليف سجل التغييرات')
+    _post(
+        manager, 'admin_assignment_type', 'page',
+        id=str(row_id), page_key='history', page_access_mode='edit',
+    )
+
+    row_html = _row_article(_admin_page(manager), row_id)
+
+    assert 'هذه الصفحة لا تتضمّن صلاحيات كتابة' in row_html
+    assert 'عرض فقط — لا يمنح صلاحيات كتابة' not in row_html
+    assert _squash(WRITE_WARNING) not in _squash(row_html)
+
+
+def test_rendered_invalid_page_key_asks_to_rebind(lookup_setup):
+    """مفتاح صفحة قديم لا يطابق TASK_PAGES: الصف يدعو لإعادة الربط.
+
+    الربط القديم يبقى في القاعدة بعد إعادة تسمية الصفحة أو حذفها، فبدل
+    عرض «لا صفحة مرتبطة» الصامت يجب أن يقرأ العميد أن المفتاح تعذّر
+    التعرف عليه وأن عليه إعادة الربط.
+    """
+    db_path, manager, _ = lookup_setup
+    row_id = _new_assignment(db_path, 'تكليف صفحة قديمة')
+    conn = connect(str(db_path))
+    conn.execute(
+        "UPDATE admin_assignment_types SET page_key = 'does_not_exist' "
+        "WHERE id = ?",
+        (row_id,),
+    )
+    conn.commit()
+    conn.close()
+
+    row_html = _row_article(_admin_page(manager), row_id)
+
+    assert 'تعذر التعرف على الصفحة' in row_html
+    assert 'تعذر التعرف على الصفحة — أعد الربط' in _squash(row_html)

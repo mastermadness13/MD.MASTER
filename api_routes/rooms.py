@@ -13,7 +13,7 @@ from api_routes.helpers import (
     ok,
     pagination,
 )
-from flask_db import get_db
+from database.flask_db import get_db
 from security import csrf_required
 from services import classroom_service
 
@@ -78,7 +78,7 @@ def api_rooms_list():
 
 
 @bp.route('', methods=['POST'])
-@api_permission_required('rooms.manage')
+@api_permission_required('rooms.create')
 @csrf_required
 def api_room_create():
     data = body()
@@ -107,7 +107,7 @@ def api_room_detail(room_id):
 
 
 @bp.route('/<int:room_id>', methods=['PUT'])
-@api_permission_required('rooms.manage')
+@api_permission_required('rooms.edit')
 @csrf_required
 def api_room_update(room_id):
     db = get_db()
@@ -128,7 +128,7 @@ def api_room_update(room_id):
 
 
 @bp.route('/<int:room_id>', methods=['DELETE'])
-@api_permission_required('rooms.manage')
+@api_permission_required('rooms.delete')
 @csrf_required
 def api_room_delete(room_id):
     db = get_db()
@@ -142,7 +142,7 @@ def api_room_delete(room_id):
 
 
 @bp.route('/<int:room_id>/restore', methods=['POST'])
-@api_permission_required('rooms.manage')
+@api_permission_required('rooms.delete')
 @csrf_required
 def api_room_restore(room_id):
     db = get_db()
@@ -151,9 +151,15 @@ def api_room_restore(room_id):
 
 
 @bp.route('/<int:room_id>/permanent', methods=['DELETE'])
-@api_permission_required('rooms.manage')
+@api_permission_required('rooms.delete')
 @csrf_required
 def api_room_hard_delete(room_id):
     db = get_db()
+    # /     /     >---- الحذف النهائي مرفوض دائماً ما دامت القاعة مرتبطة:
+    # /     /     >---- الصف يُفكّ ويبقى exam_schedule بلا قاعة بلا إنذار.
+    counts = classroom_service.room_usage(db, room_id)
+    if counts['total']:
+        return err('لا يمكن الحذف النهائي — ' + classroom_service.usage_summary(counts),
+                   409, errors={'usage': counts})
     classroom_service.room_hard_delete(db, room_id)
     return ok(True)

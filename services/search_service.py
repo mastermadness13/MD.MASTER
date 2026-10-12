@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from typing import List
 
-from flask_db import get_db
+from database.flask_db import get_db
 
 from services.search import (
     build_course_search,

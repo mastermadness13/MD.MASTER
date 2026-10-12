@@ -27,7 +27,7 @@ import re
 
 import pytest
 
-import flask_db
+import database.flask_db as flask_db
 from core.constants.permissions import ROLE_PERMISSIONS
 from core.constants.task_pages import TASK_PAGES
 from database.connection import connect

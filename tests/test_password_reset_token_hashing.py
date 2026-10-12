@@ -23,7 +23,7 @@ def test_hash_differs_per_token():
 
 
 def test_create_password_reset_stores_only_the_hash(app_fx):
-    from flask_db import get_db
+    from database.flask_db import get_db
     from database.repositories.user_repository import UserRepository
 
     with app_fx.app_context():

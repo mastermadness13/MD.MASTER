@@ -77,6 +77,55 @@ class RoomRepository(BaseRepository):
             'SELECT id, name, type, capacity FROM rooms WHERE deleted_at IS NULL ORDER BY name'
         ).fetchall()]
 
+    # /     /     >---- الجداول التي تشير إلى القاعة، وهل لكل منها حذف ناعم.
+    # /     /     >---- exam_schedule ليس له deleted_at: أي صف موجود فيها-count.
+    USAGE_TABLES = (
+        ('exam_schedule', False),
+        ('timetable', True),
+        ('teacher_taught_courses', False),
+    )
+
+    @staticmethod
+    def _empty_usage() -> Dict[str, int]:
+        return {'exam_schedule': 0, 'timetable': 0, 'teacher_taught_courses': 0,
+                'total': 0}
+
+    # /     /     >---- مراجع القاعة: كم صف يشير إليها في كل جدول.
+    # /     /     >---- خدمات الحذف لا تفحص المراجع إطلاقاً، ومفاتيح SQLite
+    # /     /     >---- قد تكون متوقفة، فالحذف النهائي يفكك exam_schedule
+    # /     /     >---- ويُفرغ exam.hall بصمت. العدّ هنا هو ما يمنع ذلك.
+    def usage_counts(self, room_id: int) -> Dict[str, int]:
+        """Reference counts for one room, in every table that points at it."""
+        return self.usage_map([room_id]).get(int(room_id), self._empty_usage())
+
+    # /     /     >---- نفس العدّ لكن دفعة واحدة: ثلاثة استعلامات مُجمّعة
+    # /     /     >---- (GROUP BY room_id) بدل حلقة على كل قاعة في الصفحة.
+    def usage_map(self, room_ids) -> Dict[int, Dict[str, int]]:
+        """Reference counts for many rooms, keyed by room id."""
+        ids = []
+        for room_id in room_ids or ():
+            try:
+                ids.append(int(room_id))
+            except (TypeError, ValueError):
+                continue
+        result = {room_id: self._empty_usage() for room_id in ids}
+        if not ids:
+            return result
+        placeholders = ','.join('?' * len(ids))
+        for table, has_soft_delete in self.USAGE_TABLES:
+            query = (f'SELECT room_id, COUNT(*) AS uses FROM {table} '
+                     f'WHERE room_id IN ({placeholders})')
+            if has_soft_delete:
+                query += ' AND deleted_at IS NULL'
+            query += ' GROUP BY room_id'
+            for row in self.db.execute(query, ids).fetchall():
+                counts = result.get(row['room_id'])
+                if counts is not None:
+                    counts[table] = row['uses']
+        for counts in result.values():
+            counts['total'] = sum(counts[table] for table, _soft in self.USAGE_TABLES)
+        return result
+
     # /     /     >---- نصنع قاعة جديدة ونرجع معرّفها
     def create(self, data: Dict[str, Any], commit: bool = True) -> int:
         self.db.execute(

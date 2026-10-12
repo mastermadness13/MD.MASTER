@@ -33,7 +33,7 @@ import sqlite3
 import pytest
 from werkzeug.datastructures import FileStorage
 
-import flask_db
+import database.flask_db as flask_db
 from core.constants.uploads import ALLOWED_UPLOAD_EXTENSIONS
 from database.connection import connect
 from database.schema import ensure_schema

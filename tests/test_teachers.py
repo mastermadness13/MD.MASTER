@@ -5,7 +5,7 @@ from itertools import count
 
 import pytest
 
-import flask_db
+import database.flask_db as flask_db
 from database.connection import connect
 from database.repositories.teacher_repository import TeacherRepository
 from database.repositories.user_repository import UserRepository

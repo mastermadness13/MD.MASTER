@@ -67,3 +67,68 @@ def normalize_academic_number(value: str | None) -> str | None:
     if not s or s in _ACademic_NUMBER_SENTINELS:
         return None
     return s
+
+# ─────────────────────────────────────────────
+
+# /     /     >---- طيّات إضافية للبحث المرن (ة، حروف فارسية، أرقام هندية)
+_SEARCH_FOLD_EXTRA = {
+    '\u0671': '\u0627',   # ٱ → ا
+    '\u0629': '\u0647',   # ة → ه
+    '\u06A9': '\u0643',   # ک → ك
+    '\u06CC': '\u064A',   # ی → ي
+    '\u06D5': '\u0647',   # ە → ه
+    '\u06CD': '\u064A',   # ۍ → ي
+    '\u06AF': '\u0643',   # گ → ك
+    '\u067E': '\u0628',   # پ → ب
+    '\u0686': '\u062C',   # چ → ج
+    '\u0698': '\u0632',   # ژ → ز
+}
+
+# /     /     >---- نحيط: التطويل ومحارف الاتجاه غير المرئية
+_STRIP_CHARS = frozenset('\u0640\u200b\u200c\u200d\u200e\u200f\ufeff')
+
+# /     /     >---- الأرقام العربية الهندية والفارسية → ASCII
+_DIGIT_FOLD = {
+    base + i: str(i)
+    for base in (0x0660, 0x06F0)
+    for i in range(10)
+}
+
+
+# /     /     >---- طيّ نص عربي للبحث المرن (مرن وليس حرفياً)
+def normalize_search_text(text) -> str:
+    """Fold Arabic text for fuzzy, non-literal search comparison.
+
+    Strictly a superset of :func:`normalize_arabic_name` (which is unchanged).
+    Additionally folds taa-marbuta, Persian letterforms, tatweel, bidi marks
+    and Arabic-Indic / Extended Arabic-Indic digits, and lowercases Latin
+    text so SQLite's ASCII-only ``LIKE`` case folding also applies.
+
+    Returns '' for falsy input, so ``normalize_search(NULL) LIKE '%x%'``
+    is simply false rather than an error.
+    """
+    if not text:
+        return ''
+    # /     /     >---- نبدأ من التطبيع الأساسي (همزة/تشكيل/مسافات)
+    s = normalize_arabic_name(text)
+    # /     /     >---- نضيف طيّات البحث الإضافية
+    s = ''.join(_SEARCH_FOLD_EXTRA.get(ch, ch) for ch in s)
+    # /     /     >---- نشيل التطويل والمحارف غير المرئية
+    s = ''.join(ch for ch in s if ch not in _STRIP_CHARS)
+    # /     /     >---- نحوّل الأرقام الهندية إلى ASCII
+    s = s.translate(_DIGIT_FOLD)
+    # /     /     >---- نضغط المسافات ونخفض الحروف اللاتينية
+    return re.sub(r'\s+', ' ', s).strip().lower()
+
+
+# /     /     >---- نهرّب محارف LIKE حتى ما يصير البحث قنبلة wildcards
+def escape_like(value) -> str:
+    """Escape ``\\``, ``%`` and ``_`` so user input matches literally.
+
+    NOTE: SQLite's ``LIKE`` has **no default escape character** — every
+    emitted predicate MUST carry an explicit ``ESCAPE '\\'`` clause.
+    """
+    if not value:
+        return ''
+    return (str(value).replace('\\', '\\\\')
+            .replace('%', '\\%').replace('_', '\\_'))

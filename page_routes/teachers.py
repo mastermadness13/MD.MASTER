@@ -6,11 +6,12 @@ import os
 import sqlite3
 import uuid
 
-from flask_db import get_db
+from database.flask_db import get_db
 from core.constants import INITIAL_CODE_EXPIRY_DAYS
 from core.constants.task_pages import (
     ACCESS_MODES,
     TASK_PAGES,
+    describe_assignment_page,
     is_valid_page_key,
     normalise_access_mode,
 )
@@ -23,7 +24,8 @@ from utils.format import paginate
 from services import teacher_service
 from services import course_service
 from services import hod_resolution
-from services.search import build_teacher_search, highlight_text
+from services.search import (build_text_search_where, build_teacher_search,
+                               highlight_search_terms, search_terms)
 from services import faculty_performance_service as fps
 
 _PHOTO_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp'}
@@ -133,10 +135,16 @@ def _current_dean(db):
 
 
 def _admin_task_names(db, selected_id=None, selected='') -> list:
-    """Return active choices plus a selected inactive or legacy value."""
+    """Return active choices plus a selected inactive or legacy value.
+
+    Each entry also carries ``page_info`` (see ``describe_assignment_page``):
+    the form names an administrative task, and what that task actually grants
+    is the page it is bound to.  Without it the screen lists roles and leaves
+    the reader to guess what "قسم الامتحانات" opens.
+    """
     rows = db.execute(
         '''SELECT id, name, default_hours, is_active, sort_order,
-                  internal_code, is_system_linked
+                  internal_code, is_system_linked, page_key, page_access_mode
            FROM admin_assignment_types
            WHERE is_active = 1
            ORDER BY sort_order, id'''
@@ -147,11 +155,12 @@ def _admin_task_names(db, selected_id=None, selected='') -> list:
         if task.get('internal_code') == 'dean':
             task['current_dean_name'] = dean['name'] if dean else ''
             task['current_dean_username'] = dean['username'] if dean else ''
+        task['page_info'] = describe_assignment_page(task)
     selected = (selected or '').strip()
     if selected_id and not any(task['id'] == selected_id for task in tasks):
         row = db.execute(
             '''SELECT id, name, default_hours, is_active, sort_order,
-                      internal_code, is_system_linked
+                      internal_code, is_system_linked, page_key, page_access_mode
                FROM admin_assignment_types WHERE id = ?''',
             (selected_id,),
         ).fetchone()
@@ -160,22 +169,24 @@ def _admin_task_names(db, selected_id=None, selected='') -> list:
             if task.get('internal_code') == 'dean':
                 task['current_dean_name'] = dean['name'] if dean else ''
                 task['current_dean_username'] = dean['username'] if dean else ''
+            task['page_info'] = describe_assignment_page(task)
             tasks.append(task)
     elif selected and not selected_id and not any(task['name'] == selected for task in tasks):
         row = db.execute(
             '''SELECT id, name, default_hours, is_active, sort_order,
-                      internal_code, is_system_linked
+                      internal_code, is_system_linked, page_key, page_access_mode
                FROM admin_assignment_types WHERE name = ?''',
             (selected,),
         ).fetchone()
         task = dict(row) if row else {
             'id': None, 'name': selected, 'default_hours': 0,
             'is_active': 0, 'sort_order': 0, 'internal_code': None,
-            'is_system_linked': 0,
+            'is_system_linked': 0, 'page_key': None, 'page_access_mode': None,
         }
         if task.get('internal_code') == 'dean':
             task['current_dean_name'] = dean['name'] if dean else ''
             task['current_dean_username'] = dean['username'] if dean else ''
+        task['page_info'] = describe_assignment_page(task)
         tasks.append(task)
     return tasks
 
@@ -592,11 +603,16 @@ def _lookup_choices(db, category, exclude_id):
 
 
 def _render_lookup_lists(db, category, *, delete_pending=None):
+    rows = _lookup_rows(db, category)
+    if category == 'admin_assignment_type':
+        # /     /     >---- لكل نوع تكليف: الصفحة المرتبطة والصلاحيات التي يمنحها تلقائياً
+        for row in rows:
+            row['page_info'] = describe_assignment_page(row)
     return render_template(
         'teachers/lookup_lists.html',
         categories=_LOOKUP_CATEGORIES,
         selected_category=category,
-        rows=_lookup_rows(db, category),
+        rows=rows,
         task_pages=TASK_PAGES,
         access_modes=ACCESS_MODES,
         departments=db.execute(
@@ -986,8 +1002,10 @@ def teachers_list():
     role = session.get('role', '')
     user_data = current_user()
     search = request.args.get('search', '').strip()
-    dept_filter = request.args.get('department_id', '')
+    dept_filter = request.args.get('department_id', '', type=int) or ''
     page = request.args.get('page', 1, type=int)
+    # /     /     >---- كلمات البحث المطيَّعة: للتظليل وعقد المطابقة
+    terms = search_terms(search)
 
     user_dept_id = None
     if role == 'head_of_department' and user_data:
@@ -1045,11 +1063,15 @@ def teachers_list():
                               per_page=per_page, search=search,
                               department_id=dept_filter,
                               departments=departments, user=user_data,
-                              highlight=highlight_text)
+                              highlight=highlight_search_terms,
+                              highlight_terms=terms)
 
     return render_template('teachers/list.html', teachers=rows, total=total, page=page,
                           per_page=per_page, search=search, department_id=dept_filter,
                           departments=departments,
+                          highlight=highlight_search_terms,
+                          # /     /     >---- نمرّر الكلمات المطويّة للقالب بدل نص البحث الخام
+                          highlight_terms=terms,
                           assign_default_dept=session.get('hod_department_id')
                           or session.get('department_id'),
                           user=user_data, print_teachers=_full_teacher_list())
@@ -1997,9 +2019,12 @@ def teacher_pool():
         'NOT EXISTS (SELECT 1 FROM teacher_departments tdx '
         'WHERE tdx.teacher_id = t.id AND tdx.department_id = ?)',
     ]
-    if search:
-        where.append('(t.name LIKE ? OR t.academic_number LIKE ?)')
-        params.extend([f'%{search}%', f'%{search}%'])
+    # /     /     >---- نفس محرّك البحث الذكي (بلا صلات جديدة)
+    clause, clause_params = build_text_search_where(
+        ['t.name', 't.academic_number'], search)
+    if clause:
+        where.append(clause)
+        params.extend(clause_params)
     where_clause = ' AND '.join(where)
     rows = db.execute(
         f'SELECT t.id, t.name, t.academic_number '
@@ -2114,16 +2139,20 @@ def dept_unassign():
 def teachers_bulk_ids():
     """Return all teacher ids matching the current search/filter, across pages."""
     search = request.args.get('search', '').strip()
-    dept_filter = request.args.get('department_id', '')
+    dept_filter = request.args.get('department_id', '', type=int) or ''
     role = session.get('role', '')
     user_dept_id = None
     if role == 'head_of_department':
         user_dept_id = session.get('hod_department_id')
     query, params, _ = build_teacher_search(search, dept_filter, user_dept_id, page=1)
     db = get_db()
-    rows = db.execute(query, params).fetchall()
+    # /     /     >---- نحدّ عدد المعرفات حتى لا نُرجع آلاف الصفوف دفعة واحدة
+    max_ids = 5000
+    rows = db.execute(f'{query} LIMIT ?', params + [max_ids + 1]).fetchall()
+    truncated = len(rows) > max_ids
+    rows = rows[:max_ids]
     ids = [r['id'] for r in rows]
-    return jsonify({'ids': ids, 'total': len(ids)})
+    return jsonify({'ids': ids, 'total': len(ids), 'truncated': truncated})
 
 
 @bp.route('/bulk-delete', methods=['POST'])

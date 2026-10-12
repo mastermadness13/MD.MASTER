@@ -3,7 +3,7 @@ import re
 from flask import Blueprint, session, request, render_template, redirect, url_for, flash, abort
 from werkzeug.security import check_password_hash
 
-from flask_db import get_db
+from database.flask_db import get_db
 from core.rate_limiter import RateLimiter
 from database.history import add_history
 from security import csrf_required, login_required, permission_required, role_required

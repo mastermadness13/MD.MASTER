@@ -646,7 +646,7 @@ def get_dashboard_stats(role: str, show: int = 5) -> dict:
     The *role* argument is accepted for signature compatibility with the
     original helper and is currently unused.
     """
-    from flask_db import get_db
+    from database.flask_db import get_db
 
     db = get_db()
     stats = {

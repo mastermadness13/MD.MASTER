@@ -6,7 +6,7 @@ from typing import Any, Optional
 
 from flask import session
 
-from flask_db import get_db
+from database.flask_db import get_db
 
 # ─────────────────────────────────────────────
 

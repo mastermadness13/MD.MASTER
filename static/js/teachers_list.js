@@ -10,11 +10,15 @@ SearchComponent.init({
   paginationSelector: '.search-pagination',
   filterSelectors: { department_id: 'select[name=department_id]' },
   debounceMs: 300,
+  resetSelector: '#resetFilters',
+  formAction: (window.TEACHERS_LIST_BOOT || {}).listUrl || null,
+  onComplete: function () {
+    if (window.syncTeacherBulk) window.syncTeacherBulk();
+  },
 });
 
 (function () {
-  var selectAll = document.getElementById('selectAllTeachers');
-  var checks = Array.prototype.slice.call(document.querySelectorAll('.teacher-check'));
+var selectAll = document.getElementById('selectAllTeachers');
   var countEl = document.getElementById('selectedCount');
   var clearBtn = document.getElementById('clearSelectionBtn');
   var deleteBtn = document.getElementById('bulkDeleteBtn');
@@ -36,7 +40,21 @@ SearchComponent.init({
     return params.toString();
   }
 
+  // /  البحث عبر AJAX يستبدل tbody، فالقائمة المخزّنة تصير عناصر يتيمة
+  function getChecks() {
+    return Array.prototype.slice.call(document.querySelectorAll('.teacher-check'));
+  }
+
+  function bindChecks() {
+    getChecks().forEach(function (c) {
+      if (c.dataset.bound) return;
+      c.dataset.bound = '1';
+      c.addEventListener('change', update);
+    });
+  }
+
   function update() {
+    var checks = getChecks();
     var selected = checks.filter(function (c) { return c.checked; }).length;
     if (countEl) countEl.textContent = selectAllActive ? allIds.length : selected;
     if (clearBtn) clearBtn.disabled = (selectAllActive ? allIds.length : selected) === 0;
@@ -70,8 +88,11 @@ SearchComponent.init({
       .then(function (r) { return r.json(); })
       .then(function (data) {
         allIds = data.ids || [];
+        if (data.truncated) {
+          alert('النتائج كبيرة جداً — تم تحميل ' + allIds.length + ' معرّف فقط. ضيّق البحث أو رشّح بالقسم لتحديد الكل.');
+        }
         selectAllActive = true;
-        checks.forEach(function (c) { c.checked = true; });
+        getChecks().forEach(function (c) { c.checked = true; });
         update();
       })
       .catch(function () {
@@ -84,6 +105,7 @@ SearchComponent.init({
 
   if (selectAll) {
     selectAll.addEventListener('change', function () {
+      var checks = getChecks();
       if (selectAll.checked) {
         checks.forEach(function (c) { c.checked = true; });
       } else {
@@ -101,13 +123,13 @@ SearchComponent.init({
     });
   }
 
-  checks.forEach(function (c) { c.addEventListener('change', update); });
+  bindChecks();
 
   if (clearBtn) {
     clearBtn.addEventListener('click', function () {
       selectAllActive = false;
       allIds = [];
-      checks.forEach(function (c) { c.checked = false; });
+      getChecks().forEach(function (c) { c.checked = false; });
       update();
     });
   }
@@ -115,7 +137,7 @@ SearchComponent.init({
   function buildSelectedIds() {
     if (selectAllActive) return allIds.slice();
     var ids = [];
-    checks.forEach(function (c) {
+    getChecks().forEach(function (c) {
       if (c.checked) ids.push(c.value);
     });
     return ids;
@@ -175,5 +197,14 @@ SearchComponent.init({
     });
   }
 
+  // /  بعد كل بحث AJAX: مجموعة نتائج جديدة تُبطل التحديد السابق
+  window.syncTeacherBulk = function () {
+    selectAllActive = false;
+    allIds = [];
+    bindChecks();
+    update();
+  };
+
+  bindChecks();
   update();
 })();

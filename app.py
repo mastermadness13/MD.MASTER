@@ -13,7 +13,7 @@ from flask import (
 
 from config import Config
 from core.constants import INITIAL_CODE_EXPIRY_DAYS
-from flask_db import get_db, close_db, init_app as db_init_app
+from database.flask_db import get_db, close_db, init_app as db_init_app
 
 from security import generate_csrf_token
 from security import inject_navigation
@@ -190,7 +190,6 @@ ASSET_PREFIXES = ('/static/', '/favicon.ico')
 
 # /     /     >---- الصفحات التي تحمّل Tom Select من jsDelivr.
 # /     /     >---- courses.list هو الوحيد الذي يهيّئ قائمة منسدلة فعلاً
-# /     /     >---- (courses_list.js:‏#mPrereq). أضف نقطة نهاية هنا إن
 # /     /     >---- أضفت select[multiple] في صفحة جديدة.
 TOM_SELECT_ENDPOINTS = {'courses.courses_list'}
 
@@ -203,10 +202,7 @@ def _load_asset_manifest(static_root: str) -> dict:
     """Read static/dist/manifest.json, mapping source paths to built files.
 
     A missing or unreadable manifest is not fatal here: callers fall back to
-    the unhashed source path so routing and every non-asset URL keep working.
-    It does mean no Tailwind, though, because the utilities are compiled into
-    static/dist/ and the Play CDN that used to generate them at runtime is
-    gone. `_asset_health` reports that state so it cannot pass unnoticed.
+    the unhashed source path so routing and source assets keep working.
     """
     empty = {'css': {}, 'js': {}, 'builtAt': None}
     try:
@@ -226,19 +222,28 @@ def _load_asset_manifest(static_root: str) -> dict:
 
 
 def _asset_health(static_root: str, manifest: dict) -> dict:
-    """Check that the built bundle exists and is not older than its sources.
-
-    The Tailwind Play CDN was removed, so `static/dist/` is now the ONLY
-    source of Tailwind utilities. If it is missing or stale the UI still
-    renders, but every utility class is unstyled -- which reads as "the
-    layout is broken" rather than "an asset is missing". So this turns that
-    condition into an explicit, loggable state.
-    """
+    """Check built bundles, or verify the checked-in source-style fallback."""
     dist = os.path.join(static_root, 'dist')
     health = {'ok': True, 'reason': None, 'built_at': manifest.get('builtAt')}
 
     if not manifest['css'] and not manifest['js']:
-        health.update(ok=False, reason='manifest-missing')
+        source_fallbacks = (
+            'css/legacy-app.css',
+            'css/app.css',
+            'css/spa.css',
+            'public/shared/tailwind.css',
+        )
+        missing = [
+            path for path in source_fallbacks
+            if not os.path.isfile(os.path.join(static_root, path))
+        ]
+        if missing or not os.path.isdir(os.path.join(static_root, 'js')):
+            health.update(
+                ok=False,
+                reason=f'source-fallback-missing:{", ".join(missing) or "js"}',
+            )
+        else:
+            health.update(ok=True, reason='source-assets')
         return health
 
     # Manifest values are root-relative URLs ("/static/dist/app.<hash>.css"),
@@ -777,13 +782,13 @@ def create_app(*, allow_debug: bool = False):
 if __name__ == '__main__':
     if 'init-db' in sys.argv:
         # /     /     >---- إذا كتبنا flask init-db نهيئ القاعدة فقط
-        from flask_db import init_db, bootstrap_defaults as _seed
+        from database.flask_db import init_db, bootstrap_defaults as _seed
         init_db()
         _seed()
         print('Database initialized and seeded.')
     else:
         # /     /     >---- نشغّل السيرفر بشكل طبيعي
-        from flask_db import init_db, bootstrap_defaults as _seed
+        from database.flask_db import init_db, bootstrap_defaults as _seed
         init_db()
         _seed()
         # /     /     >---- وضع التصحيح اختياري (FLASK_DEBUG=1) — إعادة التشغيل التلقائية

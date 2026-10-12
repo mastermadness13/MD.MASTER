@@ -73,13 +73,16 @@ NAV_ITEMS = [
         'section': 'main',
     },
     # ── الجدول الامتحانات ────────────────────────────────────────
+    # /     /     >---- القاعات انتقلت داخل هذا القسم، فالصورة الفرعية
+    # /     /     >---- exams.exams_rooms تُبقي عنصر «الجدول الامتحانات»
+    # /     /     >---- مميّزاً على صفحتها تماماً كما كان على صفحة الجدول.
     {
         'key': 'exams',
         'endpoint': 'exams.exams',
         'icon': 'grading',
         'label': 'الجدول الامتحانات',
         'permission': 'exams.view',
-        'active_keys': ['exams.exams'],
+        'active_keys': ['exams.exams', 'exams.exams_rooms'],
         'section': 'main',
     },
     # ── رفع محتوى المقرر (المناهج والمفردات) ──────────────────────
@@ -114,16 +117,10 @@ NAV_ITEMS = [
         'active_keys': ['departments'],
         'section': 'more',
     },
-    # القاعات — للقراءة فقط؛ الإنشاء/التعديل/الحذف خلف rooms.manage
-    {
-        'key': 'rooms',
-        'endpoint': 'classrooms.rooms_list',
-        'icon': 'meeting_room',
-        'label': 'القاعات',
-        'permission': 'rooms.view',
-        'active_keys': ['rooms'],
-        'section': 'more',
-    },
+    # /     /     >---- القاعات لا عنصر مستقل هنا: واجهتها انتقلت إلى قسم
+    # /     /     >---- الامتحانات (exams.exams_rooms) لأن اختيار القاعة جزء
+    # /     /     >---- من الجدولة. الإنشاء والتعديل والحذف خلف rooms.create /
+    # /     /     >---- rooms.edit / rooms.delete على الخادم لا على هذا السطر.
 ]
 
 

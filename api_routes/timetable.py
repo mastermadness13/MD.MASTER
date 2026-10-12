@@ -12,7 +12,7 @@ from api_routes.helpers import (
 )
 from core.constants.ui import ARABIC_DAYS, WEEK_DAYS, WEEK_DAYS_ALT
 from core.validators import integer_between, valid_time
-from flask_db import get_db
+from database.flask_db import get_db
 from security import csrf_required
 from services import notification_service, timetable_service
 from services.timetable_scope import (

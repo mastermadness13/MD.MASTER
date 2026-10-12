@@ -20,6 +20,7 @@ from functools import wraps
 from flask import flash, jsonify, redirect, request, session, url_for
 
 from core.constants import ROLE_LABELS, ROLE_PERMISSIONS
+from core.constants.permission_implications import expand_permissions
 
 # ترتيب الأدوار (الأعلى أولاً). بعد تسجيل الدخول الطالب
 # ينزل على أعلى دور عنده، ويقدر يبدل بين الأدوار داخل التطبيق.
@@ -113,11 +114,17 @@ def get_user_permissions(role, department_id=None) -> set:
     *department_id* is accepted for signature compatibility and is ignored.
     When *role* is a collection, the result is the union of each role's
     permissions (multi-role resolution).
+
+    The union is then expanded through
+    ``core.constants.permission_implications``: a coarse grant left over from
+    before the routes were split (``rooms.manage``) still opens the fine doors
+    (``rooms.create``…) those routes now ask for.  Without that step the split
+    would have silently revoked every legacy grant.
     """
     perms = set()
     for r in _normalize_roles(role):
         perms |= ROLE_PERMISSIONS.get(r, set())
-    return perms
+    return expand_permissions(perms)
 
 # ─────────────────────────────────────────────
 
@@ -137,20 +144,29 @@ def has_permission(role, permission: str | None, department_id=None) -> bool:
 
 
 def _write_blueprints(permission: str) -> frozenset:
-    """Blueprints whose endpoints are gated by *permission* itself.
+    """Blueprints whose endpoints are gated by *permission*.
 
     Derived from the live URL map rather than a hand-written list, because one
     page family is served by more than one blueprint: ``classrooms`` renders
     the rooms page while ``api_rooms`` is the JSON surface the SPA writes
-    through, and both declare ``rooms.manage``.  Testing the blueprint against
-    the page's HTML name alone let every ``/api/*`` write sail past a
-    read-only assignment.
+    through.  Testing the blueprint against the page's HTML name alone let every
+    ``/api/*`` write sail past a read-only assignment.
+
+    The match is **implication-aware**: a view counts when its stamped
+    ``_required_permission`` is anything *permission* implies, not only the
+    identical string.  The rooms routes now declare ``rooms.create`` /
+    ``rooms.edit`` / ``rooms.delete`` instead of the coarse ``rooms.manage``, so
+    an exact-match lookup would return an empty set for ``rooms.manage`` — and
+    an empty set makes ``_is_demoted_write`` false for every write, which is the
+    silent security regression this function exists to prevent.
 
     Both ``permission_required`` and ``api_permission_required`` stamp
     ``_required_permission`` on the view function, so this single lookup covers
     every door and keeps covering routes added later.
 
-    Cached on the app: the URL map is fixed once blueprints are registered.
+    Cached on the app: the URL map is fixed once blueprints are registered, and
+    the implication map is a static literal, so one entry per queried
+    permission is stable for the life of the app.
     """
     from flask import current_app
 
@@ -160,12 +176,13 @@ def _write_blueprints(permission: str) -> frozenset:
     except KeyError:
         pass
 
+    guarded_by = expand_permissions({permission})
     found = set()
     for endpoint in current_app.url_map.iter_rules():
         view_func = current_app.view_functions.get(endpoint.endpoint)
         if view_func is None:
             continue
-        if getattr(view_func, '_required_permission', None) != permission:
+        if getattr(view_func, '_required_permission', None) not in guarded_by:
             continue
         blueprint_name = endpoint.endpoint.rsplit('.', 1)[0]
         if blueprint_name != endpoint.endpoint:
@@ -186,6 +203,10 @@ def _is_demoted_write(permission: str) -> bool:
     *and* the request sits on a blueprint that gates that same permission.  The
     second half is what brings the ``/api/*`` twin in with the HTML page,
     instead of trusting a single blueprint name to name the whole family.
+    ``render_blueprints`` widens it once more for a page that a *different*
+    blueprint also serves: the rooms page is rendered by ``exams`` as well, so a
+    read-only holder would otherwise see the write buttons there and get a 403
+    the moment they pressed them.
     """
     from flask import has_request_context
 
@@ -205,9 +226,17 @@ def _is_demoted_write(permission: str) -> bool:
     page = TASK_PAGES.get(page_key)
     if page is None:
         return False
-    if permission not in page['write_permissions']:
+    # /     /     >---- الكتابات تُوسَّع قبل الاختبار: الصفحة قد تعلن
+    # /     /     >---- rooms.manage بينما الأبواب صارت تسأل rooms.create،
+    # /     /     >---- فالخسارة الحقيقية تُقاس بالصلاحية الواردة لا
+    # /     /     >---- بالمكتوبة حرفاً بحرف.
+    # /     /     >---- وصلاحية العرض تُستثنى عمداً: تخفيضها تسحب القراءة
+    # /     /     >---- مع الكتابة فيرفض الخادم عرض الصفحة نفسها.
+    writes = expand_permissions(page['write_permissions']) - {page['view_permission']}
+    if permission not in writes:
         return False
-    return request.blueprint in _write_blueprints(permission)
+    blueprints = _write_blueprints(permission) | set(page.get('render_blueprints', ()))
+    return request.blueprint in blueprints
 
 # ─────────────────────────────────────────────
 
@@ -415,6 +444,10 @@ def inject_navigation() -> dict:
     ``nav_items``/``user_permissions``/``has_permission``/``header_messages_url``
     reflect the user's active role. Granted roles are exposed separately only
     for the role switcher.
+
+    ``has_permission`` is the gate's own function, not a membership test: the
+    template asks the same question the route guard will ask, so a hidden
+    button and a refused POST can never disagree.
     """
     from core.constants.navigation import get_nav_for_permissions
     roles = get_active_roles()
@@ -423,14 +456,14 @@ def inject_navigation() -> dict:
     perms = get_user_permissions(roles, dept_id)
     from services.role_label_service import get_role_labels
     if session.get('user_id'):
-        from flask_db import get_db
+        from database.flask_db import get_db
         role_labels = get_role_labels(get_db())
     else:
         role_labels = ROLE_LABELS
     return {
         'nav_items': get_nav_for_permissions(perms),
         'user_permissions': perms,
-        'has_permission': lambda perm: perm in perms,
+        'has_permission': lambda perm: has_permission(roles, perm, dept_id),
         'header_messages_url': get_header_messages_url(roles),
         'role_labels': role_labels,
         'hide_sidebar': False,

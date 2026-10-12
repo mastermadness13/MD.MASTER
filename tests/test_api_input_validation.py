@@ -14,7 +14,7 @@ import sqlite3
 
 import pytest
 
-import flask_db
+import database.flask_db as flask_db
 from api_routes.courses import _validate_course
 from api_routes.timetable import _entry_fields_valid
 from core.validators import (

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * mobile_actions.js — app-like mobile interactions for record-list tables.
  *
  *  A. Tap a table row (phones) → bottom action sheet built from the row's
@@ -25,7 +25,7 @@
 
   /* Tables that are input canvases / special views — never row-menus */
   var TABLE_BLACKLIST = '.gradebook-table, .timetable, .timetable-grid, ' +
-    '.matrix-grid, .cc-sheet table, [data-no-row-menu]';
+    '.exam-table, .matrix-grid, .cc-sheet table, [data-no-row-menu]';
 
   var ICON_AR = {
     person: 'الملف التفصيلي', visibility: 'عرض', visibility_off: 'إخفاء',

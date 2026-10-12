@@ -24,8 +24,11 @@ Usage in routes::
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Sequence, Tuple
+
+from utils.text import escape_like, normalize_search_text
 
 
 @dataclass
@@ -50,6 +53,11 @@ class SearchConfig:
 
     # Extra SELECT columns beyond the main table.*
     select_extra: List[str] = field(default_factory=list)
+
+    # ── Opt-in folded ("smart") search; see build_text_search_where ──
+    smart_search: bool = False                 # off by default for every other page
+    smart_sql_fn: str = 'normalize_search'     # UDF registered in database/connection.py
+    smart_max_tokens: int = 4
 
 
 # /     /     >---- فلتر مسجّل: يربط متغير الطلب بعمود SQL
@@ -92,9 +100,20 @@ def build_search_query(
 
     # /     /     >---- البحث: مطابقة OR على كل أعمدة البحث
     if search and config.search_columns:
-        conditions = ' OR '.join(f'{col} LIKE ?' for col in config.search_columns)
-        where.append(f'({conditions})')
-        params.extend([f'%{search}%'] * len(config.search_columns))
+        if config.smart_search:
+            # /     /     >---- البحث الذكي: طيّ عربي + تقسيم كلمات
+            clause, clause_params = build_text_search_where(
+                config.search_columns, search,
+                sql_fn=config.smart_sql_fn,
+                max_tokens=config.smart_max_tokens,
+            )
+            if clause:
+                where.append(clause)
+                params.extend(clause_params)
+        else:
+            conditions = ' OR '.join(f'{col} LIKE ?' for col in config.search_columns)
+            where.append(f'({conditions})')
+            params.extend([f'%{search}%'] * len(config.search_columns))
 
     # /     /     >---- شروط إضافية من المستدعي
     if extra_where:
@@ -126,6 +145,102 @@ def build_search_query(
     return query, params
 
 
+# ─────────────────────────────────────────────
+
+# /     /     >---- سقف طول البحث: يمنع طلبات ضخمة وقنابل LIKE
+MAX_SEARCH_LENGTH = 120
+
+# /     /     >---- نتعرّف هل النص فيه حروف عربية (نحتاج الطيّة) ولا ASCII فقط
+_ARABIC_RE = re.compile(
+    '[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF'
+    '\uFB50-\uFDFF\uFE70-\uFEFF]'
+)
+
+# /     /     >---- محرف واحد على الأقل داخل الكلمة (نتجاهل علامات الترقيم)
+_TOKEN_OK_RE = re.compile(r'\w', re.UNICODE)
+
+
+# /     /     >---- نقسّم استعلام المستخدم إلى كلمات بحث مطلوبة معاً (AND)
+def search_terms(search: str, max_tokens: int = 4) -> List[str]:
+    """Split a raw user query into AND'ed, folded search tokens.
+
+    ``'رئيس قسم الرياضيات'`` -> ``['رئيس', 'قسم', 'الرياضيات']``.
+
+    Returns ``[]`` for empty / punctuation-only input so the caller can drop
+    the search clause entirely instead of emitting a predicate that matches
+    everything.
+    """
+    if not search:
+        return []
+    # /     /     >---- نقصّ الطول قبل أي معالجة
+    folded = normalize_search_text(str(search)[:MAX_SEARCH_LENGTH])
+    # /     /     >---- نقسّم بعد الطيّة فتصير "قسم" و"القسم" كلمة واحدة
+    tokens: List[str] = []
+    for chunk in folded.split(' '):
+        if not chunk or not _TOKEN_OK_RE.search(chunk):
+            continue
+        if chunk not in tokens:          # إزالة التكرار مع الحفاظ على الترتيب
+            tokens.append(chunk)
+        if len(tokens) >= max_tokens:
+            break
+    return tokens
+
+
+# /     /     >---- نبني شرط البحث المطويّ: AND بين الكلمات، OR بين الأعمدة
+def build_text_search_where(
+    columns: Sequence[str],
+    search: str,
+    *,
+    sql_fn: str = 'normalize_search',
+    max_tokens: int = 4,
+) -> Tuple[str, List[Any]]:
+    """Build an AND'ed-terms folded LIKE predicate over a per-row text blob.
+
+    The Arabic branch concatenates the row's searchable columns once and folds
+    the result with a single ``sql_fn`` call, so the number of Python UDF
+    invocations per row equals the number of tokens, NOT (columns x tokens).
+    That is a ~40x reduction on a wide table and is the difference between
+    21 s and a usable request.
+
+    Returns ``('', [])`` when *search* has no usable token, so the caller can
+    drop the clause. Every emitted ``LIKE`` carries ``ESCAPE '\\'`` because
+    SQLite has no default LIKE escape character.
+    """
+    terms = search_terms(search, max_tokens)
+    if not terms or not columns:
+        return '', []
+
+    # /     /     >---- مسارات ASCII فقط: LIKE عادي بلا نداء دالة SQL
+    if not any(_ARABIC_RE.search(term) for term in terms):
+        or_cols = ' OR '.join(f"{col} LIKE ? ESCAPE '\\'" for col in columns)
+        groups = ['(' + or_cols + ')' for _ in terms]
+        params: List[Any] = []
+        for term in terms:
+            params.extend([f'%{escape_like(term)}%'] * len(columns))
+        return '(' + ' AND '.join(groups) + ')', params
+
+    # /     /     >---- ندمج أعمدة الصف في نص واحد ونطويّه بنداء واحد
+    concat = " || ' ' || ".join(f"COALESCE({col}, '')" for col in columns)
+    blob = f'{sql_fn}({concat})'
+    groups = [f"({blob} LIKE ? ESCAPE '\\')" for _ in terms]
+    params = [f'%{escape_like(term)}%' for term in terms]
+    return '(' + ' AND '.join(groups) + ')', params
+
+
+# /     /     >---- حد SQLite للأعداد الصحيحة (INTEGER 64-bit)
+_SQLITE_MAX_INT = 2 ** 63 - 1
+
+
+# /     /     >---- نتحقق إن رقم القسم صحيح وإلا نتجاهله بدل ما نرمي خطأ
+def _coerce_dept_id(value) -> Optional[int]:
+    """Return a positive, SQLite-representable int for *value*, else None."""
+    try:
+        dept_id = int(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+    return dept_id if 0 < dept_id <= _SQLITE_MAX_INT else None
+
+
 # /     /     >---- استعلام بحث الأساتذة مع ربط القسم (أساسي أو من جدول الأقسام)
 def build_teacher_search(
     search: str = '',
@@ -133,10 +248,31 @@ def build_teacher_search(
     user_dept_id: Optional[int] = None,
     page: int = 1,
 ) -> Tuple[str, List[Any], str]:
-    """Build search query for teachers list."""
+    """Build search query for teachers list.
+
+    Opts into the folded ("smart") search engine, so a query matches after
+    Arabic folding (taa-marbuta, hamza, Persian letterforms, tatweel, Arabic
+    digits) and every resulting token must appear somewhere in the row's
+    mirrored text.  ``teacher_departments`` deliberately stays inside the
+    ``EXISTS`` subquery — a JOIN would multiply rows and, with
+    ``distinct=False``, corrupt both ``COUNT(*)`` and pagination.
+    """
     config = SearchConfig(
         table='teachers t',
-        search_columns=['t.name', 't.email', 't.academic_number'],
+        search_columns=[
+            # /     /     >---- بيانات الأستاذ نفسها
+            't.name', 't.email', 't.phone',
+            't.academic_number',
+            # /     /     >---- المسميات الوظيفية (نصوص مرآة)
+            't.position', 't.specialization', 't.qualification',
+            't.academic_rank', 't.classification',
+            # /     /     >---- الحساب المرتبط (لا يوجد users.name)
+            'u.username', 'u.email', 'u.label', 'u.supervisor_admin_dept',
+            # /     /     >---- الأقسام (أساسي ورئاسته)
+            'd.name', 'hd.name',
+            # /     /     >---- القوائم المرجعية (كلها 1:1 عبر مفتاح أساسي)
+            'q.name_ar', 'r.name_ar', 'c.name_ar', 'sp.name', 'aat.name',
+        ],
         default_order='t.name',
         soft_delete='t.deleted_at IS NULL',
         joins=[
@@ -145,22 +281,30 @@ def build_teacher_search(
             ('LEFT JOIN users u ON t.user_id = u.id',),
             ('LEFT JOIN qualifications q ON t.qualification_id = q.id',),
             ('LEFT JOIN academic_ranks r ON t.rank_id = r.id',),
+            # /     /     >---- قوائم إضافية: كلها many-to-one على مفتاح أساسي
+            ('LEFT JOIN classifications c ON t.classification_id = c.id',),
+            ('LEFT JOIN specializations sp ON t.specialization_id = sp.id',),
+            ('LEFT JOIN admin_assignment_types aat ON t.admin_assignment_type_id = aat.id',),
         ],
-        select_extra=['d.name as dept_name', 'hd.name as hod_dept_name', 'u.username as username', 'u.supervisor_admin_dept',
+        select_extra=['d.name as dept_name', 'hd.name as hod_dept_name',
+                      'u.username as username', 'u.supervisor_admin_dept',
                       'q.name_ar as qual_name', 'r.name_ar as rank_name'],
         distinct=False,
+        # /     /     >---- البحث الذكي مفعّل لصفحة أعضاء هيئة التدريس فقط
+        smart_search=True,
     )
     extra_where = []
     extra_params = []
 
     # /     /     >---- فلتر القسم: العمود الأساسي أو جدول الأقسام المتعددة
-    effective_dept = str(user_dept_id) if user_dept_id else dept_filter
-    if effective_dept:
+    dept_id = _coerce_dept_id(user_dept_id if user_dept_id else dept_filter)
+    effective_dept = str(dept_id) if dept_id else ''
+    if dept_id:
         extra_where.append(
             '(t.department_id = ? OR EXISTS ('
             'SELECT 1 FROM teacher_departments tdx '
             'WHERE tdx.teacher_id = t.id AND tdx.department_id = ?))')
-        extra_params.extend([int(effective_dept), int(effective_dept)])
+        extra_params.extend([dept_id, dept_id])
 
     query, params = build_search_query(
         config, search, extra_where=extra_where, extra_params=extra_params
@@ -194,10 +338,11 @@ def build_course_search(
     extra_where = []
     extra_params = []
 
-    effective_dept = str(user_dept_id) if user_dept_id else dept_filter
-    if effective_dept:
+    dept_id = _coerce_dept_id(user_dept_id if user_dept_id else dept_filter)
+    effective_dept = str(dept_id) if dept_id else ''
+    if dept_id:
         extra_where.append('cd.department_id = ?')
-        extra_params.append(int(effective_dept))
+        extra_params.append(dept_id)
 
     query, params = build_search_query(
         config, search, extra_where=extra_where, extra_params=extra_params
@@ -306,3 +451,75 @@ def highlight_text(text: str, search: str) -> str:
         lambda m: f'<mark class="search-highlight">{m.group()}</mark>',
         escaped_text,
     )
+
+
+# /     /     >---- تظليل يتعرف على المطابقة بعد الطيّ (يستخدمه البحث الذكي)
+def highlight_search_terms(
+    text: str,
+    search: str,
+    terms: Optional[Sequence[str]] = None,
+) -> str:
+    """Fold-aware HTML highlight, used by the smart teachers list only.
+
+    :func:`highlight_text` matches the literal search string, so a row that
+    only matched *after* folding (``search='احمد'``, cell ``'أحمد'``) rendered
+    with no highlight at all.  This version folds the cell, keeps an index map
+    back to the original characters, locates each term in the folded string,
+    maps the span back, then escapes and wraps.
+
+    Output is safe to render with ``|safe``: every segment is HTML-escaped
+    before the ``<mark>`` wrapper is added.
+    """
+    import html as html_module
+    # /     /     >---- لا نص → نرجّع فاضي
+    if not text:
+        return ''
+    raw = str(text)
+    if not search and not terms:
+        return html_module.escape(raw)
+
+    # /     /     >---- نبني النص المطويّ مع خريطة فهرس → موضع الحرف الأصلي
+    folded_chars: List[str] = []
+    index_map: List[int] = []
+    for i, ch in enumerate(raw):
+        try:
+            f = normalize_search_text(ch)
+        except (ValueError, TypeError):
+            f = ch
+        for fc in f:
+            folded_chars.append(fc)
+            index_map.append(i)
+
+    needles = [t for t in (list(terms) if terms is not None else search_terms(search)) if t]
+    if not needles or not folded_chars:
+        return html_module.escape(raw)
+
+    pattern = re.compile('|'.join(re.escape(t) for t in needles))
+    # /     /     >---- نحوّل كل مدى مطابقة إلى مدى على النص الأصلي
+    spans: List[Tuple[int, int]] = []
+    for m in pattern.finditer(''.join(folded_chars)):
+        if not m.group():
+            continue
+        spans.append((index_map[m.start()], index_map[m.end() - 1] + 1))
+    if not spans:
+        return html_module.escape(raw)
+
+    # /     /     >---- ندمج المدى المتداخلة
+    spans.sort()
+    merged: List[List[int]] = [list(spans[0])]
+    for start, end in spans[1:]:
+        if start <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], end)
+        else:
+            merged.append([start, end])
+
+    # /     /     >---- نركّب الهTML مع تهريب كل جزء
+    out: List[str] = []
+    cursor = 0
+    for start, end in merged:
+        out.append(html_module.escape(raw[cursor:start]))
+        out.append('<mark class="search-highlight">'
+                   + html_module.escape(raw[start:end]) + '</mark>')
+        cursor = end
+    out.append(html_module.escape(raw[cursor:]))
+    return ''.join(out)

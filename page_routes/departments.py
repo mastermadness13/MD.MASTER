@@ -2,7 +2,7 @@ from flask import (Blueprint, session, request, render_template,
                    redirect, url_for, flash)
 from utils.redirects import redirect_back
 
-from flask_db import get_db
+from database.flask_db import get_db
 from database.history import add_history
 import sqlite3
 from security import csrf_required, login_required, permission_required

@@ -1,6 +1,6 @@
 from flask import Blueprint, session, request, render_template, redirect, url_for, flash, jsonify
 
-from flask_db import get_db
+from database.flask_db import get_db
 from security import current_user, csrf_required, get_granted_roles
 from services.dashboard_service import get_dashboard_stats
 from services import dashboard_service

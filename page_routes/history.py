@@ -1,6 +1,6 @@
 from flask import Blueprint, session, request, render_template
 
-from flask_db import get_db
+from database.flask_db import get_db
 from security import login_required, permission_required
 from security import current_user
 from services import history_service

@@ -1,1 +1,0 @@
-(function(){var t=document.getElementById("todayDateChip");if(t)try{t.textContent=new Intl.DateTimeFormat("ar",{weekday:"long",day:"numeric",month:"long"}).format(new Date)}catch(e){t.textContent=""}})();

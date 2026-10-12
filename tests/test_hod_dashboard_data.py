@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
-import flask_db
+import database.flask_db as flask_db
 from database.connection import connect
 from database.schema import ensure_schema
 from werkzeug.security import generate_password_hash
@@ -134,7 +134,7 @@ def test_create_app_migrates_legacy_database(tmp_path, monkeypatch):
     # ensure_database_schema() is exactly what flask_db.init_app() runs on boot.
     # Calling it directly proves the migration path without building a second
     # app, which would re-register error handlers on the global blueprints.
-    from flask_db import ensure_database_schema
+    from database.flask_db import ensure_database_schema
     ensure_database_schema()
 
     conn = sqlite3.connect(str(db_path))

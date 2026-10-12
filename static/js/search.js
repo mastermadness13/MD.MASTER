@@ -14,6 +14,8 @@
  *   spinnerSelector:   CSS selector for the loading spinner
  *   debounceMs:        Debounce delay (default 300)
  *   urlBuilder:        Function(params) -> URL for AJAX fetch
+ *   resetSelector:     CSS selector for the "reset all filters" button
+ *   formAction:        Explicit submit target for the AJAX URL
  *   onComplete:        Callback after results rendered
  */
 
@@ -22,6 +24,7 @@ const SearchComponent = (function () {
   let _debounceTimer = null;
   let _abortController = null;
   let _lastQuery = '';
+  let _form = null;
 
   function init(config) {
     _config = Object.assign({
@@ -35,11 +38,14 @@ const SearchComponent = (function () {
       filterSelectors: {},
       debounceMs: 300,
       urlBuilder: null,
+      resetSelector: null,   // button that clears the search + all filters
+      formAction: null,      // explicit submit target for the AJAX URL
       onComplete: null,
     }, config);
 
     const form = document.querySelector(_config.formSelector);
     if (!form) return;
+    _form = form;
 
     const input = form.querySelector(_config.inputSelector);
     const clearBtn = form.querySelector(_config.clearSelector);
@@ -81,6 +87,22 @@ const SearchComponent = (function () {
       });
     }
 
+    // /  زر إعادة التعيين: يمسح النص ويعيد الفلاتر إلى الافتراضي ويحدّث مرة واحدة
+    if (_config.resetSelector) {
+      const resetBtn = form.querySelector(_config.resetSelector);
+      if (resetBtn) {
+        resetBtn.addEventListener('click', function () {
+          if (_debounceTimer) { clearTimeout(_debounceTimer); _debounceTimer = null; }
+          if (input) { input.value = ''; _updateClearVisibility(input); }
+          Object.keys(filters).forEach(function (key) {
+            var sel = filters[key];
+            if (sel && sel.options && sel.options.length) sel.selectedIndex = 0;
+          });
+          _performSearch(true);
+        });
+      }
+    }
+
     // Filter changes trigger immediate search
     Object.values(filters).forEach(sel => {
       if (sel) {
@@ -105,7 +127,8 @@ const SearchComponent = (function () {
   }
 
   function _updateClearVisibility(input) {
-    const clearBtn = document.querySelector(_config.clearSelector);
+    const root = _form || document;
+    const clearBtn = root.querySelector(_config.clearSelector);
     if (clearBtn) {
       clearBtn.style.display = input.value ? 'flex' : 'none';
     }
@@ -120,7 +143,7 @@ const SearchComponent = (function () {
     }
   }
 
-  function _performSearch() {
+  function _performSearch(force) {
     const form = document.querySelector(_config.formSelector);
     if (!form) return;
 
@@ -148,7 +171,7 @@ const SearchComponent = (function () {
     if (_config.urlBuilder) {
       url = _config.urlBuilder(params);
     } else {
-      const baseUrl = form.getAttribute('action') || window.location.pathname;
+      const baseUrl = _config.formAction || form.getAttribute('action') || window.location.pathname;
       const qs = new URLSearchParams(params).toString();
       url = baseUrl + '?' + qs;
     }
@@ -162,7 +185,7 @@ const SearchComponent = (function () {
 
     // Check if query changed
     const queryKey = JSON.stringify(params);
-    if (queryKey === _lastQuery) {
+    if (!force && queryKey === _lastQuery) {
       _showSpinner(false);
       return;
     }
@@ -233,9 +256,16 @@ const SearchComponent = (function () {
 
     // Update count badge
     const newCount = doc.querySelector(_config.countSelector);
-    const currentCount = document.querySelector(_config.countSelector);
+    const currentCount = (_form || document).querySelector(_config.countSelector);
     if (newCount && currentCount) {
-      currentCount.textContent = newCount.textContent;
+      // /  نحدّث النص فقط حتى لا نمسح أيقونة الشارة
+      const newVal = newCount.querySelector('[data-count-value]');
+      const curVal = currentCount.querySelector('[data-count-value]');
+      if (newVal && curVal) {
+        curVal.textContent = newVal.textContent;
+      } else {
+        currentCount.textContent = newCount.textContent;
+      }
       currentCount.style.display = newCount.textContent.trim() ? 'inline-flex' : 'none';
     } else if (newCount && !currentCount) {
       // Create count badge
@@ -257,9 +287,11 @@ const SearchComponent = (function () {
   }
 
   function _showSpinner(show) {
-    const spinner = document.querySelector(_config.spinnerSelector);
+    const root = _form || document;
+    const spinner = root.querySelector(_config.spinnerSelector);
     if (spinner) {
       spinner.classList.toggle('active', show);
+      spinner.style.display = show ? '' : 'none';
     }
   }
 
@@ -294,7 +326,8 @@ const SearchComponent = (function () {
   return {
     init,
     autoInit,
-    search: function () { _performSearch(); },
+    search: function () { _performSearch(true); },
+    reset: function () { _performSearch(true); },
   };
 })();
 

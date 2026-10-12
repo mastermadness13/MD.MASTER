@@ -6,7 +6,7 @@ from flask import Blueprint, request, session
 
 from api_routes.helpers import api_login_required, api_permission_required, err, ok
 from core.rate_limiter import RateLimiter
-from flask_db import get_db
+from database.flask_db import get_db
 from security.csrf import csrf_required
 from services.translation_service import safe_translate_ar_to_en
 

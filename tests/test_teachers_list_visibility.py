@@ -5,7 +5,7 @@ has been removed entirely."""
 
 import pytest
 
-import flask_db
+import database.flask_db as flask_db
 from database.connection import connect
 from database.schema import ensure_schema
 
@@ -86,3 +86,21 @@ def test_compact_members_list_removed_for_every_role(list_setup):
         html = r.get_data(as_text=True)
         for marker in COMPACT_MARKERS:
             assert marker not in html, f'{role}: compact marker {marker} still present'
+
+
+def test_teachers_list_never_renders_none_for_empty_fields(list_setup):
+    """Regression: a teacher with NULL ``academic_number`` / ``email`` must
+    never render the literal string ``None`` on the full-page render — the
+    template falls back to the em-dash placeholder."""
+    c = list_setup
+    _login(c, 'faculty_affairs')
+    r = c.get('/teachers', follow_redirects=True)
+    assert r.status_code == 200
+    html = r.get_data(as_text=True)
+    # Non-vacuity guard: the NULL-field teacher must actually be on the page,
+    # otherwise the "no None" assertion would pass on an empty table.
+    assert 'مدرس' in html, 'fixture teacher row is missing from the render'
+    assert 'None' not in html, (
+        'full-page /teachers render contains the literal "None" — a NULL '
+        'academic_number or email leaked its raw value into the table'
+    )

@@ -726,9 +726,43 @@
                department_hods=department_hods|default({}),
                confirm_replace=confirm_replace|default(false),
                custom_value=teacher.get('custom_position', ''),
-               admin_tasks=admin_tasks
+admin_tasks=admin_tasks
              )
-          }}
+           }}
+
+          {# /     /     >---- ماذا يفتح هذا التكليف فعلياً؟ الصفحة المرتبطة
+             /     /     >---- هي ما يحدد الصلاحيات، لا اسم التكليف. ملخّص
+             /     /     >---- مختصر بنفس شرائح شاشات القوائم المرجعية. #}
+          {% set selected_task = admin_tasks | selectattr('id', 'equalto', teacher.get('admin_assignment_type_id')) | list | first %}
+          {% set page_info = selected_task.page_info if selected_task else none %}
+          {% if page_info and page_info.has_page %}
+          <div class="rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2.5">
+            <p class="flex flex-wrap items-center gap-2 text-xs font-bold text-on-surface">
+              <span class="material-symbols-outlined text-[16px] text-primary" aria-hidden="true">{{ page_info.icon }}</span>
+              {{ page_info.page_label }}
+              <span class="rounded px-1.5 py-0.5 text-[11px] font-semibold
+                           {{ 'bg-error-container/30 text-on-error-container' if page_info.access_mode == 'edit' else 'bg-primary/10 text-primary' }}">
+                {{ page_info.access_mode_label }}
+              </span>
+            </p>
+            {% for group in page_info.permission_groups %}
+            <p class="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px] text-on-surface-variant">
+              <span class="inline-flex items-center gap-1 font-bold">
+                <span class="material-symbols-outlined text-[14px] text-primary" aria-hidden="true">{{ group.icon }}</span>
+                {{ group.domain_label }}
+              </span>
+              {% for perm in group['items'] %}
+              <span class="rounded-lg border border-primary/30 bg-primary/10 px-1.5 py-0.5 font-semibold text-primary"
+                    title="{{ perm.permission }}">{{ perm.label }}</span>
+              {% endfor %}
+            </p>
+            {% endfor %}
+            {% if not page_info.grants_write %}
+            <p class="mt-1 text-[11px] text-on-surface-variant">
+              عرض فقط — بلا أي صلاحية كتابة.</p>
+            {% endif %}
+          </div>
+          {% endif %}
 
         </div>
  <section class="rounded-2xl bg-surface-container-lowest

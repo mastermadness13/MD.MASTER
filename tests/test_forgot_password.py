@@ -7,7 +7,7 @@ import sqlite3
 import pytest
 from werkzeug.security import check_password_hash, generate_password_hash
 
-import flask_db
+import database.flask_db as flask_db
 from database.connection import connect
 from database.repositories.user_repository import _hash_reset_token
 from database.schema import ensure_schema

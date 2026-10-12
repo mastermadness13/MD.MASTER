@@ -39,7 +39,7 @@ class BaseRepository:
     def db(self):
         # /     /     >---- إذا ما فيش اتصال محقون نستخدم اتصال الطلب الحالي
         if self._db is None:
-            from flask_db import get_db
+            from database.flask_db import get_db
             self._db = get_db()
         return self._db
 

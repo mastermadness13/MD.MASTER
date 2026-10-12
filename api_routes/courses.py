@@ -14,7 +14,7 @@ from api_routes.helpers import (
     pagination,
 )
 from core.validators import integer_between
-from flask_db import get_db
+from database.flask_db import get_db
 from security import current_user
 from security import csrf_required
 from services import course_service

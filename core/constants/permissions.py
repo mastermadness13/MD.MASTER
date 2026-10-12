@@ -42,7 +42,10 @@ ROLE_PERMISSIONS = {
         'history.view',
         'uploads.serve',
         'tools.view',
-        'rooms.view', 'rooms.manage',
+        # /     /     >---- rooms.manage تبقى مانحة للإنشاء والتعديل والحذف،
+        # /     /     >---- والثلاثة الدقيقة مذكورة نصاً لأن ديكوريتور
+        # /     /     >---- المسارات صارت تسأل عنها واحدة واحدة.
+    
         'profile.view', 'profile.edit',
         'faculty_performance.view', 'faculty_performance.view_summary',
         'faculty_performance.edit_research',
@@ -56,6 +59,10 @@ ROLE_PERMISSIONS = {
         'course_content.view',
         'timetable.view', 'timetable.edit',
         'exams.view', 'exams.department_schedule',
+        # /     /     >---- رئيس القسم يضيف ويعدّل ويحذف امتحانات قسمه
+        # /     /     >---- (api_routes/exams.py يفرض ذلك على مستوى الخادم)،
+        # /     /     >---- فالصلاحيات الدقيقة جزء من عقده لا مكافأة.
+        'exams.create', 'exams.edit', 'exams.delete',
         'messages.review', 'messages.view',
         'materials.manage', 'uploads.view', 'uploads.serve',
         'profile.view', 'profile.edit',
@@ -78,8 +85,10 @@ ROLE_PERMISSIONS = {
         # /     /     >---- /exams لا يعتمد عليها إطلاقاً (exams.* فقط)، فلا
         # /     /     >---- يتأثر الجدول. تحتاجها research_development وحدها.
         'course_content.view',
-        'rooms.view',  # /     /     >---- عرض القاعات لاختيارها عند جدولة الامتحانات فقط
+            'rooms.view', 'rooms.manage',
+                'rooms.create', 'rooms.edit', 'rooms.delete',  # /     /     >---- عرض القاعات لاختيارها عند جدولة الامتحانات فقط
         'exams.view', 'exams.manage', 'exams.period', 'exams.planning', 'exams.department_schedule', 'exams.assign_room',
+        'exams.create', 'exams.edit', 'exams.delete',
         'uploads.serve',
         'tools.view',
         'profile.view', 'profile.edit',

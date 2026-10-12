@@ -28,7 +28,8 @@ from database.schema import ensure_schema
 # ── تحميل سكربت الزراعة (seed.py) من مجلد scripts ──────────────
 import sys as _sys
 import importlib.util as _iu
-_project_root = os.path.dirname(os.path.abspath(__file__))
+_database_dir = os.path.dirname(os.path.abspath(__file__))
+_project_root = os.path.dirname(_database_dir)
 if _project_root not in _sys.path:
     _sys.path.insert(0, _project_root)
 _seed_spec = _iu.spec_from_file_location(
@@ -84,9 +85,7 @@ def init_db() -> None:
     """Create a fresh schema from ``database/schema.sql`` and migrate."""
     conn = connect(DATABASE)
     # /     /     >---- نقرأ ملف SQL ونشغّله
-    schema_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), 'database', 'schema.sql'
-    )
+    schema_path = os.path.join(_database_dir, 'schema.sql')
     with open(schema_path, mode='r', encoding='utf-8') as f:
         conn.executescript(f.read())
     # /     /     >---- نطبق التغييرات إن وجدت

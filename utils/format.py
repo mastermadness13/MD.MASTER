@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any, List, Optional, Tuple
 
 from core.constants import PER_PAGE, SEMESTER_LABELS, SEMESTER_SEASONS
-from flask_db import get_db
+from database.flask_db import get_db
 
 # ─────────────────────────────────────────────
 

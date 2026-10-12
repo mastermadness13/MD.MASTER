@@ -26,6 +26,7 @@
   <tbody>
     {% if rooms %}
     {% for r in rooms %}
+    {% set room_usage = usage.get(r.id) if usage else None %}
     <tr class="hover:bg-primary/5 transition-colors border-b border-outline-variant last:border-b-0">
       {% if can_manage %}
       <td class="px-4 py-3 text-center">
@@ -39,6 +40,15 @@
           <div>
             <p class="font-bold text-on-surface">{{ highlight(r.name, search) | safe }}</p>
             {% if r.code %}<p class="text-xs text-on-surface-variant" dir="ltr">{{ r.code }}</p>{% endif %}
+            {# /     /     >---- شارة «الاستخدام» للقراءة فقط، من نفس
+               /     /     >---- الاستعلام المُجمّع لكل صفحة. #}
+            {% if room_usage and room_usage.total %}
+            <span class="inline-flex items-center gap-1 rounded-full bg-surface-container px-2 py-0.5 text-[11px] font-bold text-on-surface-variant"
+                  title="مرتبطة بـ {{ room_usage.exam_schedule }} امتحان، {{ room_usage.timetable }} حصة، {{ room_usage.teacher_taught_courses }} تكليف تدريس">
+              <span class="material-symbols-outlined text-[13px]" aria-hidden="true">link</span>
+              الاستخدام: {{ room_usage.total }}
+            </span>
+            {% endif %}
           </div>
         </div>
       </td>
@@ -87,8 +97,9 @@
               تعديل
             </a>
             <form method="post" action="{{ url_for('classrooms.rooms_delete', id=r.id) }}"
-                  data-confirm-message="تأكيد حذف القاعة؟">
+                  data-confirm-message="{{ ('القاعة مرتبطة بـ ' ~ room_usage.total ~ ' سجل — هل تريد حذفها؟') if room_usage and room_usage.total else 'تأكيد حذف القاعة؟' }}">
               <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="confirm_usage" value="1">
               <button type="submit" class="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 transition-colors bg-transparent border-0 cursor-pointer text-right">
                 <span class="material-symbols-outlined text-lg shrink-0">delete</span>
                 حذف

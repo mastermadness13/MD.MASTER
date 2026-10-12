@@ -16,9 +16,15 @@ render time — ``page_key`` simply names which permission family to demote.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
+from core.constants.permission_labels import group_permissions
+
 # ── أيقونة واسم كل صفحة يمكن ربطها بتكليف إداري ─────────────────────
 # /     /     >---- write_permissions: ما الذي يُسقطه وضع «عرض فقط».
 # /     /     >---- view_permission: ما لازم يبقى موجوداً لعرض الصفحة.
+# /     /     >---- render_blueprints: الـ blueprints التي ترسم الصفحة نفسها،
+# /     /     >---- فتُخفض الكتابة فيها حتى لو لم تكن مصنّفة كتابة فيها.
 # /     /     >---- لا يوجد حقل «blueprint» هنا عمداً: عائلة الصفحة الواحدة
 # /     /     >---- موزّعة على أكثر من blueprint («القاعات» = classrooms و
 # /     /     >---- api_rooms معاً)، فتسميته باسم واحد كانت توحي بتغطية
@@ -31,7 +37,12 @@ TASK_PAGES: dict[str, dict] = {
         'endpoint': 'classrooms.rooms_list',
         'icon': 'meeting_room',
         'view_permission': 'rooms.view',
-        'write_permissions': ('rooms.manage',),
+        # /     /     >---- rooms.manage باقية في القائمة: هي الاسم الخام
+        # /     /     >---- الذي حملته الأدوار القديمة، وتبقى في
+        # /     /     >---- exposed_permissions ليقرأها العميل بوضوح.
+        'write_permissions': ('rooms.create', 'rooms.edit', 'rooms.delete',
+                              'rooms.manage'),
+        'render_blueprints': ('classrooms', 'api_rooms'),
     },
     'timetable': {
         'label': 'الجدول الدراسي',
@@ -50,7 +61,9 @@ TASK_PAGES: dict[str, dict] = {
         'write_permissions': (
             'exams.manage', 'exams.period', 'exams.planning',
             'exams.assign_room', 'exams.department_schedule',
+            'exams.create', 'exams.edit', 'exams.delete',
         ),
+        'render_blueprints': ('exams', 'api_exams'),
     },
     'teachers': {
         'label': 'أعضاء هيئة التدريس',
@@ -125,3 +138,77 @@ def is_valid_page_key(key: str | None) -> bool:
 def normalise_access_mode(mode: str | None) -> str:
     """Coerce anything unexpected to the safe full-access default."""
     return mode if mode in ACCESS_MODES else DEFAULT_ACCESS_MODE
+
+
+def describe_assignment_page(row: Mapping) -> dict:
+    """Derive the page binding and the permissions it exposes for one
+    ``admin_assignment_types`` row.
+
+    Pure: no DB, no request context, and it never raises. Accepts a mapping
+    (a plain dict or an sqlite3.Row converted to dict) with keys
+    ``page_key`` and ``page_access_mode``; missing/None/invalid values are
+    handled gracefully. This mirrors the read-only demotion semantics in
+    ``services/task_page_service.restrict_permissions`` without importing it.
+    """
+    # /     /     >---- القراءة فقط: أي مفتاح مفقود أو غير صالح يُعالج بلا استثناء
+    if row is None:
+        row = {}
+    elif not isinstance(row, Mapping):
+        # /     /     >---- نحوّل أي صف SQLite إلى قاموس حتى لا يفشل .get
+        row = dict(row)
+    page_key = row.get('page_key')
+    has_page = is_valid_page_key(page_key)
+    page = TASK_PAGES.get(page_key) if has_page else None
+
+    page_label = page['label'] if page else ''
+    icon = page['icon'] if page else ''
+    endpoint = page['endpoint'] if page else ''
+    access_mode = (
+        normalise_access_mode(row.get('page_access_mode')) if has_page else None
+    )
+    access_mode_label = ACCESS_MODES.get(access_mode, '') if access_mode else ''
+    view_permission = page['view_permission'] if page else None
+    write_permissions = tuple(page['write_permissions']) if page else ()
+    render_blueprints = tuple(page.get('render_blueprints', ())) if page else ()
+
+    # /     /     >---- حزمة صلاحيات الصفحة: (view + write) في وضع التعديل، أو (view + الأساسيات) في وضع العرض
+    # /     /     >---- يجب أن تبقى متزامنة مع restrict_permissions في services/task_page_service
+    if has_page and access_mode == 'edit':
+        exposed_permissions = (view_permission, *write_permissions)
+    elif has_page and access_mode == 'view':
+        exposed_permissions = (view_permission, *MIN_VIEW_PERMISSIONS)
+    else:
+        exposed_permissions = ()
+
+    grants_write = bool(has_page and access_mode == 'edit' and write_permissions)
+    invalid_page_key = bool(page_key) and not has_page
+    warning = (
+        'يمنح هذا التكليف صلاحيات تعديل (كتابة) على الصفحة المرتبطة — '
+        'راجع الصلاحيات قبل التفعيل.'
+        if grants_write else ''
+    )
+
+    return {
+        'has_page': has_page,
+        'page_key': page_key,
+        'page_label': page_label,
+        'icon': icon,
+        'endpoint': endpoint,
+        'access_mode': access_mode,
+        'access_mode_label': access_mode_label,
+        'view_permission': view_permission,
+        'write_permissions': write_permissions,
+        'render_blueprints': render_blueprints,
+        'exposed_permissions': exposed_permissions,
+        'grants_write': grants_write,
+        'invalid_page_key': invalid_page_key,
+        'warning': warning,
+        # /     /     >---- إضافي فقط: نفس الصلاحيات لكن مقرّبة بنطاقاتها
+        # /     /     >---- وبأسمائها العربية، حتى يقرأها العميل ولا يرى
+        # /     /     >---- نصوصاً تقنية. withheld_groups هي ما يحجبه وضع
+        # /     /     >---- «عرض فقط».
+        'permission_groups': group_permissions(exposed_permissions),
+        'withheld_groups': group_permissions(
+            [p for p in write_permissions if p not in exposed_permissions]
+        ),
+    }
