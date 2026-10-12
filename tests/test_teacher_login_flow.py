@@ -160,6 +160,36 @@ def test_edit_ignores_empty_credential_fields(app_fx, db_fx):
     conn.close()
 
 
+def test_register_username_route_provisions_imported_teacher_account(app_fx, db_fx):
+    client = _office_client(app_fx)
+    response = client.post(
+        '/teachers/register-username/1',
+        data={'username': 'imported_teacher', '_csrf_token': 'test-token'},
+    )
+
+    assert response.status_code == 302
+    assert any(
+        message == 'تم تسجيل اسم الدخول وتثبيته نهائياً'
+        for _category, message in _flash(client)
+    )
+    conn = sqlite3.connect(db_fx)
+    conn.row_factory = sqlite3.Row
+    teacher = conn.execute(
+        'SELECT user_id FROM teachers WHERE id = 1'
+    ).fetchone()
+    account = conn.execute(
+        'SELECT username, force_password_change, initial_login_code_hash '
+        'FROM users WHERE id = ?',
+        (teacher['user_id'],),
+    ).fetchone()
+    conn.close()
+
+    assert teacher['user_id'] is not None
+    assert account['username'] == 'imported_teacher'
+    assert account['force_password_change'] == 1
+    assert account['initial_login_code_hash']
+
+
 # ── Creation sets an office-assigned username + password ────────────────
 
 def test_create_with_office_password_forces_first_change(app_fx, db_fx):
