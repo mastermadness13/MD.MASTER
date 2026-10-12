@@ -86,7 +86,8 @@ class TeacherRepository(BaseRepository):
         rows = self.db.execute(
             "SELECT c.* FROM courses c\n"
             "               INNER JOIN timetable tt ON tt.course_id = c.id\n"
-            "               WHERE tt.teacher_id = ? AND c.deleted_at IS NULL\n"
+            "               WHERE tt.teacher_id = ? AND tt.deleted_at IS NULL\n"
+            "               AND c.deleted_at IS NULL\n"
             "               AND (tt.version_id IS NULL OR tt.version_id IN\n"
             "                   (SELECT id FROM timetable_versions WHERE status = 'active'))\n"
             "               GROUP BY c.id",
@@ -97,7 +98,10 @@ class TeacherRepository(BaseRepository):
     # /     /     >---- عدد الحصص في الجدول الفعّال للأستاذ
     def count_timetable_entries(self, teacher_id: int) -> int:
         row = self.db.execute(
-            "SELECT COUNT(*) AS cnt FROM timetable WHERE teacher_id = ? AND (version_id IS NULL OR version_id IN (SELECT id FROM timetable_versions WHERE status = 'active'))",
+            "SELECT COUNT(*) AS cnt FROM timetable WHERE teacher_id = ? "
+            "AND deleted_at IS NULL "
+            "AND (version_id IS NULL OR version_id IN "
+            "(SELECT id FROM timetable_versions WHERE status = 'active'))",
             (teacher_id,),
         ).fetchone()
         return row['cnt'] or 0
@@ -332,7 +336,10 @@ class TeacherRepository(BaseRepository):
     # /     /     >---- مجموع الساعات التدريسية للأستاذ
     def count_teaching_hours(self, teacher_id: int) -> int:
         row = self.db.execute(
-            'SELECT SUM(COALESCE(hours, 0)) AS h FROM teacher_taught_courses WHERE teacher_id = ?',
+            "SELECT SUM(COALESCE(hours, 0)) AS h FROM timetable "
+            "WHERE teacher_id = ? AND deleted_at IS NULL "
+            "AND (version_id IS NULL OR version_id IN "
+            "(SELECT id FROM timetable_versions WHERE status = 'active'))",
             (teacher_id,),
         ).fetchone()
         return int(row['h'] or 0)
@@ -340,7 +347,10 @@ class TeacherRepository(BaseRepository):
     # /     /     >---- المقررات في الجدول الفعّال للأستاذ
     def get_timetable_courses(self, teacher_id: int) -> List[Dict[str, Any]]:
         rows = self.db.execute(
-            "SELECT course_id FROM timetable WHERE teacher_id = ? AND (version_id IS NULL OR version_id IN (SELECT id FROM timetable_versions WHERE status = 'active'))",
+            "SELECT course_id FROM timetable WHERE teacher_id = ? "
+            "AND deleted_at IS NULL "
+            "AND (version_id IS NULL OR version_id IN "
+            "(SELECT id FROM timetable_versions WHERE status = 'active'))",
             (teacher_id,),
         ).fetchall()
         return [dict(r) for r in rows]

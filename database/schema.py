@@ -2624,6 +2624,81 @@ def _migrate_teacher_taught_courses(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def _migrate_taught_courses_to_timetable_entries(
+    conn: sqlite3.Connection,
+) -> None:
+    """Make each saved timetable entry the unique source row in the ledger."""
+    migration_name = 'taught_courses_by_timetable_entry_v1'
+    if _migration_done(conn, migration_name):
+        return
+
+    tables = {
+        row[0] for row in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table'"
+        ).fetchall()
+    }
+    if not {'teacher_taught_courses', 'timetable', 'timetable_versions'} <= tables:
+        return
+
+    conn.execute('DROP TABLE IF EXISTS teacher_taught_courses_rebuilt')
+    conn.execute("""
+        CREATE TABLE teacher_taught_courses_rebuilt (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+            course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+            department_id INTEGER REFERENCES departments(id) ON DELETE SET NULL,
+            semester INTEGER NOT NULL DEFAULT 1,
+            semester_code TEXT NOT NULL DEFAULT '',
+            version_id INTEGER,
+            day TEXT NOT NULL DEFAULT '',
+            start_time TEXT NOT NULL DEFAULT '',
+            end_time TEXT NOT NULL DEFAULT '',
+            period TEXT NOT NULL DEFAULT '',
+            room_id INTEGER REFERENCES rooms(id) ON DELETE SET NULL,
+            student_section TEXT NOT NULL DEFAULT 'أ',
+            lecture_type TEXT NOT NULL DEFAULT 'theory',
+            hours INTEGER NOT NULL DEFAULT 0,
+            timetable_entry_id INTEGER UNIQUE,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    conn.execute("""
+        INSERT INTO teacher_taught_courses_rebuilt (
+            teacher_id, course_id, department_id, semester, semester_code,
+            version_id, day, start_time, end_time, period, room_id,
+            student_section, lecture_type, hours, timetable_entry_id
+        )
+        SELECT t.teacher_id, t.course_id,
+               COALESCE(t.department_id, v.department_id),
+               COALESCE(t.semester, 1), COALESCE(v.semester_code, ''),
+               t.version_id, COALESCE(t.day, ''),
+               COALESCE(t.start_time, ''), COALESCE(t.end_time, ''),
+               COALESCE(t.period, ''), t.room_id,
+               COALESCE(NULLIF(t.student_section, ''), 'أ'),
+               COALESCE(NULLIF(t.lecture_type, ''), 'theory'),
+               COALESCE(t.hours, 0), t.id
+        FROM timetable t
+        LEFT JOIN timetable_versions v ON v.id = t.version_id
+        WHERE t.teacher_id IS NOT NULL
+          AND t.course_id IS NOT NULL
+          AND t.deleted_at IS NULL
+    """)
+    conn.execute('DROP TABLE teacher_taught_courses')
+    conn.execute(
+        'ALTER TABLE teacher_taught_courses_rebuilt '
+        'RENAME TO teacher_taught_courses'
+    )
+    conn.execute(
+        'CREATE INDEX IF NOT EXISTS idx_ttc_teacher_semester '
+        'ON teacher_taught_courses (teacher_id, semester_code)'
+    )
+    conn.execute(
+        'CREATE INDEX IF NOT EXISTS idx_ttc_entry '
+        'ON teacher_taught_courses (timetable_entry_id)'
+    )
+    _mark_migration_done(conn, migration_name)
+
+
 # /     /     >---- رمز الدخول المؤقت لأعضاء هيئة التدريس (ينشئه مكتب أعضاء الهيئة)
 def _migrate_initial_login_columns(conn: sqlite3.Connection) -> None:
     """Add temporary initial-login columns to ``users``.
@@ -3754,6 +3829,9 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
 
     # ── Enforce a single active timetable version per dept + semester ──
     _migrate_single_active_timetable_version(conn)
+
+    # ── Rebuild the teaching ledger from its timetable source rows ─────
+    _migrate_taught_courses_to_timetable_entries(conn)
 
     # ── Persist the logical domain registry (Identity/Academic/Scheduling/... ) ──
     sync_domain_registry(conn)

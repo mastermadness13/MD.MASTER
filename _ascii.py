@@ -11,4 +11,3 @@ print('rows:', [dict(r) for r in D.execute("SELECT id,name,code FROM courses WHE
 print('distinct form types:')
 for r in D.execute("SELECT DISTINCT file_type FROM course_files WHERE COURSE_ID IN (57,142,90)").fetchall():
     print('  ', dict(r))
-</filePath>

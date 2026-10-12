@@ -122,6 +122,176 @@ def test_create_saves_hours_for_any_administrative_assignment(setup):
     }]
 
 
+def test_create_confirms_and_transfers_global_assignment_permissions(setup):
+    c, db_path, old_teacher_id = setup
+    assignment = _q(
+        db_path,
+        "SELECT id, name FROM admin_assignment_types "
+        "WHERE internal_code = 'faculty_affairs' AND uniqueness = 'global' LIMIT 1",
+    )[0]
+    conn = sqlite3.connect(db_path)
+    conn.execute(
+        "INSERT INTO users (username, password, role, label) "
+        "VALUES ('previous_holder', 'x', 'teacher', 'الشاغل السابق')"
+    )
+    old_user_id = conn.execute('SELECT last_insert_rowid()').fetchone()[0]
+    conn.execute(
+        'UPDATE teachers SET user_id = ?, position = ?, admin_assignment_type_id = ? '
+        'WHERE id = ?',
+        (old_user_id, assignment['name'], assignment['id'], old_teacher_id),
+    )
+    conn.execute(
+        "INSERT INTO user_roles (user_id, role) VALUES (?, 'faculty_affairs')",
+        (old_user_id,),
+    )
+    conn.commit()
+    conn.close()
+
+    form = {
+        'name': 'عضو جديد',
+        'username': 'newfaculty',
+        'password': 'Office123',
+        'position': assignment['name'],
+        'admin_assignment_type_id': str(assignment['id']),
+        'email': '',
+        'phone': '',
+        'academic_number': '',
+        'qualification_id': '',
+        'rank_id': '',
+        'classification_id': '',
+        'national_id': '',
+        'contract_date': '',
+        'tasks': '',
+        'specialization': '',
+        'first_lecture_date': '',
+        'work_start_date': '',
+        'general_notes': '',
+    }
+    confirmation = _post(c, '/teachers/create', form.copy())
+    confirmation_html = confirmation.get_data(as_text=True)
+    assert confirmation.status_code == 200
+    assert 'تأكيد نقل صلاحية التكليف' in confirmation_html
+    assert 'الشاغل السابق' in confirmation_html
+    assert not _q(db_path, "SELECT id FROM teachers WHERE name = 'عضو جديد'")
+
+    form.update({
+        'confirm_assignment_transfer': '1',
+        'confirmed_assignment_holders': f'user:{old_user_id}',
+    })
+    response = _post(c, '/teachers/create', form)
+    assert response.status_code == 200
+
+    assert _q(
+        db_path,
+        'SELECT position, admin_assignment_type_id FROM teachers WHERE id = ?',
+        (old_teacher_id,),
+    ) == [{'position': '', 'admin_assignment_type_id': None}]
+    assert _q(
+        db_path,
+        "SELECT role FROM user_roles WHERE user_id = ? AND role = 'faculty_affairs'",
+        (old_user_id,),
+    ) == []
+    assert _q(
+        db_path,
+        "SELECT COUNT(*) AS count FROM teachers "
+        "WHERE name = 'عضو جديد' AND admin_assignment_type_id = ?",
+        (assignment['id'],),
+    )[0]['count'] == 1
+
+
+def test_edit_confirms_and_transfers_global_assignment_permissions(setup):
+    c, db_path, old_teacher_id = setup
+    assignment = _q(
+        db_path,
+        "SELECT id, name FROM admin_assignment_types "
+        "WHERE internal_code = 'faculty_affairs' AND uniqueness = 'global' LIMIT 1",
+    )[0]
+    conn = sqlite3.connect(db_path)
+    department_id = conn.execute(
+        'SELECT department_id FROM teachers WHERE id = ?', (old_teacher_id,)
+    ).fetchone()[0]
+    conn.execute(
+        "INSERT INTO teachers (name, department_id) VALUES ('عضو مستلم', ?)",
+        (department_id,),
+    )
+    target_teacher_id = conn.execute('SELECT last_insert_rowid()').fetchone()[0]
+    conn.execute(
+        "INSERT INTO users (username, password, role, label) "
+        "VALUES ('previous_holder', 'x', 'teacher', 'الشاغل السابق')"
+    )
+    old_user_id = conn.execute('SELECT last_insert_rowid()').fetchone()[0]
+    conn.execute(
+        "INSERT INTO users (username, password, role, label) "
+        "VALUES ('target_holder', 'x', 'teacher', 'عضو مستلم')"
+    )
+    target_user_id = conn.execute('SELECT last_insert_rowid()').fetchone()[0]
+    conn.execute(
+        'UPDATE teachers SET user_id = ?, position = ?, admin_assignment_type_id = ? '
+        'WHERE id = ?',
+        (old_user_id, assignment['name'], assignment['id'], old_teacher_id),
+    )
+    conn.execute(
+        'UPDATE teachers SET user_id = ? WHERE id = ?',
+        (target_user_id, target_teacher_id),
+    )
+    conn.execute(
+        "INSERT INTO user_roles (user_id, role) VALUES (?, 'faculty_affairs')",
+        (old_user_id,),
+    )
+    conn.execute(
+        "INSERT INTO user_roles (user_id, role) VALUES (?, 'teacher')",
+        (target_user_id,),
+    )
+    conn.commit()
+    conn.close()
+
+    form = {
+        'name': 'عضو مستلم',
+        'position': assignment['name'],
+        'admin_assignment_type_id': str(assignment['id']),
+        'email': '',
+        'phone': '',
+        'academic_number': '',
+        'qualification_id': '',
+        'rank_id': '',
+        'classification_id': '',
+        'national_id': '',
+        'contract_date': '',
+        'tasks': '',
+        'specialization': '',
+        'first_lecture_date': '',
+        'work_start_date': '',
+        'general_notes': '',
+    }
+    confirmation = _post(c, f'/teachers/edit/{target_teacher_id}', form.copy())
+    confirmation_html = confirmation.get_data(as_text=True)
+    assert confirmation.status_code == 200
+    assert 'تأكيد نقل صلاحية التكليف' in confirmation_html
+    assert 'الشاغل السابق' in confirmation_html
+
+    form.update({
+        'confirm_assignment_transfer': '1',
+        'confirmed_assignment_holders': f'user:{old_user_id}',
+    })
+    response = _post(c, f'/teachers/edit/{target_teacher_id}', form)
+    assert response.status_code == 200
+    assert _q(
+        db_path,
+        'SELECT position, admin_assignment_type_id FROM teachers WHERE id = ?',
+        (old_teacher_id,),
+    ) == [{'position': '', 'admin_assignment_type_id': None}]
+    assert _q(
+        db_path,
+        "SELECT role FROM user_roles WHERE user_id = ? AND role = 'faculty_affairs'",
+        (old_user_id,),
+    ) == []
+    assert _q(
+        db_path,
+        "SELECT role FROM user_roles WHERE user_id = ? AND role = 'faculty_affairs'",
+        (target_user_id,),
+    ) == [{'role': 'faculty_affairs'}]
+
+
 def test_edit_form_renders_one_hours_field_next_to_assignment_date(setup):
     c, _db_path, tid = setup
     response = c.get(f'/teachers/edit/{tid}')

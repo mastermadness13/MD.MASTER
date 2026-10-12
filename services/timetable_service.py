@@ -644,59 +644,60 @@ class TimetableService:
             self._repo.list_all_rooms_with_code(),
         )
 
-    # /     /     >---- حفظ سجل تدريس: أفضل جهد ولا يكسر حفظ الجدول أبداً
+    # /     /     >---- مزامنة سجل التدريس مع حصة الجدول نفسها
     def _record_taught_course(self, teacher_id, course_id, department_id,
                               semester, version_id=None,
                               day='', start_time='', end_time='', period='',
                               room_id=None, student_section='أ',
                               lecture_type='theory', hours=0,
                               timetable_entry_id=None):
-        """Persist a teaching-assignment record.
-
-        Best-effort: never breaks the timetable save that triggered it.
-        Uses INSERT OR REPLACE so edits update the existing assignment.
-
-        /     /     >---- INSERT OR REPLACE حتى التعديل يشتغل على نفس السجل.
-        """
-        try:
-            if not teacher_id or not course_id:
-                return
-            code = ''
-            if version_id:
-                vrow = self.db.execute(
-                    'SELECT semester_code FROM timetable_versions WHERE id = ?',
-                    (version_id,),
-                ).fetchone()
-                if vrow and vrow['semester_code']:
-                    code = vrow['semester_code']
-            if not code:
-                try:
-                    code = self._current_semester_code_for(department_id or 0, semester) or ''
-                except Exception:
-                    logger.debug('Failed to resolve semester code for dept=%s sem=%s', department_id, semester)
-                    code = ''
-            # /     /     >---- حساب الساعات من وقت البداية/النهاية إذا فاضية
-            if not hours and start_time and end_time:
-                try:
-                    s_parts = start_time.split(':')
-                    e_parts = end_time.split(':')
-                    minutes = (int(e_parts[0]) * 60 + int(e_parts[1])) - (int(s_parts[0]) * 60 + int(s_parts[1]))
-                    hours = max(1, round(minutes / 60)) if minutes > 0 else 1
-                except Exception:
-                    hours = 1
+        """Insert or refresh one ledger row for a timetable entry."""
+        if not timetable_entry_id:
+            raise ValueError('A timetable entry id is required for teaching-ledger sync')
+        if not teacher_id or not course_id:
             self.db.execute(
-                'INSERT OR REPLACE INTO teacher_taught_courses '
-                '(teacher_id, course_id, department_id, semester, semester_code, version_id, '
-                ' day, start_time, end_time, period, room_id, student_section, '
-                ' lecture_type, hours, timetable_entry_id) '
-                'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                (teacher_id, course_id, department_id, int(semester or 1), code,
-                 version_id, day, start_time, end_time, period, room_id,
-                 student_section, lecture_type, hours, timetable_entry_id),
+                'DELETE FROM teacher_taught_courses WHERE timetable_entry_id = ?',
+                (timetable_entry_id,),
             )
             self.db.commit()
-        except Exception:
-            logger.exception('Failed to record taught course (non-fatal)')
+            return
+
+        code = ''
+        if version_id:
+            vrow = self.db.execute(
+                'SELECT semester_code FROM timetable_versions WHERE id = ?',
+                (version_id,),
+            ).fetchone()
+            if vrow and vrow['semester_code']:
+                code = vrow['semester_code']
+        if not code:
+            code = self._current_semester_code_for(
+                department_id or 0, semester
+            ) or ''
+
+        self.db.execute(
+            'INSERT INTO teacher_taught_courses '
+            '(teacher_id, course_id, department_id, semester, semester_code, version_id, '
+            ' day, start_time, end_time, period, room_id, student_section, '
+            ' lecture_type, hours, timetable_entry_id) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) '
+            'ON CONFLICT(timetable_entry_id) DO UPDATE SET '
+            'teacher_id = excluded.teacher_id, '
+            'course_id = excluded.course_id, '
+            'department_id = excluded.department_id, '
+            'semester = excluded.semester, '
+            'semester_code = excluded.semester_code, '
+            'version_id = excluded.version_id, '
+            'day = excluded.day, start_time = excluded.start_time, '
+            'end_time = excluded.end_time, period = excluded.period, '
+            'room_id = excluded.room_id, '
+            'student_section = excluded.student_section, '
+            'lecture_type = excluded.lecture_type, hours = excluded.hours',
+            (teacher_id, course_id, department_id, int(semester or 1), code,
+             version_id, day, start_time, end_time, period, room_id,
+             student_section, lecture_type, hours, timetable_entry_id),
+        )
+        self.db.commit()
 
     # /     /     >---- ربط الأستاذ بالقسم تلقائياً عند الإسناد
     def _link_teacher_department(self, teacher_id, department_id) -> None:
@@ -983,6 +984,7 @@ def build_teacher_weekly(db, teacher_id, days_order=None):
                LEFT JOIN rooms r ON t.room_id = r.id
                LEFT JOIN departments d ON t.department_id = d.id
                WHERE t.teacher_id = ? AND t.day = ?
+               AND t.deleted_at IS NULL
                AND (t.version_id IS NULL OR t.version_id IN
                    (SELECT id FROM timetable_versions WHERE status = 'active'))
                ORDER BY t.start_time''',

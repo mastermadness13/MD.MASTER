@@ -24,6 +24,10 @@ from utils.format import paginate
 from services import teacher_service
 from services import course_service
 from services import hod_resolution
+from services.assignment_guard import (
+    holder_conflict as assignment_holder_conflict,
+    transfer_holders as transfer_assignment_holders,
+)
 from services.search import (build_text_search_where, build_teacher_search,
                                highlight_search_terms, search_terms)
 from services import faculty_performance_service as fps
@@ -1109,6 +1113,10 @@ def teachers_create():
         request.form.get('confirm_dean_transfer') == '1'
         if request.method == 'POST' else False
     )
+    confirmed_assignment_transfer = (
+        request.form.get('confirm_assignment_transfer') == '1'
+        if request.method == 'POST' else False
+    )
     if request.method == 'POST':
         name = request.form.get('name', '').strip()
         department_ids = [_safe_fk(v) for v in request.form.getlist('department_ids[]') if _safe_fk(v)]
@@ -1257,6 +1265,44 @@ form=form, form_error=spec_error,
                 admin_tasks=admin_tasks,
                 user=current_user(),
             )
+        assignment_conflict = assignment_holder_conflict(
+            db, None, form.get('admin_assignment_type_id'), form.get('position'),
+            department_id,
+        )
+        assignment_holder_confirmed = (
+            assignment_conflict
+            and confirmed_assignment_transfer
+            and set(request.form.getlist('confirmed_assignment_holders'))
+            == {
+                holder['holder_key']
+                for holder in assignment_conflict['holders']
+            }
+        )
+        if assignment_conflict and not assignment_holder_confirmed:
+            holder_names = '، '.join(
+                holder['name'] for holder in assignment_conflict['holders']
+            )
+            transfer_message = (
+                f'سيؤدي تعيين «{assignment_conflict["rule"]["name"]}» إلى نقل '
+                f'الصلاحية من {holder_names} إلى {name}. '
+                'لن يبقى الشاغل السابق مخولاً بهذه الصلاحية. '
+                'راجع رسالة التأكيد وفعّل مربع الموافقة للمتابعة.'
+            )
+            return render_template(
+                'teachers/create.html',
+                departments=departments, qualifications=qualifications,
+                ranks=ranks, classifications=classifications,
+                specializations=specializations,
+                department_hods=department_hods,
+                confirm_replace=confirmed_replace,
+                assignment_conflict=assignment_conflict,
+                confirm_assignment_transfer=False,
+                form=form,
+                form_error=transfer_message,
+                grantable_roles=_GRANTABLE_ROLES,
+                admin_tasks=admin_tasks,
+                user=current_user(),
+            )
         try:
             creds = teacher_service.create_teacher(db, form, department_ids=department_ids,
                                                    additional_roles=sorted(effective_roles),
@@ -1271,6 +1317,7 @@ form=form, form_error=spec_error,
                 form_error = 'اسم الدخول مستخدم مسبقاً — اختر اسم دخول آخر'
             else:
                 form_error = message
+            db.rollback()
             return render_template('teachers/create.html',
                                   departments=departments, qualifications=qualifications,
                                   ranks=ranks, classifications=classifications,
@@ -1281,6 +1328,16 @@ form=form, form_error=spec_error,
                                    grantable_roles=_GRANTABLE_ROLES,
                                    admin_tasks=admin_tasks,
                                    user=current_user())
+        if assignment_conflict:
+            target_user = db.execute(
+                'SELECT user_id FROM teachers WHERE id = ?', (creds['id'],)
+            ).fetchone()
+            transfer_assignment_holders(
+                db, assignment_conflict,
+                target_teacher_id=creds['id'],
+                target_user_id=target_user['user_id'] if target_user else None,
+            )
+            db.commit()
         if form.get('position') == 'مشرف' and request.form.get('supervisor_admin_dept', '').strip():
             db.execute(
                 'UPDATE users SET supervisor_admin_dept = ? WHERE id = (SELECT user_id FROM teachers WHERE id = ?)',
@@ -1335,6 +1392,10 @@ def teachers_edit(id):
     confirmed_replace = request.form.get('confirm_replace_hod') == '1' if request.method == 'POST' else False
     confirmed_dean_transfer = (
         request.form.get('confirm_dean_transfer') == '1'
+        if request.method == 'POST' else False
+    )
+    confirmed_assignment_transfer = (
+        request.form.get('confirm_assignment_transfer') == '1'
         if request.method == 'POST' else False
     )
     teacher_dept_rows = db.execute(
@@ -1595,6 +1656,57 @@ form_error='الرقم الكلية موجود مسبقاً لعضو آخر',
             admin_hours=admin_hours_val,
                 admin_tasks=admin_tasks,
                 user=current_user(),
+            )
+        assignment_conflict = assignment_holder_conflict(
+            db, id, form.get('admin_assignment_type_id'), form.get('position'),
+            department_id, user_id=t.get('user_id'),
+        )
+        assignment_holder_confirmed = (
+            assignment_conflict
+            and confirmed_assignment_transfer
+            and set(request.form.getlist('confirmed_assignment_holders'))
+            == {
+                holder['holder_key']
+                for holder in assignment_conflict['holders']
+            }
+        )
+        if assignment_conflict and not assignment_holder_confirmed:
+            holder_names = '، '.join(
+                holder['name'] for holder in assignment_conflict['holders']
+            )
+            transfer_message = (
+                f'سيؤدي تعيين «{assignment_conflict["rule"]["name"]}» إلى نقل '
+                f'الصلاحية من {holder_names} إلى {name}. '
+                'لن يبقى الشاغل السابق مخولاً بهذه الصلاحية. '
+                'راجع رسالة التأكيد وفعّل مربع الموافقة للمتابعة.'
+            )
+            return render_template(
+                'teachers/edit.html',
+                teacher=form,
+                teacher_id=id,
+                teacher_dept_ids=[did for did in department_ids if did],
+                departments=departments, qualifications=qualifications,
+                ranks=ranks, classifications=classifications,
+                specializations=specializations,
+                teacher_course_ids=[],
+                department_hods=department_hods,
+                confirm_replace=confirmed_replace,
+                assignment_conflict=assignment_conflict,
+                confirm_assignment_transfer=False,
+                form_error=transfer_message,
+                grantable_roles=_GRANTABLE_ROLES,
+                extra_roles=form.get('extra_roles', []),
+                research_types=edit_research_types,
+                research=edit_research,
+                assignment_date=assignment_date,
+                admin_hours=admin_hours_val,
+                admin_tasks=admin_tasks,
+                user=current_user(),
+            )
+        if assignment_conflict:
+            transfer_assignment_holders(
+                db, assignment_conflict, target_teacher_id=id,
+                target_user_id=t.get('user_id'),
             )
         teacher_service.update_teacher(db, id, form)
         # The credentials update may have just created + linked a login account,

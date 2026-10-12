@@ -146,6 +146,11 @@ class TimetableRepository(BaseRepository):
     def delete(self, entry_id: int) -> bool:
         """Delete a timetable entry. Returns True if row was deleted."""
         cursor = self.db.execute('DELETE FROM timetable WHERE id=?', (entry_id,))
+        if cursor.rowcount:
+            self.db.execute(
+                'DELETE FROM teacher_taught_courses WHERE timetable_entry_id = ?',
+                (entry_id,),
+            )
         self.db.commit()
         return cursor.rowcount > 0
 
